@@ -107,7 +107,7 @@ goose -dir services/<svc>/database/migrations \
 |---|---|
 | `JWT_SECRET` / `JWT_ALGORITHM` | secret; `HS256` |
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | PEM; rỗng = HS256 tạm thời |
-| `GOOGLE_CLIENT_IDS`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_STATE_TTL_MINUTES` | Google OAuth; `CLIENT_IDS` là danh sách phẩy phân tách (web đứng đầu cho luồng redirect), `REDIRECT_URI` là callback backend; box ngoài copy y nguyên từ VPS |
+| `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_WEB_CLIENT_SECRET`, `GOOGLE_CLIENT_IDS`, `GOOGLE_REDIRECT_URI`, `GOOGLE_STATE_TTL_MINUTES` | Google OAuth. `WEB_CLIENT_ID`/`WEB_CLIENT_SECRET` là client **Web application**, dùng cho *duy nhất* luồng redirect web — dùng nhầm client Android/iOS sẽ khiến Google trả `redirect_uri_mismatch`. `CLIENT_IDS` chỉ là danh sách phẩy phân tách client iOS/Android được chấp nhận làm audience của ID token; client web đã được thêm tự động nên không khai báo lại, và thứ tự trong danh sách không mang ý nghĩa. `REDIRECT_URI` là callback backend; box ngoài copy y nguyên từ VPS |
 | `INGRESS_ACCOUNT/COMMERCE/AI_URL` | VPS: `http://account:8080`...; box: hardcode `*-http` trong compose |
 | `INGRESS_TOKEN_AUDIENCE` | để trống (không còn Cloud Run) |
 | `EMAIL_SENDER_EMAIL`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `EMAIL_REPLY_TO` | Brevo SMTP; box copy y nguyên từ VPS |
@@ -146,7 +146,7 @@ container: `CONFIG_FILE`, `APP_MODE=http|worker`, `DATABASE_MIGRATION_TABLE`,
 `INGRESS_*_URL`, `SERVER_PORT=8080`, `TZ`. Còn lại lấy từ `.env.aws`: `SERVER_ENV=vps`,
 `API_V2_DOMAIN`, `DB_*`/`REDIS_*`/`RABBITMQ_*` (kèm cờ TLS theo gói), `JWT_*`,
 `EMAIL_*`, `PAYOS_*`, `CLOUDINARY_*`, AI keys, `ELASTICSEARCH_ENABLED=false`,
-`FRONT_END_ORIGIN`, `SWAGGER_ACCESS_CODE`.
+`FRONT_END_ORIGIN`, `SWAGGER_ACCESS_CODE`, `GOOGLE_*`.
 
 Verify đã đủ:
 ```bash

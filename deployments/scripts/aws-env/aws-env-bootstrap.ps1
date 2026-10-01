@@ -70,7 +70,7 @@ $CopyExact = @(
     'JWT_ALGORITHM','JWT_SECRET','JWT_PRIVATE_KEY','JWT_PUBLIC_KEY',
     'EMAIL_SENDER_EMAIL','EMAIL_SMTP_USER','EMAIL_SMTP_KEY','EMAIL_REPLY_TO',
     'CLOUDINARY_CLOUD_NAME','CLOUDINARY_API_KEY','CLOUDINARY_API_SECRET','CLOUDINARY_API_URL',
-    'GOOGLE_CLIENT_IDS','GOOGLE_CLIENT_SECRET'
+    'GOOGLE_WEB_CLIENT_ID','GOOGLE_WEB_CLIENT_SECRET','GOOGLE_CLIENT_IDS'
 )
 $CopyPrefix = @('VISION_','EMBEDDING_','CHAT_TEXT_','RECOMMENDATION_TEXT_','FREE_TEXT_')
 
@@ -78,8 +78,9 @@ $CopyPrefix = @('VISION_','EMBEDDING_','CHAT_TEXT_','RECOMMENDATION_TEXT_','FREE
 # required for Google login on the AWS box, but the local VPS .env.production may
 # not define them yet (they were added in feature 021).
 $CopyRequired = @{
-    'GOOGLE_CLIENT_IDS'    = 'Google OAuth web client id (comma-separated; web client first)'
-    'GOOGLE_CLIENT_SECRET' = 'Google OAuth web client secret'
+    'GOOGLE_WEB_CLIENT_ID'     = 'Google OAuth web application client id'
+    'GOOGLE_WEB_CLIENT_SECRET' = 'Google OAuth web application client secret'
+    'GOOGLE_CLIENT_IDS'        = 'Google OAuth iOS/Android client ids (comma-separated); leave empty for web-only'
 }
 
 # AWS-box constants.

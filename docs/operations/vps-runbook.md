@@ -61,6 +61,13 @@ cp /duong/dan/repo/.env.production.example .env.production
 | `API_V2_DOMAIN` | `api-v2.closy.hycat.online` |
 | `NGINX_MODE` | `services` |
 | `DB_HOST`/`DB_PORT`/`DB_LISTENER_HOST`/`DB_*` | **luôn Postgres local** (`postgres`) — cấm trỏ Supabase (luật isolation) |
+| `GOOGLE_WEB_CLIENT_ID`/`GOOGLE_WEB_CLIENT_SECRET` | client Google **Web application** (không phải Android/iOS) |
+| `GOOGLE_CLIENT_IDS` | client iOS/Android (để trống nếu chỉ có web); không khai client web ở đây |
+| `GOOGLE_REDIRECT_URI` | `https://api.closy.hycat.online/api/v1/auth/google/callback` — phải khớp Authorized redirect URI trong Google Cloud Console |
+
+Thiếu `GOOGLE_WEB_CLIENT_ID`/`GOOGLE_WEB_CLIENT_SECRET` khi có `GOOGLE_REDIRECT_URI` thì service
+không boot (validation lúc startup), và web login trả `redirect_uri_mismatch` nếu trỏ nhầm client
+Android/iOS.
 
 Không còn `COMPOSE_PROFILES`, `*_RUN_URL`, `TOKEN_HELPER_*` — thấy là xóa.
 

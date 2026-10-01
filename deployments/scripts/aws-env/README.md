@@ -38,8 +38,10 @@ powershell -ExecutionPolicy Bypass -File deployments/scripts/aws-env/aws-env-to-
 
 - `GOOGLE_REDIRECT_URI` là **đặc thù AWS box** (`https://api-v2.closy.hycat.online/api/v1/auth/google/callback`)
   nên **không copy từ VPS**; script tự set constant. URI này phải được đăng ký trong Google Cloud Console.
-- `GOOGLE_CLIENT_IDS` / `GOOGLE_CLIENT_SECRET`: copy từ VPS **nếu** `.env.production` đã có; nếu chưa
-  (feature 021 mới thêm), script phát sinh dòng `# TODO` để bạn điền.
+- `GOOGLE_WEB_CLIENT_ID` / `GOOGLE_WEB_CLIENT_SECRET`: copy từ VPS **nếu** `.env.production` đã có; nếu chưa
+  (feature 021 mới thêm), script phát sinh dòng `# TODO` để bạn điền. Đây là client **Web application** —
+  dùng nhầm client Android/iOS sẽ khiến web login trả `redirect_uri_mismatch`.
+- `GOOGLE_CLIENT_IDS`: copy từ VPS cùng nhóm; chỉ chứa client iOS/Android, không cần chứa web client.
 - Các khoá VPS-only (`API_DOMAIN`, `COMPOSE_PROJECT_NAME`, `NGINX_MODE`, `INGRESS_*_URL`, ...) không thuộc
   template AWS nên được bỏ qua một cách chủ đích.
 

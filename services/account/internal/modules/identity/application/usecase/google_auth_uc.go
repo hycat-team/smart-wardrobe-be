@@ -102,7 +102,9 @@ func (uc *GoogleAuthUseCase) StartRedirect(ctx context.Context, redirectURL stri
 	if err != nil {
 		return "", err
 	}
-	if len(uc.cfg.Google.ClientIDs) == 0 || strings.TrimSpace(uc.cfg.Google.RedirectURI) == "" {
+	if strings.TrimSpace(uc.cfg.Google.WebClientID) == "" ||
+		strings.TrimSpace(uc.cfg.Google.WebClientSecret) == "" ||
+		strings.TrimSpace(uc.cfg.Google.RedirectURI) == "" {
 		return "", identityerrors.ErrGoogleConfigMissing()
 	}
 
@@ -322,16 +324,13 @@ func (uc *GoogleAuthUseCase) generateUsername(ctx context.Context, email string)
 	return "", identityerrors.ErrAccountCreationFailed()
 }
 
-// oauthConfig builds the Google OAuth2 config. The first configured client ID is
-// used for the web Authorization Code flow (the web client must be listed first).
+// oauthConfig builds the Google OAuth2 config from the dedicated web client, so
+// the client used for the web Authorization Code flow never depends on how the
+// ID token audience list happens to be ordered.
 func (uc *GoogleAuthUseCase) oauthConfig() *oauth2.Config {
-	clientID := ""
-	if len(uc.cfg.Google.ClientIDs) > 0 {
-		clientID = uc.cfg.Google.ClientIDs[0]
-	}
 	return &oauth2.Config{
-		ClientID:     clientID,
-		ClientSecret: uc.cfg.Google.ClientSecret,
+		ClientID:     uc.cfg.Google.WebClientID,
+		ClientSecret: uc.cfg.Google.WebClientSecret,
 		RedirectURL:  uc.cfg.Google.RedirectURI,
 		Scopes:       []string{"openid", "email", "profile"},
 		Endpoint:     google.Endpoint,

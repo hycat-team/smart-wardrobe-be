@@ -243,17 +243,27 @@ func validateCampaignSweep(sweep CampaignSweepConfig) error {
 
 // validateGoogle enforces Google OAuth config consistency when the feature is
 // configured. Empty config is allowed (feature disabled in that environment);
-// a partial config is rejected.
+// a partial config is rejected. The web client is named explicitly so a mobile
+// client ID can never be mistaken for it — an ordering mistake here only
+// surfaces later as an opaque redirect_uri_mismatch from Google.
 func validateGoogle(cfg *Config) error {
 	g := cfg.Google
-	if strings.TrimSpace(g.ClientIDRaw) == "" && strings.TrimSpace(g.RedirectURI) == "" {
+	if strings.TrimSpace(g.WebClientID) == "" &&
+		strings.TrimSpace(g.ClientIDRaw) == "" &&
+		strings.TrimSpace(g.RedirectURI) == "" {
 		return nil
-	}
-	if len(g.ClientIDs) == 0 {
-		return fmt.Errorf("google client_ids is required when Google login is configured")
 	}
 	if strings.TrimSpace(g.RedirectURI) == "" {
 		return fmt.Errorf("google redirect_uri is required when Google login is configured")
+	}
+	if strings.TrimSpace(g.WebClientID) == "" {
+		return fmt.Errorf("google web_client_id (GOOGLE_WEB_CLIENT_ID) is required when Google login is configured")
+	}
+	if strings.TrimSpace(g.WebClientSecret) == "" {
+		return fmt.Errorf("google web_client_secret (GOOGLE_WEB_CLIENT_SECRET) is required when Google login is configured")
+	}
+	if len(g.ClientIDs) == 0 {
+		return fmt.Errorf("google client_ids is required when Google login is configured")
 	}
 	if g.StateTTLMinutes <= 0 {
 		return fmt.Errorf("google state_ttl_minutes must be greater than 0")

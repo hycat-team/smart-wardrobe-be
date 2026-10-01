@@ -61,7 +61,7 @@ func loadConfig() (*Config, error) {
 	}
 	applyEnvOverrides(&cfg)
 	cfg.Server.FrontEndOrigins = splitFrontEndOrigins(cfg.Server.FrontEndOrigin)
-	cfg.Google.ClientIDs = splitCSVList(cfg.Google.ClientIDRaw)
+	cfg.Google.ClientIDs = googleAudiences(cfg.Google.ClientIDRaw, cfg.Google.WebClientID)
 	if err := parseCampaignWindows(&cfg); err != nil {
 		return nil, err
 	}
@@ -132,7 +132,33 @@ func splitCSVList(raw string) []string {
 	return items
 }
 
+// googleAudiences resolves the accepted ID token audience set: the extra client
+// IDs from GOOGLE_CLIENT_IDS (iOS/Android) plus the web client. Order carries no
+// meaning and duplicates are dropped, so no client can be lost by list ordering.
+func googleAudiences(raw string, webClientID string) []string {
+	audiences := make([]string, 0)
+	seen := make(map[string]struct{})
+	add := func(clientID string) {
+		clientID = strings.TrimSpace(clientID)
+		if clientID == "" {
+			return
+		}
+		if _, duplicated := seen[clientID]; duplicated {
+			return
+		}
+		seen[clientID] = struct{}{}
+		audiences = append(audiences, clientID)
+	}
+
+	add(webClientID)
+	for _, clientID := range splitCSVList(raw) {
+		add(clientID)
+	}
+	return audiences
+}
+
 // splitFrontEndOrigins parses the comma-separated FRONT_END_ORIGIN value into a
+
 // normalized slice (trimmed, trailing slash removed, empties dropped) so callers
 // never split the raw string themselves.
 func splitFrontEndOrigins(raw string) []string {
@@ -247,11 +273,14 @@ func applyEnvOverrides(cfg *Config) {
 	}
 
 	// Google OAuth/OIDC client config (social login).
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_WEB_CLIENT_ID")); v != "" {
+		cfg.Google.WebClientID = v
+	}
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_WEB_CLIENT_SECRET")); v != "" {
+		cfg.Google.WebClientSecret = v
+	}
 	if v := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_IDS")); v != "" {
 		cfg.Google.ClientIDRaw = v
-	}
-	if v := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")); v != "" {
-		cfg.Google.ClientSecret = v
 	}
 	if v := strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")); v != "" {
 		cfg.Google.RedirectURI = v

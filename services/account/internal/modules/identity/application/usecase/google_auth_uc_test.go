@@ -2,11 +2,13 @@ package usecase_test
 
 import (
 	"context"
+	"net/url"
 	"testing"
 	"time"
 
 	subscription_contract "smart-wardrobe-be/services/account/contract/subscription"
 	"smart-wardrobe-be/services/account/dto/identity"
+	identityerrors "smart-wardrobe-be/services/account/internal/modules/identity/application/errors"
 	identityiface "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/identity"
 	appsecurity "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/usecase"
@@ -323,10 +325,12 @@ func googleRedirectCfg() *config.Config {
 	return &config.Config{
 		Server: config.Server{Env: "vps", FrontEndOrigins: []string{"https://closy.hycat.online"}},
 		Google: config.Google{
-			ClientIDRaw:     "web-client",
+			WebClientID:     "web-client",
+			WebClientSecret: "web-secret",
+			ClientIDRaw:     "android-client",
 			RedirectURI:     "https://api.example.com/api/v1/auth/google/callback",
 			StateTTLMinutes: 10,
-			ClientIDs:       []string{"web-client"},
+			ClientIDs:       []string{"web-client", "android-client"},
 		},
 	}
 }
@@ -351,6 +355,32 @@ func TestGoogleStartRedirect_Valid(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, authURL, "accounts.google.com")
 	assert.Contains(t, authURL, "state=")
+}
+
+func TestGoogleStartRedirect_UsesWebClientRegardlessOfAudienceOrder(t *testing.T) {
+	ctx := context.Background()
+	cfg := googleRedirectCfg()
+	cfg.Google.ClientIDRaw = "android-client, ios-client"
+	cfg.Google.ClientIDs = []string{"android-client", "ios-client"}
+	uc := newGoogleUCWithConfig(cfg, new(mockUserRepo), &fakeSession{}, &fakeStateStore{})
+
+	authURL, err := uc.StartRedirect(ctx, "https://closy.hycat.online/auth/callback")
+	assert.NoError(t, err)
+
+	parsed, parseErr := url.Parse(authURL)
+	assert.NoError(t, parseErr)
+	assert.Equal(t, "web-client", parsed.Query().Get("client_id"))
+	assert.Equal(t, cfg.Google.RedirectURI, parsed.Query().Get("redirect_uri"))
+}
+
+func TestGoogleStartRedirect_MissingWebClientConfig(t *testing.T) {
+	ctx := context.Background()
+	cfg := googleRedirectCfg()
+	cfg.Google.WebClientID = ""
+	uc := newGoogleUCWithConfig(cfg, new(mockUserRepo), &fakeSession{}, &fakeStateStore{})
+
+	_, err := uc.StartRedirect(ctx, "https://closy.hycat.online/auth/callback")
+	assert.ErrorIs(t, err, identityerrors.ErrGoogleConfigMissing())
 }
 
 func TestGoogleCallback_InvalidState(t *testing.T) {

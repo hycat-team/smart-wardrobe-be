@@ -412,11 +412,19 @@ type Jwt struct {
 }
 
 // Google holds the Google OAuth/OIDC client configuration for social login.
-// ClientIDs is derived from the comma-separated ClientIDRaw after load; it is
-// NOT mapped directly from env/YAML.
+//
+// WebClientID/WebClientSecret are the ONLY client used for the web Authorization
+// Code flow, so the web client can never be expressed by its position in a list.
+// ClientIDRaw carries the extra client IDs (iOS/Android) that are only accepted
+// as ID token audiences; the web client is always accepted and does not need to be
+// repeated there.
+//
+// ClientIDs is the resolved audience set derived after load; it is NOT mapped
+// directly from env/YAML.
 type Google struct {
+	WebClientID     string   `mapstructure:"web_client_id"`
+	WebClientSecret string   `mapstructure:"web_client_secret"`
 	ClientIDRaw     string   `mapstructure:"client_ids"`
-	ClientSecret    string   `mapstructure:"client_secret"`
 	RedirectURI     string   `mapstructure:"redirect_uri"`
 	StateTTLMinutes int      `mapstructure:"state_ttl_minutes"`
 	ClientIDs       []string `mapstructure:"-"`

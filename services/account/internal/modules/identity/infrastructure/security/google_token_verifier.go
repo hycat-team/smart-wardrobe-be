@@ -12,8 +12,10 @@ import (
 
 // GoogleTokenVerifier verifies Google ID tokens via the official idtoken package
 // (signature/JWKS, issuer, expiry) and enforces the configured audience list and
-// email_verified. It is the only place that depends on the Google SDK, keeping
-// the domain/application layers portable.
+// email_verified. The audience list is the full set resolved at config load (web
+// client + mobile clients), so every client issued to the product is accepted.
+// It is the only place that depends on the Google SDK, keeping the
+// domain/application layers portable.
 type GoogleTokenVerifier struct {
 	audiences []string
 }
