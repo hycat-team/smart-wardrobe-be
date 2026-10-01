@@ -34,6 +34,12 @@ Tài liệu này mô tả API Auth thuộc module Identity hiện tại sau khi 
 *   **Tác nhân (Actor):** Khách hàng / Quản trị viên (User/Admin).
 *   **Đối tượng ảnh hưởng:** Tạo phiên đăng nhập/token mới.
 *   **Mô tả:** Đăng nhập bằng tên tài khoản (username) hoặc email kèm mật khẩu (password).
+*   **Lỗi thường gặp:**
+    | HTTP | Message | Nguyên nhân |
+    |---|---|---|
+    | 400 | `Sai tài khoản hoặc mật khẩu.` | Sai tên tài khoản/email, hoặc sai mật khẩu |
+    | 400 | `Tài khoản của bạn chưa có mật khẩu. Nếu bạn đã đăng ký bằng Google, vui lòng đăng nhập bằng Google. Nếu muốn đăng nhập bằng mật khẩu, hãy sử dụng chức năng Quên mật khẩu để thiết lập mật khẩu mới.` | Tài khoản chưa từng thiết lập mật khẩu (đăng ký bằng Google, hoặc do quản trị viên tạo). Frontend hiển thị nguyên message này, kèm lối tắt tới luồng Quên mật khẩu / đăng nhập Google |
+    | 403 | `Tài khoản đã bị khoá hoặc vô hiệu hoá. Vui lòng liên hệ CSKH.` | Tài khoản không còn Active hoặc bị đưa vào blacklist |
 
 ### 2. Refresh token
 *   **Endpoint:** `POST /api/v1/auth/refresh-token`

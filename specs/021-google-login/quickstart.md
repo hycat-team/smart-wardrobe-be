@@ -62,7 +62,8 @@ go test ./internal/modules/identity/... -run Google
 | # | Kịch bản | Cách thực hiện | Kết quả mong đợi |
 |---|---|---|---|
 | 17 | Set password lần đầu | Account Google-only → luồng quên mật khẩu → đặt mật khẩu | Thành công; sau đó `POST /auth/login` bằng email+mật khẩu OK |
-| 18 | Login mật khẩu khi chưa có mật khẩu | `POST /auth/login` cho account Google-only với mật khẩu bất kỳ | 400 "Sai tài khoản hoặc mật khẩu." |
+| 18 | Login mật khẩu khi chưa có mật khẩu | `POST /auth/login` cho account Google-only với mật khẩu bất kỳ | 400 "Tài khoản của bạn chưa có mật khẩu. ..." (hướng dẫn đăng nhập bằng Google hoặc dùng Quên mật khẩu) |
+| 18b | Login sai mật khẩu (đã có mật khẩu) | `POST /auth/login` cho account local với mật khẩu sai | 400 "Sai tài khoản hoặc mật khẩu." |
 | 19 | Đổi mật khẩu lần đầu | Account Google-only → `PUT /me/change-password` không cần `oldPassword` | Thành công, set được mật khẩu |
 
 ## 3. Tham chiếu artifact

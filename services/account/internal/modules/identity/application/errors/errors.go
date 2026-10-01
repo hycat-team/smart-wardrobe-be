@@ -158,6 +158,14 @@ func ErrInvalidCredentials() *apperror.Error {
 	return apperror.NewBadRequest("Sai tài khoản hoặc mật khẩu.")
 }
 
+// ErrPasswordNotSet is returned when the account exists but has never had a
+// password hash (e.g. a Google-only account), so telling the user the password
+// is wrong would be misleading. It reveals only that no password is set, not
+// anything about the credentials themselves.
+func ErrPasswordNotSet() *apperror.Error {
+	return apperror.NewBadRequest("Tài khoản của bạn chưa có mật khẩu. Nếu bạn đã đăng ký bằng Google, vui lòng đăng nhập bằng Google. Nếu muốn đăng nhập bằng mật khẩu, hãy sử dụng chức năng Quên mật khẩu để thiết lập mật khẩu mới.")
+}
+
 func ErrInvalidOldPassword() *apperror.Error {
 	return apperror.NewBadRequest("Mật khẩu cũ không chính xác.")
 }

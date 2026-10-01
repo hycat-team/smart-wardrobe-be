@@ -83,12 +83,17 @@ thì đệm/nối hậu tố → cắt còn 20. Khi trùng, thêm hậu tố `_<
 
 ## R5. `password_hash` nullable & thiết lập mật khẩu lần đầu
 
-**Decision**: Cho `password_hash` nullable. Đăng nhập mật khẩu guard: nếu hash rỗng/NULL → trả
-`ErrInvalidCredentials` (không gọi verify). Cho phép thiết lập mật khẩu lần đầu qua **quên mật khẩu** (đã có sẵn,
+**Decision**: Cho `password_hash` nullable. Đăng nhập mật khẩu tách 2 nhánh: nếu hash rỗng/NULL →
+trả `ErrPasswordNotSet` (thông báo hướng dẫn đăng nhập bằng Google hoặc dùng Quên mật khẩu để thiết lập
+mật khẩu, không gọi verify); nếu có hash nhưng sai → `ErrInvalidCredentials` (không gọi nói rõ tài khoản
+nào tồn tại). Cho phép thiết lập mật khẩu lần đầu qua **quên mật khẩu** (đã có sẵn,
 chỉ cần đảm bảo hoạt động khi hash NULL) và qua **đổi mật khẩu** (`profile_uc.go`): nếu tài khoản chưa có mật khẩu
 thì bỏ qua bước xác minh `OldPassword` (request đã xác thực bằng JWT).
 
-**Rationale**: Đúng quyết định #4. Tái dùng luồng recovery sẵn có, giảm code mới.
+**Rationale**: Đúng quyết định #4. Tái dùng luồng recovery sẵn có, giảm code mới. Báo "sai mật khẩu" cho
+một tài khoản chưa từng có mật khẩu là thông báo sai nguyên nhân, dẫn người dùng đi sai hướng. Mức lộ
+thông tin chấp nhận được: nhánh riêng chỉ tiết lộ "tài khoản này chưa thiết lập mật khẩu", không nói gì
+về mật khẩu hay trạng thái tài khoản.
 
 **Alternatives considered**: Không cho set mật khẩu (kém linh hoạt); thêm endpoint `set-password` riêng (dư thừa).
 

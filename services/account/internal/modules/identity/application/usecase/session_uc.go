@@ -55,7 +55,10 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, identityerrors.ErrInvalidCredentials()
 	}
 
-	if !user.HasPassword() || !uc.passwordHasher.VerifyPassword(input.Password, *user.PasswordHash) {
+	if !user.HasPassword() {
+		return nil, identityerrors.ErrPasswordNotSet()
+	}
+	if !uc.passwordHasher.VerifyPassword(input.Password, *user.PasswordHash) {
 		return nil, identityerrors.ErrInvalidCredentials()
 	}
 

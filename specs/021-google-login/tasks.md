@@ -123,7 +123,7 @@ Multi-module Go workspace. Feature nằm trong `services/account` (module `ident
 
 ### Implementation for User Story 4
 
-- [x] T034 [US4] Thêm guard trong `services/account/internal/modules/identity/application/usecase/session_uc.go::Login`: nếu `PasswordHash == nil || *PasswordHash == ""` → `ErrInvalidCredentials`
+- [x] T034 [US4] Thêm guard trong `services/account/internal/modules/identity/application/usecase/session_uc.go::Login`: nếu `PasswordHash == nil || *PasswordHash == ""` → `ErrPasswordNotSet` (thông báo hướng dẫn Google / Quên mật khẩu); sai mật khẩu thì giữ `ErrInvalidCredentials`
 - [x] T035 [US4] Cho phép đổi mật khẩu lần đầu trong `services/account/internal/modules/identity/application/usecase/profile_uc.go::ChangePassword` (bỏ qua verify `OldPassword` khi hash NULL)
 - [x] T036 [US4] Đảm bảo `ResetPassword` trong `services/account/internal/modules/identity/application/usecase/password_recovery_uc.go` hoạt động với tài khoản hash NULL
 - [x] T037 [US4] Unit test: login khi chưa có mật khẩu, change-password lần đầu, reset-password cho Google-only (`session_uc_test.go`, `password_recovery_uc_test.go`)
