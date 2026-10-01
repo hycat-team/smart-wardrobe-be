@@ -9,7 +9,9 @@ server:
     cookie_domain: "${COOKIE_DOMAIN}"
     timeout_seconds: 300
     read_timeout_seconds: 30
-    write_timeout_seconds: 60
+    # FR-076: admin batch grant of 500 accounts must answer within 60s; a 60s write
+    # deadline would cut the response mid-flight even after every item succeeded.
+    write_timeout_seconds: 120
     idle_timeout_seconds: 120
     gzip_enabled: true
     sse:
@@ -158,6 +160,12 @@ claim_rate_limit:
     user_limit: 10
     token_limit: 5
     window_seconds: 600
+# FR-078: two independent tiers for the admin batch-grant endpoint, counted per
+# administrator. multi_per_minute applies only to requests with >1 item.
+admin_grant_rate_limit:
+    all_per_minute: 60
+    multi_per_minute: 6
+    window_seconds: 60
 
 # ============================================================
 # Business - User & Auth
@@ -298,6 +306,9 @@ ai:
     free_text_rpm_limit: 250
     usage_reconcile_cron: "0 */10 * * * *"
     usage_reconcile_batch_size: 100
+    # Fallback tier 1 policy code used when an account has no ai_policy_grants
+    # row (FR-006). Must match aiexecutor.ai_cost_policies.code.
+    default_cost_policy_code: "free-default"
     token_estimation:
         chars_per_token: 4.0
         local_safety_multiplier: 1.25
