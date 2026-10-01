@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"time"
 
 	aiexecutor_dto "smart-wardrobe-be/services/ai/dto/aiexecutor"
 	uc_interfaces "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/interface/usecase"
@@ -43,16 +44,32 @@ func (w *PlanChangedWorker) Start(ctx context.Context) {
 
 func (w *PlanChangedWorker) handle(ctx context.Context, payload aiexecutor_dto.PlanChangedEventPayload) error {
 	run := workerlog.New("plan_changed", workerlog.TriggerQueue)
-	run.LogReceived(w.logger,
+	// 024 T066 / FR-086: every rejection is logged with the account, the reason
+	// and the time. Not every event that reaches this consumer accompanies an
+	// administrator action — an expiry or an auto-renew toggle arrives on its
+	// own — so without this line a refusal is completely untraceable.
+	fields := []zap.Field{
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("userId", payload.UserID),
 		zap.String("eventType", payload.EventType),
-	)
+		zap.String("sourceEventId", payload.SourceEventID),
+		zap.Int("eventVersion", payload.EventVersion),
+		zap.Time("receivedAt", time.Now().UTC()),
+	}
+	run.LogReceived(w.logger, fields...)
 
 	if err := w.grantUseCase.HandlePlanChanged(ctx, payload); err != nil {
+		w.logger.Warn("plan-changed event could not be applied",
+			append(fields, zap.Error(err))...,
+		)
 		run.LogFailure(w.logger, err,
 			zap.String("userId", payload.UserID),
+			zap.String("eventType", payload.EventType),
 		)
+		// The classification is set by the use case: a permanent rejection goes
+		// straight to the dead-letter queue, a transient one is redelivered up to
+		// the queue's delivery limit. Swallowing either here would turn a
+		// classified failure into a silent one.
 		return err
 	}
 
@@ -60,6 +77,7 @@ func (w *PlanChangedWorker) handle(ctx context.Context, payload aiexecutor_dto.P
 	run.AddSuccess(1)
 	run.LogSuccessIfData(w.logger,
 		zap.String("userId", payload.UserID),
+		zap.String("eventType", payload.EventType),
 	)
 	return nil
 }

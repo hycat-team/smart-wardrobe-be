@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/services/ai/dto/aiexecutor"
 	aierrors "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/errors"
 	uc_interfaces "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/interface/usecase"
+	aiexecutor_mapper "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/mapper"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/repositories"
 	shared_repos "smart-wardrobe-be/shared/domain/repositories"
@@ -40,18 +41,7 @@ func (uc *AIAdminUseCase) ListPricing(ctx context.Context) ([]*dto.AIModelConfig
 
 	res := make([]*dto.AIModelConfigDTO, len(configs))
 	for idx, c := range configs {
-		res[idx] = &dto.AIModelConfigDTO{
-			ID:                  c.ID,
-			Provider:            c.Provider,
-			Model:               c.Model,
-			InputUSDPerMillion:  c.InputUSDPerMillion,
-			OutputUSDPerMillion: c.OutputUSDPerMillion,
-			Currency:            c.Currency,
-			USDToVND:            c.USDToVND,
-			Version:             c.Version,
-			EffectiveFrom:       c.EffectiveFrom,
-			EffectiveTo:         c.EffectiveTo,
-		}
+		res[idx] = aiexecutor_mapper.AIModelConfigToDTO(c)
 	}
 	return res, nil
 }
@@ -85,18 +75,7 @@ func (uc *AIAdminUseCase) UpdatePricing(ctx context.Context, id uuid.UUID, req d
 		return nil, err
 	}
 
-	return &dto.AIModelConfigDTO{
-		ID:                  config.ID,
-		Provider:            config.Provider,
-		Model:               config.Model,
-		InputUSDPerMillion:  config.InputUSDPerMillion,
-		OutputUSDPerMillion: config.OutputUSDPerMillion,
-		Currency:            config.Currency,
-		USDToVND:            config.USDToVND,
-		Version:             config.Version,
-		EffectiveFrom:       config.EffectiveFrom,
-		EffectiveTo:         config.EffectiveTo,
-	}, nil
+	return aiexecutor_mapper.AIModelConfigToDTO(config), nil
 }
 
 func (uc *AIAdminUseCase) GetUserUsage(ctx context.Context, userID uuid.UUID, fromDate, toDate *time.Time, page, limit int) ([]*dto.AIUsageItemDTO, int64, error) {
@@ -119,20 +98,7 @@ func (uc *AIAdminUseCase) GetUserUsage(ctx context.Context, userID uuid.UUID, fr
 			model = *e.Model
 		}
 
-		res[idx] = &dto.AIUsageItemDTO{
-			ID:                 e.ID,
-			RequestID:          e.RequestID,
-			UserID:             uid,
-			Operation:          string(e.Operation),
-			Status:             string(e.Status),
-			PromptTokens:       e.PromptTokens,
-			OutputTokens:       e.OutputTokens,
-			ThinkingTokens:     e.ThinkingTokens,
-			ActualCostMicroVND: e.ActualCostMicroVND,
-			Provider:           provider,
-			Model:              model,
-			CreatedAt:          e.CreatedAt,
-		}
+		res[idx] = aiexecutor_mapper.AIUsageItemToDTO(e, uid, provider, model)
 	}
 	return res, total, nil
 }
@@ -157,53 +123,11 @@ func (uc *AIAdminUseCase) ListGrants(ctx context.Context, userID uuid.UUID) ([]*
 
 	res := make([]*dto.AIPolicyGrantDTO, len(grants))
 	for idx, g := range grants {
-		var policyBrief *dto.AICostPolicyBriefRes
-		if policy, ok := policyMap[g.PolicyID]; ok {
-			policyBrief = &dto.AICostPolicyBriefRes{
-				ID:      policy.ID,
-				Code:    policy.Code,
-				Name:    policy.Name,
-				Version: policy.Version,
-			}
-		}
-		res[idx] = &dto.AIPolicyGrantDTO{
-			ID:             g.ID,
-			UserID:         g.UserID,
-			AICostPolicy:   policyBrief,
-			AICostPolicyID: g.PolicyID,
-			EffectiveFrom:  g.EffectiveFrom,
-			EffectiveTo:    g.EffectiveTo,
-			CreatedAt:      g.CreatedAt,
-		}
+		// 024 T127: the policy rows were read once above; converting them here
+		// keeps that batching. A nil brief is the case worth seeing - the grant
+		// exists but the policy it points at is gone.
+		policyBrief := aiexecutor_mapper.AICostPolicyBriefToDTO(policyMap[g.PolicyID])
+		res[idx] = aiexecutor_mapper.AIPolicyGrantToDTO(g, policyBrief)
 	}
 	return res, nil
-}
-
-func (uc *AIAdminUseCase) CreateGrant(ctx context.Context, req dto.CreateAIGrantReq) (*dto.AIPolicyGrantDTO, error) {
-	now := time.Now()
-	grant := &entities.AIPolicyGrant{
-		UserID:        req.UserID,
-		PolicyID:      req.AICostPolicyID,
-		EffectiveFrom: now,
-		EffectiveTo:   req.EffectiveTo,
-	}
-
-	txFn := func(txCtx context.Context) error {
-		// Expire prior active grants if necessary
-		_ = uc.aiCostRepo.ExpireGrantsByUserID(txCtx, req.UserID, now)
-		return uc.aiCostRepo.CreateGrant(txCtx, grant)
-	}
-
-	if err := uc.uow.Execute(ctx, txFn); err != nil {
-		return nil, err
-	}
-
-	return &dto.AIPolicyGrantDTO{
-		ID:             grant.ID,
-		UserID:         grant.UserID,
-		AICostPolicyID: grant.PolicyID,
-		EffectiveFrom:  grant.EffectiveFrom,
-		EffectiveTo:    grant.EffectiveTo,
-		CreatedAt:      grant.CreatedAt,
-	}, nil
 }

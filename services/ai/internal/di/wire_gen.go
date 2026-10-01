@@ -36,7 +36,11 @@ import (
 // Injectors from wire.go:
 
 // InitializeAIContracts composes the remote contracts AI Engine consumes
-// (T042): Identity, Subscription and Admin from Account, all over gRPC.
+// (T042): Admin from Account, over gRPC.
+//
+// 024 T178: Subscription is no longer among them. The AI service must not read the
+// Account service's subscription data (Constitution §I, FR-037), and nothing consumed
+// the contract after the projection was removed.
 func InitializeAIContracts(cfg *config.Config) (*AIContracts, func(), error) {
 	aiContracts, cleanup, err := NewAIContracts(cfg)
 	if err != nil {
@@ -72,32 +76,38 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	iAuditLogContract := aiContracts.AuditLog
 	adminHandler := handler.NewAdminHandler(l, iaiAdminUseCase, iAuditLogContract)
-	iCacheService := caching.NewRedisCacheService(client)
-	iTokenBlacklistService := security.NewRedisTokenBlacklistService(iCacheService)
-	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
-	routerRouter := router.NewRouter(adminHandler, authMiddleware)
-	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
-	engine := bootstrap.NewEngine(cfg, l, rateLimitMiddleware, handlerFunc, routerRouter, elasticsearchClient)
-	localTokenEstimator := ai.NewLocalTokenEstimatorFromConfig(cfg)
-	iaiService := ai.NewAIService(cfg, l, localTokenEstimator)
-	iPricingCacheService := caching2.NewRedisPricingCacheService(iCacheService)
-	iPricingUseCase := pricing.NewPricingUseCase(iaiModelConfigRepository, iPricingCacheService)
-	iUserSubscriptionContract := aiContracts.UserSubscription
-	iaiCostUseCase := cost.NewCostUseCase(iaiCostRepository, iPricingUseCase, iUserSubscriptionContract)
-	iaiOrchestratorUseCase := orchestrator.NewOrchestratorUseCase(iaiService, iaiCostRepository, cfg, iaiCostUseCase)
-	iaiOrchestrator := contract.NewAIOrchestratorContract(iaiOrchestratorUseCase)
-	aiOrchestratorServer := grpc.NewAIOrchestratorServer(iaiOrchestrator)
-	iaiCostDashboardReader := contract.NewAICostDashboardReader(iaiCostUseCase)
-	aiDashboardServer := grpc.NewAIDashboardServer(iaiCostDashboardReader)
-	server := bootstrap.NewGRPCServer(aiOrchestratorServer, aiDashboardServer)
-	aiUsageReconciliationWorker := worker.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
+	iaiCostPolicyAuditRepository := persistence.NewAICostPolicyAuditRepository(gormDB)
 	outboxRepository := messaging.NewOutboxRepository(gormDB)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l, outboxRepository)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iaiModelConfigRepository)
+	iaiCostPolicyAdminUseCase := admin.NewAICostPolicyAdminUseCase(iaiCostRepository, iaiCostPolicyAuditRepository, rabbitMQClient, iUnitOfWork, l)
+	costPolicyAdminHandler := handler.NewCostPolicyAdminHandler(l, iaiCostPolicyAdminUseCase)
+	iCacheService := caching.NewRedisCacheService(client)
+	iTokenBlacklistService := security.NewRedisTokenBlacklistService(iCacheService)
+	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
+	routerRouter := router.NewRouter(adminHandler, costPolicyAdminHandler, authMiddleware)
+	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
+	grantMetrics := grant.NewGrantMetrics(l)
+	fallbackMetrics := grant.NewFallbackMetrics(l)
+	engine := bootstrap.NewEngine(cfg, l, rateLimitMiddleware, handlerFunc, routerRouter, elasticsearchClient, grantMetrics, fallbackMetrics)
+	localTokenEstimator := ai.NewLocalTokenEstimatorFromConfig(cfg)
+	iaiService := ai.NewAIService(cfg, l, localTokenEstimator)
+	iPricingCacheService := caching2.NewRedisPricingCacheService(iCacheService)
+	iPricingUseCase := pricing.NewPricingUseCase(iaiModelConfigRepository, iPricingCacheService)
+	grantFallbackResolver := grant.NewGrantFallbackResolver(iaiCostRepository, cfg, l, fallbackMetrics)
+	entitlementReader := grant.NewEntitlementReader(l)
+	iaiCostUseCase := cost.NewCostUseCase(iaiCostRepository, iPricingUseCase, grantFallbackResolver, fallbackMetrics, entitlementReader)
+	iaiOrchestratorUseCase := orchestrator.NewOrchestratorUseCase(iaiService, iaiCostRepository, cfg, iaiCostUseCase, grantFallbackResolver, entitlementReader, l)
+	iaiOrchestrator := contract.NewAIOrchestratorContract(iaiOrchestratorUseCase)
+	aiOrchestratorServer := grpc.NewAIOrchestratorServer(iaiOrchestrator)
+	iaiCostDashboardReader := contract.NewAICostDashboardReader(iaiCostUseCase)
+	aiDashboardServer := grpc.NewAIDashboardServer(iaiCostDashboardReader)
+	server := bootstrap.NewGRPCServer(aiOrchestratorServer, aiDashboardServer)
+	aiUsageReconciliationWorker := worker.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
+	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iUnitOfWork, l, grantMetrics)
 	planChangedWorker := worker.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	outboxGaugeProbe := messaging.NewOutboxGaugeProbe(cfg, l)
 	outboxUseCase := usecase.NewOutboxUseCase(outboxRepository, rabbitMQClient, outboxGaugeProbe, cfg, l)

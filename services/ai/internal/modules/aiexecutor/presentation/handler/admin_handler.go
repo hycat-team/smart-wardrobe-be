@@ -23,7 +23,6 @@ const (
 	successAdminUpdatePrice  = "Cập nhật cấu hình giá AI thành công"
 	successAdminGetUserUsage = "Lấy lịch sử sử dụng AI của người dùng thành công"
 	successAdminListGrants   = "Lấy danh sách hạn mức AI của người dùng thành công"
-	successAdminCreateGrant  = "Cấp hạn mức AI cho người dùng thành công"
 )
 
 type AdminHandler struct {
@@ -193,43 +192,5 @@ func (h *AdminHandler) ListGrants(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, successAdminListGrants, grants)
-	return nil
-}
-
-// CreateGrant
-// @Summary Cấp chính sách hạn mức AI cho người dùng
-// @Description Quản trị viên cấp trực tiếp chính sách hạn mức AI mới cho người dùng.
-// @Tags Admin AI
-// @Accept json
-// @Produce json
-// @Param body body dto.CreateAIGrantReq true "Thông tin cấp chính sách"
-// @Success 201 {object} shared_pres.APIResponse{data=dto.AIPolicyGrantDTO}
-// @Router /api/v1/admin/ai/grants [post]
-func (h *AdminHandler) CreateGrant(c *gin.Context) error {
-	var req dto.CreateAIGrantReq
-	if err := validation.BindJSON(c, &req); err != nil {
-		return err
-	}
-
-	grant, err := h.aiAdminUC.CreateGrant(c.Request.Context(), req)
-	if err != nil {
-		return err
-	}
-
-	adminID, _ := contextutils.GetUserId(c)
-	clientIP := c.ClientIP()
-	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
-		ActorUserID: adminID,
-		Action:      string(adminaudit.AIGrantCreate),
-		TargetType:  string(adminaudit.AIPolicyGrant),
-		TargetID:    &grant.ID,
-		Payload: map[string]any{
-			"userId":         req.UserID,
-			"aiCostPolicyId": req.AICostPolicyID,
-		},
-		RequestIP: &clientIP,
-	})
-
-	shared_pres.Created(c, successAdminCreateGrant, grant)
 	return nil
 }

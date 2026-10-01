@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"time"
 
+	grant "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/usecase/grant"
 	airouter "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/presentation/router"
+
 	"smart-wardrobe-be/shared/application/constants/apperror"
 	sharedconfig "smart-wardrobe-be/shared/config"
 	sharedsearch "smart-wardrobe-be/shared/infrastructure/search"
@@ -19,12 +21,27 @@ import (
 // (/ai/health) used by deploy smoke tests and uptime monitors.
 //
 // @Summary AI service liveness probe
-// @Description Liveness probe of the AI service.
+// @Description Liveness probe of the AI service, including the AI policy grant counters.
 // @Tags AI Health
 // @Produce json
-// @Success 200 {object} object "Liveness payload with status, service, time and mode"
+// @Success 200 {object} object "Liveness payload with status, service, time, mode and grant counters"
 // @Router /api/v1/ai/health [get]
-func healthHandler(cfg *sharedconfig.Config, searchClient *sharedsearch.ElasticsearchClient) gin.HandlerFunc {
+//
+// 024 T139: the grant counters live here because this is the endpoint an uptime
+// monitor already polls, so FR-087's "cần phát hiện khi đếm tăng" becomes
+// answerable by something an operator is already looking at.
+//
+// The counters used to exist in process and had no consumer at all: `Snapshot()`
+// was called from tests only. A rejected event then produced a log line, a healthy
+// consumer, a zero queue depth and an entitlement that never arrived - which is
+// the exact combination FR-010 exists to make distinguishable, and which nothing
+// could distinguish.
+func healthHandler(
+	cfg *sharedconfig.Config,
+	searchClient *sharedsearch.ElasticsearchClient,
+	grantMetrics *grant.GrantMetrics,
+	fallbackMetrics *grant.FallbackMetrics,
+) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
@@ -35,6 +52,10 @@ func healthHandler(cfg *sharedconfig.Config, searchClient *sharedsearch.Elastics
 				"enabled": searchClient.Enabled(),
 				"healthy": searchClient.IsHealthy(),
 			},
+			// Rejected events, keyed by reason code (FR-087, SC-023).
+			"grant_rejected_by_reason": grantMetrics.Snapshot(),
+			// Degradations, keyed by fallback reason (FR-010).
+			"cost_fallback_by_reason": fallbackMetrics.Snapshot(),
 		})
 	}
 }
@@ -48,6 +69,9 @@ func NewEngine(
 	bodyLimit gin.HandlerFunc,
 	aiRouter *airouter.Router,
 	searchClient *sharedsearch.ElasticsearchClient,
+	// 024 T139: injected so the health payload can publish the grant counters.
+	grantMetrics *grant.GrantMetrics,
+	fallbackMetrics *grant.FallbackMetrics,
 ) *gin.Engine {
 	if sharedconfig.IsProductionEnv(cfg.Server.Env) {
 		gin.SetMode(gin.ReleaseMode)
@@ -100,7 +124,7 @@ func NewEngine(
 
 	api := engine.Group("/api/v1")
 	{
-		health := healthHandler(cfg, searchClient)
+		health := healthHandler(cfg, searchClient, grantMetrics, fallbackMetrics)
 		api.GET("/health", health)
 		// Per-service alias: distinct path per service so the generated Nginx
 		// route map routes each alias to its owner (shared /health cannot be

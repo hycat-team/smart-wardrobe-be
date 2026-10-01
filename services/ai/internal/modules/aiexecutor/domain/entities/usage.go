@@ -14,17 +14,23 @@ import (
 
 type AIUsagePeriodLedger struct {
 	AuditableEntity
-	GrantID              uuid.UUID `gorm:"type:uuid;not null"`
-	UserID               uuid.UUID `gorm:"type:uuid;not null"`
-	PeriodIndex          int       `gorm:"type:int;not null"`
-	PeriodStart          time.Time `gorm:"type:timestamp with time zone;not null"`
-	PeriodEnd            time.Time `gorm:"type:timestamp with time zone;not null"`
-	PaidInputTokens      int64     `gorm:"type:bigint;not null"`
-	PaidOutputTokens     int64     `gorm:"type:bigint;not null"`
-	FreeInputTokens      int64     `gorm:"type:bigint;not null"`
-	FreeOutputTokens     int64     `gorm:"type:bigint;not null"`
-	ActualCostMicroVND   int64     `gorm:"type:bigint;not null"`
-	ReservedCostMicroVND int64     `gorm:"type:bigint;not null"`
+	// GrantID is nullable for exactly one case: a fallback ledger row, created
+	// for an account that has no policy grant yet (024 FR-007). Such a row is
+	// deduped by the partial unique index ux_ledgers_user_period_fallback on
+	// (user_id, period_index) WHERE grant_id IS NULL, because the pre-existing
+	// UNIQUE (grant_id, period_index) cannot dedupe NULLs — SQL treats NULL as
+	// distinct from NULL. See research.md R8.
+	GrantID              *uuid.UUID `gorm:"type:uuid"`
+	UserID               uuid.UUID  `gorm:"type:uuid;not null"`
+	PeriodIndex          int        `gorm:"type:int;not null"`
+	PeriodStart          time.Time  `gorm:"type:timestamp with time zone;not null"`
+	PeriodEnd            time.Time  `gorm:"type:timestamp with time zone;not null"`
+	PaidInputTokens      int64      `gorm:"type:bigint;not null"`
+	PaidOutputTokens     int64      `gorm:"type:bigint;not null"`
+	FreeInputTokens      int64      `gorm:"type:bigint;not null"`
+	FreeOutputTokens     int64      `gorm:"type:bigint;not null"`
+	ActualCostMicroVND   int64      `gorm:"type:bigint;not null"`
+	ReservedCostMicroVND int64      `gorm:"type:bigint;not null"`
 }
 
 type AIUsageEvent struct {

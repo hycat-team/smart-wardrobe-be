@@ -38,9 +38,15 @@ type AICostPolicyOperation struct {
 	NormalMaxOutputTokens  int                     `gorm:"type:int;not null"`
 	ReducedMaxInputTokens  int                     `gorm:"type:int;not null"`
 	ReducedMaxOutputTokens int                     `gorm:"type:int;not null"`
-	MaxPaidAttemptsPerDay  int                     `gorm:"type:int;not null"`
-	PaidFallbackEnabled    bool                    `gorm:"type:boolean;not null"`
-	IsEnabled              bool                    `gorm:"type:boolean;not null"`
+	// MaxPaidAttemptsPerDay is a pointer because NULL is a meaningful value:
+	// it records "this policy does not use a per-day attempt limit". In strict
+	// mode the column is never read (FR-005e), so a strict policy MUST have it
+	// NULL — leaving a number there would be dead configuration that reads like
+	// a live limit. In observe_only a NULL is a misconfiguration: it would
+	// silently disable the counter, so the caller must treat it as such.
+	MaxPaidAttemptsPerDay *int `gorm:"type:int"`
+	PaidFallbackEnabled   bool `gorm:"type:boolean;not null"`
+	IsEnabled             bool `gorm:"type:boolean;not null"`
 }
 
 type AIPolicyGrant struct {

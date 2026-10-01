@@ -36,6 +36,48 @@ definitions:
       version:
         type: integer
     type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyDTO:
+    properties:
+      code:
+        type: string
+      enforcementMode:
+        type: string
+      hardCostMicroVnd:
+        type: integer
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      operations:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO'
+        type: array
+      periodDays:
+        type: integer
+      version:
+        type: integer
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO:
+    properties:
+      freeRoute:
+        type: string
+      id:
+        type: string
+      isEnabled:
+        type: boolean
+      maxPaidAttemptsPerDay:
+        type: integer
+      normalRoute:
+        type: string
+      operation:
+        type: string
+      paidFallbackEnabled:
+        type: boolean
+      reducedRoute:
+        type: string
+    type: object
   smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO:
     properties:
       currency:
@@ -103,17 +145,35 @@ definitions:
       userId:
         type: string
     type: object
-  smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq:
+  smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning:
     properties:
-      aiCostPolicyId:
+      frozenGrantCount:
+        type: integer
+      message:
         type: string
-      effectiveTo:
+      openGrantCount:
+        type: integer
+      replayRequired:
+        type: boolean
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationReq:
+    properties:
+      clearMaxPaidAttempts:
+        type: boolean
+      maxPaidAttemptsPerDay:
+        minimum: 0
+        type: integer
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationResp:
+    properties:
+      maxPaidAttemptsPerDay:
+        type: integer
+      operation:
         type: string
-      userId:
+      policyCode:
         type: string
-    required:
-    - aiCostPolicyId
-    - userId
+      warning:
+        $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning'
     type: object
   smart-wardrobe-be_services_ai_dto_aiexecutor.UpdatePricingReq:
     properties:
@@ -132,6 +192,71 @@ info:
   title: Smart Wardrobe - AI Service API
   version: "1.0"
 paths:
+  /api/v1/admin/ai/cost-policies:
+    get:
+      description: 'Quản trị viên xem cổng 2 của từng gói: chế độ thi hành, trần chi
+        phí và giới hạn lượt của từng thao tác.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyDTO'
+                  type: array
+              type: object
+      summary: Danh sách chính sách chi phí AI (cổng 2)
+      tags:
+      - Admin AI
+  /api/v1/admin/ai/cost-policies/{id}/operations/{operation}:
+    put:
+      consumes:
+      - application/json
+      description: Sửa maxPaidAttemptsPerDay. Trường này thuộc nhóm quyền lợi đã đóng
+        băng nên cần phát lại tín hiệu (FR-029c) mới có tác dụng.
+      parameters:
+      - description: Operation ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tên thao tác
+        enum:
+        - outfit
+        - chat
+        - rewriter
+        - summary
+        in: path
+        name: operation
+        required: true
+        type: string
+      - description: Thông tin cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationResp'
+              type: object
+      summary: Cập nhật giới hạn lượt của một thao tác AI (cổng 2)
+      tags:
+      - Admin AI
   /api/v1/admin/ai/grants:
     get:
       description: Quản trị viên xem các lượt grant chính sách AI đã cấp cho người
@@ -157,33 +282,6 @@ paths:
                   type: array
               type: object
       summary: Danh sách hạn mức chính sách AI của người dùng
-      tags:
-      - Admin AI
-    post:
-      consumes:
-      - application/json
-      description: Quản trị viên cấp trực tiếp chính sách hạn mức AI mới cho người
-        dùng.
-      parameters:
-      - description: Thông tin cấp chính sách
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO'
-              type: object
-      summary: Cấp chính sách hạn mức AI cho người dùng
       tags:
       - Admin AI
   /api/v1/admin/ai/pricing:
@@ -282,12 +380,14 @@ paths:
       - Admin AI
   /api/v1/ai/health:
     get:
-      description: Liveness probe of the AI service.
+      description: Liveness probe of the AI service, including the AI policy grant
+        counters.
       produces:
       - application/json
       responses:
         "200":
-          description: Liveness payload with status, service, time and mode
+          description: Liveness payload with status, service, time, mode and grant
+            counters
           schema:
             type: object
       summary: AI service liveness probe

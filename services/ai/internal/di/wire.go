@@ -26,7 +26,11 @@ import (
 )
 
 // InitializeAIContracts composes the remote contracts AI Engine consumes
-// (T042): Identity, Subscription and Admin from Account, all over gRPC.
+// (T042): Admin from Account, over gRPC.
+//
+// 024 T178: Subscription is no longer among them. The AI service must not read the
+// Account service's subscription data (Constitution §I, FR-037), and nothing consumed
+// the contract after the projection was removed.
 func InitializeAIContracts(cfg *sharedconfig.Config) (*AIContracts, func(), error) {
 	wire.Build(NewAIContracts)
 	return &AIContracts{}, nil, nil
@@ -43,7 +47,6 @@ func InitializeApp(cfg *sharedconfig.Config, l sharedlogger.Interface) (*service
 		// Remote Account contracts over gRPC.
 		NewAIContracts,
 		wire.FieldsOf(new(*AIContracts),
-			"UserSubscription",
 			"AuditLog",
 		),
 
@@ -66,6 +69,9 @@ func InitializeApp(cfg *sharedconfig.Config, l sharedlogger.Interface) (*service
 		wire.Bind(new(sharedevent.IOutboxGaugeProbe), new(*messaging.OutboxGaugeProbe)),
 		wire.Bind(new(sharedevent.IMessageConsumer), new(*messaging.RabbitMQClient)),
 		wire.Bind(new(sharedevent.IRawMessagePublisher), new(*messaging.RabbitMQClient)),
+		// 024 T013: the gate-2 admin write publishes admin.audit.log through the
+		// transactional outbox, so AI needs the outbox-backed publisher.
+		wire.Bind(new(sharedevent.IEventPublisher), new(*messaging.RabbitMQClient)),
 		infra_db.NewGormUnitOfWork,
 
 		// Shared auth (local verification, Redis revocation).

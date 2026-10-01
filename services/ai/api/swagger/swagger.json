@@ -7,6 +7,108 @@
         "version": "1.0"
     },
     "paths": {
+        "/api/v1/admin/ai/cost-policies": {
+            "get": {
+                "description": "Quản trị viên xem cổng 2 của từng gói: chế độ thi hành, trần chi phí và giới hạn lượt của từng thao tác.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin AI"
+                ],
+                "summary": "Danh sách chính sách chi phí AI (cổng 2)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/ai/cost-policies/{id}/operations/{operation}": {
+            "put": {
+                "description": "Sửa maxPaidAttemptsPerDay. Trường này thuộc nhóm quyền lợi đã đóng băng nên cần phát lại tín hiệu (FR-029c) mới có tác dụng.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin AI"
+                ],
+                "summary": "Cập nhật giới hạn lượt của một thao tác AI (cổng 2)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Operation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "outfit",
+                            "chat",
+                            "rewriter",
+                            "summary"
+                        ],
+                        "type": "string",
+                        "description": "Tên thao tác",
+                        "name": "operation",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/ai/grants": {
             "get": {
                 "description": "Quản trị viên xem các lượt grant chính sách AI đã cấp cho người dùng.",
@@ -42,50 +144,6 @@
                                             "items": {
                                                 "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO"
                                             }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Quản trị viên cấp trực tiếp chính sách hạn mức AI mới cho người dùng.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin AI"
-                ],
-                "summary": "Cấp chính sách hạn mức AI cho người dùng",
-                "parameters": [
-                    {
-                        "description": "Thông tin cấp chính sách",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO"
                                         }
                                     }
                                 }
@@ -250,7 +308,7 @@
         },
         "/api/v1/ai/health": {
             "get": {
-                "description": "Liveness probe of the AI service.",
+                "description": "Liveness probe of the AI service, including the AI policy grant counters.",
                 "produces": [
                     "application/json"
                 ],
@@ -260,7 +318,7 @@
                 "summary": "AI service liveness probe",
                 "responses": {
                     "200": {
-                        "description": "Liveness payload with status, service, time and mode",
+                        "description": "Liveness payload with status, service, time, mode and grant counters",
                         "schema": {
                             "type": "object"
                         }
@@ -324,6 +382,70 @@
                 },
                 "version": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyDTO": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "enforcementMode": {
+                    "type": "string"
+                },
+                "hardCostMicroVnd": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "operations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO"
+                    }
+                },
+                "periodDays": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO": {
+            "type": "object",
+            "properties": {
+                "freeRoute": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isEnabled": {
+                    "type": "boolean"
+                },
+                "maxPaidAttemptsPerDay": {
+                    "type": "integer"
+                },
+                "normalRoute": {
+                    "type": "string"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "paidFallbackEnabled": {
+                    "type": "boolean"
+                },
+                "reducedRoute": {
+                    "type": "string"
                 }
             }
         },
@@ -429,21 +551,49 @@
                 }
             }
         },
-        "smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq": {
+        "smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning": {
             "type": "object",
-            "required": [
-                "aiCostPolicyId",
-                "userId"
-            ],
             "properties": {
-                "aiCostPolicyId": {
+                "frozenGrantCount": {
+                    "type": "integer"
+                },
+                "message": {
                     "type": "string"
                 },
-                "effectiveTo": {
+                "openGrantCount": {
+                    "type": "integer"
+                },
+                "replayRequired": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationReq": {
+            "type": "object",
+            "properties": {
+                "clearMaxPaidAttempts": {
+                    "type": "boolean"
+                },
+                "maxPaidAttemptsPerDay": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationResp": {
+            "type": "object",
+            "properties": {
+                "maxPaidAttemptsPerDay": {
+                    "type": "integer"
+                },
+                "operation": {
                     "type": "string"
                 },
-                "userId": {
+                "policyCode": {
                     "type": "string"
+                },
+                "warning": {
+                    "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning"
                 }
             }
         },

@@ -8,7 +8,7 @@ import (
 	aiexecutor_dto "smart-wardrobe-be/services/ai/dto/aiexecutor"
 	aiexecutor_caching "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/interface/usecase"
-	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
+	aiexecutor_mapper "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/mapper"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/repositories"
 )
 
@@ -43,27 +43,9 @@ func (uc *PricingUseCase) GetActivePricingConfig(ctx context.Context, provider s
 		return nil, fmt.Errorf("no active pricing config for provider %s / model %s: this is a deployment error", provider, model)
 	}
 
-	dto := mapToDTO(cfg)
+	dto := aiexecutor_mapper.PricingConfigToDTO(cfg)
 
 	_ = uc.cacheService.Set(ctx, provider, model, dto, pricingCacheTTL)
 
 	return dto, nil
-}
-
-func mapToDTO(cfg *entities.AIModelConfig) *aiexecutor_dto.PricingConfigDTO {
-	if cfg == nil {
-		return nil
-	}
-	return &aiexecutor_dto.PricingConfigDTO{
-		ID:                  cfg.ID,
-		Provider:            cfg.Provider,
-		Model:               cfg.Model,
-		InputUSDPerMillion:  cfg.InputUSDPerMillion,
-		OutputUSDPerMillion: cfg.OutputUSDPerMillion,
-		Currency:            cfg.Currency,
-		USDToVND:            cfg.USDToVND,
-		Version:             cfg.Version,
-		EffectiveFrom:       cfg.EffectiveFrom,
-		EffectiveTo:         cfg.EffectiveTo,
-	}
 }

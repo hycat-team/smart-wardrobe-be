@@ -5,7 +5,6 @@ import (
 
 	adminclient "smart-wardrobe-be/contracts/admin/v1/client"
 	grpcx "smart-wardrobe-be/contracts/grpcx"
-	subscriptionclient "smart-wardrobe-be/contracts/subscription/v1/client"
 	sharedconfig "smart-wardrobe-be/shared/config"
 )
 
@@ -23,8 +22,9 @@ func NewAIContracts(cfg *sharedconfig.Config) (*AIContracts, func(), error) {
 		_ = accountCC.Close()
 	}
 
+	// 024 T178: the subscription client is no longer built here — see the note on
+	// AIContracts. Only the audit-log contract is dialled.
 	return &AIContracts{
-		UserSubscription: subscriptionclient.NewSubscriptionClient(accountCC),
-		AuditLog:         adminclient.NewAuditLogClient(accountCC),
+		AuditLog: adminclient.NewAuditLogClient(accountCC),
 	}, cleanup, nil
 }

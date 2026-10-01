@@ -31,11 +31,18 @@ type UpdatePricingReq struct {
 	EffectiveTo         *time.Time       `json:"effectiveTo,omitempty" label:"thời hạn hiệu lực"`
 }
 
-type CreateAIGrantReq struct {
-	UserID         uuid.UUID  `json:"userId" binding:"required" label:"mã người dùng"`
-	AICostPolicyID uuid.UUID  `json:"aiCostPolicyId" binding:"required" label:"chính sách AI chi phí"`
-	EffectiveTo    *time.Time `json:"effectiveTo,omitempty" label:"thời hạn hiệu lực"`
-}
+// CreateAIGrantReq is gone as of feature 024 (FR-027, FR-035).
+//
+// The endpoint that used it, POST /api/v1/admin/ai/grants, never returned 201:
+// it left policy_snapshot unset on a NOT NULL column and status empty on a
+// column with a CHECK constraint, so every call failed at the database. Keeping
+// it would have kept a SECOND writer on aiexecutor.ai_policy_grants inside the
+// AI service itself — the same class of cross-boundary write this feature exists
+// to delete, just moved one service to the left.
+//
+// The administrator now grants a plan through the Account service, which emits
+// the same event every other plan change emits. GET /grants is kept: it is the
+// observation path and has no write side.
 
 type AIUsageItemDTO struct {
 	ID                 uuid.UUID `json:"id"`

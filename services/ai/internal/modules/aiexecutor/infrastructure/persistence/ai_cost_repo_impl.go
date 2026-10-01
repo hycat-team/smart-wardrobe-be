@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/ai/dto/aiexecutor"
+	aierrors "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/errors"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/aienforcementmode"
-	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/airoute"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/repositories"
-	"smart-wardrobe-be/shared/domain/constants/aipolicygrantstatus"
 	shared_repos "smart-wardrobe-be/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -30,75 +29,154 @@ func NewAICostRepository(db *gorm.DB) repositories.IAICostRepository {
 		db, relations)}
 }
 
-func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error) {
-	db := r.GetDB(ctx)
-	var grant aiexecutor_entities.AIPolicyGrant
-	err := db.Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).Order("effective_from DESC").First(&grant).Error
-	if err == nil && subscriptionPlanID != uuid.Nil && grant.PlanID != subscriptionPlanID {
-		_ = db.Model(&grant).Updates(map[string]any{"effective_to": now, "status": string(aipolicygrantstatus.Closed), "updated_at": now}).Error
-		err = gorm.ErrRecordNotFound
-	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil, nil, errors.New("subscription plan AI cost policy not yet migrated - need grant lookup")
-	} else if err != nil {
-		return nil, nil, nil, err
-	}
+// fallbackEpoch anchors the ledger period of a request with no grant.
+//
+// It has to be a fixed instant, not the request time: the fallback ledger row is
+// deduped on (user_id, period_index), so anchoring on "now" would pin every
+// request to index 0 and the running total would never reset - a period ledger
+// that never rolls over is not a period. The Unix epoch is used so the index is
+// deterministic and identical for every process and every restart.
+var fallbackEpoch = time.Unix(0, 0).UTC()
 
-	var policy aiexecutor_entities.AICostPolicy
-	if err := r.GetQueryWithPreload(ctx).First(&policy, "id = ?", grant.PolicyID).Error; err != nil {
-		return nil, nil, nil, errors.New("AI policy lookup not yet migrated")
-	}
-	for _, op := range policy.Operations {
-		if op.Operation == operation && op.IsEnabled {
-			return &grant, &policy, op, nil
-		}
-	}
-	return nil, nil, nil, errors.New("AI operation is not configured for policy")
-}
-
+// periodFor returns the ledger period index and bounds for a request.
+//
+// With a grant the window is anchored on the grant's effective_from, so renewing
+// a plan continues the existing period instead of handing the account a fresh
+// budget. With no grant (fallback tier 1) there is no such anchor, so the
+// window is anchored on a fixed epoch and advances on its own.
 func periodFor(grant *aiexecutor_entities.AIPolicyGrant, days int, now time.Time) (int, time.Time, time.Time) {
 	if days <= 0 {
 		days = 30
 	}
+	anchor := fallbackEpoch
+	if grant != nil {
+		anchor = grant.EffectiveFrom
+	}
 	duration := time.Duration(days) * 24 * time.Hour
-	index := int(now.Sub(grant.EffectiveFrom) / duration)
+	index := int(now.Sub(anchor) / duration)
 	if index < 0 {
 		index = 0
 	}
-	start := grant.EffectiveFrom.Add(time.Duration(index) * duration)
+	start := anchor.Add(time.Duration(index) * duration)
 	end := start.Add(duration)
-	if grant.EffectiveTo != nil && grant.EffectiveTo.Before(end) {
+	if grant != nil && grant.EffectiveTo != nil && grant.EffectiveTo.Before(end) {
 		end = *grant.EffectiveTo
 	}
 	return index, start, end
 }
 
-func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, operation *aiexecutor_entities.AICostPolicyOperation, event *aiexecutor_entities.AIUsageEvent, now time.Time) (*aiexecutor_entities.AIUsagePeriodLedger, bool, error) {
+// userIDFor picks the account whose ledger is being reserved. A nil grant means
+// the account has no policy grant row, but the request still belongs to a user
+// and the ledger row is keyed on that user.
+func userIDFor(grant *aiexecutor_entities.AIPolicyGrant, event *aiexecutor_entities.AIUsageEvent) uuid.UUID {
+	if grant != nil {
+		return grant.UserID
+	}
+	if event.UserID != nil {
+		return *event.UserID
+	}
+	return uuid.Nil
+}
+
+// nullableGrantID maps a missing grant to SQL NULL.
+//
+// A fallback ledger row is keyed on the account instead, which is why the
+// column has to be nullable: a nil grant means the account has no policy grant
+// row at all, so there is no id to point at.
+func nullableGrantID(grant *aiexecutor_entities.AIPolicyGrant) *uuid.UUID {
+	if grant == nil {
+		return nil
+	}
+	return &grant.ID
+}
+
+func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, operation *aiexecutor_entities.AICostPolicyOperation, maxPaidAttemptsPerDay *int, event *aiexecutor_entities.AIUsageEvent, now time.Time) (*aiexecutor_entities.AIUsagePeriodLedger, bool, error) {
 	var ledger aiexecutor_entities.AIUsagePeriodLedger
 	admitted := false
+	var observeOnlyCapMissing bool
+	userID := userIDFor(grant, event)
+
 	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		idx, start, end := periodFor(grant, policy.PeriodDays, now)
-		err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "grant_id"}, {Name: "period_index"}}, DoNothing: true}).Create(&aiexecutor_entities.AIUsagePeriodLedger{GrantID: grant.ID, UserID: grant.UserID, PeriodIndex: idx, PeriodStart: start, PeriodEnd: end}).Error
-		if err != nil {
-			return err
+
+		// Two insert strategies, one per case, and the reason is the shape of
+		// the dedup key. The existing UNIQUE (grant_id, period_index) cannot
+		// dedupe anything when grant_id is NULL, because SQL treats NULL as
+		// distinct from NULL - every call would open a fresh ledger and the
+		// anti-overspend control of constitution VI would evaporate. The
+		// partial unique index ux_ledgers_user_period_fallback exists for
+		// exactly those rows, so ON CONFLICT has to name the same predicate.
+		//
+		// Either way the row is read back under FOR UPDATE afterwards: the
+		// lock is the anti-overspend guarantee, the insert is only how the row
+		// comes to exist. Verified on PostgreSQL 17.10 (research.md R8).
+		ledgerRow := &aiexecutor_entities.AIUsagePeriodLedger{
+			GrantID:     nullableGrantID(grant),
+			UserID:      userID,
+			PeriodIndex: idx,
+			PeriodStart: start,
+			PeriodEnd:   end,
 		}
-		if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("grant_id=? AND period_index=?", grant.ID, idx).First(&ledger).Error; err != nil {
-			return err
+		if grant == nil {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "user_id"}, {Name: "period_index"}},
+				// TargetWhere, not Where: GORM's OnConflict.Where is the WHERE
+				// of a DO UPDATE SET clause, and using it here emits
+				// "ON CONFLICT (...) DO NOTHING" with no predicate â€” a syntax
+				// error. TargetWhere is the one that renders the partial-index
+				// inference clause, so it has to match
+				// ux_ledgers_user_period_fallback exactly.
+				TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Eq{Column: clause.Column{Name: "grant_id"}, Value: nil}}},
+				DoNothing:   true,
+			}).Create(ledgerRow).Error; err != nil {
+				return err
+			}
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("user_id = ? AND period_index = ? AND grant_id IS NULL", userID, idx).
+				First(&ledger).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "grant_id"}, {Name: "period_index"}},
+				DoNothing: true,
+			}).Create(ledgerRow).Error; err != nil {
+				return err
+			}
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("grant_id = ? AND period_index = ?", grant.ID, idx).
+				First(&ledger).Error; err != nil {
+				return err
+			}
 		}
+
 		if event.LogicalRoute != airoute.Paid {
 			admitted = true
 		} else if policy.EnforcementMode == aienforcementmode.ObserveOnly {
-			var attempts int64
-			day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-			if err = tx.Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id=? AND operation=? AND created_at>=? AND logical_route=?", grant.UserID, operation.Operation, day, airoute.Paid).Count(&attempts).Error; err != nil {
-				return err
+			// In observe_only there is no hard cap, so a per-day attempt limit is
+			// the ONLY thing standing between the account and unbounded spend.
+			//
+			// The cap arrives from the caller, which takes it from the grant
+			// snapshot (FR-029b). A nil here is therefore a misconfiguration, not
+			// a legitimate "no limit": silently treating it as unlimited would let
+			// the free policy run uncapped. The paid route is refused and the
+			// caller escalates to fallback tier 2, which warns (FR-005e).
+			if maxPaidAttemptsPerDay == nil {
+				observeOnlyCapMissing = true
+				admitted = false
+			} else {
+				var attempts int64
+				day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+				if err := tx.Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id=? AND operation=? AND created_at>=? AND logical_route=?", userID, operation.Operation, day, airoute.Paid).Count(&attempts).Error; err != nil {
+					return err
+				}
+				admitted = attempts < int64(*maxPaidAttemptsPerDay)
 			}
-			admitted = attempts < int64(operation.MaxPaidAttemptsPerDay)
 		} else if policy.EnforcementMode == aienforcementmode.Strict && policy.HardCostMicroVND != nil {
 			threshold := *policy.HardCostMicroVND * int64(policy.FreeRouteThresholdBPS) / 10000
 			var unknown int64
 			day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-			if err = tx.Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id=? AND status IN ? AND created_at>=?", grant.UserID, []string{string(aiusageeventstatus.UnknownUsage), string(aiusageeventstatus.ExpiredUnverified)}, day).Count(&unknown).Error; err != nil {
+			if err := tx.Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id=? AND status IN ? AND created_at>=?", userID, []string{string(aiusageeventstatus.UnknownUsage), string(aiusageeventstatus.ExpiredUnverified)}, day).Count(&unknown).Error; err != nil {
 				return err
 			}
 			admitted = unknown < int64(policy.MaxUnknownPaidRequestsPerDay) && ledger.ActualCostMicroVND+ledger.ReservedCostMicroVND+event.ReservedCostMicroVND <= threshold
@@ -107,16 +185,22 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entiti
 			return nil
 		}
 		event.LedgerID = &ledger.ID
-		if err = tx.Create(event).Error; err != nil {
+		if err := tx.Create(event).Error; err != nil {
 			return err
 		}
 		if event.ReservedCostMicroVND > 0 {
-			if err = tx.Model(&ledger).UpdateColumn("reserved_cost_micro_vnd", gorm.Expr("reserved_cost_micro_vnd + ?", event.ReservedCostMicroVND)).Error; err != nil {
+			if err := tx.Model(&ledger).UpdateColumn("reserved_cost_micro_vnd", gorm.Expr("reserved_cost_micro_vnd + ?", event.ReservedCostMicroVND)).Error; err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+	if err == nil && observeOnlyCapMissing {
+		// Reported separately from err so the caller can distinguish "the
+		// configuration is broken" from "the transaction failed" without having
+		// to string-match a message.
+		err = aierrors.ErrObserveOnlyMissingAttemptCap
+	}
 	return &ledger, admitted, err
 }
 
@@ -159,14 +243,6 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 
 func (r *AICostRepository) Release(ctx context.Context, id uuid.UUID, reason string, at time.Time) error {
 	return r.finishWithoutCost(ctx, id, string(aiusageeventstatus.Released), reason, nil, at)
-}
-
-func (r *AICostRepository) ExpireGrantsByUserID(ctx context.Context, userID uuid.UUID, now time.Time) error {
-	return r.GetDB(ctx).
-		Model(&aiexecutor_entities.AIPolicyGrant{}).
-		Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).
-		Updates(map[string]any{"effective_to": now, "updated_at": now, "status": string(aipolicygrantstatus.Closed)}).
-		Error
 }
 
 func (r *AICostRepository) CreateGrant(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant) error {
@@ -420,9 +496,18 @@ func (r *AICostRepository) ListGrantsByUser(ctx context.Context, userID uuid.UUI
 }
 
 func (r *AICostRepository) GetPolicyByID(ctx context.Context, policyID uuid.UUID) (*aiexecutor_entities.AICostPolicy, error) {
+	return r.getPolicyBy(ctx, "id = ?", policyID)
+}
+
+func (r *AICostRepository) getPolicyBy(ctx context.Context, condition string, args ...any) (*aiexecutor_entities.AICostPolicy, error) {
 	var policy aiexecutor_entities.AICostPolicy
-	err := r.GetDB(ctx).Where("id = ?", policyID).First(&policy).Error
-	if err != nil {
+	// GetQueryWithPreload is mandatory here, not a convenience. This policy is
+	// the source of the entitlement snapshot, so a missing Operations preload
+	// would silently produce a snapshot with zero operations and an
+	// entitlement set that fails the "all four operations present" check
+	// (FR-029b) on every single grant.
+	queryArgs := append([]any{condition}, args...)
+	if err := r.GetQueryWithPreload(ctx).First(&policy, queryArgs...).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

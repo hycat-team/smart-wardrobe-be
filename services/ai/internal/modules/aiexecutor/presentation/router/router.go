@@ -11,17 +11,20 @@ import (
 )
 
 type Router struct {
-	adminHandler *aiexecutor_handler.AdminHandler
-	auth         identity_contract.IAuthMiddleware
+	adminHandler           *aiexecutor_handler.AdminHandler
+	costPolicyAdminHandler *aiexecutor_handler.CostPolicyAdminHandler
+	auth                   identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	adminHandler *aiexecutor_handler.AdminHandler,
+	costPolicyAdminHandler *aiexecutor_handler.CostPolicyAdminHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		adminHandler: adminHandler,
-		auth:         auth,
+		adminHandler:           adminHandler,
+		costPolicyAdminHandler: costPolicyAdminHandler,
+		auth:                   auth,
 	}
 }
 
@@ -33,6 +36,14 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		adminAI.PUT("/pricing/:id", shared_pres.WrapHandler(r.adminHandler.UpdatePricing))
 		adminAI.GET("/usage", shared_pres.WrapHandler(r.adminHandler.GetUserUsage))
 		adminAI.GET("/grants", shared_pres.WrapHandler(r.adminHandler.ListGrants))
-		adminAI.POST("/grants", shared_pres.WrapHandler(r.adminHandler.CreateGrant))
+		// 024 T070: POST /grants is removed. It could never succeed — it left
+		// policy_snapshot unset on a NOT NULL column — and it was a second
+		// writer on a table the AI service must own alone (FR-035). Granting a
+		// plan goes through the Account service and the ordinary plan-change
+		// event.
+		// Gate 2 (ai_cost_policy_operations). Stays inside the existing group so
+		// it inherits auth.Handle() + RolesAuthorize(roleslug.Admin) (024 FR-004b).
+		adminAI.GET("/cost-policies", shared_pres.WrapHandler(r.costPolicyAdminHandler.ListCostPolicies))
+		adminAI.PUT("/cost-policies/:id/operations/:operation", shared_pres.WrapHandler(r.costPolicyAdminHandler.UpdateCostPolicyOperation))
 	}
 }
