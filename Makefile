@@ -42,6 +42,16 @@ RABBITMQ_HOST ?= localhost
 DB_LISTENER_HOST ?= localhost
 CONFIG_FILE ?= $(abspath configs/config.yaml)
 
+# RabbitMQ topology reconcile (see the rabbitmq-* targets near nginx-routes).
+# RABBITMQ_ENV_FILE points at the env holding the RABBITMQ_* settings: .env for
+# the local stack, .env.production on the VPS, .env.aws on the AWS box. QUEUE and
+# SPILL_DIR are optional overrides, e.g.
+#   make rabbitmq-topology-check RABBITMQ_ENV_FILE=.env.production
+#   make rabbitmq-topology-migrate RABBITMQ_ENV_FILE=.env.production QUEUE=subscription_plan_changed_queue
+RABBITMQ_ENV_FILE ?= $(or $(env),.env)
+QUEUE ?=
+SPILL_DIR ?=
+
 # Nginx ingress render (FR-028; runs on VPS)
 NGINX_TEMPLATES_DIR := deployments/nginx/templates
 NGINX_RENDER_DIR ?= /etc/nginx
@@ -83,7 +93,7 @@ name := $(or $(name),$(NAME))
 SVC_REQ = $(if $(filter $(SVC),account commerce ai),,$(error This target requires svc=<account|commerce|ai> — e.g. make $@ svc=account))
 unexport SVC_REQ
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose rabbitmq-topology-check rabbitmq-topology-migrate image-build-tool image-push-tool
 
 help:
 	@echo "========================================================================"
@@ -151,6 +161,12 @@ tools-help:
 	@echo "DEVELOPMENT TOOLS INSTALLATION HELPERS:"
 	@echo "  make install-tools    : Install pinned Wire, Swag and Buf tool binaries"
 	@echo "  make install-goose    : Install Goose migration CLI binary"
+	@echo ""
+	@echo "RabbitMQ topology (guards the 406 queue-type mismatch; see deployments/scripts/rabbitmq-topology/):"
+	@echo "  make rabbitmq-topology-check env=  : Compare broker queue types against the registry (read-only)"
+	@echo "  make rabbitmq-topology-migrate env=: Drain, delete, recreate and replay drifted queues"
+	@echo "  make image-build-tool              : Build the rabbitmq-topology ops image"
+	@echo "  (env= is shorthand: pass RABBITMQ_ENV_FILE=.env.production for VPS, .env.aws for AWS)"
 
 platform-help:
 	@echo "REGISTRY / INGRESS COMMANDS (020):"
@@ -397,6 +413,31 @@ nginx-routes: swagger-all
 	@echo Generating Nginx route map from swagger...
 	@go run ./shared/tools/nginx-routes
 	@echo NOTE: if the local dev stack is running, run 'make nginx-reload-local' to apply the new routes.
+
+# ---------------------------------------------------------------------------
+# RabbitMQ topology reconcile — guards the one failure mode that crash-loops a
+# service: the registry declares a queue type the broker already holds as a
+# different one. RabbitMQ cannot change x-queue-type in place (406).
+# `check` is read-only and also runs in CI; `migrate` deletes and recreates
+# queues and is deliberately never automatic.
+# ---------------------------------------------------------------------------
+rabbitmq-topology-check:
+	@echo Checking RabbitMQ queue types against the registry...
+	@go run ./shared/tools/rabbitmq-topology --env-file "$(RABBITMQ_ENV_FILE)" --mode check $(if $(QUEUE),--queue $(QUEUE),) $(if $(STRICT),--strict,)
+	@echo NOTE: on a box run deployments/scripts/rabbitmq-topology/01-check-drift.sh instead.
+
+rabbitmq-topology-migrate:
+	@echo Migrating drifted RabbitMQ queues (drain, delete, redeclare, replay)...
+	@go run ./shared/tools/rabbitmq-topology --env-file "$(RABBITMQ_ENV_FILE)" --mode migrate --yes $(if $(QUEUE),--queue $(QUEUE),) $(if $(SPILL_DIR),--spill-dir $(SPILL_DIR),)
+	@echo Restart the services so they bind to the recreated queues.
+
+image-build-tool:
+	@echo "Building rabbitmq-topology tool image (rabbitmq-topology:$(GIT_SHA))..."
+	@docker build -f shared/tools/rabbitmq-topology/Dockerfile -t rabbitmq-topology:$(GIT_SHA) -t rabbitmq-topology:latest .
+
+image-push-tool:
+	@echo "Pushing rabbitmq-topology tool image..."
+	@docker push rabbitmq-topology:$(GIT_SHA)
 
 nginx-reload-local:
 	@echo "Reloading local dev Nginx (docker compose)..."

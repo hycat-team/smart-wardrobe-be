@@ -13,6 +13,30 @@
 
 > Lưu ý lịch sử: trước 016-T051..T057, mỗi module có adapter `infrastructure/messaging/consumer.go` + interface `application/interface/event/` bọc `RegisterConsumer` thủ công. Đã xóa toàn bộ (8 wrapper) — mọi consumer giờ đi qua `RegisterTypedConsumer`; KHÔNG tạo lại adapter module cho consume.
 
+## Đổi queue type (classic ↔ quorum)
+
+**Khác thêm queue mới:** thêm queue chỉ cần `topology.go` khai báo thêm. Đổi *type* của một
+queue đã tồn tại thì không được — RabbitMQ coi `x-queue-type` là argument bất biến, nên khai
+báo quorum lên một queue đang là classic sẽ bị từ chối:
+
+```
+406 PRECONDITION_FAILED - inequivalent arg 'x-queue-type' for queue '<tên>' in vhost '/'
+```
+
+Khi đó **mọi service khai báo topology đó không khởi động được** (`failed to initialize
+account service: ... rabbitmq initialization failed after 3 attempts`). Cách duy nhất là
+drain → xoá → khai báo lại (ADR-016 chấp nhận downtime cho việc này).
+
+Vì vậy CI chạy check trước mỗi deploy: `Check RabbitMQ queue topology` trong
+`deploy-vps-services.yml` và `deploy-aws.yml`. Đỏ ở bước đó là tín hiệu sớm, trước khi có
+container nào crash-loop. Check là read-only; **migrate không bao giờ tự động**.
+
+Thao tác cụ thể (script, lệnh, xử lý message) — xem
+[`deployments/scripts/rabbitmq-topology/README.md`](../../deployments/scripts/rabbitmq-topology/README.md).
+
+Trước khi deploy lần đầu lên môi trường mới, các queue mới sẽ ở trạng thái `MISSING` và
+không làm đỏ CI (service tự tạo lúc khởi động).
+
 ## Phân loại lỗi Permanent vs Retryable
 
 - **Permanent** (`event.PermanentError{Err: err}`): poison JSON, schema mismatch → `Nack(false,false)` → DLX `*.dlq` quorum, không requeue. Unmarshal JSON fail được helper tự trả Permanent — handler không cần bọc.
@@ -40,3 +64,4 @@
 - [ ] `go vet` + `make wire` pass, `grep -r "time.Sleep" internal/modules/*/infrastructure/messaging/` == 0?
 - [ ] `correlationId` propagate: helper inject vào ctx, worker log event.CorrelationIdFromContext(ctx)`?
 - [ ] Test poison → DLQ và burst 100 không mất?
+- [ ] Nếu **đổi `x-queue-type`** của queue đang tồn tại: đã chạy migrate trên từng môi trường bị ảnh hưởng (VPS + AWS), không chỉ sửa `topology.go`?

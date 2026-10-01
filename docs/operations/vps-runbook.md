@@ -106,6 +106,24 @@ Approve`. Pipeline 3 chặng: build matrix → GHCR (pin digest) → `compose up
 > Không bao giờ `down -v` trên prod (xóa volumes `postgres_data`... = mất dữ liệu).
 > Backup DB trước mọi lần recreate postgres.
 
+### Queue type drift (nếu deploy đỏ ở `Check RabbitMQ queue topology`)
+
+Workflow **tự dừng trước khi đụng container** khi broker lệch type queue so với
+`topology.go`. RabbitMQ không đổi được `x-queue-type` trên queue đã tồn tại, nên nếu
+bỏ qua bước này thì service sẽ crash-loop với `406 PRECONDITION_FAILED`.
+
+```bash
+cd /opt/closy
+export TOOL_IMAGE=ghcr.io/hycat/rabbitmq-topology@sha256:<digest>   # digest ở log workflow
+bash deployments/scripts/rabbitmq-topology/01-check-drift.sh vps     # read-only
+bash deployments/scripts/rabbitmq-topology/02-migrate-vps.sh         # xem trước
+bash deployments/scripts/rabbitmq-topology/02-migrate-vps.sh --yes   # dừng worker → migrate → verify
+```
+
+Migrate dừng `account commerce ai` (mỗi container trên VPS chạy cả http lẫn worker) và
+**không** start lại — start tay khi nào bạn sẵn sàng. Chi tiết:
+[`deployments/scripts/rabbitmq-topology/README.md`](../../deployments/scripts/rabbitmq-topology/README.md).
+
 ## Bước 5 — Cắt traffic monolith → 3 service (ngoài giờ thấp điểm)
 
 Mọi lệnh `docker compose` dưới đây kèm **cả 2 env-file**:

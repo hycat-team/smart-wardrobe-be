@@ -1,57 +1,19 @@
-# AWS env helper scripts
+# Ops scripts
 
-Bộ 2 script PowerShell giúp dựng `AWS EXTERNAL BOX` env từ VPS `.env.production` và sinh
-khối lệnh copy-paste để nạp secret/env lên box. Đã được "hợp thức hóa" từ `docs/temp/`.
+Script vận hành, gom theo từng nhóm công việc. Mỗi nhóm một thư mục riêng kèm `README.md`
+riêng — đọc README của nhóm đó trước khi chạy, không đọc chung.
 
-## Files
+| Thư mục | Môi trường | Ngôn ngữ | Dùng khi |
+|---|---|---|---|
+| [`aws-env/`](aws-env/README.md) | Local (Windows) | PowerShell | Dựng/gửi `.env.aws` lên AWS box từ VPS `.env.production` |
+| [`rabbitmq-topology/`](rabbitmq-topology/README.md) | VPS + AWS box | Bash | Kiểm tra & đồng bộ queue type (classic ↔ quorum) khi `topology.go` đổi |
 
-| File | Tracked | Mục đích |
-|---|---|---|
-| `aws-env-bootstrap.ps1` | ✅ | Đọc VPS `.env.production` + template `.env.aws.example`, sinh `outcome/.env.aws` với các giá trị cần điền (TODO) |
-| `aws-env-to-copyblock.ps1` | ✅ | Validate `outcome/.env.aws`, sinh `outcome/aws-secrets-to-set.txt` (khối lệnh gh secret / scp / recreate) |
-| `aws-local.env.example` | ✅ | Mẫu file settings nhạy cảm cục bộ |
-| `aws-local.env` | ❌ gitignored | Settings nhạy cảm cục bộ (KeyPath, Box IP, repo...); script tự đọc |
-| `outcome/` | ❌ gitignored | Mọi file sinh ra (`.env.aws`, `aws-secrets-to-set.txt`, `aws_known_hosts`) — chứa secret |
+## Quy ước
 
-> `aws-local.env` và `outcome/` **không bao giờ được commit**.
-
-## Chuẩn bị
-
-```powershell
-# từ repo root
-Copy-Item deployments/scripts/aws-local.env.example deployments/scripts/aws-local.env
-# điền VPS_ENV_PROD / AWS_BOX_IP / AWS_SSH_KEY_PATH / GITHUB_REPO
-```
-
-## Sử dụng
-
-```powershell
-# 1. Sinh .env.aws (điền các dòng '# TODO' trong outcome/.env.aws)
-powershell -ExecutionPolicy Bypass -File deployments/scripts/aws-env-bootstrap.ps1
-
-# 2. Sinh khối lệnh secrets/upload (sau khi hết '# TODO')
-powershell -ExecutionPolicy Bypass -File deployments/scripts/aws-env-to-copyblock.ps1
-#    (tuỳ chọn) thêm -WithHeredoc để có fallback tạo .env.aws trực tiếp trên box
-```
-
-## Ghi chú theo môi trường
-
-- `GOOGLE_REDIRECT_URI` là **đặc thù AWS box** (`https://api-v2.closy.hycat.online/api/v1/auth/google/callback`)
-  nên **không copy từ VPS**; script tự set constant. URI này phải được đăng ký trong Google Cloud Console.
-- `GOOGLE_CLIENT_IDS` / `GOOGLE_CLIENT_SECRET`: copy từ VPS **nếu** `.env.production` đã có; nếu chưa
-  (feature 021 mới thêm), script phát sinh dòng `# TODO` để bạn điền.
-- Các khoá VPS-only (`API_DOMAIN`, `COMPOSE_PROJECT_NAME`, `NGINX_MODE`, `INGRESS_*_URL`, ...) không thuộc
-  template AWS nên được bỏ qua một cách chủ đích.
-
-## Option precedence
-
-`CLI param` > `aws-local.env` > default. Các khoá trong `aws-local.env`:
-
-`VPS_ENV_PROD`, `AWS_BOX_IP`, `AWS_SSH_KEY_PATH`, `GITHUB_REPO`,
-`AWS_ENV_TEMPLATE`, `AWS_ENV_FILE`, `AWS_COPYBLOCK_OUT`, `AWS_KNOWN_HOSTS`.
-
-## Bảo mật
-
-- Không commit `aws-local.env`, `outcome/`, hay bất kỳ file chứa secret.
-- `outcome/aws-secrets-to-set.txt` chứa secret (kể cả heredoc khi dùng `-WithHeredoc`) — **xoá sau khi dùng**.
-- File `.env.aws` chỉ nên nằm trên box (`/opt/closy-aws/.env.aws`, `chmod 600`).
+- **Mỗi nhóm là một thư mục**, có README riêng. Thêm nhóm mới thì tạo thư mục + README, không
+  nhồi script vào gốc `scripts/`.
+- **File sinh ra chứa secret phải được gitignore.** Xem mục liên quan trong `.gitignore` —
+  repo liệt kê từng path cụ thể thay vì wildcard, để dễ review khi thêm/sửa.
+- **Ưu tiên `Makefile target` hơn lệnh thủ công** khi có target tương đương
+  (`AGENTS.md` §4). Script trong đây là fallback cho thao tác trên box từ xa, không phải
+  đường chính trong dev loop.

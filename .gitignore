@@ -730,8 +730,8 @@ backend/global.json
 docs/temp
 
 # AWS env helper: local sensitive settings + generated secrets/outcomes (never commit)
-deployments/scripts/aws-local.env
-deployments/scripts/outcome/
+deployments/scripts/aws-env/aws-local.env
+deployments/scripts/aws-env/outcome/
 
 .env
 .env.*

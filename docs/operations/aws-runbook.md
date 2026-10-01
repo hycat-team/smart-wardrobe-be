@@ -78,7 +78,15 @@ Sự cố: `prepared statement already exists` = query lọt qua pooler sai mode
    `403 no access to this vhost` và cả 3 service crash-loop). Workflow tự set TLS flags.
 3. Verify: `openssl s_client -connect "$RABBITMQ_HOST:5671"` → `Verify return code: 0`;
    management API qua HTTPS OK. Topology (quorum/DLX) code tự khai báo.
-   Ngân sách: tổng conn ≤ 100.
+   **Ngân sách connection: đọc ở mục Limits trên dashboard** — đây là **shared plan**,
+   trần thấp hơn nhiều so với VPS (quan sát 2026-10-01: `6 of 20`). Mỗi service
+   (3 `http` + 3 `worker`) giữ một connection, nên headroom hẹp: thêm service mới
+   có thể chạm trần. Thao tác migrate mở thêm một connection nữa — dừng worker trước
+   để nhả connection.
+
+4. **Queue idle sẽ bị CloudAMQP tự xoá.** Dashboard có `Max Idle Queue Time: 28 days`:
+   queue không hoạt động quá 28 ngày bị xoá. Không phải lỗi — service khai báo lại lúc
+   khởi động. Khác với VPS, nơi volume `rabbitmq_data` giữ queue vĩnh viễn.
 
 ### 2.4 payOS — kênh thanh toán RIÊNG cho box AWS
 
@@ -189,7 +197,26 @@ gh workflow run deploy-aws.yml -R "hycat-team/smart-wardrobe-be" --ref main -f s
 # hoặc: git tag -a aws-v1.0.0 -m "..." && git push origin aws-v1.0.0
 ```
 Pipeline 3 chặng (Approve nếu có reviewer): build+push GHCR → scp compose+templates
-→ `.env.deploy` pin digest → `pull`/`up -d` → recreate nginx 1 lần → `smoke-all`.
+→ `.env.deploy` pin digest → **check queue topology** → `pull`/`up -d` → recreate nginx
+1 lần → `smoke-all`.
+
+> **Nếu deploy đỏ ở bước `Check RabbitMQ queue topology`**: broker lệch queue type so với
+> `topology.go`. RabbitMQ không đổi được `x-queue-type` trên queue đã tồn tại, nên bỏ qua
+> bước này thì service crash-loop `406 PRECONDITION_FAILED`. Workflow dừng **trước khi**
+> đụng container.
+>
+> ```bash
+> cd /opt/closy-aws
+> export TOOL_IMAGE=ghcr.io/hycat/rabbitmq-topology@sha256:<digest>   # digest ở log workflow
+> bash deployments/scripts/rabbitmq-topology/01-check-drift.sh aws    # read-only
+> bash deployments/scripts/rabbitmq-topology/03-migrate-aws.sh        # xem trước
+> bash deployments/scripts/rabbitmq-topology/03-migrate-aws.sh --yes  # dừng worker → migrate → verify
+> ```
+>
+> Khác VPS: chỉ dừng `account-worker commerce-worker ai-worker` (container `-http` không
+> consume queue), và tool tới CloudAMQP qua internet (`amqps` + management TLS từ
+> `.env.aws`) chứ không cần `--network`. Chi tiết:
+> [`deployments/scripts/rabbitmq-topology/README.md`](../../deployments/scripts/rabbitmq-topology/README.md).
 3. Smoke tay từng service (SNI override, chưa cần DNS ổn định; body đúng tên service):
 ```bash
 for svc in account commerce ai; do

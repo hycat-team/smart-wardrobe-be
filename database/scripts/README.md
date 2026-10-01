@@ -304,9 +304,10 @@ sáu con số về 0.
 
 ## Vài lưu ý vận hành liên quan
 
-- **Queue `subscription_plan_changed_queue` là quorum.** Đổi khai báo
-  `x-queue-type` sẽ khiến RabbitMQ trả `406 PRECONDITION_FAILED` và dịch vụ **không
-  khởi động được**. Khi cần đổi, xoá hàng đợi cũ rồi để dịch vụ khai báo lại.
+- **`x-queue-type` không đổi được trên queue đã tồn tại.** Đổi khai báo sẽ khiến
+  RabbitMQ trả `406 PRECONDITION_FAILED` và dịch vụ **không khởi động được**. CI đã
+  check trước mỗi deploy; cách migrate: xem
+  [`deployments/scripts/rabbitmq-topology/README.md`](../../deployments/scripts/rabbitmq-topology/README.md).
 - **Sau khi dựng lại container `account` hoặc `commerce`**, nginx giữ DNS cũ và mọi
   route sẽ trả `404` cho tới khi chạy `make nginx-reload-local` hoặc restart nginx.
   Đây là triệu chứng quen thuộc, không phải lỗi route.

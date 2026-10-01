@@ -9,6 +9,12 @@ import (
 const (
 	ExchangeDLXName = "smart_wardrobe_exchange.dlx"
 	ExchangeDLXType = "topic"
+
+	// QueueTypeClassic is the queue type RabbitMQ assigns when a queue is
+	// declared without x-queue-type.
+	QueueTypeClassic = "classic"
+	// QueueTypeQuorum is the queue type declared via x-queue-type=quorum.
+	QueueTypeQuorum = "quorum"
 )
 
 // Binding defines a queue binding to an exchange with routing keys and queue arguments.
@@ -204,4 +210,25 @@ var DLQTopology = []Binding{
 	{Queue: eventconstants.QueueCommunityOutfitCascade + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityOutfitCascade + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCommunityUserStatus + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityUserStatus + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCampaignGrantUserCreated + ".dlq", RoutingKeys: []string{eventconstants.QueueCampaignGrantUserCreated + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+}
+
+// DesiredQueueTypes returns, per queue, the queue type this registry declares —
+// "quorum" when Args carries x-queue-type=quorum, otherwise "classic" (the
+// RabbitMQ default when the argument is absent).
+//
+// RabbitMQ cannot change x-queue-type on an existing queue, so Topology and the
+// broker are two independent sources of truth: a registry edited to declare
+// quorum against a broker that still holds a classic queue makes every service
+// fail at startup with 406 PRECONDITION_FAILED. The rabbitmq-topology tool reads
+// this map to detect that drift; it must never keep its own copy of the list.
+func DesiredQueueTypes() map[string]string {
+	desired := make(map[string]string, len(Topology)+len(DLQTopology))
+	for _, b := range append(append([]Binding{}, Topology...), DLQTopology...) {
+		if t, ok := b.Args["x-queue-type"]; ok {
+			desired[b.Queue] = t.(string)
+		} else {
+			desired[b.Queue] = QueueTypeClassic
+		}
+	}
+	return desired
 }
