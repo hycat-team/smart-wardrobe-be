@@ -201,9 +201,9 @@ concerns and live in `docs/project/funding-and-platform-lifecycle.md`, not here.
   disableable by default (`ELASTICSEARCH_ENABLED=false`) and MUST automatically fall back to
   database-backed search when disabled or unavailable.
 - **Goose Database Migrations**: All database schema changes MUST be implemented via Goose SQL
-  migration files (`make migration-create` and `make migration-up`). Directly editing initial
+  migration files (`make migrate-create` and `make migrate-up`). Directly editing initial
   database scripts in `/init-db` is strictly prohibited. **Note (020 service topology)**: the
-  Makefile targets become per-service (`make migration-create svc=<name>`, `make migration-up
+  Makefile targets become per-service (`make migrate-create svc=<name>`, `make migrate-up
   svc=<name>`); each service owns and runs its migrations on start with a shared advisory lock
   (FR-035/FR-038).
 - **Database Schema**: Core tables, schema-per-module separation, FK rules, and access matrix
