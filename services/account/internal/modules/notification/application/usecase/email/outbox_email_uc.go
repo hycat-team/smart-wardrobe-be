@@ -126,11 +126,12 @@ func resolveSubject(tmplEnum ntemplate.Template) string {
 		// because an administrative grant is not a purchase.
 		subject = "Gói của bạn đã được cấp thành công"
 	case ntemplate.CampaignGrant:
-		// 025 FR-044/FR-045: says the plan was granted and nothing else. In
-		// particular it does not say "promotion", "offer" or "gift" — a subject
+		// 025 FR-044/FR-045: says a gift was granted and nothing else. In
+		// particular it does not say "promotion", "offer" or "discount" - a subject
 		// line promising a benefit the customer did nothing to qualify for is
-		// what turns a grant into an expectation.
-		subject = "Bạn đã được tặng gói hội viên"
+		// what turns a grant into an expectation. The "[Closy] " prefix is added by
+		// resolveSubject, so it is not repeated here.
+		subject = "Chúc Mừng Bạn Nhận Được Quà Tặng!"
 	default:
 		subject = "Thông báo"
 	}

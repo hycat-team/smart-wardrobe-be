@@ -230,16 +230,11 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 	if sub.ExpiresAt != nil {
 		expiresText = sub.ExpiresAt.In(loc).Format("02/01/2006")
 	}
-	// The copy must not name a number of days. `premium-monthly` happens to be 30
-	// today, and a copy that says 30 starts lying the moment a quarterly campaign
-	// exists — the same reason `grantedExpiryFor` never hard-codes the duration
-	// either (FR-019).
-	durationText := "không thời hạn"
-	if plan.DurationDays != nil {
-		durationText = fmt.Sprintf("%d ngày", *plan.DurationDays)
-	}
-	// StartedAt is the instant the apply workflow wrote, i.e. the grant itself, so
-	// this is the date the customer was actually upgraded.
+	// StartedAt is the instant the apply workflow wrote, i.e. when the account was
+	// actually upgraded, and the usage period begins then. For an account granted
+	// from the signup message that is the registration moment to the second; for
+	// one rescued by the catch-up sweep it is later, and quoting the registration
+	// date there would tell a customer their term started days before it did.
 	grantedOn := sub.StartedAt.In(loc).Format("02/01/2006")
 
 	if err := uc.notifContract.SendByUserID(
@@ -248,7 +243,7 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 		notificationcontract.TemplateCampaignGrant,
 		map[string]any{
 			"PlanName":     plan.Name,
-			"DurationText": durationText,
+			"DurationText": grantedTermPhrase(plan),
 			"GrantedOn":    grantedOn,
 			"ExpiresAt":    expiresText,
 		},
@@ -259,6 +254,28 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 			zap.Error(err),
 		)
 	}
+}
+
+// grantedTermPhrase renders the granted term as the number and its unit, e.g.
+// "30 ngày", for the email copy.
+//
+// The UNIT is part of the value on purpose, not template text. The sentence
+// reads "...thời hạn sử dụng {{.DurationText}}...", so switching every plan to
+// months is a change to this one function and nothing else — no template edit, no
+// re-render check, no chance of the copy and the arithmetic drifting apart.
+//
+// The number is the plan's own duration_days and is never a literal here (FR-019):
+// `premium-monthly` happens to be 30 days, and a phrase that said 30 would start
+// lying the moment a quarterly or 7-day campaign exists. `grantedExpiryFor` refuses
+// to hard-code a duration for the same reason.
+func grantedTermPhrase(plan *entities.SubscriptionPlan) string {
+	if plan.DurationDays == nil {
+		// Unreachable for a campaign: the claim column `expires_at` is NOT NULL and
+		// FR-010 only admits a finite plan. Answer with something grammatical rather
+		// than inventing "0 ngày", which would read as a real term of no length.
+		return "không xác định"
+	}
+	return fmt.Sprintf("%d ngày", *plan.DurationDays)
 }
 
 // invalidateOverviewAfterCommit drops the cached overview (FR-040).
