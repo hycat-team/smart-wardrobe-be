@@ -6,7 +6,29 @@ nằm ở [data-model.md](./data-model.md) và [contracts/](./contracts/).
 > **Không** chạy `make hygiene-scan` khi thực hiện cẩu nang này. Lệnh đó sinh tệp báo cáo làm rối
 > kho mã nguồn, và `AGENTS.md` quy định phải được cho phép rõ ràng mới chạy.
 
-> ### ⛔ CỔNG AN TOÀN — BẮT BUỘC ĐỌC TRƯỚC KHI CHẠY MỤC 2 VÀ MỤC 6
+> ### ⛔ CỔNG AN TOÀN #2 — GIỚI HẠN EMAIL (ĐỌC TRƯỚC MỤC 2)
+>
+> **Mỗi lượt cấp gói sinh MỘT email qua Brevo. Brevo có trần theo ngày và đang chạm trần.**
+>
+> Kịch bản K2.2 (55 tài khoản) và K2.5 (50 tài khoản) **không thể chạy như hiện tại**: chúng cấp
+> gói cho hơn 100 tài khoản, tức hơn 100 email thật. Một lần chạy như vậy đã làm cạn hạn mức
+> Brevo, và hạn mức đó **không nạp lại trong ngày**.
+>
+> **Quy tắc:**
+>
+> 1. **Tối đa 1 tài khoản được sinh ra để kiểm chứng có gửi email.** Muốn kiểm chứng nội dung
+>    email, dùng đúng một tài khoản và kiểm trực tiếp trong hộp thư.
+> 2. **Mọi kịch bản tạo nhiều tài khoản phải tắt đường gửi email trước.** Hiện chưa có công tắc
+>    bật/tắt cho `email` trong `shared/config` — `config.yaml` trỏ thẳng vào `smtp-relay.brevo.com`.
+>    Vì vậy **chưa có cách nào an toàn để chạy K2.2 và K2.5** cho tới khi bổ sung công tắc đó.
+> 3. **Không được chạy lại K2.2 hay K2.5 để "kiểm tra cho chắc"** khi hạn mức còn nguyên vẹn.
+>    Chúng đã chạy và kết quả đã ghi ở mục báo cáo; chạy lại chỉ để tăng lòng tin là tiêu hạn mức
+>    của nhà cung cấp.
+>
+> Kịch bản nào **không** cấp gói (chỉ đọc, hoặc bị từ chối) thì không sinh email và vẫn chạy bình
+> thường: K2.1, K2.4, K2.7, K2.8 và toàn bộ mục 6.
+>
+> ### ⛔ CỔNG AN TOÀN #1 — MÔI TRƯỜNG (ĐỌC TRƯỚC MỤC 2 VÀ MỤC 6)
 >
 > **Cổng này bảo vệ hai thứ khác nhau. Đừng chỉ đọc một trong hai.**
 >

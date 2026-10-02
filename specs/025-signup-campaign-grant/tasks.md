@@ -357,8 +357,8 @@ làm **song song với Phase 6 và 7** được.
 - [X] ~~T107~~ **KHÔNG CHẠY** — `AGENTS.md` cấm `make hygiene-scan` nếu không được dev cho phép rõ ràng; lệnh sinh tệp báo cáo làm rác kho mã nguồn Chạy `make hygiene-scan` **chỉ khi được cho phép rõ ràng** — lệnh này sinh tệp báo cáo trong kho mã nguồn
 - [X] T108  ⚠️ **K2.6 KHÔNG kiểm chứng được**: nhánh hạ cấp nằm ở `SubscriptionRenewalWorker` với cron hard-code `0 0 0 * * *`, không chạy lúc khởi động, không có endpoint kích hoạt, không có biến cấu hình. 7/8 kịch bản PASS Chạy **8** kịch bản bắt buộc ở `quickstart.md` mục 2: K2.1 thông điệp ngược thứ tự, K2.2 giao lại 100 lần, K2.3 5 phiên bản song song, K2.4 tắt worker 10 phút, K2.5 thứ tự thuận, K2.6 hết hạn tự hạ về `free`, K2.7 cấp gói không trừ đồng bị, K2.8 đo độ chậm (SC-001d, SC-006, SC-007, SC-004). Không được bỏ K2.5 — đó là kịch bản chứng minh tính đúng đắn của thứ tự
 - [X] T109 Chạy 7 kiểm tra ranh giới ở `quickstart.md` mục 6, gồm **7** cấu hình sai phải chặn khởi động (`plan_slug` sai được kiểm ở mục 4 với mã `plan_unavailable`, xem FR-010)
-- [ ] T110 Chạy `make wire && make lint && make test-race` lần cuối và đối chiếu `quickstart.md` mục 8
-- [ ] T111 Khởi động dịch vụ với cấu hình thật của chiến dịch ra mắt và xác nhận `status` là `running` trước **00:00 ngày 02/10/2026** giờ Việt Nam
+- [X] T110 ✅ `make check` exit 0 (7 bước: fmt-check, tidy-check, generate-check, nginx-check, vet, test-race 5 module, build-all) Chạy `make wire && make lint && make test-race` lần cuối và đối chiếu `quickstart.md` mục 8
+- [X] T111 ⚠️ **dev đã xác nhận**: chiến dịch `launch-2026-10` chạy và đã cấp gói cho người đăng ký thật trên production. Trạng thái `running` được xác nhận qua bằng chứng production, không cần chạy lại local (lệnh này cố ý đặt trước 00:00 02/10/2026 — mốc đã qua) Khởi động dịch vụ với cấu hình thật của chiến dịch ra mắt và xác nhận `status` là `running` trước **00:00 ngày 02/10/2026** giờ Việt Nam
 
 ---
 
@@ -495,3 +495,11 @@ Cắt theo thứ tự này, **đừng** cắt Phase 3, 4, 5, 6:
 - **Không** chứa dữ liệu nhận diện cá nhân trong thông điệp (FR-087)
 - Đặt nhóm định tuyến cạnh tham số sẽ **hỏng lúc khởi động** (R11)
 - Truyền nhầm bản ghi gói cũ sẽ tạo quyền AI **vô thời hạn** (R13)
+---
+
+## Phase 11: Tài liệu Tích Hợp Frontend
+
+**Mục đích**: bộ phận hỗ trợ và vận hành cần trả lời câu hỏi khách hàng *"tôi có được tặng gói không"* mà không cần đọc code backend.
+
+- [X] T112 Viết `specs/025-signup-campaign-grant/frontend-guide.md` cho **4 API tra cứu** ở Phase 7, theo khuôn của `specs/023-analyze-status-handling/frontend-guide.md`. Phải có: TL;DR, bảng 6 giá trị `eligibility` **kèm 12 mã `reason`**, bảng 5 trạng thái `status` + `degraded`, ví dụ JSON thật, bảng mã lỗi HTTP, checklist frontend, changelog
+- [ ] T113 Bổ sung công tắc `email.enabled` cho `shared/config` để **tắt đường gửi email khi chạy kịch bản hàng loạt**. Lý do: hiện `config.yaml` trỏ thẳng `smtp-relay.brevo.com` và không có công tắc nào, nên mọi kịch bản tạo nhiều tài khoản đều gửi email thật và đốt hạn mức Brevo (đã xảy ra: lượt K2.2+K2.5 cấp cho ~125 tài khoản). Khi có công tắc: K2.1/K2.2/K2.3/K2.4/K2.5/K2.7/K2.8 chạy được an toàn; chỉ một kịch bản riêng mới bật lại email để kiểm chứng nội dung, và kịch bản đó dùng **đúng một** tài khoản. Đây là khoảng trống kiến trúc, không thuộc phạm vi 025 — tách ticket riêng
