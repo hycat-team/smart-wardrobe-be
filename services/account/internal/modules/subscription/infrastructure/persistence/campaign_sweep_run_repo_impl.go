@@ -72,10 +72,25 @@ func (r *CampaignSweepRunRepository) RecordRun(ctx context.Context, results []re
 	return r.GetDB(ctx).
 		Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "campaign_code"}},
-			// `last_sweep_at` is EXCLUDED from the update list on purpose: it is
-			// only ever advanced by a successful run, and naming it here would let
-			// a failure overwrite the timestamp of the last run that worked.
-			DoUpdates: clause.AssignmentColumns([]string{"degraded", "degraded_reason"}),
+			// `last_sweep_at` advances ONLY when the incoming value is non-null, i.e.
+			// only when the run succeeded. A failure carries a nil timestamp, and the
+			// COALESCE keeps the timestamp of the last run that actually worked — so a
+			// sweep failing every fifteen minutes reports a fifteen-minute-old
+			// `lastSweepAt`, which is the useful alarm.
+			//
+			// It has to be written this way rather than omitted from the update list.
+			// Listing only `degraded` and `degraded_reason` freezes `last_sweep_at` at
+			// whatever the very first insert put there, forever: a later successful run
+			// would not touch the column either. The comment here once described that
+			// as deliberate, and it looked deliberate — which is why it survived review
+			// and shipped. The evidence was a row that stopped advancing while the logs
+			// showed sweep after sweep succeeding.
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"last_sweep_at":   gorm.Expr("COALESCE(excluded.last_sweep_at, campaign_sweep_runs.last_sweep_at)"),
+				"degraded":        gorm.Expr("excluded.degraded"),
+				"degraded_reason": gorm.Expr("excluded.degraded_reason"),
+				"updated_at":      gorm.Expr("now()"),
+			}),
 		}).
 		Create(&runs).Error
 }
