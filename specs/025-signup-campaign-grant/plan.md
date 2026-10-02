@@ -69,7 +69,7 @@ tích hợp tấn công cơ sở dữ liệu thật cho đường cấp phát v�
 - Không thay đổi hợp đồng giao tiếp gọi từ dịch vụ khác — FR-058
 
 **Quy mô**: chiến dịch đầu 50 suất; cơ chế dùng lại cho các chiến dịch sau bằng khai báo cấu hình;
-khoảng **55 tệp** bị chạm tới, trong đó 1 dịch vụ, 2 module, 1 migration dữ liệu.
+khoảng **55 tệp** bị chạm tới, trong đó 1 dịch vụ, 2 module, 3 migration dữ liệu.
 
 ---
 
@@ -90,7 +90,7 @@ khoảng **55 tệp** bị chạm tới, trong đó 1 dịch vụ, 2 module, 1 m
 | §VI Lõi kiểm soát chi phí AI | Không sửa ngoài phạm vi đã nêu | R7: dịch vụ AI **không bị sửa**. Chỉ tái dùng đường thay đổi gói sẵn có. | ✅ |
 | §VII Tuân thủ design-pattern.md | Đọc và tuân thủ | Cấu trúc lớp, mẫu worker, mẫu phân trang, mẫu lỗi, mẫu khoá đơn vị công việc, quy ước tên DTO — lấy nguyên văn từ tài liệu. | ✅ |
 | §VIII Khả chạy trên mọi hạ tầng | Không viết cứng giá trị phụ thuộc môi trường | Múi giờ lấy từ `cfg.Database.TimeZone` (R6). Toàn bộ chiến dịch khai báo bằng cấu hình, ghi đè được bằng biến môi trường cho giá trị đơn lẻ (R10). | ✅ |
-| Hiến phán — Goose migration | Mọi thay đổi lược đồ qua tệp Goose | 2 tệp migration có `-- +goose Up` và `-- +goose Down`, lý do bằng tiếng Anh trích dẫn `025 T### (FR-###)`. | ✅ |
+| Hiến phán — Goose migration | Mọi thay đổi lược đồ qua tệp Goose | 3 tệp migration có `-- +goose Up` và `-- +goose Down`, lý do bằng tiếng Anh trích dẫn `025 T### (FR-###)`. | ✅ |
 | Hiến phán — Ngôn ngữ | Thông điệp client tiếng Việt, mã và nhật ký tiếng Anh | Mẫu email và thông báo lỗi tiếng Việt; nhận ký và nhận xét mã tiếng Anh. | ✅ |
 | code-hygiene H1 | Tệp production ≤ 500 dòng, hàm ≤ 80 dòng | Mọi tệp mới tách theo trách nhiệm; use case chiến dịch tách bước ra hàm nhỏ. | ✅ |
 | code-hygiene H2 | Tối đa 2 kiểu có hành vi mỗi tệp | Mỗi tệp mới một struct chính. | ✅ |
@@ -126,8 +126,8 @@ specs/025-signup-campaign-grant/
 │   ├── account-created-event.md # Hợp đồng sự kiện tạo tài khoản
 │   └── campaign-query-api.md   # Hợp đồng giao diện tra cứu cho quản trị viên
 ├── checklists/
-│   └── requirements.md         # Đã đạt 16/16
-└── tasks.md                    # Sinh ở /speckit-tasks — đã tạo, 114 nhiệm vụ
+│   └── requirements.md         # Đã đạt 19/19
+└── tasks.md                    # Sinh ở /speckit-tasks — đã tạo, 119 nhiệm vụ
 ```
 
 ### Mã nguồn (thư mục gốc dự án)
@@ -149,7 +149,8 @@ shared/
 services/account/
 ├── database/migrations/
 │   ├── <timestamp>_add_created_by_admin.sql
-│   └── <timestamp>_add_campaign_claims.sql
+│   ├── <timestamp>_add_campaign_claims.sql
+│   └── <timestamp>_add_campaign_sweep_runs.sql   # T079a — FR-059, xem data-model.md mục 5.1
 ├── dto/                                  # quy ước DTO của dịch vụ account (xem ghi chú bên dưới)
 │   ├── identity/
 │   │   ├── contract_dto.go              # + CreatedAt, + CreatedByAdmin

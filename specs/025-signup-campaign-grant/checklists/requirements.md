@@ -39,7 +39,7 @@
 |---|---|
 | Số marker `[NEEDS CLARIFICATION]` còn lại | **0** |
 | Số yêu cầu chức năng | **77**, đánh số từ FR-001 tới FR-077, **không trùng, không thiếu số** |
-| Số tiêu chí thành công | **16** (SC-001 tới SC-014, trong đó SC-001 có 3 nhánh a/b/c) |
+| Số tiêu chí thành công | **19** (SC-001 tới SC-016, trong đó SC-001 có 4 nhánh a/b/c/d và có SC-001b, SC-001c, SC-001d tính riêng) |
 | Số câu chuyện người dùng | **7**, mỗi câu chuyện đánh số thứ tự ưu tiên và có phần kiểm thử độc lập |
 | Số chuyện cần hỏi về ranh giới (edge case) | **24**, chia thành 6 nhóm: tính đúng đắn hạn mức, thời điểm, điều kiện đủ điều kiện, nhiều chiến dịch, vận hành, định nghĩa "tài khoản đầu tiên" |
 
@@ -75,7 +75,7 @@
 
 ### Kết quả
 
-**16/16 mục đạt, trước và sau đều 16/16. Không mục nào đổi trạng thái, không có hồi quy.**
+**19/19 mục đạt, trước và sau đều 19/19. Không mục nào đổi trạng thái, không có hồi quy.**
 
 Phiên làm rõ đã hỏi và tích hợp **4 câu hỏi** (xem mục `## Clarifications` trong `spec.md`):
 
@@ -169,7 +169,7 @@ Ngoài ra ghi vào mục `Bối cảnh` một mục **"Đã kiểm chứng: mọ
 
 ### Kết quả kiểm tra lại
 
-**16/16 mục đạt, trước và sau đều 16/16. Không mục nào đổi trạng thái, không có hồi quy.**
+**19/19 mục đạt, trước và sau đều 19/19. Không mục nào đổi trạng thái, không có hồi quy.**
 
 | Kiểm tra bằng máy | Kết quả |
 |---|---|
@@ -217,7 +217,7 @@ Kèm một bảng **ba phương án đã cân nhắc và loại bỏ** trong m�
 
 ### Kết quả kiểm tra lại
 
-**16/16 mục đạt, trước và sau đều 16/16. Không mục nào đổi trạng thái, không có hồi quy.**
+**19/19 mục đạt, trước và sau đều 19/19. Không mục nào đổi trạng thái, không có hồi quy.**
 
 | Kiểm tra bằng máy | Kết quả |
 |---|---|

@@ -38,16 +38,25 @@ từ chiến dịch thứ hai.
 │  topic = identity.user.created │        │  current_plan_code               │
 │  topic = subscription.plan.*   │───────►│  expires_at, is_auto_renew_enabled│
 └────────────────────────────────┘        └──────────────────────────────────┘
-                                              │
-                                              │ phát subscription.plan.changed
-                                              ▼
-                                    ┌──────────────────────────────────┐
-                                    │ aiexecutor.ai_policy_grants      │
-                                    │  (dịch vụ AI — KHÔNG bị sửa)     │
-                                    └──────────────────────────────────┘
-```
+                                                │
+                                                │ phát subscription.plan.changed
+                                                ▼
+                                      ┌──────────────────────────────────┐
+                                      │ aiexecutor.ai_policy_grants      │
+                                      │  (dịch vụ AI — KHÔNG bị sửa)     │
+                                      └──────────────────────────────────┘
 
-**Bảng bị thay đổi lược đồ**: đúng **2** bảng.
+                    worker quét bù ghi              tra cứu đọc
+                                                ┌──────────────────────────────────┐
+                                                │ subscription.                    │
+                                                │   campaign_sweep_runs            │
+                                                │  campaign_code (khoá)            │
+                                                │  last_sweep_at, degraded,        │
+                                                │  degraded_reason                 │
+                                                └──────────────────────────────────┘
+  ```
+
+**Bảng bị thay đổi lược đồ**: đúng **3** bảng.
 **Bảng chỉ đọc**: `subscription.user_subscriptions`, `subscription.subscription_plans`.
 **Bảng của dịch vụ khác**: `aiexecutor.*` — không đụng tới (FR-097, R7).
 
@@ -57,7 +66,7 @@ từ chiến dịch thứ hai.
 
 ### 2.1 Vì sao cần
 
-FR-091 yêu cầu bỏ qua tài khoản do quản trị viên tạo, và cơ chế quét bù (FR-079) đọc từ cơ sở dữ
+FR-050 yêu cầu bỏ qua tài khoản do quản trị viên tạo, và cơ chế quét bù (FR-079) đọc từ cơ sở dữ
 liệu. Nhưng **BẰNG CHỨNG** cho thấy bảng này không lưu thông tin đó:
 
 `entities.User` (`identity/domain/entities/user.go:15-35`) không có trường nào ghi ai đã tạo. Hai
@@ -70,11 +79,11 @@ Chi tiết và các phương án đã loại: R4.
 ### 2.2 Thay đổi
 
 ```sql
--- 025: FR-050/FR-091 — nguồn gốc tạo tài khoản.
+-- 025: FR-050 — nguồn gốc tạo tài khoản.
 --
 -- WHY THIS EXISTS. `identity.users` records nothing about who created the row, so
 -- an administrator-created account is structurally indistinguishable from a
--- self-serve one. The campaign exclusion rule (FR-091) can only be evaluated on
+-- self-serve one. The campaign exclusion rule (FR-050) can only be evaluated on
 -- the event path, where the publishing code knows which flow it is in -- and the
 -- catch-up sweep (FR-079), which reads the database, could not evaluate it at
 -- all. It would have granted the promotional plan to the administrator's own
@@ -279,7 +288,7 @@ campaigns:
 | Trường | Kiểu | Bắt buộc | Quy tắc kiểm tra (FR-010) | Lý do quy tắc |
 |---|---|---|---|---|
 | `code` | chuỗi | Có | Không rỗng; khớp `^[a-z0-9][a-z0-9-]{2,63}$`; **không trùng** trong danh sách | Mã đi đúng vào cột `campaign_code` và vào nhật ký kiểm toán (FR-038). Ràng buộc định dạng chặn ký tự lạ làm rối tra cứu và chặn truy cấn đường dẫn nếu mã này vô tình được ghép vào tên hàng đỗi |
-| `plan_slug` | chuỗi | Có | Gói phải tồn tại **và đang hoạt động** | FR-010. Gói không hoạt động mà vẫn cấp là cấp thứ mà không có giá trị thương mại |
+| `plan_slug` | chuỗi | Có | Kiểm tra **lúc chạy**, không chặn khởi động — xem FR-010 | Gói không hoạt động mà vẫn cấp là cấp thứ không có giá trị thương mại. Nhưng nạp cấu hình không được chạm CSDL, nên chỗ duy nhất tra được là nơi dòng gói vốn được đọc; sai thì bỏ qua với mã `plan_unavailable` |
 | `quota` | số nguyên | Có | `>= 1` | FR-021. Bằng 0 nghĩa là chiến dịch không cấp gì, đó là cấu hình vô nghĩa chứ không phải cấu hình sai |
 | `reserve` | số nguyên | Có | `>= 0` | FR-021. Cho phép 0 nghĩa là trần cứng bằng đúng `quota` |
 | `starts_at` | chuỗi RFC3339 | Có | Có múi giờ tường minh | FR-008. Thiếu múi giờ thì máy chủ UTC chạy lệch 7 giờ (R6) |
@@ -382,14 +391,37 @@ chạy**, chiến dịch **tạm ngủ**, và chiến dịch **đang chạy như
 | Trường | Kiểu | Nguồn | Ý nghĩa |
 |---|---|---|---|
 | `status` | xem máy trạng thái | Suy ra từ cấu hình + đếm lượt cấp | Vòng đời |
-| `degraded` | boolean | Cờ đặt khi có lần xử lý lỗi trong lần quét gần nhất | Hỏng |
-| `degradedReason` | chuỗi | Lý do lỗi gần nhất | Chẩn đoán |
-| `lastSweepAt` | thời điểm | Cập nhật mỗi lần quét bù thành công | Sức khỏe định kỳ |
+| `degraded` | boolean | `campaign_sweep_runs.degraded` | Hỏng |
+| `degradedReason` | chuỗi | `campaign_sweep_runs.degraded_reason` | Chẩn đoán |
+| `lastSweepAt` | thời điểm | `campaign_sweep_runs.last_sweep_at` | Sức khỏe định kỳ |
 
-Cờ `degraded` **không** lưu trong bảng. Nó do worker quét bù giữ trong bộ nhớ và đặt lại khi một lần
-quét thành công. Đặc tả chấp nhận rằng nó mất khi khởi động lại — và đó là hành vi **đúng**: sau khi
-khởi động lại, trạng thái sức khỏe chưa được biết là cho tới lần quét đầu tiên chạy xong, và trong
-khoảng đó mọi lần tra cứu đều là sau khi quét chạy (vì quét chạy lúc khởi động).
+#### Bảng `subscription.campaign_sweep_runs`
+
+```sql
+CREATE TABLE IF NOT EXISTS subscription.campaign_sweep_runs (
+    campaign_code   VARCHAR(64) PRIMARY KEY,
+    last_sweep_at   TIMESTAMPTZ,
+    degraded        BOOLEAN     NOT NULL DEFAULT FALSE,
+    degraded_reason TEXT,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Worker quét bù ghi một dòng **cho mỗi chiến dịch** sau mỗi lần quét: `last_sweep_at` cập nhật
+mỗi lần quét thành công; khi lần quét gặp lỗi thì `degraded = TRUE` và `degraded_reason` ghi lý
+do. Một lần quét thành công xoá `degraded_reason`. API tra cứu đọc thẳng bảng này.
+
+**Vì sao phải nằm trong CSDL chứ không giữ trong bộ nhớ.** Đặc tả cũ giữ cờ trong bộ nhớ worker và
+biện minh rằng mất khi khởi động lại là hành vi đúng. Biện minh đó chỉ đúng khi có **một** worker.
+Hệ thống này chạy **nhiều phiên bản, mỗi phiên bản một bộ worker riêng** (`spec.md` Bài toán 1), nên:
+
+1. Yêu cầu HTTP rơi vào phiên bản B sẽ đọc cờ của phiên bản B, trong khi lần quét gây lỗi có thể
+   do phiên bản A chạy. Cờ sai theo hướng **nguy hiểm nhất**: hỏng thật mà báo lành.
+2. Với `APP_MODE=http` thì không có worker nào chạy, `degraded` luôn `false` — đúng cái trạng thái
+   giả mà FR-059 sinh ra để chống.
+
+Lưu bảng ghi cũng rẻ: worker quét bù vốn đã ghi vào `campaign_claims`, thêm một dòng theo mã chiến
+dịch không thay đổi đặc tính lượt ghi. Đổi lại FR-059 trở thành kiểm chứng được trên hạ tầng thật.
 
 ---
 
@@ -406,11 +438,22 @@ chạy trước, ràng buộc cần khoá chạy sau.
 | 4 | Tài khoản chưa có lượt cấp nào | `campaign_claims` | `already_claimed` | Không — ràng buộc `UNIQUE` lo |
 | 5 | Tài khoản đang ở **đúng** gói đó và còn hạn | `user_subscriptions` | `already_on_plan` (FR-018) | Không |
 | 6 | Cấm chồng: tài khoản vừa bị hạ về gói miễn phí mà gói cũ chưa dọn xong | `user_subscriptions` | `plan_not_settled` | Không |
-| 7 | Chọn chiến dịch **bắt đầu muộn nhất** mà tài khoản đủ điều kiện | Cấu hình | — (FR-011) | Không |
-| 8 | Chốt hạn mức: còn suất theo vị trí của tài khoản | `campaign_claims` + khoá tư vấn | `quota_main` / `quota_compensation` | **Có** |
-| 9 | Ghi lượt cấp | `campaign_claims` | `duplicate_claim` | **Có** |
+| 6a | `plan_slug` của chiến dịch trỏ tới gói tồn tại và đang active | Cấu hình + `subscription_plans` | `plan_unavailable` | Không |
+| 7 | Chọn chiến dịch **bắt đầu muộn nhất** mà tài khoản đủ điều kiện | Cấu hình | `outside_window` (FR-011, FR-017) | Không |
+| 8 | Chốt hạn mức: còn suất theo vị trí của tài khoản | `campaign_claims` + khoá tư vấn | `quota_main` / `quota_compensation` / `quota_anomaly` | **Có** |
+| 9 | Ghi lượt cấp | `campaign_claims` | vi phạm `UNIQUE` — bất thường, xem ghi chú | **Có** |
 
 Bước 8 là bước duy nhất cần khoá, vì đó là bước duy nhất **đọc rồi quyết định rồi ghi**.
+
+**Về điều kiện 6a.** Nạp cấu hình **không** được chạm cơ sở dữ liệu (hiến phán §I, §VIII), nên
+không thể chặn khởi động khi `plan_slug` sai. Kiểm tra diễn ra ở nơi dòng gói vốn được đọc — tức lúc
+chạy — và ghi lý do `plan_unavailable`. Hệ quả cần nói rõ: **một `plan_slug` sai không làm hỏng dịch
+vụ, nó chỉ khiến chiến dịch đó không cấp được gì cho ai**, và người vận hành thấy ngay qua mã này.
+
+**Về điều kiện 9.** Khi ràng buộc `UNIQUE` thực sự kích hoạt, đó không phải một lý do bỏ qua hợp lệ để
+báo cho khách hàng mà là dấu hiệu dữ liệu bất thường hoặc đua thao tác — điều kiện 4 đã chặn sớm
+bằng `already_claimed` trước khi tới đây. Vì vậy nó **không** có mã `reason` riêng: điều kiện này
+được thiết kế để không xảy ra, và nếu xảy ra thì phải điều tra chứ không phải phục vụ trả lời.
 
 ### 6.1 Quy tắc chọn chiến dịch (bước 7)
 
@@ -441,8 +484,8 @@ trong transaction, sau khi đã giữ khoá tư vấn:
   ngược lại nếu reserveCount < reserve:
       → chỉ cấp nếu watermarkAt CÓ giá trị VÀ account.created_at < watermarkAt
       → cấp, grant_bucket = 'reserve', fills_main_quota = FALSE
-  ngược lại:
-      → bỏ qua, lý do quota_exhausted
+ngược lại:
+       → bỏ qua, lý do quota_compensation  (dự phòng là TRẦN, nên "hết dự phòng" CHÍNH LÀ chạm trần cứng)
 ```
 
 **Vì sao phải đếm theo `grant_bucket` chứ không theo `NOT fills_main_quota`.** Cột `fills_main_quota`
@@ -538,7 +581,8 @@ Bảng dùng chung, không sửa. Bộ phát sự kiện và bộ phát hàng đ
 | FR-030, FR-031 | Cột `fills_main_quota` + `ux_campaign_claims_watermark` + cột `registered_at` chụp sẵn |
 | FR-032 | Cột `grant_bucket` ghi phần dự phòng là **trần**; không có đường nào ghi `reserve` khi `reserve = 0` |
 | FR-033 | Đếm `grant_bucket = 'main'` cho biết đã chạm trần phần chính, tách được khỏi "không đủ điều kiện" khi tra cứu |
-| FR-050, FR-091 | Cột `created_by_admin` |
+| FR-050 | Cột `created_by_admin` |
+| FR-059 | Bảng `campaign_sweep_runs` (`degraded`, `degraded_reason`, `last_sweep_at`) — vì sao không giữ trong bộ nhớ ở mục 5.1 |
 | FR-065, FR-066 | Bảng lượt cấp + cấu hình |
 | FR-087 | Thông điện chỉ có 4 trường, không có dữ liệu nhận diện cá nhân |
 | FR-092 | Không có thay đổi lược đồ nào ở tập loại sự kiện |
