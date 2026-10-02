@@ -28,12 +28,29 @@ func (f *fakeUow) Execute(ctx context.Context, fn func(ctx context.Context) erro
 
 type fakePlanRepo struct {
 	plansBySlug map[string]*entities.SubscriptionPlan
+	// 025 T114: the canonical free plan, which `GetDefaultPlan` used to answer
+	// with a hard-coded nil. Checkout never asks for it, so it stays unset in
+	// every test below; the wallet purchase in `wallet.go` does ask, because it
+	// has to resolve what plan the account is currently on before changing it.
+	// Optional precisely so adding it changed nothing for those tests.
+	defaultPlan *entities.SubscriptionPlan
 }
 
 func (f *fakePlanRepo) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return f.plansBySlug[slug], nil
 }
 func (f *fakePlanRepo) GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error) {
+	return f.defaultPlan, nil
+}
+func (f *fakePlanRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.SubscriptionPlan, error) {
+	if f.defaultPlan != nil && f.defaultPlan.ID == id {
+		return f.defaultPlan, nil
+	}
+	for _, plan := range f.plansBySlug {
+		if plan != nil && plan.ID == id {
+			return plan, nil
+		}
+	}
 	return nil, nil
 }
 func (f *fakePlanRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.SubscriptionPlan, error) {
@@ -56,9 +73,6 @@ func (f *fakePlanRepo) GetBySlugsAnyStatus(ctx context.Context, slugs []string) 
 	return found, nil
 }
 func (f *fakePlanRepo) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
-	return nil, nil
-}
-func (f *fakePlanRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.SubscriptionPlan, error) {
 	return nil, nil
 }
 func (f *fakePlanRepo) GetAll(ctx context.Context) ([]*entities.SubscriptionPlan, error) {

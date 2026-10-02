@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
+	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -290,6 +292,12 @@ type renewalHarness struct {
 	attempt    *fakeRenewalAttemptRepo
 	statements *fakeRenewalStatementRepo
 	events     *fakeRenewalEventRepo
+	// 025 T114: kept on the harness so a test can inspect what actually reached
+	// the broker. FR-095 asks for proof that the plan-change EVENT is published on
+	// the renewal and expiry paths, and the row counter alone only proves the
+	// history write - a regression that kept the insert and dropped the publish
+	// would still pass a counter-only assertion.
+	publisher  *fakeRenewalPublisher
 	notif      *fakeRenewalNotif
 	freePlanID uuid.UUID
 	plan       *entities.SubscriptionPlan
@@ -328,7 +336,9 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 	// 024 T051: the expiry path now publishes through the single helper, so the
 	// harness wires the real publisher over the fakes. This is what makes the
 	// test able to catch a regression where the publish step is dropped.
-	publisher := NewPlanChangePublisher(h.events, &fakeRenewalPublisher{})
+	publisher := &fakeRenewalPublisher{}
+	h.publisher = publisher
+	publisherHelper := NewPlanChangePublisher(h.events, publisher)
 	h.uc = &SubscriptionUseCase{
 		uow:           &fakeRenewalUow{},
 		userSubRepo:   h.subRepo,
@@ -348,7 +358,7 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 		eventRepo:           h.events,
 		renewalAttemptRepo:  h.attempt,
 		notifContract:       h.notif,
-		planChangePublisher: publisher,
+		planChangePublisher: publisherHelper,
 		log:                 zap.NewNop(),
 	}
 	return h
@@ -440,6 +450,115 @@ func TestExecuteScheduledRenewalSkipsWhenSubscriptionDisappears(t *testing.T) {
 	}
 	if h.subRepo.updates != 0 {
 		t.Fatalf("expected no repo writes, got %d updates", h.subRepo.updates)
+	}
+}
+
+// ---- 025 T114 — FR-095: proof that the plan-change event is published on the
+// renewal and expiry-downgrade paths.
+//
+// The two tests above already cover that both paths CHANGE the subscription.
+// What they never asked is whether the change announced itself. FR-095 names
+// exactly that as the failure mode: a path that publishes nothing "does not
+// report an error anywhere" - the debit is recorded, the downgrade is applied,
+// every return value is nil, and the AI service keeps honouring a term that has
+// ended.
+//
+// So the assertion has to be a COUNT on a single operation, never the absence
+// of an error. "No error" is exactly what a silent path returns.
+
+// publishedPlanChangeType reads `eventType` out of a captured payload.
+//
+// The payload type lives in the mapper package and is deliberately unexported
+// (constitution §II: the JSON is the contract, the struct is not shared), so
+// there is no field to read from here. Going through JSON also means this
+// asserts on what the receiver would actually receive rather than on an
+// in-memory struct that the publisher has not yet serialised.
+func publishedPlanChangeType(t *testing.T, payload any) string {
+	t.Helper()
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal published plan-change payload: %v", err)
+	}
+	var decoded struct {
+		EventType string `json:"eventType"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("decode published plan-change payload: %v", err)
+	}
+	return decoded.EventType
+}
+
+// TestExecuteScheduledRenewalPublishesExactlyOnePlanChangeEvent covers the
+// renewal path (gia hạn) of FR-095's six: one scheduled renewal of one
+// subscription must write exactly one plan-change history row and publish
+// exactly one subscription.plan.changed.
+func TestExecuteScheduledRenewalPublishesExactlyOnePlanChangeEvent(t *testing.T) {
+	h := newRenewalHarness(t, true, 500000)
+
+	result := RenewalExecutionResult{}
+	if err := h.uc.executeScheduledRenewal(context.Background(), h.subRepo.lockedSub.UserID, h.freePlanID, h.now, &result); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != renewalStatusRenewed {
+		t.Fatalf("expected renewed status, got %q", result.Status)
+	}
+	if h.events.creates != 1 {
+		t.Fatalf("FR-095: one renewal must write exactly one plan-change history row, got %d", h.events.creates)
+	}
+	if len(h.publisher.events) != 1 {
+		t.Fatalf("FR-095: one renewal must publish exactly one subscription.plan.changed, got %d", len(h.publisher.events))
+	}
+	if got := publishedPlanChangeType(t, h.publisher.events[0]); got != string(subscriptioneventtype.EXTENDED) {
+		t.Fatalf("expected event type %q on the renewal publish, got %q", subscriptioneventtype.EXTENDED, got)
+	}
+}
+
+// TestExecuteScheduledRenewalDowngradePublishesExactlyOnePlanChangeEvent covers
+// the expiry-downgrade path (hạ về gói miễn phí khi hết hạn) — the one FR-095
+// singles out as most consequential, because it is the transition that REMOVES a
+// paying customer's entitlements. A downgrade nobody hears about leaves the AI
+// service still enforcing a plan that ended.
+func TestExecuteScheduledRenewalDowngradePublishesExactlyOnePlanChangeEvent(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+
+	result := RenewalExecutionResult{}
+	if err := h.uc.executeScheduledRenewal(context.Background(), h.subRepo.lockedSub.UserID, h.freePlanID, h.now, &result); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != renewalStatusDowngraded {
+		t.Fatalf("expected downgraded status, got %q", result.Status)
+	}
+	if h.events.creates != 1 {
+		t.Fatalf("FR-095: one downgrade to free must write exactly one plan-change history row, got %d", h.events.creates)
+	}
+	if len(h.publisher.events) != 1 {
+		t.Fatalf("FR-095: one downgrade to free must publish exactly one subscription.plan.changed, got %d", len(h.publisher.events))
+	}
+	if got := publishedPlanChangeType(t, h.publisher.events[0]); got != string(subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE) {
+		t.Fatalf("expected event type %q on the downgrade publish, got %q", subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE, got)
+	}
+}
+
+// TestExecuteScheduledRenewalDowngradeOnInsufficientFundsPublishesExactlyOnePlanChangeEvent
+// covers the OTHER way the same file reaches `downgradeToFree`: the wallet
+// cannot pay. FR-095 asks for the downgrade path, and there are two ways in, so
+// covering only the auto-renew switch would leave a caller free to regress one
+// branch of it.
+func TestExecuteScheduledRenewalDowngradeOnInsufficientFundsPublishesExactlyOnePlanChangeEvent(t *testing.T) {
+	h := newRenewalHarness(t, true, 1000) // far below the plan price
+
+	result := RenewalExecutionResult{}
+	if err := h.uc.executeScheduledRenewal(context.Background(), h.subRepo.lockedSub.UserID, h.freePlanID, h.now, &result); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != renewalStatusDowngraded {
+		t.Fatalf("expected downgraded status, got %q", result.Status)
+	}
+	if h.events.creates != 1 {
+		t.Fatalf("FR-095: one insufficient-funds downgrade must write exactly one plan-change history row, got %d", h.events.creates)
+	}
+	if len(h.publisher.events) != 1 {
+		t.Fatalf("FR-095: one insufficient-funds downgrade must publish exactly one subscription.plan.changed, got %d", len(h.publisher.events))
 	}
 }
 

@@ -14,19 +14,27 @@ nằm ở [data-model.md](./data-model.md) và [contracts/](./contracts/).
 > gói cho hơn 100 tài khoản, tức hơn 100 email thật. Một lần chạy như vậy đã làm cạn hạn mức
 > Brevo, và hạn mức đó **không nạp lại trong ngày**.
 >
-> **Quy tắc:**
+> **Quy tắc** (luật này cũng đã nằm trong hiến phán §Governance, phiên bản 3.1.0 — tài liệu này
+> không lặp lại chi tiết, chỉ chỉ cách thực hiện):
 >
 > 1. **Tối đa 1 tài khoản được sinh ra để kiểm chứng có gửi email.** Muốn kiểm chứng nội dung
 >    email, dùng đúng một tài khoản và kiểm trực tiếp trong hộp thư.
-> 2. **Mọi kịch bản tạo nhiều tài khoản phải tắt đường gửi email trước.** Hiện chưa có công tắc
->    bật/tắt cho `email` trong `shared/config` — `config.yaml` trỏ thẳng vào `smtp-relay.brevo.com`.
->    Vì vậy **chưa có cách nào an toàn để chạy K2.2 và K2.5** cho tới khi bổ sung công tắc đó.
+> 2. **Mọi kịch bản tạo nhiều tài khoản phải tắt đường gửi email trước.** Công tắc đã có:
+>    đặt `email.enabled: false` trong `configs/config.yaml`, hoặc `EMAIL_ENABLED=false` khi chạy
+>    dịch vụ. **Mặc định là `true`** — không đặt gì thì email vẫn gửi, nên phải **chủ động tắt**.
+>    Cần bật lại thì sửa cấu hình và khởi động lại dịch vụ; cấu hình không nạp nóng.
 > 3. **Không được chạy lại K2.2 hay K2.5 để "kiểm tra cho chắc"** khi hạn mức còn nguyên vẹn.
 >    Chúng đã chạy và kết quả đã ghi ở mục báo cáo; chạy lại chỉ để tăng lòng tin là tiêu hạn mức
 >    của nhà cung cấp.
 >
 > Kịch bản nào **không** cấp gói (chỉ đọc, hoặc bị từ chối) thì không sinh email và vẫn chạy bình
 > thường: K2.1, K2.4, K2.7, K2.8 và toàn bộ mục 6.
+>
+> **Vì sao không tự tắt được hàng loạt:** khi công tắc tắt, worker email vẫn nhận message và vẫn
+> **ACK** chứ không trả lỗi. Trả lỗi sẽ khiến RabbitMQ giữ message lại (`Nack` + requeue), và lúc
+> bật lại công tắc toàn bộ backlog sẽ phát ra một lượt — 1 lần chạy 125 tài khoản sẽ thành 125
+> email. Hàng loạt trong thời gian tắt bị **vứt**, và đó là cái giá có chủ ý.
+>
 >
 > ### ⛔ CỔNG AN TOÀN #1 — MÔI TRƯỜNG (ĐỌC TRƯỚC MỤC 2 VÀ MỤC 6)
 >
