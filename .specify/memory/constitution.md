@@ -1,37 +1,24 @@
 <!--
 Sync Impact Report:
-- Version change: 2.1.0 → 3.0.0 (MAJOR — backwards-incompatible governance change)
-  Reasoning: This amendment REMOVES previously valid configurations. The monolith topology
-  (`cmd/server`) is dropped from `main`: it no longer builds in CI, is no longer a supported
-  runtime, and survives only as the frozen tag `monolith-legacy` for emergency reference. The
-  codebase moves from a single Go module to a multi-module Go workspace (`go.work`), which
-  changes the module/import governance in §I/§II. The supported VPS runtime becomes the
-  3-service Compose topology. Hence MAJOR.
+- Version change: 3.0.0 → 3.1.0 (MINOR — additive governance rule, nothing removed)
+  Reasoning: One new MUST in Governance. No principle is redefined and no previously valid
+  configuration becomes invalid, so this is not a backwards-incompatible change. MINOR, not PATCH,
+  because the amendment adds a principle rather than clarifying wording.
 - Modified principles:
-  - §I Independently Deployable Services (multi-module workspace): single topology
-    (Account, Commerce Core, AI Engine); `cmd/server` removed; service manifests replaced
-    by compiler-enforced boundaries via `go.work`.
-  - §II Cross-Service Communication: dual adapter kept (in-process within a service, gRPC
-    across services); all monolith references removed; contract code under `contracts/`.
-  - §VIII Infrastructure Portability: funding schedule / repatriation timeline kept in
-    `docs/project/funding-and-platform-lifecycle.md` (project lifecycle), NOT in this
-    constitution; only code-level portability rules remain here.
-  - Technology Stack: Go workspace (`go.work`) multi-module; per-service Swagger with
-    union-section preservation.
-  - Governance: production topology = services on every environment; monolith is not a
-    runtime; dual-topology permanence removed.
+  - Governance: new "Outbound email volume during verification" rule — a verification run that
+    exercises an email-sending flow may send at most one email, to one account; bulk fixtures must
+    not reach the real SMTP relay, and any many-account scenario must switch the email path off.
+    Added after feature 025 verification granted to ~125 accounts and sent ~125 real messages
+    through Brevo, exhausting a daily allowance that does not refill. The rule is executable as of
+    the same change: `email.enabled` in shared/config, defaulting to true so existing configuration
+    files keep sending.
 - Added sections: None.
-- Removed sections: Dual-topology allowance, monolith build gate, strangler coexistence.
-- Templates requiring updates:
-  - .specify/templates/plan-template.md (✅ verified/no updates needed)
-  - .specify/templates/spec-template.md (✅ verified/no updates needed)
-  - .specify/templates/tasks-template.md (✅ verified/no updates needed)
-- Docs requiring manual follow-up (outside this skill's scope):
-  - docs/system-design/architecture.md, README.md, docs/development/local-setup.md
-  - docs/operations/* (cutover + repatriation runbooks: VPS runs the 3-service topology)
-  - deployments/docker-compose.prod.yml (3 service containers + infra)
-  - docs/project/funding-and-platform-lifecycle.md (funding clock + repatriation schedule)
-- Follow-up TODOs: tag `monolith-legacy` at the last monolith-green commit before the split.
+- Removed sections: None.
+- Templates requiring updates: None (no template encodes verification-volume rules).
+- Docs requiring manual follow-up:
+  - specs/025-signup-campaign-grant/quickstart.md already carries the matching gate and the
+    scenarios that are safe to run; T113 records the config switch.
+- Follow-up TODOs: None.
 -->
 
 # SmartWardrobe Backend Constitution
@@ -264,9 +251,16 @@ concerns and live in `docs/project/funding-and-platform-lifecycle.md`, not here.
   verify that switching environments requires only configuration and DNS changes, not code changes.
 - Validation checks: Every pull request must verify compliance with layer boundaries (no cross-layer
   skipping), standard error handling, and JSON naming conventions for frontend-facing DTOs.
+- **Outbound email volume during verification**: any test or verification run that exercises a flow
+  containing an outbound email MUST send **at most one email**, to a single test account. Bulk
+  fixtures MUST NOT be allowed to reach the real SMTP relay. Sending is a side effect that leaves the
+  system, consumes a metered third-party allowance, and cannot be undone — email providers meter it
+  per day and the allowance does not refill. Where a scenario needs many accounts, the email path
+  MUST be switched off for that run (`email.enabled`, see §VIII), and the single permitted send is
+  reserved for a dedicated scenario that verifies email content.
 - Archived modules must retain their folder tree structure but be completely removed from Wire DI
   configuration and route registration.
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 3.0.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-09-15
+**Version**: 3.1.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-10-02
