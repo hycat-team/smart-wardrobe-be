@@ -89,6 +89,7 @@ khoảng **55 tệp** bị chạm tới, trong đó 1 dịch vụ, 2 module, 3 m
 | §V Lỗi tập trung | `apperror` factory, thông điệp tiếng Việt | Lỗi chiến dịch đặt trong `application/errors/`, thông báo client tiếng Việt. | ✅ |
 | §VI Lõi kiểm soát chi phí AI | Không sửa ngoài phạm vi đã nêu | R7: dịch vụ AI **không bị sửa**. Chỉ tái dùng đường thay đổi gói sẵn có. | ✅ |
 | §VII Tuân thủ design-pattern.md | Đọc và tuân thủ | Cấu trúc lớp, mẫu worker, mẫu phân trang, mẫu lỗi, mẫu khoá đơn vị công việc, quy ước tên DTO — lấy nguyên văn từ tài liệu. | ✅ |
+| §Governance Giới hạn email khi kiểm thử | Mọi lượt kiểm chứng có gửi email gửi **tối đa 1** email; kịch bản nhiều tài khoản phải tắt email.enabled | T113 thêm công tắc, mặc định 	rue; cổng ở quickstart.md liệt K2.1/K2.4/K2.5/K2.8 theo số lượt cấp thật | ✅ |
 | §VIII Khả chạy trên mọi hạ tầng | Không viết cứng giá trị phụ thuộc môi trường | Múi giờ lấy từ `cfg.Database.TimeZone` (R6). Toàn bộ chiến dịch khai báo bằng cấu hình, ghi đè được bằng biến môi trường cho giá trị đơn lẻ (R10). | ✅ |
 | Hiến phán — Goose migration | Mọi thay đổi lược đồ qua tệp Goose | 3 tệp migration có `-- +goose Up` và `-- +goose Down`, lý do bằng tiếng Anh trích dẫn `025 T### (FR-###)`. | ✅ |
 | Hiến phán — Ngôn ngữ | Thông điệp client tiếng Việt, mã và nhật ký tiếng Anh | Mẫu email và thông báo lỗi tiếng Việt; nhận ký và nhận xét mã tiếng Anh. | ✅ |
@@ -127,7 +128,8 @@ specs/025-signup-campaign-grant/
 │   └── campaign-query-api.md   # Hợp đồng giao diện tra cứu cho quản trị viên
 ├── checklists/
 │   └── requirements.md         # Đã đạt 19/19
-└── tasks.md                    # Sinh ở /speckit-tasks — đã tạo, 119 nhiệm vụ
+├── tasks.md                    # Sinh ở /speckit-tasks — đã tạo, 124 nhiệm vụ
+└── frontend-guide.md           # Hướng dẫn tích hợp cho FE của 4 API tra cứu (T112)
 ```
 
 ### Mã nguồn (thư mục gốc dự án)

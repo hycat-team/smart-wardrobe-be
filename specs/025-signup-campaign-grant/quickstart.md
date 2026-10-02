@@ -27,8 +27,26 @@ nằm ở [data-model.md](./data-model.md) và [contracts/](./contracts/).
 >    Chúng đã chạy và kết quả đã ghi ở mục báo cáo; chạy lại chỉ để tăng lòng tin là tiêu hạn mức
 >    của nhà cung cấp.
 >
-> Kịch bản nào **không** cấp gói (chỉ đọc, hoặc bị từ chối) thì không sinh email và vẫn chạy bình
-> thường: K2.1, K2.4, K2.7, K2.8 và toàn bộ mục 6.
+> **Danh sách dưới đây được suy ra từ SỐ LƯỢT CẤP THẬT của từng kịch bản, không phải từ tên
+> kịch bản.** Đây là bản sửa của chính một bản cổng trước đó, vốn liệt "K2.1, K2.4, K2.7, K2.8" là
+> chạy được vì tên chúng nghe như chỉ đo hay chỉ đọc. K2.1 thật ra tạo 55 tài khoản và cấp 50–55
+> gói. Chạy theo bản cổng cũ là bắn hơn 50 email thật — đúng sự cố mà luật này sinh ra.
+>
+> | Kịch bản | Lượt cấp gói | Phải tắt `email.enabled`? |
+> |---|---|---|
+> | K2.1 | 50–55 | **CÓ** |
+> | K2.2 | 1 | không |
+> | K2.3 | 1 | không |
+> | K2.4 | 20 | **CÓ** |
+> | K2.5 | 50 | **CÓ** |
+> | K2.6 | 1 | không |
+> | K2.7 | 1 | không |
+> | K2.8 | tới 40 | **CÓ** |
+> | Toàn bộ mục 6 | 0 | không |
+>
+> Tức là **K2.1, K2.4, K2.5, K2.8 phải tắt trước**; K2.2, K2.3, K2.6, K2.7 mỗi kịch bản đúng **một**
+> lượt cấp nên vẫn nằm trong trần một email của hiến phán. K2.7 là kịch bản ta dành riêng cho việc
+> kiểm chứng nội dung email.
 >
 > **Vì sao không tự tắt được hàng loạt:** khi công tắc tắt, worker email vẫn nhận message và vẫn
 > **ACK** chứ không trả lỗi. Trả lỗi sẽ khiến RabbitMQ giữ message lại (`Nack` + requeue), và lúc
@@ -339,6 +357,14 @@ phạm FR-022. Nếu `watermark_rows` khác 1 thì vi phạm FR-030.
 
 ### K2.6 — Hết hạn rồi tự hạ về gói miễn phí, không trừ đồng bộ (SC-007, SC-006)
 
+> ⚠️ **K2.6 CHƯA CÓ BẰNG CHỨNG KIỂM CHỨNG (xem T117).** Worker gia hạn chạy cron `0 0 0 * *`,
+> không chạy lúc khởi động và không có endpoint kích hoạt, nên không quan sát được trong một lượt.
+> Hành vi hạ cấp **đã có và đã được kiểm thử** ở tầng hàm
+> (`TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff`,
+> `TestIntegrationScheduledRenewalDowngradesWithoutFunds`) — đây là khoảng trống **quan sát được**,
+> không phải thiếu hành vi. Có thể quan sát được nếu dời `expires_at` về quá khứ rồi gọi
+> `ProcessScheduledRenewals` trực tiếp.
+
 Kịch bản này kiểm tra hành vi **không phải phần mới** — nó thuộc worker gia hạn có sẵn — nhưng nó
 quyết định khách hàng có thực sự nhận được quyền lợi dài hạn hay không. Không kiểm thì cả chiến dịch
 có thể "thành công" mà khách hàng mất quyền sau một tháng.
@@ -580,7 +606,7 @@ trong kho mã nguồn.
 | C | FR-021 tới FR-033, FR-078 tới FR-083, FR-089 | SC-001 tới SC-001d, SC-002, SC-003, SC-015, SC-016 | Mục 2 K2.1 tới K2.5 |
 | C | FR-034 tới FR-040, FR-091 tới FR-095 | SC-005 tới SC-008, SC-012 | Mục 2, mục 4 |
 | C | FR-041 tới FR-043 | SC-004 | Mục 2 **K2.8** — đo độ chậm |
-| C | FR-044 tới FR-049 | SC-005 | Mục 2 K2.1 (kiểm tra hộp thư) |
+| C | FR-044 tới FR-049 | SC-005 | Mục 2 **K2.7** — đúng một lượt cấp cho một tài khoản, nên đây mới là kịch bản kiểm chứng nội dung email mà hiến phán dành riêng. **Không dùng K2.1**: nó tạo 55 tài khoản |
 | C | FR-050, FR-051 | SC-006 | Mục 2 **K2.7** |
 | C | FR-010 | SC-014 | Mục 6.1 |
 | C | FR-059 tới FR-064 | SC-003, SC-012 | Mục 2, mục 5 |
