@@ -319,16 +319,16 @@ bị giảm và có gói miễn phí.
 
 ### Kiểm thử
 
-- [ ] T090 [P] [US6] Kiểm thử chống trôi lệch: `created_by_admin` trong cơ sở dữ liệu khớp `createdByAdmin` trong thông điệp cho cả ba đường tạo tài khoản — `services/account/internal/modules/identity/application/usecase/eager_provision_test.go` (SC-006)
-- [ ] T091 [P] [US6] Kiểm thử tìm kiếm văn bản: trong `services/account` chỉ có **đúng một** chỗ ghi `CreatedByAdmin: true` — thêm vào tệp kiểm thử canh ranh giới đã tạo ở T090 (SC-006)
-- [ ] T092 [P] [US6] Kiểm thử tài khoản do quản trị viên tạo vẫn được cấp gói miễn phí (FR-051) — cùng tệp với T090 (SC-006)
-- [ ] T093 [P] [US6] Kiểm thử đường cấp gói thủ công của quản trị viên không bị ảnh hưởng (FR-051) — cùng tệp với T090 (SC-006)
+- [X] T090 [P] [US6] Kiểm thử chống trôi lệch: `created_by_admin` trong cơ sở dữ liệu khớp `createdByAdmin` trong thông điệp cho cả ba đường tạo tài khoản — `services/account/internal/modules/identity/application/usecase/user_created_event_test.go` (SC-006). Đường dẫn gốc chỉ `eager_provision_test.go` là **sai**: coverage thật nằm ở đây, do T029b tạo
+- [X] T091 [P] [US6] Kiểm thử tìm kiếm văn bản: trong `services/account` chỉ có **đúng một** chỗ ghi `CreatedByAdmin: true` — thêm vào `user_created_event_test.go` cùng T090 (SC-006). Quét **toàn bộ** `services/account`, không chỉ `modules/identity` — bản quét cũ không nhìn thấy writer thứ hai nằm ngoài identity
+- [X] T092 [P] [US6] Kiểm thử tài khoản do quản trị viên tạo vẫn được cấp gói miễn phí (FR-051) — cùng tệp với T090 (SC-006)
+- [X] T093 [P] [US6] Kiểm thử đường cấp gói thủ công của quản trị viên không bị ảnh hưởng (FR-051) — cùng tệp với T090 (SC-006)
 
 ### Cài đặt
 
 - [x] T094 [US6] **Đã xong ở T042** (điều kiện 3 của bảng quyết định): `admission_uc.go:83` gọi `adminSkipReason(createdByAdmin)` trả lý do riêng `SkipCreatedByAdmin` = `created_by_admin`. Giữ lại dòng này như **xác nhận**, không phải việc mới — sửa lại để không dẫn người đọc tới viết lại thứ đã có. Tách bạch với **giá trị `eligibility` `not_eligible`** ở hợp đồng mục 3.4, KHÔNG phải với một mã `reason` (tập `reason` ở mục 3.5 đã **cố ý** không có `not_eligible`) (FR-050, FR-033)
-- [ ] T095 [US6] Lọc cùng điều kiện đó trong đường quét bù `sweep_uc.go`, dùng cột `created_by_admin` từ hợp đồng tài khoản
-- [ ] T096 [US6] Bảo đảm cơ chế quét bù **không** gọi lại `admission_uc.go` bằng một đường khác, mà dùng **chung** một hàm bỏ qua, để hai đường không thể lệch nhau (FR-080)
+- [X] T095 [US6] Lọc cùng điều kiện đó trong đường quét bù `sweep_uc.go`, dùng cột `created_by_admin` từ hợp đồng tài khoản
+- [X] T096 [US6] Bảo đảm cơ chế quét bù **không** gọi lại `admission_uc.go` bằng một đường khác, mà dùng **chung** một hàm bỏ qua, để hai đường không thể lệch nhau (FR-080)
 
 **Điểm kiểm tra**: tài khoản kiểm thử của quản trị viên không ăn suất của khách hàng thật.
 

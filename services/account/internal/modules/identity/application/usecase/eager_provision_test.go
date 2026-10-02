@@ -649,3 +649,77 @@ func TestGoogleAutoLinkDoesNotReprovision(t *testing.T) {
 		t.Errorf("linking a Google identity writes no account, commits = %d", uow.commits)
 	}
 }
+
+// --- FR-051: the exclusion is about the CAMPAIGN, not about the account -------
+
+// TestAdministratorCreatedAccountStillGetsItsDefaultPlan is T092 / FR-051, the
+// other half of FR-050.
+//
+// FR-050 says an administrator-created account must not consume a campaign's
+// promotional quota. FR-051 says it must STILL receive the default free plan like
+// any other account, and those two halves are kept apart on purpose: the account
+// is a perfectly good account, the promotion simply does not apply to it. A test
+// that read the first half as "administrator accounts get nothing" would satisfy
+// FR-050 and break a paying customer who happens to have been created by staff.
+//
+// The trap is a plausible-looking optimisation. `EnsureDefaultSubscription` is one
+// call, and a developer reasoning about FR-050 could reasonably write
+// `if !newUser.CreatedByAdmin { ... }` — "administrator accounts already have a
+// plan". They do not, and the account would then be created with no entitlement at
+// all: no AI allowance, nothing to reconcile, and a `POST /admin/users` that
+// returns 200. Every existing test in this file would still pass, because each one
+// creates an account whose flag happens to be false.
+//
+// So the premise is asserted FIRST: the row this test reads really does carry
+// `created_by_admin = true`. A test that never checked would pass against a door
+// that quietly stopped setting the flag.
+func TestAdministratorCreatedAccountStillGetsItsDefaultPlan(t *testing.T) {
+	uow := newEagerIdentityUow()
+	repo := newEagerIdentityRepo(uow)
+	spy := &eagerProvisioningSpy{uow: uow}
+
+	uc := newEagerUserUseCase(repo, spy, uow)
+	res, err := uc.CreateUserByAdmin(context.Background(), uuid.New(), dto.CreateAdminUserReq{
+		Username:  "duck.nguyen",
+		Email:     "duck.nguyen@example.com",
+		Password:  "Str0ng-Passw0rd!",
+		FirstName: "Duck",
+	})
+	if err != nil {
+		t.Fatalf("CreateUserByAdmin failed: %v", err)
+	}
+	if res == nil {
+		t.Fatal("expected the created account")
+	}
+
+	// The premise: this IS an administrator-created account, so everything below is
+	// about FR-051 and not about an ordinary sign-up.
+	row := uow.accounts[res.ID]
+	if row == nil {
+		t.Fatalf("no account row was committed for %s", res.ID)
+	}
+	if !row.CreatedByAdmin {
+		t.Fatalf("premise broken: the administrator door left created_by_admin = false, so this test is " +
+			"measuring an ordinary sign-up and proves nothing about FR-051")
+	}
+
+	// The claim itself. Default provisioning ran for THIS account, once, inside the
+	// transaction that created it — the same three properties SC-006 puts a
+	// deadline on, asserted by the tests above for an ordinary account and required
+	// here for an administrator's.
+	if len(spy.calls) != 1 {
+		t.Fatalf("an administrator-created account must be provisioned exactly once, ran %d times", len(spy.calls))
+	}
+	if spy.calls[0] != res.ID {
+		t.Errorf("provisioning targeted %s, want the new account %s", spy.calls[0], res.ID)
+	}
+	if _, provisioned := uow.entitlements[res.ID]; !provisioned {
+		t.Fatalf("FR-051: the account created by an administrator holds no default entitlement. " +
+			"The campaign exclusion decides which PROMOTION applies; it must never decide whether the " +
+			"account gets a plan at all, or this administrator's customer has no AI allowance and nothing " +
+			"to reconcile it against")
+	}
+	if uow.commits != 1 {
+		t.Errorf("the account and its default plan must be ONE transaction, commits = %d", uow.commits)
+	}
+}

@@ -207,7 +207,7 @@ func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.U
 		Gender:        req.Gender,
 		RoleSlug:      role,
 		Status:        userstatus.Active,
-		// 025 T032 / FR-091: the ONE write of `true` in the whole source tree.
+		// 025 T032 / FR-050: the ONE write of `true` in the whole source tree.
 		//
 		// It has to be set here, before the insert, because the catch-up sweep
 		// (FR-079) reads this column and has no creation event to read — an

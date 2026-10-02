@@ -304,7 +304,7 @@ func singleRecord(t *testing.T, publisher shared_event.IEventPublisher) (recorde
 // written at two different places. If they ever disagree, one of the two
 // exclusion paths silently stops working: the event path refuses the
 // administrator account, or the catch-up sweep does — never both, and nothing
-// reports it. That is the exact failure FR-091 exists to prevent, and it is
+// reports it. That is the exact failure FR-050 exists to prevent, and it is
 // invisible from either side alone.
 func TestCreatedByAdminFlagAgreesWithTheStoredColumn(t *testing.T) {
 	cases := []struct {
@@ -328,6 +328,28 @@ func TestCreatedByAdminFlagAgreesWithTheStoredColumn(t *testing.T) {
 			if record.payload.CreatedByAdmin != tc.wantInEvent {
 				t.Errorf("the message says createdByAdmin=%v, want %v", record.payload.CreatedByAdmin, tc.wantInEvent)
 			}
+
+			// THE ANTI-DRIFT COMPARISON, and the reason this file exists. Two writes,
+			// two places: `admin_uc.go` sets the ENTITY field on the row
+			// (`CreatedByAdmin: true`) and passes the payload flag as a LITERAL
+			// (`publishUserCreated(..., true)`). Nothing connects those two writes —
+			// not a signature, not a type — so deleting one leaves the other in
+			// place and every assertion above still passes.
+			//
+			// The failure it produces is invisible from either side: the message
+			// path reads the literal and refuses the account, while the catch-up
+			// sweep reads the column, sees an ordinary customer and GRANTS it. One
+			// administrator test account, one launch campaign's 50 slots, and no
+			// error anywhere — which is the drift FR-050 exists to prevent.
+			stored := storedCreatedByAdminFor(t, tc.name)
+			if stored != record.payload.CreatedByAdmin {
+				t.Errorf("the two sources disagree: users.created_by_admin = %v but the message says createdByAdmin = %v. "+
+					"Whichever is wrong, exactly one of the two exclusion paths has stopped working (FR-050)",
+					stored, record.payload.CreatedByAdmin)
+			}
+			assert.Equal(t, tc.wantInEvent, stored,
+				"the stored column and the message must carry the same value, and that value is the door's own")
+
 			// The two self-serve doors must ALSO leave the stored column at its
 			// default. If one of them started setting it, the event and the sweep
 			// would begin to disagree.
@@ -366,7 +388,7 @@ func storedCreatedByAdminFor(t *testing.T, door string) bool {
 		if _, err := uc.LoginWithIDToken(context.Background(), dto.GoogleLoginReq{IDToken: "token"}); err != nil {
 			t.Fatalf("LoginWithIDToken failed: %v", err)
 		}
-	default:
+	case "administrator":
 		uc := newEagerUserUseCaseWithPublisher(repo, spy, uow, publisher)
 		if _, err := uc.CreateUserByAdmin(context.Background(), uuid.New(), dto.CreateAdminUserReq{
 			Username:  "duck.nguyen",
@@ -376,6 +398,12 @@ func storedCreatedByAdminFor(t *testing.T, door string) bool {
 		}); err != nil {
 			t.Fatalf("CreateUserByAdmin failed: %v", err)
 		}
+	default:
+		// Not a fallthrough to the administrator door. A new door added to the table
+		// above would otherwise be measured through the wrong use case, and the
+		// column it reported would have nothing to do with the event under test —
+		// which is how an anti-drift test passes without having compared anything.
+		t.Fatalf("unknown creation door %q; add it to the table in TestCreatedByAdminFlagAgreesWithTheStoredColumn", door)
 	}
 
 	for _, row := range uow.accounts {
@@ -389,14 +417,25 @@ func storedCreatedByAdminFor(t *testing.T, door string) bool {
 }
 
 // TestOnlyTheAdministratorDoorWritesCreatedByAdminTrue is the text scan behind
-// FR-091's "exactly one write site".
+// FR-050's "exactly one write site".
 //
 // The compiler cannot see this: setting a struct field to true is ordinary code,
 // and both self-serve doors would compile perfectly while quietly eating
 // customers' promotional quota. Nor can a unit test that only exercises the doors
 // it knows about — it cannot tell an absent writer from a writer it did not call.
+//
+// THE SCAN ROOT IS THE WHOLE ACCOUNT SERVICE, not `modules/identity`. The rule is
+// about the SERVICE, not about one module: the flag is a fact about an account
+// that any package here could decide to stamp on, and the mapper, the gRPC
+// contract adapter and the subscription module's own sweep all read it. A second
+// writer in any of those places would be just as wrong as one in the registration
+// use case, and a scan scoped to one directory would not see it.
 func TestOnlyTheAdministratorDoorWritesCreatedByAdminTrue(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "..", "modules", "identity")
+	root := filepath.Join("..", "..", "..", "..", "..")
+	if _, err := os.Stat(root); err != nil {
+		t.Fatalf("cannot locate the account service at %s: %v", root, err)
+	}
+
 	var hits []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -418,7 +457,7 @@ func TestOnlyTheAdministratorDoorWritesCreatedByAdminTrue(t *testing.T) {
 		if strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		if strings.HasSuffix(rel, "admin_uc.go") {
+		if strings.HasSuffix(rel, filepath.Join("identity", "application", "usecase", "admin_uc.go")) {
 			return nil
 		}
 		hits = append(hits, rel)
@@ -428,7 +467,7 @@ func TestOnlyTheAdministratorDoorWritesCreatedByAdminTrue(t *testing.T) {
 		t.Fatalf("scanning the identity module failed: %v", err)
 	}
 	if len(hits) > 0 {
-		t.Errorf("FR-091: only the administrator door may set CreatedByAdmin true; also written in: %s",
+		t.Errorf("FR-050: only the administrator door may set CreatedByAdmin true; also written in: %s",
 			strings.Join(hits, ", "))
 	}
 }

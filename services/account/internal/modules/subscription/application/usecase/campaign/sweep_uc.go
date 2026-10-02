@@ -57,14 +57,19 @@ const (
 // customer who signed up, qualified, and was never told — permanently and
 // silently, which is the one outcome worse than being late.
 //
-// WHY IT HOLDS NO RULES. Every decision — which campaign, whether the account is
-// eligible, whether the budget allows it, whether the administrator is refused —
-// lives in `CampaignUseCase.ProcessUserCreated` and is reached by calling THAT
+// WHY IT HOLDS NO RULES OF ITS OWN. Every decision — which campaign, whether the
+// account is eligible, whether the budget allows it — lives in
+// `CampaignUseCase.ProcessUserCreated`, and the sweep reaches it by calling THAT
 // method (FR-080). This type walks a list and counts. If it grew a second
 // eligibility check, the same account could be granted here and refused there, and
 // nothing would report the disagreement: both answers would look individually
 // reasonable. That is the whole reason the sweep exists, and also the only way it
 // is allowed to be written.
+//
+// The one predicate it does call is `adminSkipReason`, and calling it is what
+// keeps that promise rather than breaking it — see the condition 3 block below.
+// A filter is a rule; the shared predicate is the same rule. What must never
+// appear here is a rule of its own.
 type CampaignSweepUseCase struct {
 	cfg       *sharedconfig.Config
 	accounts  identitycontract.CampaignAccountLister
@@ -229,10 +234,13 @@ func (uc *CampaignSweepUseCase) processBatch(
 		// Condition 3 through the SHARED predicate. The sweep reads the flag from
 		// `identity.users` where the message reads it from the payload — the same
 		// fact from two sources — so the rule itself must be the same function
-		// (FR-080, T096). An administrator's account is skipped here for the same
-		// reason and with the same code it would be skipped at the message path,
-		// which is what keeps the admin test account from being granted by a
-		// background run while the message path refuses it.
+		// (FR-050, FR-080, T096). An administrator's account is skipped here for
+		// the same reason and with the same code it would be skipped at the message
+		// path. Note that the message path would refuse it anyway: `payloadFor`
+		// copies `CreatedByAdmin` into the payload, so this check is not the only
+		// guard, it is a cheaper one — an administrator's account does not cost a
+		// transaction, an advisory lock and two counts to be turned away, and the
+		// report attributes the skip where the operator can see it.
 		if reason := adminSkipReason(account.CreatedByAdmin); reason != "" {
 			report.Skipped++
 			uc.logSkippedAccount(account.ID, reason)
