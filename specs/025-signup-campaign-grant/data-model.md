@@ -435,25 +435,36 @@ chạy trước, ràng buộc cần khoá chạy sau.
 | 1 | Có ít nhất một chiến dịch khai báo không | Cấu hình | `campaign_not_configured` | Không |
 | 2 | Có chiến dịch ở trạng thái `running` hoặc `compensation` | Cấu hình + đồng hồ | `campaign_not_started` / `campaign_sleeping` | Không |
 | 3 | Tài khoản **không** do quản trị viên tạo | Thông báo, hoặc cột `created_by_admin` khi quét bù | `created_by_admin` | Không |
-| 4 | Tài khoản chưa có lượt cấp nào | `campaign_claims` | `already_claimed` | Không — ràng buộc `UNIQUE` lo |
+| 4 | Tài khoản chưa có lượt cấp nào | `campaign_claims` | `already_claimed` | Không — xem ghi chú bên dưới |
 | 5 | Tài khoản đang ở **đúng** gói đó và còn hạn | `user_subscriptions` | `already_on_plan` (FR-018) | Không |
 | 6 | Cấm chồng: tài khoản vừa bị hạ về gói miễn phí mà gói cũ chưa dọn xong | `user_subscriptions` | `plan_not_settled` | Không |
 | 6a | `plan_slug` của chiến dịch trỏ tới gói tồn tại và đang active | Cấu hình + `subscription_plans` | `plan_unavailable` | Không |
 | 7 | Chọn chiến dịch **bắt đầu muộn nhất** mà tài khoản đủ điều kiện | Cấu hình | `outside_window` (FR-011, FR-017) | Không |
 | 8 | Chốt hạn mức: còn suất theo vị trí của tài khoản | `campaign_claims` + khoá tư vấn | `quota_main` / `quota_compensation` / `quota_anomaly` | **Có** |
-| 9 | Ghi lượt cấp | `campaign_claims` | vi phạm `UNIQUE` — bất thường, xem ghi chú | **Có** |
+| 9 | Ghi lượt cấp | `campaign_claims` | `already_claimed` — **chốt chặn thật của điều kiện 4** | **Có** |
 
 Bước 8 là bước duy nhất cần khoá, vì đó là bước duy nhất **đọc rồi quyết định rồi ghi**.
+
+**Điều kiện 4 không phải một bước kiểm sớm, và bảng nói rõ điều đó.** Bộ đánh giá không tra
+`campaign_claims` ở điều kiện 4. Chốt chặn thật là ràng buộc `UNIQUE` ở điều kiện 9:
+`ON CONFLICT (user_id) DO NOTHING` trả `SkipAlreadyClaimed` (`quota_uc.go:140`). FR-012 vẫn được
+bảo vệ đúng và mã lý do vẫn là `already_claimed`; cái khác là **vị trí và chi phí** — một tài khoản
+chắc chắn bị từ chối vẫn phải mở transaction, giữ khoá tư vấn và chạy hai phép đếm.
+
+Hai đường dùng cơ chế khác nhau nhưng ra cùng kết cậu, và điều đó là cố ý: đường thông điệp dựa
+vào xung đột ràng buộc, còn đường quét bù tra cứu trước trong một lần (`sweep_uc.go:248`) rồi mới
+chuyển sang đường dùng chung. Không thống nhất hai đường này.
 
 **Về điều kiện 6a.** Nạp cấu hình **không** được chạm cơ sở dữ liệu (hiến phán §I, §VIII), nên
 không thể chặn khởi động khi `plan_slug` sai. Kiểm tra diễn ra ở nơi dòng gói vốn được đọc — tức lúc
 chạy — và ghi lý do `plan_unavailable`. Hệ quả cần nói rõ: **một `plan_slug` sai không làm hỏng dịch
 vụ, nó chỉ khiến chiến dịch đó không cấp được gì cho ai**, và người vận hành thấy ngay qua mã này.
 
-**Về điều kiện 9.** Khi ràng buộc `UNIQUE` thực sự kích hoạt, đó không phải một lý do bỏ qua hợp lệ để
-báo cho khách hàng mà là dấu hiệu dữ liệu bất thường hoặc đua thao tác — điều kiện 4 đã chặn sớm
-bằng `already_claimed` trước khi tới đây. Vì vậy nó **không** có mã `reason` riêng: điều kiện này
-được thiết kế để không xảy ra, và nếu xảy ra thì phải điều tra chứ không phải phục vụ trả lời.
+**Về điều kiện 9.** `ON CONFLICT (user_id) DO NOTHING` trả `already_claimed` — **cùng một mã** với
+điều kiện 4, vì nó là cùng một sự kiện nhìn từ hai bước: tài khoản này đã có lượt cấp. Không tách mã
+riêng cho xung đột ràng buộc, vì khi điều kiện 4 đã bị bỏ khỏi đường thông điệp, xung đột ở đây
+**chính là** cách duy nhất đường đó bảo vệ FR-012. Hai mã cho một sự kiện sẽ khiến người vận hành
+tưởng đây là hai loại sự cố khác nhau.
 
 ### 6.1 Quy tắc chọn chiến dịch (bước 7)
 
@@ -463,10 +474,19 @@ bằng `already_claimed` trước khi tới đây. Vì vậy nó **không** có 
 chiến dịch = ứng viên có starts_at LỚN NHẤT
 ```
 
-Hai vế của điều kiện ứng viên dùng `account.created_at`, không dùng "bây giờ". Đó là điểm làm quy
-tắc này thuần tuý: **cùng một tài khoản luôn được xếp vào cùng một chiến dịch, bất kể thông báo tới
-trước hay sau** (FR-011). Nếu dùng "bây giờ", một thông báo tới chậm sẽ rơi ra ngoài cửa sổ và tài
-khoản đó bị loại một cách vô lý.
+**Hai vế của điều kiện ứng viên dùng `account.created_at`, không dùng "bây giờ" — nhưng vế thứ ba
+thì dùng "bây giờ", và sự phân tách đó là cố ý.** Cửa sổ được đánh giá theo thời điểm tạo tài khoản để
+quy tắc thuần tuý: **cùng một tài khoản luôn được xếp vào cùng một chiến dịch, bất kể thông báo tới
+trước hay sau** (FR-011). Nếu dùng "bây giờ" cho cửa sổ, một thông điệp tới chậm sẽ rơi ra ngoài
+cửa sổ và tài khoản đó bị loại một cách vô lý.
+
+Còn `c.still_running(now)` thì hỏi câu khác: chiến dịch còn **đang mở** không, chứ không phải tài
+khoản có nằm trong cửa sổ không. Bỏ vế này thì một chiến dịch đã quá `ends_at` vẫn cấp được, miễn là
+còn chiến dịch khác giữ cho điều kiện 2 xanh — trái máy trạng thái ở mục 5 (`now > ends_at` →
+`expired`, tự ngủ) và FR-013. Với đúng **một** chiến dịch thì điều kiện 2 đã chặn sẵn nên lỗi này
+không lộ ra; nó chỉ xuất hiện khi có **hai** chiến dịch trở lên, tức đúng cách vận hành một chiến
+dịch theo mùa. Mã nguồn dùng chung `isAwake` cho cả vế này và điều kiện 2, nên "chiến dịch còn
+thức" chỉ có **một** định nghĩa trong gói.
 
 ### 6.2 Quy tắc chốt hạn mức (bước 8)
 

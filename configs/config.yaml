@@ -243,6 +243,23 @@ campaigns:
       starts_at: "2026-10-02T00:00:00+07:00"
       # Optional (FR-009). When set, must be after starts_at (FR-013).
       ends_at: null
+    # 025 T089: the SECOND campaign, and this list entry is the whole of US5.
+    # Opening a campaign is a YAML edit - no migration, no code change, no
+    # restart with new binaries (FR-011).
+    #
+    # DEV FILE ONLY. NEVER copy this entry into configs/config.production.yaml:
+    # FR-011 gives the account to the LATEST-STARTING campaign, so a sample
+    # declared in production would take real signups away from launch-2026-10 and
+    # every check would stay green. See quickstart.md's safety gate and T106.
+    #
+    # It opens on 2026-11-01, so it does not disturb dev behaviour before then. To
+    # exercise it locally, move starts_at into the past (quickstart.md 1.2).
+    - code: sample-2026-11
+      plan_slug: premium-monthly
+      quota: 10
+      reserve: 2
+      starts_at: "2026-11-01T00:00:00+07:00"
+      ends_at: "2026-12-01T00:00:00+07:00"
 # Catch-up sweep cadence for ALL campaigns at once (FR-083). It is a separate
 # block, not a per-campaign field: one sweep worker serves every campaign.
 campaign_sweep:

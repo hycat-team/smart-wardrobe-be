@@ -293,13 +293,14 @@ chiến dịch mới chạy. Không sửa tệp mã nguồn nào.
 
 ### Kiểm thử
 
-- [ ] T084 [P] [US5] Kiểm thử thêm chiến dịch thứ hai bằng cấu hình: tài khoản mới rơi vào chiến dịch mới, **không** có thay đổi mã nguồn — `campaign_multi_campaign_test.go` (SC-001)
-- [ ] T085 [P] [US5] Kiểm thử hết hạn theo thời gian: tài khoản tạo sau `ends_at` không được cấp, kể cả khi thông điệp tới muộn (FR-017) — cùng tệp với T084
-- [ ] T086 [P] [US5] Kiểm thử tài khoản đã tham gia chiến dịch trước không được tham gia chiến dịch sau (FR-012) — cùng tệp với T084 (SC-009)
+- [X] T084 [P] [US5] Kiểm thử thêm chiến dịch thứ hai bằng cấu hình: tài khoản mới rơi vào chiến dịch mới, **không** có thay đổi mã nguồn — `campaign_multi_campaign_test.go` (SC-001)
+- [X] T085 [P] [US5] Kiểm thử hết hạn theo thời gian: tài khoản tạo sau `ends_at` không được cấp, kể cả khi thông điệp tới muộn (FR-017) — cùng tệp với T084
+- [X] T086 [P] [US5] Kiểm thử tài khoản đã tham gia chiến dịch trước không được tham gia chiến dịch sau (FR-012) — cùng tệp với T084. **Không** trích SC-009: SC-009 là 1000 thao tác AI đồng thời, nhiệm vụ này không chứng minh được
+- [X] T086b [P] [US5] Kiểm thử chiến dịch **đã quá `ends_at`** không cấp được cho tài khoản mà chiến dịch đang chạy không phủ: chiến dịch A có `ends_at` thật và đã qua, B còn thức, tài khoản tạo trong cửa sổ A nhưng ngoài cửa sổ B — phải bị từ chối chứ không được A cấp (FR-013, `data-model.md` mục 6.1). Lỗi này **không lộ ra khi chỉ có một chiến dịch**, vì điều kiện 2 đã chặn sẵn — cùng tệp với T084
 
 ### Cài đặt
 
-- [ ] T089 [US5] Bổ sung cấu hình mẫu cho **chiến dịch thứ hai vào `configs/config.yaml` DUY NHẤT**, dùng để kiểm thử. **TUYỆT ĐỐI KHÔNG** thêm chiến dịch mẫu vào `configs/config.production.yaml` (FR-011 chọn chiến dịch bắt đầu muộn nhất → chiến dịch mẫu sẽ cướp lượt đăng ký thật của `launch-2026-10`; xem `quickstart.md` cổng an toàn)
+- [X] T089 [US5] Bổ sung cấu hình mẫu cho **chiến dịch thứ hai vào `configs/config.yaml` DUY NHẤT**, dùng để kiểm thử. **TUYỆT ĐỐI KHÔNG** thêm chiến dịch mẫu vào `configs/config.production.yaml` (FR-011 chọn chiến dịch bắt đầu muộn nhất → chiến dịch mẫu sẽ cướp lượt đăng ký thật của `launch-2026-10`; xem `quickstart.md` cổng an toàn)
 
 **Điểm kiểm tra**: thêm một khối cấu hình, chiến dịch mới chạy, không sửa mã nguồn.
 

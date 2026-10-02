@@ -175,15 +175,31 @@ func (e *campaignEvaluator) isAwake(campaign sharedconfig.CampaignConfig) bool {
 
 // selectCampaign implements `data-model.md` §6.1.
 //
-// Both sides of the window test use the ACCOUNT's creation instant, never the
-// processing clock. That is what makes the rule pure: the same account is always
-// assigned to the same campaign, whether its message arrives in fifty
+// TWO INSTANTS, TWO JOBS. The window test uses the ACCOUNT's creation instant,
+// never the processing clock. That is what makes the rule pure: the same account
+// is always assigned to the same campaign, whether its message arrives in fifty
 // milliseconds or five minutes. Using "now" would drop a late message out of the
 // window and discard an account for no reason at all (FR-078).
+//
+// "Is this campaign still running?" is the OTHER term of the same candidate set
+// and it is a clock question, answered against `now`. Without it a campaign that
+// closed yesterday keeps granting from its window forever — which is how a
+// seasonal campaign ends up giving away next season's budget to last season's
+// signups (FR-013). Note the asymmetry is deliberate: the window asks "was this
+// account inside A?", the liveness asks "is A still open?", and an account can
+// fail either without failing the other.
 func (e *campaignEvaluator) selectCampaign(registeredAt time.Time) *sharedconfig.CampaignConfig {
 	var chosen *sharedconfig.CampaignConfig
 	for i := range e.campaigns {
 		candidate := &e.campaigns[i]
+		// `c.still_running(now)`, the first term of §6.1's candidate set. It is not
+		// spelled out here: `isAwake` IS that term — the very function condition 2
+		// asks with — so "this campaign is awake" has ONE definition in this
+		// package. A second copy of the comparison is a second rule, and two rules
+		// about the same window eventually disagree (FR-080).
+		if !e.isAwake(*candidate) {
+			continue
+		}
 		// Half-open [starts_at, ends_at): the start instant is INSIDE the window.
 		if registeredAt.Before(candidate.StartsAtTime) {
 			continue
