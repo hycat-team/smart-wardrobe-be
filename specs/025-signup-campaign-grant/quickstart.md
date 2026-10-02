@@ -27,11 +27,29 @@ nằm ở [data-model.md](./data-model.md) và [contracts/](./contracts/).
 > SELECT current_database(), current_user, inet_server_addr();
 > ```
 >
-> Dừng ngay nếu tên cơ sở dữ liệu không kết thúc bằng `_test` hoặc `_dev`, hoặc nếu
-> `inet_server_addr()` không phải `127.0.0.1` / `localhost`. Cơ sở dữ liệu kiểm thử cục bộ là
-> `smart_wardrobe_test` (xem `.env.example` → `DB_NAME`). Đây là lý do giống như vụ 8 tài khoản
-> bị cấp nhầm ở lần chạy đầu tiên, chỉ khác chỗ lần đó lỗi nằm ở ngày bắt đầu còn lần này lỗi
-> nằm ở câu lệnh xoá.
+> **Điều kiện chặn duy nhất: `current_database()` KHÔNG được trùng với `DB_NAME` trong `.env.production`.**
+>
+> Đó là tín hiệu duy nhất phân biệt được môi trường này với production, và **không** phải địa chỉ
+> mạng. Lý do đáng ghi lại: cả môi trường phát triển lẫn production đều chạy bằng Docker Compose với
+> `DB_HOST=postgres`, nên `inet_server_addr()` trả về địa chỉ bridge kiểu `172.18.0.5` ở **cả hai**
+> bên. Địa chỉ loopback (`127.0.0.1`) chỉ xuất hiện khi bạn `psql` vào container — tức là một vòng lặp
+> **bên trong** container, tách khỏi đúng đường mà ứng dụng thật sự kết nối. Kiểm tra loopback vì vậy
+> cho kết quả **sai theo cả hai chiều**: nó chặn nhầm môi trường phát triển chạy container hóa, và
+> không thể chứng minh được mình không đang ở production.
+>
+> Cách kiểm tra:
+>
+> ```powershell
+> # production dùng tên nào — lấy từ chính tệp biến môi trường của production
+> Select-String -Path .env.production -Pattern '^DB_NAME='
+>
+> # môi trường hiện tại đang nối tới tên nào
+> psql -h <host> -U <user> -d <db> -c "SELECT current_database(), inet_server_addr()"
+> ```
+>
+> Trong kho này: production là `closy_db`, môi trường phát triển cục bộ là `smart_wardrobe_db`.
+> **Hai tên khác nhau** — chạy được ở đây. Nếu chúng trùng nhau thì dừng, không có bước nào khôi
+> phục được.
 >
 > **2. Cướp suất của chiến dịch đang chạy.** **TUYỆT ĐỐI KHÔNG** khai báo một chiến dịch thứ hai
 > vào `configs/config.production.yaml`. FR-011 chọn chiến dịch có `starts_at` **muộn nhất** trong
@@ -495,11 +513,18 @@ sẽ là đường truy cận (FR-038).
 
 Sau mỗi lần, **hoàn tác** cấu hình trước khi thử lần tiếp theo.
 
-**`plan_slug` không nằm trong bảng này, và đó là quyết định có chủ ý.** Nạp cấu hình không được
-chạm cơ sở dữ liệu, nên không thể tra tên gói lúc khởi động; một `plan_slug` sai chỉ làm chiến
-dịch đó không cấp được gì cho ai. Kiểm chứng nó ở mục 4 thay vì ở đây: khai báo một `plan_slug` không
-tồn tại, rồi xác nhận mỗi lượt bị từ chối đều ghi `plan_unavailable` ở cột *Lý do*, và dịch vụ
-**vẫn khởi động bình thường** (FR-010).
+**Hai trường hợp của `plan_slug` khác nhau, và chỉ một cái rời khỏi bảng này.**
+
+- **`plan_slug` rỗng** vẫn **chặn khởi động**. Đây là lỗi hình dạng cấu hình, kiểm được mà không
+  cần chạm cơ sở dữ liệu.
+- **`plan_slug` không tồn tại trong CSDL, hoặc trỏ tới gói không còn active** thì **không** chặn
+  khởi động — nạp cấu hình không được chạm cơ sở dữ liệu, nên không thể tra tên gói lúc bật dịch
+  vụ. Nó chỉ khiến chiến dịch đó không cấp được gì cho ai, và mỗi lượt bị từ chối đều ghi
+  `plan_unavailable` (FR-010).
+
+Kiểm chứng trường hợp thứ hai ở mục 4 chứ không ở đây: khai báo một `plan_slug` không tồn tại,
+rồi xác nhận dịch vụ **vẫn khởi động bình thường** và mỗi lượt bị từ chối đều ghi
+`plan_unavailable`.
 
 ---
 

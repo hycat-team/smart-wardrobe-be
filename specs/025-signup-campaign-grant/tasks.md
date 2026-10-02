@@ -350,10 +350,10 @@ làm **song song với Phase 6 và 7** được.
 - [x] T100 [P] [US3] Kiểm thử tính bất biến của mốc ưu tiên khi hai lần quét chạy song song: mốc **không** đổi giữa các lần (FR-030, SC-001)
 - [x] T101 [P] [US1] Kiểm thử bù trễ: thông điệp tới muộn hơn 5 phút vẫn cấp gói, và sự kiện trễ được ghi nhận như sự kiện quan sát được (FR-078, FR-082, SC-015)
 - [x] T102 [P] [US1] Kiểm thử quét bù đóng sót: tài khoản không có thông điệp nhưng đủ điều kiện vẫn được cấp (FR-079, FR-089, SC-016)
-- [ ] T103 [P] Kiểm thử canh FR-092: tập loại sự kiện đổi gói trong `shared/domain/constants/subscriptioneventtype/` vẫn đúng 7 phần tử, không thêm không bớt (FR-092)
-- [ ] T104 [P] Kiểm thử canh FR-098: module tạo tài khoản không có câu lệnh nào tra cứu gói cước — tìm kiếm văn bản trong `services/account/internal/modules/identity/` (FR-098)
-- [ ] T105 [P] Kiểm thử canh FR-095: lần cấp gói ghi **đúng một** dòng lịch sử thay đổi gói (SC-008)
-- [ ] T106 [P] Kiểm thử rằng **cả hai** tệp cấu hình đều có khóa `campaigns` và đều phân tích được khối đó; `config.yaml` chứa **hai** chiến dịch còn `config.production.yaml` chứa **một** (SC-014). Không đòi hai tệp giống nhau: buộc chúng giống nhau chính là cơ chế biến việc thử nghiệm ở dev thành thay đổi hành vi production (T089, xem `quickstart.md` cổng an toàn)
+- [X] T103 [P] Kiểm thử canh FR-092: tập loại sự kiện đổi gói trong `shared/domain/constants/subscriptioneventtype/` vẫn đúng 7 phần tử, không thêm không bớt (FR-092)
+- [X] T104 [P] Kiểm thử canh FR-098: module tạo tài khoản không có câu lệnh nào tra cứu gói cước — tìm kiếm văn bản trong `services/account/internal/modules/identity/` (FR-098)
+- [X] T105 [P] Kiểm thử canh FR-095: lần cấp gói ghi **đúng một** dòng lịch sử thay đổi gói (SC-008)
+- [X] T106 [P] Kiểm thử rằng **cả hai** tệp cấu hình đều có khóa `campaigns` và đều phân tích được khối đó; `config.yaml` chứa **hai** chiến dịch còn `config.production.yaml` chứa **một** (SC-014). Không đòi hai tệp giống nhau: buộc chúng giống nhau chính là cơ chế biến việc thử nghiệm ở dev thành thay đổi hành vi production (T089, xem `quickstart.md` cổng an toàn)
 - [ ] T107 Chạy `make hygiene-scan` **chỉ khi được cho phép rõ ràng** — lệnh này sinh tệp báo cáo trong kho mã nguồn
 - [ ] T108 Chạy **8** kịch bản bắt buộc ở `quickstart.md` mục 2: K2.1 thông điệp ngược thứ tự, K2.2 giao lại 100 lần, K2.3 5 phiên bản song song, K2.4 tắt worker 10 phút, K2.5 thứ tự thuận, K2.6 hết hạn tự hạ về `free`, K2.7 cấp gói không trừ đồng bị, K2.8 đo độ chậm (SC-001d, SC-006, SC-007, SC-004). Không được bỏ K2.5 — đó là kịch bản chứng minh tính đúng đắn của thứ tự
 - [ ] T109 Chạy 7 kiểm tra ranh giới ở `quickstart.md` mục 6, gồm **7** cấu hình sai phải chặn khởi động (`plan_slug` sai được kiểm ở mục 4 với mã `plan_unavailable`, xem FR-010)
