@@ -347,13 +347,22 @@ func TestCampaignSweepGrantsALateArrivalAndMarksItLate(t *testing.T) {
 	}
 	// A completed run with a non-zero lateness count means SLOW, not BROKEN —
 	// the two states FR-082 exists to tell apart.
-	health := sweep.Health()
-	if health.Degraded {
-		t.Fatalf("a sweep that granted a late account must not report degraded: %q", health.DegradedReason)
+	//
+	// The degraded flag itself is no longer readable from the sweep (025 T079c):
+	// it lives in `campaign_sweep_runs` because this service runs several
+	// replicas, each with its own worker set, and an in-memory flag read by one
+	// replica says nothing about a failure another produced. What this test can
+	// still assert is that the RUN REPORTED NO ERROR, which is the local
+	// equivalent — and the durable flag is covered by
+	// `TestSweepRecordsDegradedInTheDatabaseWhenItFails`.
+	if err != nil {
+		t.Fatalf("a sweep that granted a late account must not fail: %v", err)
 	}
-	if health.LateAccountCount != 1 || health.MaxDelaySeconds != wantDelay {
-		t.Fatalf("the health snapshot must carry the lateness: got %d late / %ds worst, want 1 / %ds",
-			health.LateAccountCount, health.MaxDelaySeconds, wantDelay)
+	if report.LateAccounts != 1 {
+		t.Fatalf("expected the sweep to record 1 late account (FR-082), got %d", report.LateAccounts)
+	}
+	if report.MaxDelaySeconds != wantDelay {
+		t.Fatalf("expected the worst delay to be %ds, got %ds", wantDelay, report.MaxDelaySeconds)
 	}
 
 	// The trace names WHICH PATH settled this account. A message-path grant

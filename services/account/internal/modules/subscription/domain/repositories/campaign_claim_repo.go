@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
+
+	"github.com/google/uuid"
 )
 
 // ICampaignClaimRepository is the durable counter behind a campaign's
@@ -84,4 +86,57 @@ type ICampaignClaimRepository interface {
 	// ListByCampaign returns a campaign's claims newest-first, for the FR-062
 	// operator look-up. Reads `ix_campaign_claims_campaign_granted`.
 	ListByCampaign(ctx context.Context, campaignCode string, limit int) ([]*entities.CampaignClaim, error)
+
+	// ListPageByCampaign returns ONE page of a campaign's claims newest-first,
+	// with the TOTAL row count for the same filter (FR-066, FR-067).
+	//
+	// It is a separate method from `ListByCampaign` rather than extra parameters
+	// on it, because the two answer different questions. `ListByCampaign` asks
+	// "which accounts hold a claim", which the sweep needs as a SET and answers
+	// with a ceiling it derives from the budget; `ListPageByCampaign` asks "show
+	// page 3 of what an operator is looking at", which needs a total for the
+	// pagination metadata and a filter the sweep has no reason to supply. Folding
+	// them together would give the sweep four parameters it must invent values
+	// for, and every invented value is a place for it to disagree with the
+	// operator about what was granted.
+	//
+	// `filter` narrows on the GRANT instant (`granted_at`), never on
+	// `registered_at`: FR-067 asks "who was given a plan between these two
+	// times", and the account's registration instant is a different question —
+	// using it would hide a grant made hours after registration, which is the
+	// normal case for a message that took a while (FR-078).
+	//
+	// A nil bound means "unbounded on that side". The half-openness follows the
+	// sweep's own window query (`From` inclusive, `To` exclusive) so an operator
+	// who exports "everything between 09:00 and 10:00" gets each grant in exactly
+	// one export rather than twice or never.
+	ListPageByCampaign(ctx context.Context, campaignCode string, filter CampaignClaimsFilter, page, limit int) ([]*entities.CampaignClaim, int64, error)
+
+	// GetByUser returns the account's claim whatever campaign wrote it, and
+	// reports whether one exists (FR-012).
+	//
+	// "Whatever campaign" is the point: FR-012 gives an account one participation
+	// across the WHOLE mechanism, so an operator asking about campaign B about
+	// an account campaign A granted must learn that A already gave it away. A
+	// lookup scoped to one campaign code would answer "no claim" and the operator
+	// would tell a customer they were eligible when they are not.
+	//
+	// It reads `ux_campaign_claims_user`, so it is an index hit rather than a
+	// scan. `found` is returned alongside the value because a missing row is the
+	// common case and must be distinguishable from a nil-valued one.
+	GetByUser(ctx context.Context, userID uuid.UUID) (claim *entities.CampaignClaim, found bool, err error)
+}
+
+// CampaignClaimsFilter narrows a claim listing by the grant instant (FR-067).
+//
+// A struct with two nullable bounds rather than four parameters, because the pair
+// travels together: `from` with no `to`, `to` with no `from` and both are all
+// meaningful, and `from > to` is the one shape that must be refused rather than
+// silently returning nothing — a caller who writes that has a bug, and an empty
+// list would hide it until somebody noticed a missing grant.
+type CampaignClaimsFilter struct {
+	// From is the earliest grant instant, inclusive. Nil means unbounded.
+	From *time.Time
+	// To is the latest grant instant, EXCLUSIVE. Nil means unbounded.
+	To *time.Time
 }

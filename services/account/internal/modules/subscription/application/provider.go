@@ -60,6 +60,14 @@ var ProviderSet = wire.NewSet(
 	// discovered by the first account that registers after a campaign opens.
 	campaign.NewCampaignUseCase,
 
+	// 025 T079: the read-only operator look-up. It is a SEPARATE use case from
+	// `campaign.NewCampaignUseCase` on purpose: the grant path writes and holds a
+	// unit of work, this one must not, and sharing a type would put both in the
+	// same object where FR-069 would survive only as a habit. Wiring it here also
+	// means a missing dependency is a DI error at startup rather than a nil
+	// pointer on the first support request.
+	campaign.NewCampaignQueryUseCase,
+
 	// 025 T097: the catch-up sweep. It depends on `ICampaignUseCase` rather than
 	// on the grant use case's dependencies, so registering it HERE is what forces
 	// the sweep to reach the rules through the shared entry point. A sweep wired

@@ -91,8 +91,8 @@ Không viết kiểm tra vai trò riêng, không mở thêm cấu hình giới h
 | `hardCap` | `quota + reserve` | Trần cứng. FR-022 |
 | `watermarkAt` | `registered_at` của bản ghi `fills_main_quota`; `null` nếu chưa chốt | FR-030 |
 | `status` | Suy ra | Xem máy trạng thái mục 3.2 |
-| `degraded`, `degradedReason` | Bộ nhớ worker quét bù | FR-059 |
-| `lastSweepAt` | Bộ nhớ worker quét bù | |
+| `degraded`, `degradedReason` | `subscription.campaign_sweep_runs` | FR-059 |
+| `lastSweepAt` | `subscription.campaign_sweep_runs` | |
 
 Tất cả trường đếm đều **dẫn xuất lúc tra cứu**, không lưu. Một giá trị lưu sẽ phải đồng bộ bằng
 tay và sẽ sai.
@@ -128,7 +128,7 @@ Tham số truy vấn: `page`, `limit`, `from`, `to` (lọc theo khoảng thời 
       "userId": "b1c2...",
       "username": "nguyenvana",
       "planSlug": "premium-monthly",
-      "expiresAt": "2026-11-01T00:00:03+07:00",
+      "expiresAt": "2026-11-01T00:00:05+07:00",
       "grantedAt": "2026-10-02T00:00:05+07:00",
       "registeredAt": "2026-10-02T00:00:03+07:00",
       "source": "main"
@@ -143,6 +143,11 @@ sao bị trượt rồi lại được, hoặc ngược lại. Tập giá trị 
 bằng giá trị của cột `grant_bucket` trong cơ sở dữ liệu. Không dùng `"main_quota"` hay
 `"compensation"`: đó là tên trạng thái, đặt vào trường này sẽ tạo thêm một bộ mã thứ ba cho cùng
 một khái niệm.
+
+`expiresAt` là `grantedAt + durationDays` của gói, **không** phải `registeredAt + 30 ngày`
+(FR-034). Trong ví dụ trên, tài khoản đăng ký lúc `00:00:03` nhưng chỉ được cấp lúc `00:00:05`, nên
+hạn là `2026-11-01T00:00:05`. Neo vào giờ đăng ký sẽ cắt hạn mất hai giây — và tệ hơn, ở kịch bản
+thông điệp tới muộn, tài khoản đăng ký nhiều giờ trước khi được cấp sẽ mất gần hết thời hạn quà.
 
 `username` lấy từ `IUserBriefContract.GetByIDs`, **không** đọc thẳng bảng tài khoản. Phân tích theo
 tài khoản dùng `sliceutils.IndexBy` (hiến phán §II).
@@ -166,37 +171,64 @@ tài khoản dùng `sliceutils.IndexBy` (hiến phán §II).
 | Giá trị `eligibility` | Nghĩa | `granted` |
 |---|---|---|
 | `granted` | Đã được cấp trong chiến dịch này | `true` |
+| `eligible_pending` | Đủ điều kiện, còn suất, nhưng **chưa** được cấp — thông điệp còn trên đường hoặc quét bù chưa tới (FR-079) | `false` |
 | `eligible_but_exhausted` | Đủ điều kiện, nhưng hết suất hoặc tạo sau mốc ưu tiên | `false` |
 | `not_eligible` | Không thỏa điều kiện nào | `false` |
 | `already_claimed_other_campaign` | Đã tham gia một chiến dịch trước | `false` |
 | `created_by_admin` | Do quản trị viên tạo | `false` |
 
+**Vì sao cần `eligible_pending` và không gộp vào `eligible_but_exhausted`.** Đây là câu hỏi khách
+hàng gọi lên hỏi nhiều nhất: *"tôi vừa đăng ký, sao chưa có gói?"*. Trả về `exhausted` khiến
+nhân viên đọc ra *"chúng tôi hết suất tặng"* — một câu nói dối khách hàng, và sai theo cả hai nghĩa:
+chiến dịch còn suất, và tài khoản của họ sắp có. `eligible_pending` nói đúng điều cần nói: đủ điều
+kiện, đang chờ hệ thống xử lý. `reason` của nó **rỗng** — có chủ ý, vì mọi ca khác đều có mã chẩn
+đoán cụ thể và ở đây không có mã nào nói được "đang trên đường".
+
 ### 3.5 Tập mã `reason` — bộ chuẩn duy nhất
 
-`reason` là mã ổn định để tra cứu. Tập giá trị dưới đây là **bộ chuẩn**: nó khớp 1-1 với cột
-"Lý do bỏ qua" trong bảng quyết định điều kiện ở `data-model.md` mục 6, và `FR-061` trong
-`spec.md` chỉ mô tả bằng văn xuôi chứ **không** khai báo mã riêng.
+`reason` là mã ổn định để tra cứu. Tập giá trị dưới đây là **bộ chuẩn**: nó khớp 1-1 với hằng số
+`SkipReason` trong `skip_reason.go` và với cột "Lý do bỏ qua" trong bảng quyết định điều kiện ở
+`data-model.md` mục 6. `FR-061` trong `spec.md` chỉ mô tả bằng văn xuôi chứ **không** khai báo mã
+riêng. Mã là chuỗi ổn định chứ không phải `iota`, vì chúng được ghi vào log sống lâu hơn binary
+(FR-062) — đánh số lại sau này sẽ âm thầm đổi ý nghĩa của một dòng log cũ.
 
 | Mã `reason` | Nghĩa | Sinh ra khi |
 |---|---|---|
 | `campaign_not_configured` | Chưa khai báo chiến dịch nào | Điều kiện 1 |
 | `campaign_not_started` | Chưa tới `startsAt` | Điều kiện 2 |
-| `campaign_sleeping` | Chiến dịch tạm ngủ: hết suất hoặc quá `endsAt` | Điều kiện 2 |
+| `campaign_sleeping` | Chiến dịch tạm ngủ: quá `endsAt` | Điều kiện 2 |
 | `created_by_admin` | Tài khoản do quản trị viên tạo | Điều kiện 3 |
 | `already_claimed` | Đã có lượt cấp cho tài khoản này | Điều kiện 4 |
 | `already_on_plan` | Đang ở đúng gói quà tặng và còn hạn | Điều kiện 5 (FR-018) |
-| `plan_not_settled` | Vừa bị hạ về gói miễn phí, gói cũ chưa dọn xong | Điều kiện 6 |
-| `quota_main` | Hết suất phần chính | Điều kiện 8 |
-| `quota_compensation` | Hết suất dự phòng | Điều kiện 8 |
-| `quota_exhausted` | Đạt trần cứng `quota + reserve` — không còn suất nào ở phần nào | Nhánh cuối mục 6.2, `data-model.md` |
-| `quota_anomaly` | Phần chính đầy nhưng mốc ưu tiên chưa chốt — dữ liệu bất thường | Điều kiện 8, xem `data-model.md` mục 6.2 |
-| `not_eligible` | Không thỏa điều kiện nào khác | Điều kiện 1–7 |
-| `duplicate_claim` | Ràng buộc `UNIQUE` chặn ghi trùng | Điều kiện 9 |
-| `temporary_error` | Lỗi tạm thời, hàng đỗi sẽ thử lại — **không** phải từ chối vĩnh viễn | FR-062 |
+| `plan_not_settled` | Vừa bị hạ về gói miễn phí, gói cũ chưi dọn xong | Điều kiện 6 |
+| `outside_window` | Thời điểm tạo tài khoản nằm ngoài `[startsAt, endsAt)` | Điều kiện 7 (FR-017) |
+| `quota_main` | Hết suất phần chính | Điều kiện 8 (FR-031) |
+| `quota_compensation` | Hết suất dự phòng — tức đã chạm trần cứng | Điều kiện 8 (FR-032) |
+| `quota_anomaly` | Phần chính đầy nhưng mốc ưu tiên chưa chốt | `data-model.md` mục 6.2 |
+| `plan_unavailable` | `plan_slug` trỏ tới gói không tồn tại hoặc không active | Điều kiện 6a |
 
-Vì sao `temporary_error` phải có mã riêng: FR-062 đòi phân biệt lỗi tạm thời với lỗi không tự khỏi,
-vì chúng dẫn tới hai hành vi khác nhau — một cái được thử lại, một cái thì bỏ. Nếu dùng chung một
-mã, hàng đỗi không phân biệt được và sẽ vứt bỏ tài khoản đáng lẽ phải cấp.
+**Bốn mã KHÔNG thuộc tập này**, và việc loại chúng là có chủ ý:
+
+- **`temporary_error` không phải mã `reason`.** FR-062 phân biệt lỗi tạm thời với lỗi không tự
+  khỏi, và yêu cầu đó **đã được hiện thực** — nhưng bằng `sharedevent.RetryableError` đối lập với
+  `sharedevent.PermanentError`, là thứ cơ chế thử lại / loại bỏ dựa vào. Một thông điệp được thử
+  lại **không bao giờ** ghi được `reason`: transaction của nó rollback, không có dòng nào được
+  ghi. Đặt `temporary_error` vào đây là lỗi phân loại — nó thuộc tầng vận chuyển, không thuộc tầng
+  kinh doanh. Xem `campaign_uc.go:121,138,180`.
+- **`duplicate_claim` không có.** Điều kiện 4 đã chặn sớm bằng `already_claimed`; ràng buộc `UNIQUE`
+  ở `campaign_claims` là chốt chặn cuối, và khi nó kích hoạt thì đó là hành vi lạ cần điều tra, không
+  phải một lý do bỏ qua hợp lệ để báo cho khách hàng.
+- **`quota_exhausted` không có.** Phần dự phòng là **trần**, nên "hết dự phòng" **chính là** chạm
+  trần cứng. Tách thành hai mã sẽ tạo hai tên cho cùng một sự kiện; `quota_compensation` đã nói đủ.
+- **`not_eligible` không có ở đây — nhưng CÓ ở `eligibility`.** Đó là hai trường khác nhau với hai
+  mức chi tiết khác nhau. `eligibility` là thùng thô để client rút gọn; `reason` là mã chẩn đoán để
+  người vận hành hành động. Một mã bắt-everything ở `reason` sẽ phá đúng điều mà tập mã này tồn tại
+  để làm: một chiến dịch chưa cấp gì và một chiến dịch hết suất trông giống nhau từ bên ngoài, nhưng
+  cái thứ nhất là thiết kế đúng còn cái thứ hai là báo lỗi (xem `skip_reason.go` dòng 6–11).
+
+Ghi chú cho `plan_unavailable`: FR-010 **không** chặn khởi động dịch vụ khi `plan_slug` sai. Nạp cấu
+hình không được chạm cơ sở dữ liệu (hiến phán §I, §VIII), nên kiểm tra ở nơi dòng gói vốn được đọc —
+tức lúc chạy. Mã này là nơi phát hiện ra, và là lý do nó phải nằm trong tập `reason`.
 
 Lưu ý cố ý: **không có** mã riêng cho "tạo sau mốc ưu tiên". Trường hợp đó rơi vào `quota_main` hoặc
 `quota_compensation` tuỳ phần nào đã đầy, vì nguyên nhân sâu hơn là hết suất chứ không phải thiếu

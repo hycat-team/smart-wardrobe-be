@@ -10,9 +10,27 @@ import (
 // It is a report of the sweep's OWN work, not a report of the mechanism's
 // decisions. The sweep does not decide anything — it hands accounts to the same
 // use case the message path uses (FR-080) — so it cannot say how many plans were
-// granted without becoming a second decision path. What it CAN say, and what an
-// operator needs, is how much it looked at, how much it passed on, how much it
-// passed on late, and what went wrong.
+// granted without becoming a second decision path. What it CAN say, and what a log
+// line can usefully record, is how much it looked at, how much it passed on, how
+// much it passed on late, and what went wrong.
+//
+// IT IS NOT THE OPERATOR'S VIEW OF SWEEP HEALTH. That used to be a second type on
+// this interface — a live flag an HTTP handler could read — and it was removed at
+// 025 T079c, with the reasons worth keeping:
+//
+// The flag lived in the sweep worker's memory, which is only correct while there is
+// exactly ONE worker, and there is not: this service runs as several replicas,
+// each with its own worker set. Two failures follow, both in the dangerous
+// direction. An HTTP request landing on replica B read replica B's flag while the
+// sweep that actually failed was run by replica A — so the operator page reported
+// HEALTHY while the mechanism was broken, which is the single answer FR-059 exists
+// to prevent. And under `APP_MODE=http` no sweep worker runs at all, so the flag
+// was permanently false: a false all-clear that is structurally guaranteed rather
+// than observed.
+//
+// The state therefore lives in `subscription.campaign_sweep_runs`, one row per
+// campaign, written by the sweep itself and read by the operator look-up (FR-065)
+// — identically on every replica, and with no worker running at all.
 type CampaignSweepReport struct {
 	// SweptAt is the instant the run read once and used for every comparison, so
 	// every account in the run was judged against the same "now" (R6).
@@ -33,40 +51,14 @@ type CampaignSweepReport struct {
 	// It counts accounts the sweep CONSIDERED, not accounts it granted — the
 	// sweep has no way to know the latter without a second decision path — so it
 	// is an upper bound on late grants, which is the safe direction for an alert.
+	//
+	// It is a per-run figure rather than a persisted flag for the same reason the
+	// health is persisted: it describes what THIS pass saw, and persisting it would
+	// invite a reader to treat "no late accounts last time" as "the queue is
+	// healthy", which is a different claim.
 	LateAccounts int
 	// MaxDelaySeconds is the worst lateness seen this run (FR-082: "độ trễ lần
 	// nhất"). Zero when nothing was late.
-	MaxDelaySeconds int
-}
-
-// CampaignSweepHealth is the operator's view of the sweep as a SYSTEM rather than
-// as a single run (FR-059).
-//
-// `data-model.md` §5.1 asks for three things an operator must be able to tell
-// apart: a campaign is running, a campaign has gone to sleep, and a campaign is
-// RUNNING BUT BROKEN — configured, in its window, and not granting anything. Only
-// the third is a fault, and no per-account log line can show it: every skip looks
-// locally correct. This snapshot is the answer, and it is kept IN MEMORY rather
-// than persisted because a stale persisted flag outlives the process that set it
-// and would report a healthy sweep as broken after a restart.
-type CampaignSweepHealth struct {
-	// Degraded is set when the most recent sweep failed, and reset by the next
-	// sweep that completes. FR-059's third state: running, but not granting.
-	Degraded bool
-	// DegradedReason is the most recent failure, so the operator does not have to
-	// correlate a timestamp with a log search.
-	DegradedReason string
-	// LastSweepAt is the instant of the most recent SUCCESSFUL sweep (FR-059).
-	// A failure deliberately does not move it: "the last sweep that worked" and
-	// "the last sweep that ran" are different questions and only the first one
-	// answers "is the mechanism still running".
-	LastSweepAt time.Time
-	// LateAccountCount is how many accounts the last successful sweep found
-	// unsettled past five minutes (FR-082). It is what separates "the system is
-	// SLOW" from "the system is BROKEN": a non-zero count with `Degraded = false`
-	// means the queue is congested, not that the mechanism is failing.
-	LateAccountCount int
-	// MaxDelaySeconds is the worst lateness from the last successful sweep.
 	MaxDelaySeconds int
 }
 
@@ -76,7 +68,7 @@ type CampaignSweepHealth struct {
 // It deliberately does NOT sit on `ICampaignUseCase`. There is one rule
 // implementation — `CampaignUseCase.ProcessUserCreated` — and this interface owns
 // only the work AROUND it: walking the window in batches, refusing to re-open a
-// transaction for an account that already holds a claim, and reporting what the
+// transaction for an account that already holds a claim, and recording what the
 // run saw.
 type ICampaignSweepUseCase interface {
 	// Sweep runs one catch-up pass over the campaign window.
@@ -85,9 +77,11 @@ type ICampaignSweepUseCase interface {
 	// or already granted returns no error. An error means the sweep could not
 	// finish, and the next run repeats whatever it did not reach — which is safe
 	// because the shared grant path is idempotent (FR-012/FR-025).
+	//
+	// It RECORDS ITS OWN HEALTH before returning, into
+	// `subscription.campaign_sweep_runs` (025 T079c, FR-059). Recording is part of
+	// the run rather than the caller's job because the caller is a cron tick: a
+	// failure to record would then be logged by the scheduler and forgotten, and
+	// the operator page would keep reporting the previous state indefinitely.
 	Sweep(ctx context.Context) (CampaignSweepReport, error)
-
-	// Health returns the operator-facing snapshot described above. It is a
-	// snapshot of IN-MEMORY state, so it is safe to call concurrently with a run.
-	Health() CampaignSweepHealth
 }

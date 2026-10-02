@@ -157,4 +157,81 @@ func (r *CampaignClaimRepository) ListByCampaign(ctx context.Context, campaignCo
 	return claims, nil
 }
 
+// ListPageByCampaign returns one page of a campaign's claims plus the total for
+// the same filter (FR-066, FR-067).
+//
+// The count and the page are read from the same handle, so they describe the same
+// database: a campaign being granted to while this runs can make the total one
+// higher than the rows shown, which is a snapshot an operator will understand,
+// rather than a total from a different moment that no page can reconcile.
+func (r *CampaignClaimRepository) ListPageByCampaign(
+	ctx context.Context,
+	campaignCode string,
+	filter repositories.CampaignClaimsFilter,
+	page, limit int,
+) ([]*entities.CampaignClaim, int64, error) {
+	page, limit = normalizeCampaignClaimPage(page, limit)
+	query := r.GetDB(ctx).Model(&entities.CampaignClaim{}).Where("campaign_code = ?", campaignCode)
+	if filter.From != nil {
+		query = query.Where("granted_at >= ?", *filter.From)
+	}
+	if filter.To != nil {
+		query = query.Where("granted_at < ?", *filter.To)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var claims []*entities.CampaignClaim
+	err := query.
+		Order("granted_at DESC").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&claims).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return claims, total, nil
+}
+
+// normalizeCampaignClaimPage keeps a caller-supplied page and limit inside the
+// bounds the shared pagination ceiling allows.
+//
+// The upper bound is `PaginationQuery.Normalize`'s 100, not a number derived from
+// the campaign: a campaign cannot hold more than `quota + reserve` claims, so the
+// only way a limit above 100 could be useful is a campaign configured above it —
+// and if that ever happens, the right answer is 100 rows a page and a correct
+// total, not a silently truncated list that reports itself as complete.
+func normalizeCampaignClaimPage(page, limit int) (int, int) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = campaignClaimListDefaultLimit
+	}
+	if limit > campaignClaimListDefaultLimit {
+		limit = campaignClaimListDefaultLimit
+	}
+	return page, limit
+}
+
+// GetByUser returns the account's claim whatever campaign wrote it (FR-012).
+//
+// `found` is returned alongside the value for the same reason `GetWatermark`
+// returns it: the row may legitimately be ABSENT, and an absent row must not be
+// reported as a claim whose fields happen to be zero.
+func (r *CampaignClaimRepository) GetByUser(ctx context.Context, userID uuid.UUID) (*entities.CampaignClaim, bool, error) {
+	var claim entities.CampaignClaim
+	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&claim).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return &claim, true, nil
+}
+
 var _ repositories.ICampaignClaimRepository = (*CampaignClaimRepository)(nil)

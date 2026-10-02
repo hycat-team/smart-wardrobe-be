@@ -1,4 +1,4 @@
-﻿---
+---
 
 description: "Task list for feature 025 — Cơ chế chiến dịch tặng gói cho tài khoản đăng ký mới"
 ---
@@ -110,7 +110,7 @@ thông điện tạo tài khoản nằm ở đây vì US1, US3 và US7 đều ph
   - **FR-042**: cố tình làm bộ phát hàng đỗi lỗi rồi gọi đăng ký — phải trả về lỗi và **không** còn dòng tài khoản nào trong cơ sở dữ liệu. Nếu tài khoản vẫn được tạo thì thông điệp đã thất lạc vĩnh viễn mà không ai biết
 - [x] T030 Phát `identity.user.created` **bên trong** transaction sẵn có ở `register_uc.go` (sau `EnsureDefaultSubscription`), đặt cờ `CreatedByAdmin: false`
 - [x] T031 Phát thông điệp trong `createGoogleUser` ở `google_auth_uc.go`, đặt cờ `CreatedByAdmin: false`; phải nằm trong `createFn` đang chạy trong `uow.Execute`
-- [x] T032 Đặt `CreatedByAdmin: true` trên thực thể người dùng và phát thông điệp trong `admin_uc.go`; đây là **vị trí ghi `true` duy nhất** trong toàn mã nguồn (FR-091, R4)
+- [x] T032 Đặt `CreatedByAdmin: true` trên thực thể người dùng và phát thông điệp trong `admin_uc.go`; đây là **vị trí ghi `true` duy nhất** trong toàn mã nguồn (FR-050, R4)
 
 ### Kho lượt cấp
 
@@ -141,7 +141,7 @@ này để cấp thật. Nhờ tách vậy, ba yêu cầu khó nhất của đ�
 - [x] T037 [P] [US3] Kiểm thử giao lại cùng một thông điệp 100 lần chỉ tạo 1 lượt cấp — cùng tệp với T036 (SC-002)
 - [x] T038 [P] [US3] Kiểm thử mốc ưu tiên: lượt thứ N đánh dấu `fills_main_quota`, đúng 1 bản ghi mang cờ đó, và tài khoản tạo sau mốc không được cấp — cùng tệp với T036. Khẳng định thêm: đếm `grant_bucket = 'main'` trả về `quota` chứ không phải `tổng - 1`, và `COUNT(*) WHERE NOT fills_main_quota` **không** được dùng ở bất kỳ đâu trong mã nguồn này (R2b, SC-001, SC-001d)
 - [x] T039 [P] [US3] Kiểm thử lựa chọn chiến dịch: hai chiến dịch cùng hiệu lực thì chọn chiến dịch bắt đầu muộn nhất, bất kể thứ tự thông điệp tới — `campaign_admission_test.go` (SC-001)
-- [x] T040 [P] [US3] Kiểm thử tài khoản do quản trị viên tạo bị bỏ qua với lý do riêng — cùng tệp với T039 (FR-091)
+- [x] T040 [P] [US3] Kiểm thử tài khoản do quản trị viên tạo bị bỏ qua với lý do riêng — cùng tệp với T039 (FR-050)
 
 ### Cài đặt
 
@@ -165,7 +165,7 @@ AI cũng chuyển sang chính sách Premium.
 
 ### Kiểm thử
 
-- [x] T046 [P] [US1] Kiểm thử cấp gói: sau khi bộ quyết định trả về "được cấp", tài khoản ở `premium-monthly`, `expires_at = registered_at + 30 ngày`, `is_auto_renew_enabled = false` — `campaign_grant_test.go` (SC-006)
+- [x] T046 [P] [US1] Kiểm thử cấp gói: sau khi bộ quyết định trả về "được cấp", tài khoản ở `premium-monthly`, `expires_at = granted_at + duration_days` (**KHÔNG** phải `registered_at + 30 ngày` — FR-034), `is_auto_renew_enabled = false` — `campaign_grant_test.go` (SC-006)
 - [x] T047 [P] [US1] Kiểm thử đọc lại bản ghi gói trước khi phát sự kiện: `effectiveTo` phải khớp thời hạn, **không** rỗng (R13 — rỗng là quyền AI vô thời hạn, SC-008)
 - [x] T048 [P] [US1] Kiểm thử quyền AI cập nhật theo: lịch sử đổi gói có đúng 1 dòng cho lần cấp, và dòng đó mang `toPlanId` cùng `aiCostPolicyId` của gói Premium (FR-037, SC-006, SC-008)
 - [x] T049 [P] [US1] Kiểm thử giao dịch nguyên tử: cố tình làm `PublishPlanChange` thất bại, khẳng định **không** còn lượt cấp nào (FR-039, SC-003)
@@ -258,19 +258,26 @@ phận hỗ trợ phải tra cứu bằng tay.
 
 ### Kiểm thử
 
-- [ ] T074 [P] [US7] Kiểm thử ba trạng thái trả về **khác nhau** cho ba tài khoản khác nhau; trả giống nhau là không đạt FR-068 — `services/account/internal/modules/subscription/presentation/handler/campaign_admin_handler_test.go` (SC-012)
-- [ ] T075 [P] [US7] Kiểm thử chỉ đọc: gọi 50 lần, số lượt cấp không đổi, không sinh bản ghi hàng đỗi email (FR-069) — cùng tệp với T074 (SC-011)
-- [ ] T076 [P] [US7] Kiểm thử mã chiến dịch không tồn tại trả 404 kèm thông điệp tiếng Việt, không phải danh sách rỗng (FR-072) — cùng tệp với T074 (SC-011)
+- [X] T074 [P] [US7] Kiểm thử ba trạng thái trả về **khác nhau** cho ba tài khoản khác nhau; trả giống nhau là không đạt FR-068 — `services/account/internal/modules/subscription/presentation/handler/campaign_admin_handler_test.go` (SC-011, FR-068)
+- [X] T075 [P] [US7] Kiểm thử chỉ đọc: gọi 50 lần, số lượt cấp không đổi, không sinh bản ghi hàng đỗi email (FR-069) — cùng tệp với T074 (SC-011)
+- [X] T076 [P] [US7] Kiểm thử mã chiến dịch không tồn tại trả 404 kèm thông điệp tiếng Việt, không phải danh sách rỗng (FR-072) — cùng tệp với T074 (SC-011)
+- [X] T076b [P] [US7] Phủ ba tình huống còn thiếu của `contracts/campaign-query-api.md` mục 4: người dùng thường gọi vào trả **403** (FR-070); vượt giới hạn tần suất trả **429** (FR-071); `:userId` không tồn tại trả **404** kèm thông điệp tiếng Việt — cùng tệp với T074
+- [X] T076c [P] [US7] Kiểm thử bộ lọc `from`/`to` theo thời điểm cấp: lượt cấp ngoài khoảng không xuất hiện, lượt trong khoảng thì có, và `from > to` bị chặn (FR-067) — cùng tệp với T074
 
 ### Cài đặt
 
-- [ ] T077 [P] [US7] Thêm DTO tra cứu trong `services/account/dto/subscription/campaign_dto.go` theo `contracts/campaign-query-api.md` mục 3, nhãn `camelCase`
-- [ ] T078 [US7] Thêm hàm ánh xạ trong `services/account/internal/modules/subscription/application/mapper/campaign_mapper.go`; dùng `sliceutils.IndexBy` khi ghép dữ liệu tài khoản theo mảng mã (hiến phán §II)
-- [ ] T079 [US7] Cài truy vấn trạng thái và danh sách trong `campaign_uc.go`; **mọi số đếm đều dẫn xuất lúc tra cứu**, không lưu (FR-065, FR-066)
-- [ ] T080 [US7] Cài truy vấn trạng thái một tài khoản trả về 5 giá trị `eligibility` theo `contracts/campaign-query-api.md` mục 3.4
-- [ ] T081 [US7] Tạo `campaign_admin_handler.go` trong `services/account/internal/modules/subscription/presentation/handler/`; khai báo hằng số thông điệp tiếng Việt ở đầu tệp; dùng `validation.BindQuery` cho tham số truy vấn
-- [ ] T082 [US7] Đăng ký **nhóm mới** `/admin/campaigns` trong `services/account/internal/modules/subscription/presentation/router/router.go`, dùng `r.auth.Handle()` + `RolesAuthorize(roleslug.Admin)` + `AdminGrantRateLimitMiddleware`. **TUYỆT ĐỐI KHÔNG** đặt dưới nhóm `/admin/subscriptions` — sẽ làm hỏng lúc khởi động (R11)
-- [ ] T083 [US7] Cập nhật ctor của `Router` và chạy `make wire`.
+- [X] T077 [P] [US7] Thêm DTO tra cứu trong `services/account/dto/subscription/campaign_dto.go` theo `contracts/campaign-query-api.md` mục 3, nhãn `camelCase`
+- [X] T078 [US7] Thêm hàm ánh xạ trong `services/account/internal/modules/subscription/application/mapper/campaign_mapper.go`; dùng `sliceutils.IndexBy` khi ghép dữ liệu tài khoản theo mảng mã (hiến phán §II)
+- [X] T079 [US7] **Khai báo giao diện đọc RIÊNG** `ICampaignQueryUseCase` (tra cứu trạng thái chiến dịch, danh sách lượt cấp có bộ lọc `from`/`to`, trạng thái một tài khoản). **KHÔNG** thêm phương thức đọc vào `ICampaignUseCase` — giao diện đó đã đóng ở T041 với đúng một phương thức `ProcessUserCreated`, và nhận xét "one method because there is exactly one trigger" là có chủ ý. Cài truy vấn trong `campaign_query_uc.go`; **mọi số đếm đều dẫn xuất lúc tra cứu**, không lưu (FR-065, FR-066, FR-067)
+- [X] T079a [US7] Migration tạo bảng `subscription.campaign_sweep_runs` theo `data-model.md` mục 5.1, khoá chính theo `campaign_code`. Tạo bằng `make migrate-create svc=account name=…` theo T015/T016: có cả `-- +goose Up` và `-- +goose Down`, nhận xét tiếng Anh dạng `025 T### (FR-###)` (hiến phán: Goose Migrations là MUST). Chạy `make migrate-up svc=account` sau đó
+- [X] T079b [US7] Cài máy trạng thái chiến dịch (`not_started`, `running`, `compensation`, `exhausted`, `expired`) trong `campaign_query_uc.go`; **KHÔNG** đặt trong `admission_uc.go`. Lý do: `admission_uc.go` là bộ đánh giá thuần theo chính `data-model.md` mục 6 ("pure function of its inputs"), không có repository; mà máy trạng thái cần đếm `grantedMainCount` trên `campaign_claims` để phân biệt `running` với `compensation`. Tính lại lúc tra cứu, không lưu
+- [X] T079c [US7] Worker quét bù **ghi trạng thái vào CSDL**, không giữ trong bộ nhớ (FR-059): mỗi lần quét **thành công** cập nhật `last_sweep_at` cho **mọi** chiến dịch; lần quét lỗi thì **không** đẩy mốc `last_sweep_at` (quét hỏng 15 phút/lần trong 6 giờ phải báo `last_sweep_at` cũ 6 giờ — đó mới là cảnh báo hữu ích) nhưng vẫn đặt `degraded = TRUE` + `degraded_reason`; lần quét thành công sau đó thì xoá `degraded_reason`. Truy vấn T079 đọc thẳng bảng này. Bỏ `sweep_uc.go:418 Health()` khỏi đường tra cứu **và khỏi interface**, để không còn nguồn sức khoẻ thứ hai cạnh bảng. **Lý do**: hệ thống chạy nhiều phiên bản mỗi bộ một worker, nên cờ trong bộ nhớ sẽ báo **lành trong khi thật ra hỏng** — hậu quả nguy hiểm nhất của FR-059; với `APP_MODE=http` cờ luôn `false`
+- [X] T079d [P] [US7] Kiểm thử **5 trạng thái** của T079b, đặc biệt phân biệt được `compensation` với `running` (đã chốt mốc ưu tiên) và `exhausted` với `expired` (hết suất so với quá `endsAt`) (SC-012)
+- [X] T079e [P] [US7] Kiểm thử `degraded` của T079c: một lần quét lỗi **thực sự** đặt `degraded = TRUE` kèm `degraded_reason`, và lần quét thành công sau đó **xoá** `degraded_reason`. Đây là chốt chặn duy nhất chứng minh lý do lưu vào CSDL: cờ trong bộ nhớ sẽ không bắt được lỗi do phiên bản khác gây ra (SC-012, FR-059)
+- [X] T080 [US7] Cài truy vấn trạng thái một tài khoản trả về **6** giá trị `eligibility` theo `contracts/campaign-query-api.md` mục 3.4, **bao gồm** `eligible_pending` (đủ điều kiện, còn suất, chưa được cấp — FR-079) với `reason` **rỗng**. Không được gộp `eligible_pending` vào `eligible_but_exhausted`, vì sẽ khiến nhân viên nói với khách "hết suất" khi thật ra chiến dịch còn suất. Trường `reason` chỉ dùng tập **12 mã** ở mục 3.5 (không phải 14 mã) — xem ghi chú loại trừ ở đó
+- [X] T081 [US7] Tạo `campaign_admin_handler.go` trong `services/account/internal/modules/subscription/presentation/handler/`; khai báo hằng số thông điệp tiếng Việt ở đầu tệp; dùng `validation.BindQuery` cho tham số truy vấn
+- [X] T082 [US7] Đăng ký **nhóm mới** `/admin/campaigns` trong `services/account/internal/modules/subscription/presentation/router/router.go`, dùng `r.auth.Handle()` + `RolesAuthorize(roleslug.Admin)` + `AdminGrantRateLimitMiddleware`. **TUYỆT ĐỐI KHÔNG** đặt dưới nhóm `/admin/subscriptions` — sẽ làm hỏng lúc khởi động (R11)
+- [X] T083 [US7] Cập nhật ctor của `Router` và chạy `make wire`.
   **⚠️ Tệp dùng chung**: không chạy song song với T057, T067, T099 — dễ mất thay đổi của nhau khi sinh lại cùng một tệp
 
 **Điểm kiểm tra**: dịch vụ khởi động được (không hỏng định tuyến), ba trạng thái trả về khác nhau.
@@ -292,9 +299,7 @@ chiến dịch mới chạy. Không sửa tệp mã nguồn nào.
 
 ### Cài đặt
 
-- [ ] T087 [US5] Cài máy trạng thái chiến dịch (`not_started`, `running`, `compensation`, `exhausted`, `expired`) trong `admission_uc.go`; **tính lại lúc tra cứu**, không lưu
-- [ ] T088 [US5] Cài nhãn trạng thái sức khỏe `degraded` và `lastSweepAt` do cơ chế quét bù giữ trong bộ nhớ; `degraded` phải phân biệt được với trạng thái tạm ngủ (FR-059)
-- [ ] T089 [US5] Bổ sung cấu hình mẫu cho chiến dịch thứ hai vào `configs/config.yaml` và `configs/config.production.yaml`, dùng để kiểm thử
+- [ ] T089 [US5] Bổ sung cấu hình mẫu cho **chiến dịch thứ hai vào `configs/config.yaml` DUY NHẤT**, dùng để kiểm thử. **TUYỆT ĐỐI KHÔNG** thêm chiến dịch mẫu vào `configs/config.production.yaml` (FR-011 chọn chiến dịch bắt đầu muộn nhất → chiến dịch mẫu sẽ cướp lượt đăng ký thật của `launch-2026-10`; xem `quickstart.md` cổng an toàn)
 
 **Điểm kiểm tra**: thêm một khối cấu hình, chiến dịch mới chạy, không sửa mã nguồn.
 
@@ -320,7 +325,7 @@ bị giảm và có gói miễn phí.
 
 ### Cài đặt
 
-- [ ] T094 [US6] Bỏ qua tài khoản có cờ quản trị viên trong `admission_uc.go`, với lý do ghi nhận **riêng biệt** `created_by_admin`, tách bạch với `not_eligible` (FR-091, FR-033)
+- [x] T094 [US6] **Đã xong ở T042** (điều kiện 3 của bảng quyết định): `admission_uc.go:83` gọi `adminSkipReason(createdByAdmin)` trả lý do riêng `SkipCreatedByAdmin` = `created_by_admin`. Giữ lại dòng này như **xác nhận**, không phải việc mới — sửa lại để không dẫn người đọc tới viết lại thứ đã có. Tách bạch với **giá trị `eligibility` `not_eligible`** ở hợp đồng mục 3.4, KHÔNG phải với một mã `reason` (tập `reason` ở mục 3.5 đã **cố ý** không có `not_eligible`) (FR-050, FR-033)
 - [ ] T095 [US6] Lọc cùng điều kiện đó trong đường quét bù `sweep_uc.go`, dùng cột `created_by_admin` từ hợp đồng tài khoản
 - [ ] T096 [US6] Bảo đảm cơ chế quét bù **không** gọi lại `admission_uc.go` bằng một đường khác, mà dùng **chung** một hàm bỏ qua, để hai đường không thể lệch nhau (FR-080)
 
@@ -347,10 +352,10 @@ làm **song song với Phase 6 và 7** được.
 - [ ] T103 [P] Kiểm thử canh FR-092: tập loại sự kiện đổi gói trong `shared/domain/constants/subscriptioneventtype/` vẫn đúng 7 phần tử, không thêm không bớt (FR-092)
 - [ ] T104 [P] Kiểm thử canh FR-098: module tạo tài khoản không có câu lệnh nào tra cứu gói cước — tìm kiếm văn bản trong `services/account/internal/modules/identity/` (FR-098)
 - [ ] T105 [P] Kiểm thử canh FR-095: lần cấp gói ghi **đúng một** dòng lịch sử thay đổi gói (SC-008)
-- [ ] T106 [P] Kiểm thử hai tệp cấu hình có khối `campaigns` giống nhau (SC-014)
+- [ ] T106 [P] Kiểm thử rằng **cả hai** tệp cấu hình đều có khóa `campaigns` và đều phân tích được khối đó; `config.yaml` chứa **hai** chiến dịch còn `config.production.yaml` chứa **một** (SC-014). Không đòi hai tệp giống nhau: buộc chúng giống nhau chính là cơ chế biến việc thử nghiệm ở dev thành thay đổi hành vi production (T089, xem `quickstart.md` cổng an toàn)
 - [ ] T107 Chạy `make hygiene-scan` **chỉ khi được cho phép rõ ràng** — lệnh này sinh tệp báo cáo trong kho mã nguồn
 - [ ] T108 Chạy **8** kịch bản bắt buộc ở `quickstart.md` mục 2: K2.1 thông điệp ngược thứ tự, K2.2 giao lại 100 lần, K2.3 5 phiên bản song song, K2.4 tắt worker 10 phút, K2.5 thứ tự thuận, K2.6 hết hạn tự hạ về `free`, K2.7 cấp gói không trừ đồng bị, K2.8 đo độ chậm (SC-001d, SC-006, SC-007, SC-004). Không được bỏ K2.5 — đó là kịch bản chứng minh tính đúng đắn của thứ tự
-- [ ] T109 Chạy 7 kiểm tra ranh giới ở `quickstart.md` mục 6, gồm 7 cấu hình sai phải chặn khởi động
+- [ ] T109 Chạy 7 kiểm tra ranh giới ở `quickstart.md` mục 6, gồm **7** cấu hình sai phải chặn khởi động (`plan_slug` sai được kiểm ở mục 4 với mã `plan_unavailable`, xem FR-010)
 - [ ] T110 Chạy `make wire && make lint && make test-race` lần cuối và đối chiếu `quickstart.md` mục 8
 - [ ] T111 Khởi động dịch vụ với cấu hình thật của chiến dịch ra mắt và xác nhận `status` là `running` trước **00:00 ngày 02/10/2026** giờ Việt Nam
 
@@ -367,7 +372,7 @@ làm **song song với Phase 6 và 7** được.
 - **Phase 5 (US4)**: phụ thuộc **chỉ Phase 1** — chạy song song được với Phase 2 và 3.
   **Không** chạy song song với Phase 4 hay Phase 7 vì cùng sinh lại `wire_gen.go` (xem T067)
 - **Phase 6 (US2)**: phụ thuộc Phase 4
-- **Phase 7 (US7)**: phụ thuộc Phase 2 — chạy song song với Phase 3, 4, 6 nhưng **không** với Phase 5
+- **Phase 7 (US7)**: phụ thuộc Phase 2 và phần quét bù của Phase 10 (T097–T099, đã xong) — chạy song song với Phase 3, 4, 6 nhưng **không** với Phase 5. T079b/T079c **phải** nằm trong Phase 7 vì `contracts/campaign-query-api.md` mục 3.1 bắt buộc endpoint của Phase 7 trả `status`, `degraded`, `lastSweepAt`; đặt chúng ở Phase 8 thì kiểm thử Phase 7 không bao giờ xanh
 - **Phase 8 (US5)**: phụ thuộc Phase 3, 4
 - **Phase 9 (US6)**: phụ thuộc Phase 3
 - **Phase 10 (Cơ Chế Quét Bù, Đóng Sót & Hoàn Thiện)**: phần quét bù (T097–T102) phụ thuộc Phase 2, 3, 4 —
@@ -471,9 +476,9 @@ Cắt theo thứ tự này, **đừng** cắt Phase 3, 4, 5, 6:
 
 | Cắt | Mất gì | Vẫn ra mắt được không |
 |---|---|---|
-| Phase 7 (US7) | SC-011 | Có — hỗ trợ tra cứu tay bằng dữ liệu lượt cấp |
+| Phase 7 (US7) | SC-011, SC-012 | Có — hỗ trợ tra cứu tay bằng dữ liệu lượt cấp, nhưng mất luôn máy trạng thái chiến dịch và cờ `degraded` |
 | Phase 8 (US5) | FR-011 với nhiều chiến dịch | Có — cơ chế vẫn chạy với một chiến dịch |
-| Phase 9 (US6) phần bên nhận | FR-091 | **Không** — tài khoản test sẽ ăn suất. Không được cắt |
+| Phase 9 (US6) phần bên nhận | FR-050 | **Không** — tài khoản test sẽ ăn suất. Không được cắt |
 
 ---
 

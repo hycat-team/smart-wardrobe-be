@@ -6,6 +6,42 @@ nằm ở [data-model.md](./data-model.md) và [contracts/](./contracts/).
 > **Không** chạy `make hygiene-scan` khi thực hiện cẩu nang này. Lệnh đó sinh tệp báo cáo làm rối
 > kho mã nguồn, và `AGENTS.md` quy định phải được cho phép rõ ràng mới chạy.
 
+> ### ⛔ CỔNG AN TOÀN — BẮT BUỘC ĐỌC TRƯỚC KHI CHẠY MỤC 2 VÀ MỤC 6
+>
+> **Cổng này bảo vệ hai thứ khác nhau. Đừng chỉ đọc một trong hai.**
+>
+> **1. Xoá dữ liệu.** Kịch bản **K2.2** và **K2.5** ở mục 2 chạy `TRUNCATE subscription.campaign_claims`
+> và tạo **55 tài khoản thật**. Mục 6 sửa `configs/config.yaml` thành 7 cấu hình sai. Các lệnh này
+> **xoá vĩnh viễn** sổ lượt cấp.
+>
+> **Chỉ chạy trên cơ sở dữ liệu kiểm thử. TUYỆT ĐỐI KHÔNG chạy trên production.**
+>
+> Chiến dịch `launch-2026-10` đang chạy trên production và **đã cấp gói cho đăng ký thật**.
+> `TRUNCATE` bảng `campaign_claims` ở production sẽ xoá vĩnh viễn dấu vết quyền lợi đã bán cho
+> khách hàng, phá vỡ FR-028, và làm mất khả năng trả lời câu hỏi "tôi có được tặng gói không"
+> cho chính những người đó. Không có bước nào khôi phục được.
+>
+> **Kiểm tra môi trường trước khi chạy bất kỳ kịch bản nào ở mục 2 và mục 6:**
+>
+> ```sql
+> SELECT current_database(), current_user, inet_server_addr();
+> ```
+>
+> Dừng ngay nếu tên cơ sở dữ liệu không kết thúc bằng `_test` hoặc `_dev`, hoặc nếu
+> `inet_server_addr()` không phải `127.0.0.1` / `localhost`. Cơ sở dữ liệu kiểm thử cục bộ là
+> `smart_wardrobe_test` (xem `.env.example` → `DB_NAME`). Đây là lý do giống như vụ 8 tài khoản
+> bị cấp nhầm ở lần chạy đầu tiên, chỉ khác chỗ lần đó lỗi nằm ở ngày bắt đầu còn lần này lỗi
+> nằm ở câu lệnh xoá.
+>
+> **2. Cướp suất của chiến dịch đang chạy.** **TUYỆT ĐỐI KHÔNG** khai báo một chiến dịch thứ hai
+> vào `configs/config.production.yaml`. FR-011 chọn chiến dịch có `starts_at` **muộn nhất** trong
+> số ứng viên, nên một chiến dịch mẫu thừa sẽ **thắng** chiến dịch ra mắt và cướp mất lượt đăng
+> ký thật của người dùng — mà không có báo lỗi nào, vì mọi kiểm tra đều xanh. Chiến dịch mẫu chỉ
+> được đặt trong `configs/config.yaml`. Chi tiết ở T089, T106.
+>
+> Vì vậy **không** bắt buộc hai tệp cấu hình phải giống nhau: đó chính là cơ chế biến việc thử
+> nghiệm ở dev thành thay đổi hành vi production.
+
 ---
 
 ## 0. Điều kiện tiên quyết
@@ -166,14 +202,14 @@ SELECT current_plan_code, expires_at, is_auto_renew_enabled, version
 | Kiểm tra | Kỳ vọng |
 |---|---|
 | Số lượt cấp của tài khoản đó | **1** |
-| `expires_at` | **1 tháng** kể từ lúc tạo, không phải 2 tháng |
+| `expires_at` | **1 tháng kể từ lúc được cấp gói**, không phải 2 tháng. Cũng không phải tính từ `registered_at` — xem FR-034 |
 | `is_auto_renew_enabled` | `false` |
 | `version` | `1` |
 | Số dòng lịch sử thay đổi gói | 1 dòng duy nhất |
 
 ### K2.3 — Nhiều phiên bản chạy song song
 
-**Chứng minh**: FR-022, FR-023, SC-001
+**Chứng minh**: FR-022 (FR-023 đã được gộp vào FR-022 và không còn nội dung riêng), SC-001
 
 1. Để còn đúng 1 suất trong phần chính.
 2. Chạy 5 phiên bản dịch vụ `account` trên 5 cổng khác nhau.
@@ -259,7 +295,7 @@ Kịch bản này kiểm tra hành vi **không phải phần mới** — nó thu
 quyết định khách hàng có thực sự nhận được quyền lợi dài hạn hay không. Không kiểm thì cả chiến dịch
 có thể "thành công" mà khách hàng mất quyền sau một tháng.
 
-1. Cấp gói cho một tài khoản, ghi lại `expires_at` (kỳ vọng `registered_at + 30 ngày`).
+1. Cấp gói cho một tài khoản, ghi lại `expires_at` (kỳ vọng `granted_at + 30 ngày`, **không** phải `registered_at + 30 ngày` — FR-034; `granted_at` nằm trong `subscription.campaign_claims`).
 2. Dời thời gian hệ thống về sau `expires_at` (đặt `starts_at`/`ends_at` đã qua, hoặc dùng cấu hình
    `premium-monthly` ngắn hạn ở môi trường kiểm thử).
 3. Chờ một chu kỳ của worker gia hạn.
@@ -410,6 +446,7 @@ curl -H "Authorization: Bearer $admin" http://localhost:8080/admin/campaigns/kho
 |---|---|
 | Danh sách chiến dịch | Có `status`, `degraded`, `grantedMainCount`, `remainingMain`, `hardCap` |
 | Tài khoản đã được cấp | `eligibility = "granted"`, `granted = true` |
+| Tài khoản đủ điều kiện, còn suất, nhưng **chưa** được cấp (thông điệp còn trên đường, hoặc quét bù chưa tới) | `eligibility = "eligible_pending"`, `granted = false`, `reason` **rỗng** |
 | Tài khoản đủ điều kiện nhưng hết suất | `eligibility = "eligible_but_exhausted"` |
 | Tài khoản quản trị viên tạo | `eligibility = "created_by_admin"` |
 | Mã chiến dịch sai | 404 với thông điệp tiếng Việt nói mã không tồn tại, **không** phải danh sách rỗng (FR-072) |
@@ -434,7 +471,7 @@ có bản ghi hàng đỗi chủ đề `notification.email` nào sinh ra.
 | 3 | Dịch vụ AI không bị sửa (R7) | `git diff --stat -- services/ai` | Rỗng |
 | 4 | Thông điệp không chứa dữ liệu nhận diện cá nhân (FR-087) | Truy vấn ở mục 4 | Đúng 4 khoá |
 | 5 | Ghi `created_by_admin = true` chỉ ở một chỗ | Tìm kiếm văn bản trong `services/account` | Đúng **một** vị trí ghi |
-| 6 | Cấu hình chiến dịch có ở cả hai tệp cấu hình | So sánh hai tệp trong `configs/` | Khối `campaigns` giống nhau |
+| 6 | Cấu hình chiến dịch có ở cả hai tệp cấu hình | So sánh hai tệp trong `configs/` | Cả hai đều có khóa `campaigns` và phân tích được. `config.yaml` có **hai** mã, `config.production.yaml` có **một** — **không** đòi giống nhau (T089, T106) |
 | 7 | Lần cấp gói ghi **một** dòng lịch sử (FR-095) | Đếm dòng lịch sử của một tài khoản được cấp | Đúng 1 dòng cho mỗi lần cấp |
 
 ### 6.1 Cấu hình sai phải chặn khởi động (FR-010, SC-014)
@@ -445,14 +482,24 @@ chỉ đúng trường sai. Thử lần lượt 7 trường hợp:
 | Cấu hình lỗi | Kỳ vọng |
 |---|---|
 | `code` rỗng | Chặn, nói đúng `code` |
+| `code` sai định dạng — ví dụ `Launch_2026` (hoa chữ, gạch dưới) hoặc mã 2 ký tự | Chặn, nói đúng `code` |
 | Hai chiến dịch trùng `code` | Chặn, nói đúng trùng lặp |
 | `quota: 0` | Chặn, nói đúng `quota` |
 | `reserve: -1` | Chặn, nói đúng `reserve` |
-| `plan_slug` không tồn tại | Chặn, nói đúng `plan_slug` |
 | `ends_at` trước `starts_at` | Chặn, nói đúng khoảng thời gian |
 | `starts_at` không có múi giờ | Chặn, nói đúng định dạng thời gian |
 
+Ca `code` sai định dạng không thừa: ràng buộc `^[a-z0-9][a-z0-9-]{2,63}$` chặn ký tự lạ, và `code`
+đi thẳng vào cột `campaign_code` cùng nhật ký kiểm toán — một mã vô tình được ghép vào tên hàng đỗi
+sẽ là đường truy cận (FR-038).
+
 Sau mỗi lần, **hoàn tác** cấu hình trước khi thử lần tiếp theo.
+
+**`plan_slug` không nằm trong bảng này, và đó là quyết định có chủ ý.** Nạp cấu hình không được
+chạm cơ sở dữ liệu, nên không thể tra tên gói lúc khởi động; một `plan_slug` sai chỉ làm chiến
+dịch đó không cấp được gì cho ai. Kiểm chứng nó ở mục 4 thay vì ở đây: khai báo một `plan_slug` không
+tồn tại, rồi xác nhận mỗi lượt bị từ chối đều ghi `plan_unavailable` ở cột *Lý do*, và dịch vụ
+**vẫn khởi động bình thường** (FR-010).
 
 ---
 

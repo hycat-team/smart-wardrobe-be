@@ -19,6 +19,11 @@ var ProviderSet = wire.NewSet(
 	handler.NewBillingHandler,
 	handler.NewAdminBillingHandler,
 	handler.NewAdminSubscriptionHandler,
+	// 025 T081: the read-only operator look-up. It depends on
+	// `ICampaignQueryUseCase` and on nothing else, so registering it here is what
+	// makes FR-069 structural: the handler's only collaborator is an interface with
+	// no write method anywhere behind it.
+	handler.NewCampaignAdminHandler,
 	// 024 T100: the bulk-grant limiter is a ROUTE dependency, so it is provided
 	// here rather than inside the handler. Registering it in the set makes the
 	// router's requirement visible to Wire instead of leaving a nil limiter to be

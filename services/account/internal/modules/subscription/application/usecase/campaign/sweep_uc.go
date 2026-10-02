@@ -2,7 +2,6 @@ package campaign
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	identitycontract "smart-wardrobe-be/services/account/contract/identity"
@@ -67,24 +66,38 @@ const (
 // reasonable. That is the whole reason the sweep exists, and also the only way it
 // is allowed to be written.
 type CampaignSweepUseCase struct {
-	cfg        *sharedconfig.Config
-	accounts   identitycontract.CampaignAccountLister
-	claimRepo  repositories.ICampaignClaimRepository
+	cfg       *sharedconfig.Config
+	accounts  identitycontract.CampaignAccountLister
+	claimRepo repositories.ICampaignClaimRepository
+	// sweepRuns is where the run's HEALTH is recorded (025 T079c, FR-059).
+	//
+	// It replaced an in-memory flag on this type, and the reason is not
+	// persistence for its own sake. This service runs as several replicas, each
+	// with its own worker set, so an in-memory flag answers two questions
+	// wrongly, both in the dangerous direction:
+	//
+	//  1. An HTTP request landing on replica B reads replica B's flag, while the
+	//     sweep that actually failed was run by replica A. The operator page then
+	//     reports HEALTHY while the mechanism is broken — the one answer FR-059
+	//     exists to prevent.
+	//  2. Under `APP_MODE=http` no sweep worker runs at all, so the flag would be
+	//     permanently false: a false all-clear that is structurally guaranteed.
+	//
+	// A row per campaign in the database is read identically by every replica and
+	// is reachable by the read-only look-up with no worker running at all.
+	sweepRuns  repositories.ICampaignSweepRunRepository
 	campaignUC uc_interfaces.ICampaignUseCase
 	log        logger.Interface
 	// now is the clock, for the same reason `CampaignUseCase.now` is a field: one
 	// read per run, pin-able by a test, never `time.Now()` (R6, constitution §VIII).
 	now func() time.Time
-
-	// mu guards health, which the worker reads while a run writes it.
-	mu     sync.Mutex
-	health uc_interfaces.CampaignSweepHealth
 }
 
 func NewCampaignSweepUseCase(
 	cfg *sharedconfig.Config,
 	accounts identitycontract.CampaignAccountLister,
 	claimRepo repositories.ICampaignClaimRepository,
+	sweepRuns repositories.ICampaignSweepRunRepository,
 	campaignUC uc_interfaces.ICampaignUseCase,
 	log logger.Interface,
 ) uc_interfaces.ICampaignSweepUseCase {
@@ -92,6 +105,7 @@ func NewCampaignSweepUseCase(
 		cfg:        cfg,
 		accounts:   accounts,
 		claimRepo:  claimRepo,
+		sweepRuns:  sweepRuns,
 		campaignUC: campaignUC,
 		log:        log,
 		now:        func() time.Time { return timeutils.GetNow(cfg.Database.TimeZone) },
@@ -119,7 +133,7 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 	// closed. Reading the campaign list here and deciding for itself is precisely
 	// how two paths drift (FR-080).
 	if len(uc.cfg.Campaigns) == 0 || !newCampaignEvaluator(uc.cfg.Campaigns, now).anyCampaignAwake() {
-		uc.recordSuccess(report)
+		uc.recordSuccess(ctx, report)
 		uc.log.Info("campaign sweep skipped; no campaign is inside its window",
 			zap.Int("campaigns", len(uc.cfg.Campaigns)))
 		return report, nil
@@ -127,7 +141,7 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 
 	claimed, err := uc.alreadyClaimed(ctx)
 	if err != nil {
-		uc.recordFailure(report, err)
+		uc.recordFailure(ctx, report, err)
 		return report, err
 	}
 
@@ -140,14 +154,14 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 	consecutiveFailures := 0
 	for {
 		if err := ctx.Err(); err != nil {
-			uc.recordFailure(report, err)
+			uc.recordFailure(ctx, report, err)
 			return report, err
 		}
 
 		page, err := uc.accounts.ListCreatedInWindow(ctx, filter)
 		if err != nil {
 			failure := subscriptionerrors.ErrCampaignAccountsQueryFailed(windowLabel(uc.cfg.Campaigns))
-			uc.recordFailure(report, failure)
+			uc.recordFailure(ctx, report, failure)
 			return report, failure
 		}
 		if page == nil || len(page.Items) == 0 {
@@ -156,7 +170,7 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 
 		consecutiveFailures, err = uc.processBatch(ctx, page.Items, claimed, now, &report, consecutiveFailures)
 		if err != nil {
-			uc.recordFailure(report, err)
+			uc.recordFailure(ctx, report, err)
 			return report, err
 		}
 
@@ -182,7 +196,7 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 		}
 	}
 
-	uc.recordSuccess(report)
+	uc.recordSuccess(ctx, report)
 	return report, nil
 }
 
@@ -382,43 +396,63 @@ func windowLabel(campaigns []sharedconfig.CampaignConfig) string {
 	return "multiple"
 }
 
-// recordSuccess stores the snapshot of a run that finished (FR-059).
+// recordSuccess writes the health of a run that finished, for EVERY configured
+// campaign (025 T079c, FR-059).
 //
-// The degraded flag is CLEARED here, not merely left alone: it describes the most
+// ONE write for all campaigns rather than one per campaign: a sweep covers every
+// campaign by design, and a per-campaign write would make a partial recording —
+// half the campaigns marked healthy, half still showing the last fault — possible
+// in a way a single statement is not.
+//
+// The degraded flag is CLEARED, not merely left alone: it describes the most
 // recent sweep, and a run that completed without error is the answer to "is the
-// mechanism granting again" — whatever happened an hour ago.
-func (uc *CampaignSweepUseCase) recordSuccess(report uc_interfaces.CampaignSweepReport) {
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
-	uc.health = uc_interfaces.CampaignSweepHealth{
-		Degraded:         false,
-		DegradedReason:   "",
-		LastSweepAt:      report.SweptAt,
-		LateAccountCount: report.LateAccounts,
-		MaxDelaySeconds:  report.MaxDelaySeconds,
-	}
+// mechanism granting again" — whatever happened an hour ago. `degraded_reason` is
+// cleared with it, because a stale reason beside a healthy flag would name a fault
+// that no longer exists.
+func (uc *CampaignSweepUseCase) recordSuccess(ctx context.Context, report uc_interfaces.CampaignSweepReport) {
+	uc.persistHealth(ctx, report.SweptAt, true, "")
 }
 
-// recordFailure stores the snapshot of a run that could not finish.
+// recordFailure writes the health of a run that could not finish (FR-059).
 //
-// `LastSweepAt` deliberately keeps the PREVIOUS value: it answers "when did a
-// sweep last succeed", and a failed run is not evidence that one did. A sweep that
-// fails every fifteen minutes for six hours therefore reports a `LastSweepAt` six
-// hours old, which is the useful alarm.
-func (uc *CampaignSweepUseCase) recordFailure(report uc_interfaces.CampaignSweepReport, err error) {
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
-	uc.health.Degraded = true
-	uc.health.DegradedReason = err.Error()
-	uc.health.LateAccountCount = report.LateAccounts
-	uc.health.MaxDelaySeconds = report.MaxDelaySeconds
+// `LastSweepAt` is deliberately NOT advanced: it answers "when did a sweep last
+// succeed", and a failed run is not evidence that one did. The repository enforces
+// the same asymmetry on the UPDATE, so a failure cannot overwrite it here even if
+// a future caller passes the wrong instant. A sweep that fails every fifteen
+// minutes for six hours therefore reports a `LastSweepAt` six hours old, which is
+// the useful alarm.
+func (uc *CampaignSweepUseCase) recordFailure(ctx context.Context, report uc_interfaces.CampaignSweepReport, err error) {
+	uc.persistHealth(ctx, report.SweptAt, false, err.Error())
 }
 
-// Health returns the operator-facing snapshot. See `CampaignSweepHealth`.
-func (uc *CampaignSweepUseCase) Health() uc_interfaces.CampaignSweepHealth {
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
-	return uc.health
+// persistHealth writes one row per configured campaign.
+//
+// The failure of the WRITE ITSELF is logged and swallowed rather than returned.
+// The sweep has already finished by the time this runs, and its grants are
+// already committed — turning "could not record that the run was healthy" into a
+// returned error would make a successful sweep look failed, and a caller that
+// retries on that error would sweep the whole window again for no reason. What is
+// lost is only the record; the grants stand, and the next run rewrites the row.
+//
+// A campaign that has never been swept has NO row until a run happens, and the
+// look-up reads that absence as `lastSweepAt` unset rather than as the zero time —
+// which is the truth, and is exactly what an operator needs to be told.
+func (uc *CampaignSweepUseCase) persistHealth(ctx context.Context, sweptAt time.Time, succeeded bool, reason string) {
+	results := make([]repositories.CampaignSweepResult, 0, len(uc.cfg.Campaigns))
+	for i := range uc.cfg.Campaigns {
+		results = append(results, repositories.CampaignSweepResult{
+			CampaignCode:  uc.cfg.Campaigns[i].Code,
+			SweptAt:       sweptAt,
+			Succeeded:     succeeded,
+			FailureReason: reason,
+		})
+	}
+	if err := uc.sweepRuns.RecordRun(ctx, results); err != nil {
+		uc.log.Error("campaign sweep could not record its health; the operator look-up will show the previous state",
+			zap.String("degraded_reason", reason),
+			zap.Error(err),
+		)
+	}
 }
 
 // logSkippedAccount records a skip the sweep decided on its own (FR-061).

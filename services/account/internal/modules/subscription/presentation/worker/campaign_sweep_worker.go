@@ -144,7 +144,7 @@ func (w *CampaignSweepWorker) executeSweep(triggerType string) {
 	report, err := w.sweepUC.Sweep(ctx)
 	if err != nil {
 		run.LogFailure(w.log, err)
-		w.logSweepHealth()
+		w.logSweepHealth(report, err)
 		return
 	}
 
@@ -160,30 +160,43 @@ func (w *CampaignSweepWorker) executeSweep(triggerType string) {
 		zap.Int("max_delay_seconds", report.MaxDelaySeconds),
 	)
 
-	w.logSweepHealth()
+	w.logSweepHealth(report, nil)
 }
 
-// logSweepHealth writes the FR-059 line.
+// logSweepHealth writes the FR-059 line for ONE run.
 //
 // It is logged on EVERY run, including a clean one, and that is the point: the
 // three states an operator must tell apart are "running", "asleep" and "running
-// but not granting", and only a periodic line can answer "since when". A flag
+// but not granting", and only a periodic line can answer "since when". A line
 // that appears only on failure can say that something broke but never that it
 // stopped breaking.
-func (w *CampaignSweepWorker) logSweepHealth() {
-	health := w.sweepUC.Health()
+//
+// IT REPORTS WHAT THIS RUN SAW, and it says so, because it is no longer the
+// system-wide health (025 T079c). The authoritative state lives in
+// `subscription.campaign_sweep_runs` and is read by the operator look-up; this
+// line is the log-side record of the run that just happened on THIS replica. The
+// two can legitimately disagree for one interval — replica A's failing sweep is
+// written to the table, and replica B's succeeding sweep writes its own verdict —
+// and that is the correct behaviour rather than a defect: two replicas running at
+// the same moment genuinely both happened.
+//
+// `runErr` is the failure that ended the run, or nil. It is a parameter rather
+// than a field because the worker's own view of "did this run fail" is the error
+// the run returned, and reading it from anywhere else would let the log line
+// disagree with what `Sweep` reported to the scheduler.
+func (w *CampaignSweepWorker) logSweepHealth(report uc_interfaces.CampaignSweepReport, runErr error) {
 	fields := []zap.Field{
-		zap.Bool("degraded", health.Degraded),
-		zap.Int("late_account_count", health.LateAccountCount),
-		zap.Int("max_delay_seconds", health.MaxDelaySeconds),
+		zap.Bool("degraded", runErr != nil),
+		zap.Int("late_account_count", report.LateAccounts),
+		zap.Int("max_delay_seconds", report.MaxDelaySeconds),
 	}
-	if !health.LastSweepAt.IsZero() {
-		fields = append(fields, zap.Time("last_sweep_at", health.LastSweepAt))
+	if !report.SweptAt.IsZero() {
+		fields = append(fields, zap.Time("swept_at", report.SweptAt))
 	}
-	if health.Degraded {
-		fields = append(fields, zap.String("degraded_reason", health.DegradedReason))
-		w.log.Error("campaign sweep health", fields...)
+	if runErr != nil {
+		fields = append(fields, zap.String("degraded_reason", runErr.Error()))
+		w.log.Error("campaign sweep run failed", fields...)
 		return
 	}
-	w.log.Info("campaign sweep health", fields...)
+	w.log.Info("campaign sweep run completed", fields...)
 }

@@ -2,6 +2,7 @@ package campaign
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -162,6 +163,80 @@ func (f *fakeClaimRepo) ListByCampaign(ctx context.Context, campaignCode string,
 		}
 	}
 	return out, nil
+}
+
+// ListPageByCampaign serves the operator look-up's paginated, filtered read.
+//
+// The filter and the ordering are reproduced rather than stubbed, because both are
+// what FR-067 is about: a fake that ignored `From`/`To` would let a filter
+// regression pass, and a fake that did not sort would hand the test rows in map
+// order and prove nothing about the page an operator sees.
+func (f *fakeClaimRepo) ListPageByCampaign(
+	ctx context.Context,
+	campaignCode string,
+	filter repositories.CampaignClaimsFilter,
+	page, limit int,
+) ([]*entities.CampaignClaim, int64, error) {
+	f.mu.Lock()
+	matched := make([]*entities.CampaignClaim, 0, len(f.claims))
+	for _, claim := range f.claims {
+		if claim.CampaignCode != campaignCode {
+			continue
+		}
+		// Half-open [From, To), matching the repository and the sweep's own window
+		// query: From inclusive, To exclusive.
+		if filter.From != nil && claim.GrantedAt.Before(*filter.From) {
+			continue
+		}
+		if filter.To != nil && !claim.GrantedAt.Before(*filter.To) {
+			continue
+		}
+		copied := *claim
+		matched = append(matched, &copied)
+	}
+	f.mu.Unlock()
+
+	// Newest-first, with the id breaking a tie so two grants written in the same
+	// instant keep a stable order between calls.
+	sort.SliceStable(matched, func(i, j int) bool {
+		if matched[i].GrantedAt.Equal(matched[j].GrantedAt) {
+			return matched[i].ID.String() < matched[j].ID.String()
+		}
+		return matched[i].GrantedAt.After(matched[j].GrantedAt)
+	})
+
+	total := int64(len(matched))
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	start := (page - 1) * limit
+	if start >= len(matched) {
+		return nil, total, nil
+	}
+	end := start + limit
+	if end > len(matched) {
+		end = len(matched)
+	}
+	return matched[start:end], total, nil
+}
+
+// GetByUser returns the account's claim whatever campaign wrote it.
+//
+// The "whatever campaign" part is the point of the method, so the fake searches
+// the whole map rather than a per-campaign index — a fake that scoped itself to
+// one campaign could not represent FR-012 at all.
+func (f *fakeClaimRepo) GetByUser(ctx context.Context, userID uuid.UUID) (*entities.CampaignClaim, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	claim, ok := f.claims[userID]
+	if !ok {
+		return nil, false, nil
+	}
+	copied := *claim
+	return &copied, true, nil
 }
 
 // seed inserts a claim directly, bypassing the use case, so a test can start from

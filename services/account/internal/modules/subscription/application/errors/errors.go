@@ -464,3 +464,119 @@ func ErrCampaignRecordAuditFailed(campaignCode string) *apperror.Error {
 	e.Cause = fmt.Errorf("campaign %s: record audit", campaignCode)
 	return e
 }
+
+// 025 T079: lỗi của giao diện tra cứu cho quản trị viên.
+//
+// Đây là lỗi đầu tiên trong cơ chế chiến dịch mà NGƯỜI DÙNG đọc được và phải
+// hiểu được: những lỗi trên đều nói với kỹ sư, còn hai lỗi dưới nói với người
+// vận hành đang cố trả lời một khách hàng. Vì vậy chúng phải nêu rõ CẦN LÀM
+// GÌ, không phải chỉ nêu triệu chứng.
+
+// ErrCampaignNotFound báo rằng mã chiến dịch trong đường dẫn không tồn tại
+// (FR-072).
+//
+// Nêu lại MÃ ĐÃ NHẬN, và đây là điểm cố ý: người vận hành gõ mã chiến dịch từ
+// một dòng tin khác (email cũ, màn hình cấu hình). Nếu thông bệp chỉ nói
+// "không tìm thấy", họ sẽ không biết là mình gõ sai hay hệ thống hỏng — và
+// FR-072 nêu rõ câu trả lời sai ở đây là "danh sách rỗng không giải thích",
+// tức câu trả lời khiến họ đi tìm vấn đề về hạn mức vốn không tồn tại.
+func ErrCampaignNotFound(campaignCode string) *apperror.Error {
+	return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy chiến dịch với mã đã nhận: %s.", campaignCode))
+}
+
+// ErrCampaignAccountNotFound báo rằng tài khoản trong `:userId` không tồn tại
+// (contracts/campaign-query-api.md mục 4).
+//
+// Tách khỏi ErrCampaignNotFound vì đây là hai lỗi của hai người gõ: một người
+// tra cứu nhầm mã chiến dịch, một người tra cứu nhầm tài khoản. Gộp chúng lại
+// thì người vận hành không biết mình cần sửa ô nào.
+func ErrCampaignAccountNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy tài khoản.")
+}
+
+// ErrCampaignClaimWindowInvalid báo rằng khoảng lọc `from`/`to` bị đảo ngược
+// (FR-067).
+//
+// Từ chối chứ không trả danh sách rỗng. Người ghi `from` sau `to` có một lỗi,
+// và danh sách rỗng sẽ giấu lỗi đó cho tới khi ai đó nhận ra một lượt cấp đang
+// thiếu — tức là khi nó đã được báo cho một khách hàng rồi. Đây là lỗi 400 của
+// người gọi, không phải lỗi hạ tầng: nói sai loại sẽ mời họ "sửa lại đầu vào"
+// trong khi đầu vào của họ đã sai từ đầu.
+func ErrCampaignClaimWindowInvalid() *apperror.Error {
+	return apperror.NewBadRequest("Khoảng thời gian tra cứu không hợp lệ: thời điểm bắt đầu phải trước thời điểm kết thúc.")
+}
+
+// ErrCampaignClaimWindowMalformed báo rằng một trong hai tham số `from`/`to`
+// không phải là một thời điểm RFC3339 (FR-067).
+//
+// Từ chối chứ không bỏ qua, và đây là điểm quan trọng: bỏ qua một tham số sai
+// định dạng sẽ trả về một trang hợp lệ trông như bình thường, và người vận
+// hành sẽ kết luận chiến dịch đã cấp ít gói hơn thực tế — họ sẽ đi tìm một vấn
+// đề hạn mức không tồn tại thay vì sửa một tham số truy vấn.
+func ErrCampaignClaimWindowMalformed(field string) *apperror.Error {
+	e := apperror.NewBadRequest(fmt.Sprintf(
+		"Tham số truy vấn %q không hợp lệ: cần một thời điểm RFC3339 có múi giờ, ví dụ 2026-10-02T00:00:00+07:00.",
+		field))
+	e.Cause = fmt.Errorf("campaign look-up: malformed %s bound", field)
+	return e
+}
+
+// ErrCampaignGetAccountFailed báo rằng không đọc được hồ sơ tài khoản qua hợp
+// đồng danh tính khi tra cứu một tài khoản.
+//
+// KHÔNG được hạ xuống thành "không đủ điều kiện". Một lỗi đọc biến thành một
+// lý do bỏ qua sẽ khiến người vận hành nói với một khách hàng đủ điều kiện rằng
+// họ không đủ điều kiện — và lý do đó sẽ được ghi vào hồ sơ hỗ trợ như một sự
+// thật. Đây là cùng lập luận mà ErrCampaignReadSubscriptionFailed nêu cho đường
+// cấp gói: một lỗi hạ tầng không bao giờ được trả về như một quyết định kinh
+// doanh.
+func ErrCampaignGetAccountFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tra cứu thông tin tài khoản. Vui lòng thử lại sau.")
+}
+
+// ErrCampaignListSweepRunsFailed báo rằng không đọc được trạng thái quét bù từ
+// cơ sở dữ liệu (FR-059).
+//
+// Nổi lên chứ không hạ xuống "không hỏng": cờ sức khỏe được đọc từ bảng
+// `campaign_sweep_runs` vì bộ nhớ của một worker không nói được gì về worker của
+// phiên bản khác (data-model.md mục 5.1). Thay bằng giá trị mặc định "lành" sẽ
+// tái tạo đúng cái trạng thái giả mà FR-059 sinh ra để chống — hỏng thật mà báo
+// lành.
+func ErrCampaignListSweepRunsFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tra cứu trạng thái quét bù của chiến dịch. Vui lòng thử lại sau.")
+}
+
+// ErrCampaignCountGrantsFailed báo rằng không đếm được số lượt cấp khi dựng
+// số liệu tra cứu (FR-065).
+//
+// Tạm thời, và cùng lý do với ErrCampaignCountClaimFailed trên đường cấp gói:
+// một phép đếm trả về 0 khi thực ra thất bại sẽ báo cho người vận hành rằng
+// chiến dịch còn nguyên hạn mức trong khi nó đã hết — và người đó sẽ trả lời
+// khách hàng bằng con số đó.
+func ErrCampaignCountGrantsFailed(campaignCode string, bucket string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể kiểm tra số lượt đã cấp của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: count grants bucket %s for look-up", campaignCode, bucket)
+	return e
+}
+
+// ErrCampaignReadWatermarkForLookupFailed báo rằng không đọc được mốc ưu tiên khi
+// dựng câu trả lời cho một tài khoản (FR-030).
+//
+// Không được thay bằng "chưa chốt mốc" vì lý do đã nêu ở
+// ErrCampaignReadWatermarkFailed: mốc ưu tiên là ranh giới mà câu trả lời "tài
+// khoản này có đủ điều kiện không" được đo, và đo với một ranh giới không tồn tại
+// là đo sai.
+func ErrCampaignReadWatermarkForLookupFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể kiểm tra mốc ưu tiên của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: read watermark for look-up", campaignCode)
+	return e
+}
+
+// ErrCampaignGetClaimForAccountFailed báo rằng không đọc được lượt cấp của một
+// tài khoản khi tra cứu (FR-012).
+//
+// Cùng lập luận với ErrCampaignGetAccountFailed: một lỗi đọc không được phép
+// trở thành "tài khoản này chưa từng được cấp".
+func ErrCampaignGetClaimForAccountFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tra cứu lượt cấp của tài khoản. Vui lòng thử lại sau.")
+}

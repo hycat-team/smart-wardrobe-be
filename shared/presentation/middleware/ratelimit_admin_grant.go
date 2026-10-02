@@ -82,6 +82,38 @@ func (m *AdminGrantRateLimitMiddleware) Handle() gin.HandlerFunc {
 			return
 		}
 
+		ctx := c.Request.Context()
+		admin := adminID.String()
+
+		// ⚠️ THE `all` TIER IS CONSUMED BEFORE THE BODY IS READ, AND THAT ORDER IS
+		// LOAD-BEARING. It used to run after the body was parsed, with an early
+		// `c.Next()` for anything that was not a well-formed batch body — and that
+		// skipped the limit entirely for every request without that shape: every
+		// GET, and every malformed POST.
+		//
+		// On the grant route the hole was harmless, because the handler refuses a
+		// body it cannot bind. On a READ route it is the whole problem: 025 FR-071
+		// attaches this same limiter to the operator campaign look-up, and with the
+		// old ordering a look-up consumed no budget at all — so the endpoint would
+		// have been "rate limited" in name only.
+		//
+		// The fix is the ordering, not a new limit. `all` answers "how many requests
+		// may this administrator make", and that question does not depend on what is
+		// inside the request — which is exactly why it belongs first. Only the
+		// `multi` tier needs the body, because "is this a bulk operation" is a
+		// question about the body, and a request with no batch shape simply is not
+		// one.
+		//
+		// The effect on the grant route is that a malformed body now costs one `all`
+		// token before the handler refuses it with its own field-level message. That
+		// is the intended fail-closed direction for an endpoint that writes customer
+		// entitlements, and it is why the malformed-body `c.Next()` below stays.
+		if !m.allow(ctx, "rl:admin-grant:"+admin+":all", m.allLimit) {
+			c.Error(adminGrantRateLimited(m.windowSeconds))
+			c.Abort()
+			return
+		}
+
 		// The body is read only to decide which tier applies, then handed back to
 		// the handler unchanged.
 		//
@@ -100,20 +132,14 @@ func (m *AdminGrantRateLimitMiddleware) Handle() gin.HandlerFunc {
 
 		var shape AdminGrantBatchReqShape
 		if err := json.Unmarshal(bodyBytes, &shape); err != nil {
-			// A malformed body is the handler's problem, not the limiter's: it
-			// must be reported with the field-level detail the handler produces.
+			// A malformed body is the handler's problem, not the limiter's: it must
+			// be reported with the field-level detail the handler produces. The
+			// `all` tier has already been charged above, so letting the request
+			// through here is bounded.
 			c.Next()
 			return
 		}
 
-		ctx := c.Request.Context()
-		admin := adminID.String()
-
-		if !m.allow(ctx, "rl:admin-grant:"+admin+":all", m.allLimit) {
-			c.Error(adminGrantRateLimited(m.windowSeconds))
-			c.Abort()
-			return
-		}
 		// The bulk tier counts only requests of more than one item, so an
 		// administrator doing single grants is not charged for the bulk budget.
 		if len(shape.Items) > 1 && !m.allow(ctx, "rl:admin-grant:"+admin+":multi", m.multiLimit) {

@@ -20,10 +20,14 @@ var ProviderSet = wire.NewSet(
 	persistence.NewWebhookInboxRepository,
 	persistence.NewUserSubscriptionEventRepository,
 	persistence.NewSubscriptionRenewalAttemptRepository,
-	// 025 T034: the campaign claim ledger. Not consumed by anything yet — it is
-	// wired here so the constructor stays reachable once the campaign use cases
-	// land, and so its signature is checked at DI time rather than at first use.
+	// 025 T034: the campaign claim ledger. Read by the grant path, by the catch-up
+	// sweep and by the operator look-up, all three through the same interface.
 	persistence.NewCampaignClaimRepository,
+	// 025 T079a: the sweep health table (FR-059). It is a separate repository
+	// because the claim ledger is append-only and this table is one mutable row
+	// per campaign; merging them would put a mutable flag into an interface whose
+	// premise is that nothing is ever updated.
+	persistence.NewCampaignSweepRunRepository,
 	caching.NewRedisSubscriptionOverviewCache,
 	payos.NewPayOSService,
 )

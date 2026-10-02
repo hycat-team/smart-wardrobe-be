@@ -17,7 +17,14 @@ type Router struct {
 	billingHandler           *subscription_handler.BillingHandler
 	adminBillingHandler      *subscription_handler.AdminBillingHandler
 	adminSubscriptionHandler *subscription_handler.AdminSubscriptionHandler
-	auth                     identity_contract.IAuthMiddleware
+	// 025 T081: the read-only operator look-up. It is a separate handler rather
+	// than another method on `AdminSubscriptionHandler` because the look-up and
+	// the grant are opposites in every way that matters: one reads and one writes,
+	// one is reachable from a support page and one from a batch button, and one
+	// must be provably incapable of spending anything (FR-069). A separate type
+	// makes that provable from its constructor's parameter list.
+	campaignAdminHandler *subscription_handler.CampaignAdminHandler
+	auth                 identity_contract.IAuthMiddleware
 	// 024 T100: the bulk-grant limiter. It lives on the route rather than in the
 	// handler so it also covers requests rejected before the handler runs, and so
 	// the two-tier rule reads in one place next to the route it protects.
@@ -30,6 +37,7 @@ func NewRouter(
 	b *subscription_handler.BillingHandler,
 	ab *subscription_handler.AdminBillingHandler,
 	as *subscription_handler.AdminSubscriptionHandler,
+	cah *subscription_handler.CampaignAdminHandler,
 	auth identity_contract.IAuthMiddleware,
 	adminGrantRateLimiter *shared_middleware.AdminGrantRateLimitMiddleware,
 ) *Router {
@@ -39,6 +47,7 @@ func NewRouter(
 		billingHandler:           b,
 		adminBillingHandler:      ab,
 		adminSubscriptionHandler: as,
+		campaignAdminHandler:     cah,
 		auth:                     auth,
 		adminGrantRateLimiter:    adminGrantRateLimiter,
 	}
@@ -120,6 +129,36 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		// limiter: a restore is a single deliberate operation an operator runs
 		// once, not a request an administrator can repeat by accident.
 		adminGrants.POST("/restore", shared_pres.WrapHandler(r.adminSubscriptionHandler.RestorePolicyGrants))
+	}
+
+	// 025 T082: the campaign look-up — a SEPARATE GROUP, and that is not a style
+	// choice.
+	//
+	// ⚠️ IT MUST NOT BE NESTED UNDER `/admin/subscriptions`. That group already
+	// holds `POST /:userId/cancel`, and Gin refuses to register a STATIC segment
+	// ("claims", "eligibility") beside a PARAMETER at the same level. The conflict
+	// PANICS AT STARTUP, so the whole account service would refuse to boot — a
+	// read-only reporting feature taking down authentication, plans and payments.
+	// This exact trap was already hit and written up at 024 R5; the comment on
+	// `adminSubs` below records it the second time.
+	adminCampaigns := group.Group("/admin/campaigns")
+	adminCampaigns.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+	{
+		// FR-070 is answered by the group's own `RolesAuthorize(roleslug.Admin)`:
+		// a normal account is refused with the standard 403 even when it knows the
+		// path. There is deliberately no role check of our own — a second one
+		// would be a second answer to the same question.
+		adminCampaigns.GET("", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.ListCampaigns))
+		adminCampaigns.GET("/:code", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.GetCampaign))
+		// FR-071: the SAME limiter as the bulk grant, not a new one. It is a
+		// per-administrator limit, which is what FR-071 asks for ("a round of
+		// look-ups must not exhaust the system"), and reusing it means an operator
+		// hammering this page spends the same budget as one hammering grants —
+		// which is the honest accounting, because both are administrator actions
+		// against the same deployment. Adding a second configuration for the same
+		// limit would be a second answer waiting to be given (R10).
+		adminCampaigns.GET("/:code/claims", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.ListClaims))
+		adminCampaigns.GET("/:code/eligibility/:userId", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.GetAccountEligibility))
 	}
 }
 

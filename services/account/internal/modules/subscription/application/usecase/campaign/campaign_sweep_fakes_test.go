@@ -194,6 +194,7 @@ func newTestSweep(
 		h.uc.cfg,
 		lister,
 		claims,
+		newFakeSweepRunRepo(),
 		h.uc,
 		h.logger,
 	).(*CampaignSweepUseCase)
