@@ -178,7 +178,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	campaignSweepWorker := worker.NewCampaignSweepWorker(iCampaignSweepUseCase, cfg, l)
 	smtpSender := communication.NewSmtpSender(cfg)
 	iEmailUseCase := email.NewEmailUseCase(smtpSender)
-	emailWorker := worker2.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
+	emailWorker := worker2.NewEmailWorker(rabbitMQClient, iEmailUseCase, cfg, l)
 	auditLogConsumerWorker := worker3.NewAuditLogConsumerWorker(rabbitMQClient, iAuditLogUseCase, l)
 	auditCleanupWorker := worker3.NewAuditCleanupWorker(iAuditLogUseCase, cfg, l)
 	outboxGaugeProbe := messaging.NewOutboxGaugeProbe(cfg, l)

@@ -128,6 +128,13 @@ cloudinary:
     outfit_folder: smart_wardrobe/outfits
     post_folder: smart_wardrobe/posts
 email:
+    # 025 T113. Omitting this key also means enabled (the loader installs that
+    # default), so the value is written out here to keep the development path
+    # explicit. Set it to false before a bulk verification run — each campaign
+    # grant writes one outbox row, and a bulk run would otherwise send one real
+    # message per account. While it is false nothing is transmitted, and rows
+    # still pending are discarded rather than released when it is turned back on.
+    enabled: true
     host: smtp-relay.brevo.com
     port: 587
     sender_name: SmartWardrobe

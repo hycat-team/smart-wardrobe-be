@@ -55,6 +55,14 @@ func loadConfig() (*Config, error) {
 	v.SetDefault("campaign_sweep.interval_seconds", DefaultCampaignSweepIntervalSeconds)
 	v.SetDefault("campaign_sweep.run_on_start", true)
 
+	// 025 T113: the default is TRUE. A viper default applies only when the key
+	// is ABSENT, which is exactly the semantics wanted here: `enabled: false`
+	// is a value somebody wrote and must win, while a file that never mentions
+	// the key keeps sending. Without this line the Go zero value would decide,
+	// and zero means false — every deployment upgrading a config file written
+	// before this key existed would silently stop sending email.
+	v.SetDefault("email.enabled", true)
+
 	var cfg Config
 	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("decode config file %q: %w", configPath, err)
@@ -208,6 +216,12 @@ func applyEnvOverrides(cfg *Config) {
 	overrideBool("RABBITMQ_TLS_ENABLED", &cfg.RabbitMQ.TLSEnabled)
 	overrideBool("RABBITMQ_MANAGEMENT_TLS_ENABLED", &cfg.RabbitMQ.ManagementTLSEnabled)
 	overrideBool("OUTBOX_LISTENER_ENABLED", &cfg.Outbox.ListenerEnabled)
+	// EMAIL_ENABLED (025 T113): the only way to turn sending off on a managed
+	// deployment without editing configs/config.production.yaml. Same convention
+	// as the other boolean toggles and the same portability property: one switch
+	// with one meaning, expressible wherever the deployment is configured
+	// (constitution §VIII).
+	overrideBool("EMAIL_ENABLED", &cfg.Email.Enabled)
 
 	// QUERY_EXEC_MODE is resolved by the DB layer, which forces simple_protocol
 	// when connecting through the Supavisor transaction pooler (FR-046) and

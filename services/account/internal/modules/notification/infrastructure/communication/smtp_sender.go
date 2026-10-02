@@ -26,6 +26,16 @@ func NewSmtpSender(cfg *config.Config) *SmtpSender {
 }
 
 func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) error {
+	// 025 T113: while `email.enabled` is false nothing is transmitted, so the
+	// function returns before a socket is opened. It returns nil, not an error:
+	// the message was handled on purpose, so reporting a failure would make the
+	// worker requeue a message that must never be sent. The email worker already
+	// skips before it gets here; this guard is the backstop that keeps a future
+	// caller from dialling the provider by accident.
+	if !s.cfg.Email.Enabled {
+		return nil
+	}
+
 	from := s.cfg.Email.SenderEmail
 	// SMTP username: not the sender address — fall back to the sender email for Gmail-style servers.
 	user := s.cfg.Email.SmtpUser

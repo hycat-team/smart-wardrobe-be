@@ -459,7 +459,25 @@ type Otp struct {
 	ResendIntervalSeconds int `mapstructure:"resend_interval_seconds"`
 }
 
+// Email holds the outbound SMTP transport settings.
+//
+// 025 T113 added Enabled as a master switch for the whole outbound email path.
+// Its default is TRUE and the loader installs it, because Go decodes an absent
+// bool to false: had the zero value meant "off", every configuration file
+// written before this key existed — including configs/config.production.yaml —
+// would have stopped sending email the moment it upgraded, silently. A missing
+// key therefore means "send"; only an explicit `enabled: false` turns sending
+// off. The default is asserted by TestEmailEnabledDefaultsToTrueWhenTheKeyIsAbsent,
+// because this is the one property a future refactor breaks silently.
+//
+// The switch names no provider, so it behaves identically on self-hosted and
+// managed infrastructure (constitution §VIII).
 type Email struct {
+	// Enabled gates delivery. While it is false the email worker still consumes
+	// and acknowledges what it receives — it must not skip registration or
+	// requeue — so a backlog accumulated while disabled is discarded at that
+	// moment instead of being released the day the switch is turned back on.
+	Enabled     bool   `mapstructure:"enabled"`
 	Host        string `mapstructure:"host"`
 	Port        int    `mapstructure:"port"`
 	SenderName  string `mapstructure:"sender_name"`
