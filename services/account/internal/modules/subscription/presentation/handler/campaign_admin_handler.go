@@ -112,7 +112,10 @@ func (h *CampaignAdminHandler) ListCampaigns(c *gin.Context) error {
 // @Produce json
 // @Param code path string true "Mã chiến dịch"
 // @Success 200 {object} shared_pres.APIResponse{data=sub_dto.CampaignSummaryRes}
-// @Failure 404 {object} shared_pres.APIResponseError
+// @Failure 400 {object} shared_pres.APIResponse
+// @Failure 403 {object} shared_pres.APIResponse
+// @Failure 404 {object} shared_pres.APIResponse
+// @Failure 429 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/campaigns/{code} [get]
 func (h *CampaignAdminHandler) GetCampaign(c *gin.Context) error {
 	var params campaignPathParams
@@ -138,7 +141,7 @@ func (h *CampaignAdminHandler) GetCampaign(c *gin.Context) error {
 // @Param from query string false "Thời điểm cấp bắt đầu (RFC3339)"
 // @Param to query string false "Thời điểm cấp kết thúc, không bao gồm (RFC3339)"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[sub_dto.CampaignClaimRes]}
-// @Failure 404 {object} shared_pres.APIResponseError
+// @Failure 404 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/campaigns/{code}/claims [get]
 func (h *CampaignAdminHandler) ListClaims(c *gin.Context) error {
 	var params campaignPathParams
@@ -172,7 +175,7 @@ func (h *CampaignAdminHandler) ListClaims(c *gin.Context) error {
 // @Param code path string true "Mã chiến dịch"
 // @Param userId path string true "ID tài khoản"
 // @Success 200 {object} shared_pres.APIResponse{data=sub_dto.CampaignAccountEligibilityRes}
-// @Failure 404 {object} shared_pres.APIResponseError
+// @Failure 404 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/campaigns/{code}/eligibility/{userId} [get]
 func (h *CampaignAdminHandler) GetAccountEligibility(c *gin.Context) error {
 	var params campaignEligibilityPathParams

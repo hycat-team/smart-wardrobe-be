@@ -1,11 +1,12 @@
 {
     "identity": ["Auth", "Me", "Admin Identity", "Admin User", "Account Health"],
-    "subscription": [
-        "Subscription",
-        "Billing",
-        "Admin Billing",
-        "Admin Subscription"
-    ],
+"subscription": [
+          "Subscription",
+          "Billing",
+          "Admin Billing",
+          "Admin Subscription",
+          "Admin Campaign"
+      ],
     "wardrobe": ["Wardrobe", "Outfits", "Admin Wardrobe", "Commerce Health"],
     "dashboard": [
         "Dashboard Analytics",

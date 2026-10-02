@@ -42,6 +42,34 @@
       },
       "type": "object"
     },
+    "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignClaimRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignClaimRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignSummaryRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
     "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_WalletStatementDTO": {
       "properties": {
         "items": {
@@ -921,6 +949,149 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_account_dto_subscription.CampaignAccountEligibilityRes": {
+      "properties": {
+        "campaignCode": {
+          "description": "CampaignCode echoes the campaign asked about, so a client holding several\nresponses cannot mix them up.",
+          "type": "string"
+        },
+        "eligibility": {
+          "description": "Eligibility is the coarse verdict an operator switches on. One of exactly\nSIX values (contracts/campaign-query-api.md §3.4): `granted`,\n`eligible_pending`, `eligible_but_exhausted`, `not_eligible`,\n`already_claimed_other_campaign`, `created_by_admin`.\n\nIt is deliberately COARSE. The diagnostic detail is `reason`, and splitting\none idea across two fields is what keeps each of them small enough to be\nexhaustive: `eligibility` for a client to branch on, `reason` for a human to\nact on.",
+          "type": "string"
+        },
+        "granted": {
+          "description": "Granted is true only for `granted`. It is repeated alongside `eligibility`\nso a client does not have to know that one specific string is the granted\none — and so \"granted\" and \"eligibility\" can never disagree, because they\nare written by the same branch.",
+          "type": "boolean"
+        },
+        "reason": {
+          "description": "Reason is the stable diagnostic code, one of the twelve in\ncontracts/campaign-query-api.md §3.5, which is the same set as\n`campaign.SkipReason`. Empty when there is nothing to diagnose, which is\nexactly two cases: the account was granted, and the account is\n`eligible_pending` — a grant that has not happened yet has no fault to\nname, and inventing one would point an operator at a budget that is not\nthe problem.\n\nStable STRINGS rather than an iota, because this value is read back by the\noperator look-up and written into logs that outlive the binary (FR-062) —\nrenumbering later would silently change what an old log line means.",
+          "type": "string"
+        },
+        "userId": {
+          "description": "UserID echoes the account asked about.",
+          "type": "string"
+        },
+        "userRegisteredAt": {
+          "description": "UserRegisteredAt is the account's creation instant. It is what the priority\nrule compares (FR-030/FR-031), and an operator asking \"why did they miss\nout?\" needs the number to check that comparison themselves.",
+          "type": "string"
+        },
+        "watermarkAt": {
+          "description": "WatermarkAt is the campaign's priority watermark, so an operator can see\nthe boundary an account was measured against. Nil when not yet set.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.CampaignClaimRes": {
+      "properties": {
+        "expiresAt": {
+          "description": "ExpiresAt is the granted term: `granted_at + duration_days` of the plan\n(FR-034, FR-019).\n\nNOT `registered_at + duration_days`. Anchoring on registration cuts the\nterm short by however long the message took, and in the late-delivery case\nFR-078 exists for that is most of the gift.",
+          "type": "string"
+        },
+        "grantedAt": {
+          "description": "GrantedAt is the instant the grant was written — the filter axis of FR-067.",
+          "type": "string"
+        },
+        "planSlug": {
+          "description": "PlanSlug is the plan that was actually granted, copied onto the claim at\ngrant time. It is a copy rather than a lookup precisely so that a later\ncatalogue edit cannot rewrite the history of what this account received.",
+          "type": "string"
+        },
+        "registeredAt": {
+          "description": "RegisteredAt is the account's creation instant, snapshotted at grant time\nso an operator can see WHY this account ranked where it did, without the\ncampaign module reading the account table.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source says which part of the budget the grant came from.\n\nIts values are EXACTLY `\"main\"` and `\"reserve\"` — the values of the\n`grant_bucket` column. Not `\"main_quota\"` and not `\"compensation\"`: those\nare state names, and putting them here would create a second vocabulary for\none idea, which is how a client ends up switching on a string that only one\nendpoint produces.",
+          "type": "string"
+        },
+        "userId": {
+          "description": "UserID identifies the account. It is the same identifier the customer\nquotes when asking.",
+          "type": "string"
+        },
+        "username": {
+          "description": "Username is joined through `IUserBriefContract.GetByIDs`, never read from\nthe account table directly — the campaign module does not own\n`identity.users` (constitution §II). Empty when the account has since been\ndeleted, because the claim row survives its subject: `user_id` cascades,\nbut a soft-deleted account is still readable.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes": {
+      "properties": {
+        "code": {
+          "description": "Code identifies the campaign and is the same value the grant path writes\ninto `campaign_claims.campaign_code`, so an operator can join this response\nagainst the ledger themselves.",
+          "type": "string"
+        },
+        "degraded": {
+          "description": "Degraded reports that the most recent sweep FAILED for this campaign\n(FR-059). Read from `campaign_sweep_runs`, never from the sweep worker's\nmemory: the service runs several replicas, so an in-memory flag read by one\nreplica says nothing about a failure another replica produced.",
+          "type": "boolean"
+        },
+        "degradedReason": {
+          "description": "DegradedReason is the most recent failure text, so an operator does not have\nto correlate a timestamp with a log search. Empty when healthy.",
+          "type": "string"
+        },
+        "endsAt": {
+          "description": "EndsAt is nil for an open-ended campaign (FR-009) — and nil is a DIFFERENT\nanswer from a zero time, so it is a pointer.",
+          "type": "string"
+        },
+        "grantedCompensationCount": {
+          "description": "GrantedCompensationCount is `COUNT(*)` filtered on\n`grant_bucket = 'reserve'`. It is an INDEPENDENT number, not the remainder\nof the total.",
+          "type": "integer"
+        },
+        "grantedMainCount": {
+          "description": "GrantedMainCount is `COUNT(*)` filtered on `grant_bucket = 'main'`.\n\nRead from `grant_bucket` and NEVER from `NOT fills_main_quota`: that flag\nmarks exactly one row, so its negation equals \"total minus one\", which\nfolds the reserve in as well (research.md R2b).",
+          "type": "integer"
+        },
+        "grantedTotalCount": {
+          "description": "GrantedTotalCount is the sum of the two above.\n\nPresent because without it a client cannot check the invariant that matters:\n`grantedTotalCount \u003c= hardCap` (FR-022). Deriving the total on the client\nwould mean adding two fields, and a client that added them wrongly would\nreport a breach that never happened.",
+          "type": "integer"
+        },
+        "hardCap": {
+          "description": "HardCap is `quota + reserve`: the ceiling no campaign may cross (FR-022).",
+          "type": "integer"
+        },
+        "lastSweepAt": {
+          "description": "LastSweepAt is when a sweep last COMPLETED. A sweep failing every fifteen\nminutes leaves it where the last success put it, which is the alarm.",
+          "type": "string"
+        },
+        "planName": {
+          "description": "PlanName is read from the plan row at query time. It is absent for a\ncampaign whose `plan_slug` names nothing — which is FR-010's `plan_slug`\ncheck refusing at runtime rather than at startup, and the operator sees the\nempty name plus a `plan_unavailable` reason on the account look-up.",
+          "type": "string"
+        },
+        "planSlug": {
+          "description": "PlanSlug is the plan the campaign grants. It is the campaign's reference to\nthe plan, never a copy of the plan's attributes (data-model.md §8.2): a\ncopied name would go stale the moment the catalogue is edited.",
+          "type": "string"
+        },
+        "quota": {
+          "description": "Quota is the main budget: the number of grants that fill it and freeze the\npriority watermark.",
+          "type": "integer"
+        },
+        "remainingCompensation": {
+          "description": "RemainingCompensation is `max(0, reserve - grantedCompensationCount)`.",
+          "type": "integer"
+        },
+        "remainingMain": {
+          "description": "RemainingMain is `max(0, quota - grantedMainCount)`.",
+          "type": "integer"
+        },
+        "reserve": {
+          "description": "Reserve is the compensation budget — a CEILING, not a target (FR-032), so a\nfinished campaign may legitimately hold fewer grants than this.",
+          "type": "integer"
+        },
+        "startsAt": {
+          "description": "StartsAt is the instant the campaign opens, as configured.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the derived lifecycle state: `not_started`, `running`,\n`compensation`, `exhausted` or `expired`. Derived at query time and never\nstored (data-model.md §5) — a stored status would need synchronising with\nthe ledger along a second path, and two paths are where duplicate grants\ncome from.",
+          "type": "string"
+        },
+        "watermarkAt": {
+          "description": "WatermarkAt is the `registered_at` of the claim that filled the main budget,\nor nil when that has not happened. It is the instant every later priority\ncomparison uses (FR-030).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_account_dto_subscription.CreateSubscriptionPlanReq": {
       "properties": {
         "aiChatDailyQuota": {
@@ -1631,6 +1802,242 @@
         "summary": "Danh sách nhật ký quản trị (Audit Logs)",
         "tags": [
           "Admin Audit"
+        ]
+      }
+    },
+    "/api/v1/admin/campaigns": {
+      "get": {
+        "description": "Trả về trạng thái dẫn xuất của mọi chiến dịch: số lượt cấp, số suất còn lại, trần cứng, trạng thái vòng đời và cờ sức khỏe của lần quét bù gần nhất.",
+        "parameters": [
+          {
+            "description": "Trang",
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "description": "Số bản ghi/trang",
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignSummaryRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Tra cứu danh sách chiến dịch",
+        "tags": [
+          "Admin Campaign"
+        ]
+      }
+    },
+    "/api/v1/admin/campaigns/{code}": {
+      "get": {
+        "description": "Trả về trạng thái dẫn xuất của một chiến dịch theo mã. Trả về 404 kèm thông điệp tiếng Việt khi mã không tồn tại.",
+        "parameters": [
+          {
+            "description": "Mã chiến dịch",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Tra cứu trạng thái một chiến dịch",
+        "tags": [
+          "Admin Campaign"
+        ]
+      }
+    },
+    "/api/v1/admin/campaigns/{code}/claims": {
+      "get": {
+        "description": "Trả về danh sách tài khoản đã được cấp gói theo chiến dịch, có phân trang và lọc theo khoảng thời điểm cấp.",
+        "parameters": [
+          {
+            "description": "Mã chiến dịch",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Trang",
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "description": "Số bản ghi/trang",
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "description": "Thời điểm cấp bắt đầu (RFC3339)",
+            "in": "query",
+            "name": "from",
+            "type": "string"
+          },
+          {
+            "description": "Thời điểm cấp kết thúc, không bao gồm (RFC3339)",
+            "in": "query",
+            "name": "to",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignClaimRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Tra cứu danh sách tài khoản đã được cấp gói",
+        "tags": [
+          "Admin Campaign"
+        ]
+      }
+    },
+    "/api/v1/admin/campaigns/{code}/eligibility/{userId}": {
+      "get": {
+        "description": "Trả về kết luận cho MỘT tài khoản: đã được cấp, đủ điều kiện nhưng hết suất, hay không đủ điều kiện. Đây là câu trả lời trực tiếp cho câu hỏi của khách hàng.",
+        "parameters": [
+          {
+            "description": "Mã chiến dịch",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID tài khoản",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignAccountEligibilityRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Tra cứu trạng thái một tài khoản trong chiến dịch",
+        "tags": [
+          "Admin Campaign"
         ]
       }
     },
