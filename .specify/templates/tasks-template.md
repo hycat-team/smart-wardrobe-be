@@ -158,6 +158,20 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 
+### Frontend Integration Guide *(required — hiến phán §Governance)*
+
+**Giữ đúng MỘT trong hai nhánh dưới. Xoá cả hai thì feature chưa trả lời câu hỏi này.**
+
+- [ ] TXXX **Không đổi bề mặt client**: không thêm / xoá / sửa HTTP endpoint, event
+      payload hay DTO client-facing → xoá nhánh dưới, giữ nhánh này
+- [ ] TXXX **Có đổi bề mặt client** → viết `specs/<feature>/frontend-guide.md`: liệt kê
+      từng endpoint/event bị ảnh hưởng kèm method và path, đánh dấu **mới / đổi / bị xoá**,
+      và với mỗi cái **đổi** thì ghi hành vi **trước → sau**
+- [ ] TXXX **Đồng bộ guide** ở phase cuối, SAU khi mã nguồn đã ổn định: đọc lại guide và
+      đối chiếu với mã nguồn, có đếm số — 30 trường JSON của DTO, mọi giá trị của mọi enum
+      mà guide mô tả, mọi route guide liệt kê, mọi mã HTTP guide khẳng định. Sửa mọi chỗ
+      lệch. Nếu không đối chiếu được một phần, ghi rõ phần nào chưa kiểm và vì sao
+
 ---
 
 ## Dependencies & Execution Order

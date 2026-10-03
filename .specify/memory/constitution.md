@@ -1,24 +1,42 @@
 <!--
 Sync Impact Report:
-- Version change: 3.0.0 → 3.1.0 (MINOR — additive governance rule, nothing removed)
-  Reasoning: One new MUST in Governance. No principle is redefined and no previously valid
-  configuration becomes invalid, so this is not a backwards-incompatible change. MINOR, not PATCH,
-  because the amendment adds a principle rather than clarifying wording.
+- Version change: 3.1.0 → 3.2.0 (MINOR — two additive MUSTs in Governance, nothing removed)
+  Reasoning: Governance gains "Frontend integration guide" and "Frontend guide sync". No principle
+  is redefined and no previously valid configuration or artefact becomes invalid, so this is not a
+  backwards-incompatible change. MINOR rather than PATCH because the amendment adds two principles
+  rather than clarifying wording; a single bump covers both, since they amend the same subject in
+  one change.
 - Modified principles:
-  - Governance: new "Outbound email volume during verification" rule — a verification run that
-    exercises an email-sending flow may send at most one email, to one account; bulk fixtures must
-    not reach the real SMTP relay, and any many-account scenario must switch the email path off.
-    Added after feature 025 verification granted to ~125 accounts and sent ~125 real messages
-    through Brevo, exhausting a daily allowance that does not refill. The rule is executable as of
-    the same change: `email.enabled` in shared/config, defaulting to true so existing configuration
-    files keep sending.
+  - Governance: two new MUSTs. "Frontend integration guide" requires a feature that changes an
+    endpoint, an event payload or a client-facing DTO to ship specs/<feature>/frontend-guide.md,
+    enumerating each surface as new/changed/removed and showing before → after for every change.
+    "Frontend guide sync" requires that guide to be re-read and compared against the source in the
+    final phase and after any convergence pass, by count rather than by eye.
+    Added because feature 023's guide needed an inline delta section after the API moved, and
+    because 025's guide would have missed `eligible_pending` had it been written before that
+    decision was taken mid-implementation.
 - Added sections: None.
 - Removed sections: None.
-- Templates requiring updates: None (no template encodes verification-volume rules).
+- Templates requiring updates:
+  - .specify/templates/tasks-template.md (✅ updated — Frontend Integration Guide block in Phase N)
+  - .specify/templates/spec-template.md (✅ verified — intentionally NOT updated; the declaration
+    lives in tasks.md so that a feature with no client-facing change answers in one line there
+    rather than in a section of the specification)
+  - .specify/templates/plan-template.md, .specify/templates/checklist-template.md,
+    .specify/templates/constitution-template.md (✅ verified/no updates needed)
+  - .opencode/skills/speckit-orchestrate/SKILL.md (✅ updated — §7 Loop C gains a counted
+    comparison step; this is the enforcement mechanism, since the rule in this document cannot
+    verify itself)
 - Docs requiring manual follow-up:
-  - specs/025-signup-campaign-grant/quickstart.md already carries the matching gate and the
-    scenarios that are safe to run; T113 records the config switch.
-- Follow-up TODOs: None.
+  - specs/022, 012, 024, 006, 021 change APIs and have no frontend-guide.md. They predate this
+    amendment and are exempt; they are recorded here rather than left implicit.
+  - specs/008 and 013 carry API contracts but were NOT verified for endpoints during this amendment.
+    Their status is unknown, not exempt. Check them before assuming the exemption applies.
+- Follow-up TODOs:
+  - A mechanical check (shared/tools/frontend-guide-check, wired into `make check`) is the
+    enforcement upgrade. It was considered and deferred: it needs a manifest convention so that a
+    tool can compare a prose document against source constants. The counted comparison in
+    speckit-orchestrate is the interim mechanism.
 -->
 
 # SmartWardrobe Backend Constitution
@@ -256,11 +274,25 @@ concerns and live in `docs/project/funding-and-platform-lifecycle.md`, not here.
   fixtures MUST NOT be allowed to reach the real SMTP relay. Sending is a side effect that leaves the
   system, consumes a metered third-party allowance, and cannot be undone — email providers meter it
   per day and the allowance does not refill. Where a scenario needs many accounts, the email path
-  MUST be switched off for that run (`email.enabled`, see §VIII), and the single permitted send is
-  reserved for a dedicated scenario that verifies email content.
+MUST be switched off for that run (`email.enabled`, see §VIII), and the single permitted send is
+    reserved for a dedicated scenario that verifies email content.
+- **Frontend integration guide**: any feature that adds, removes, or changes an HTTP endpoint, an
+  event payload, or a client-facing DTO MUST ship `specs/<feature>/frontend-guide.md`. The guide
+  MUST enumerate every affected endpoint or event with its method and path, mark each as new,
+  changed or removed, and for each changed one state the behaviour before and after. Documenting a
+  shape without showing the transition does not satisfy this rule. A feature with no client-facing
+  change MUST say so in `tasks.md` rather than leave the question open. Applies to features created
+  after this amendment.
+- **Frontend guide sync**: the guide MUST be re-read and corrected in the feature's final phase and
+  again after any convergence pass, because implementation routinely moves the contract after the
+  guide is written. The re-read MUST compare against the source rather than skim: every
+  client-facing field the DTOs emit, every value of every enum the guide documents, every route it
+  lists, every HTTP status it claims. A comparison that produces no counts did not happen.
+  Re-reading is how feature 023's guide needed an inline delta section, and how 025 would have
+  missed `eligible_pending` had the guide been written before that decision.
 - Archived modules must retain their folder tree structure but be completely removed from Wire DI
   configuration and route registration.
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 3.1.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-10-02
+**Version**: 3.2.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-10-02

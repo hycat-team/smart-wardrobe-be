@@ -125,13 +125,29 @@ feature in §7, before any push.
 2. If it appends tasks, return to §5.
 3. Re-run `/speckit-analyze` once, since new tasks can contradict the artifacts
    they came from.
-4. Run the full gate once: `make check`.
+4. **Sync `frontend-guide.md`** if the feature has one. Implementation routinely
+   moves the contract after the guide is written — feature 023's guide needed an
+   inline delta section, and feature 025 would have missed `eligible_pending` had
+   the guide been written before that decision. Compare against the source and
+   **count** what you checked; a re-read that produces no numbers is a re-read
+   that did not happen:
+   - every `json:"…"` tag the feature's DTOs emit → each must appear in the guide
+   - every value of every enum the guide documents → compare against its Go
+     constant block, in both directions
+   - every route the guide lists → translate gin's `:param` to the OpenAPI
+     `{param}` form before comparing, or the two look like a mismatch
+   - every HTTP status the guide claims → each must be one the handler can return
 
-**Overall exit — all three must hold:**
+   Correct every mismatch before continuing. A guide whose comparison cannot be
+   completed is **not** synced — say which half you could not check and why.
+5. Run the full gate once: `make check`.
+
+**Overall exit — all four must hold:**
 
 - 0 unchecked tasks in `tasks.md`
 - `/speckit-converge` reports full coverage
 - `/speckit-analyze` reports 0 CRITICAL and 0 HIGH
+- if the feature has a `frontend-guide.md`, it was synced in step 4 this run
 
 Cap 3 outer iterations, then escalate.
 
