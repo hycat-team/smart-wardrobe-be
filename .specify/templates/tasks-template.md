@@ -168,9 +168,17 @@ Examples of foundational tasks (adjust based on your project):
       từng endpoint/event bị ảnh hưởng kèm method và path, đánh dấu **mới / đổi / bị xoá**,
       và với mỗi cái **đổi** thì ghi hành vi **trước → sau**
 - [ ] TXXX **Đồng bộ guide** ở phase cuối, SAU khi mã nguồn đã ổn định: đọc lại guide và
-      đối chiếu với mã nguồn, có đếm số — 30 trường JSON của DTO, mọi giá trị của mọi enum
+      đối chiếu với mã nguồn, có đếm số — mọi trường JSON của DTO, mọi giá trị của mọi enum
       mà guide mô tả, mọi route guide liệt kê, mọi mã HTTP guide khẳng định. Sửa mọi chỗ
       lệch. Nếu không đối chiếu được một phần, ghi rõ phần nào chưa kiểm và vì sao
+
+### Phát hiện ngoài phạm vi *(hiến phán §Governance)*
+
+- [ ] TXXX **Ghi vào `specs/<feature>/deferred.md`**, KHÔNG để nguyên `- [ ]` ở file này.
+      Ô trống nghĩa là *việc của feature này chưa làm*; việc ngoài phạm vi thì không
+      phải. Ghi rõ **là gì**, **vì sao ngoài phạm vi**, và **điều gì sẽ gỡ được** nó.
+      Nếu phát hiện làm mất hiệu lực bằng chứng của một task đã tick `[X]`, phải nêu
+      rõ số task đó — nếu không thì `[X]` sẽ bị đọc là không điều kiện
 
 ---
 

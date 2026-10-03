@@ -1,42 +1,50 @@
 <!--
 Sync Impact Report:
-- Version change: 3.1.0 → 3.2.0 (MINOR — two additive MUSTs in Governance, nothing removed)
-  Reasoning: Governance gains "Frontend integration guide" and "Frontend guide sync". No principle
-  is redefined and no previously valid configuration or artefact becomes invalid, so this is not a
-  backwards-incompatible change. MINOR rather than PATCH because the amendment adds two principles
-  rather than clarifying wording; a single bump covers both, since they amend the same subject in
-  one change.
+- Version change: 3.2.0 → 3.3.0 (MINOR — one additive MUST in Governance, nothing removed)
+  Reasoning: Governance gains "Technical debt found, not fixed". No principle is redefined and
+  no previously valid artefact becomes invalid, so this is not a backwards-incompatible change.
+  MINOR rather than PATCH because it adds a principle rather than clarifying wording.
 - Modified principles:
-  - Governance: two new MUSTs. "Frontend integration guide" requires a feature that changes an
-    endpoint, an event payload or a client-facing DTO to ship specs/<feature>/frontend-guide.md,
-    enumerating each surface as new/changed/removed and showing before → after for every change.
-    "Frontend guide sync" requires that guide to be re-read and compared against the source in the
-    final phase and after any convergence pass, by count rather than by eye.
-    Added because feature 023's guide needed an inline delta section after the API moved, and
-    because 025's guide would have missed `eligible_pending` had it been written before that
-    decision was taken mid-implementation.
+  - Governance: new "Technical debt found, not fixed" rule — debt found while building a
+    feature and left unfixed goes to specs/<feature>/deferred.md with what it is, why it is out
+    of scope, and what would unblock it, and never stays an unchecked task of that feature. An
+    entry that undermines an already-ticked task's evidence must name that task.
+    Added because feature 025 found two real infrastructure defects at close-out and recorded
+    them as unchecked tasks T118 and T119. That made the skill's exit condition — 0 unchecked
+    tasks — unsatisfiable for the very feature that discovered the debt, and so would have
+    pressured the exit condition into being falsified instead of the debt being filed honestly.
+    Feature 025 already had the pattern this rule formalises: T117 recorded SC-007 as
+    unverified rather than ticking it.
 - Added sections: None.
 - Removed sections: None.
 - Templates requiring updates:
-  - .specify/templates/tasks-template.md (✅ updated — Frontend Integration Guide block in Phase N)
-  - .specify/templates/spec-template.md (✅ verified — intentionally NOT updated; the declaration
-    lives in tasks.md so that a feature with no client-facing change answers in one line there
-    rather than in a section of the specification)
+  - .specify/templates/deferred-template.md (✅ created — new template for the file the rule names)
+  - .specify/templates/tasks-template.md (✅ updated — an out-of-scope block pointing at
+    deferred.md, next to the Frontend Integration Guide block)
+  - .specify/templates/spec-template.md (✅ verified — intentionally NOT updated; an
+    out-of-scope finding is discovered at close-out, not specified up front, so the
+    specification has nothing to say about it)
   - .specify/templates/plan-template.md, .specify/templates/checklist-template.md,
     .specify/templates/constitution-template.md (✅ verified/no updates needed)
-  - .opencode/skills/speckit-orchestrate/SKILL.md (✅ updated — §7 Loop C gains a counted
-    comparison step; this is the enforcement mechanism, since the rule in this document cannot
-    verify itself)
+  - .opencode/skills/speckit-orchestrate/SKILL.md (✅ updated — §7 rewritten: the loop after
+    implementation is converge↔implement with no analyze, make check is close-out only, and
+    out-of-scope findings route to deferred.md)
 - Docs requiring manual follow-up:
-  - specs/022, 012, 024, 006, 021 change APIs and have no frontend-guide.md. They predate this
-    amendment and are exempt; they are recorded here rather than left implicit.
-  - specs/008 and 013 carry API contracts but were NOT verified for endpoints during this amendment.
-    Their status is unknown, not exempt. Check them before assuming the exemption applies.
+  - specs/025-signup-campaign-grant/tasks.md (✅ updated in this change — T118 and T119 moved
+    to specs/025-signup-campaign-grant/deferred.md, the debt phase removed, and the two
+    competing "Phase 12" headings collapsed to one)
 - Follow-up TODOs:
+  - specs/022, 012, 024, 006 and 021 change APIs and have no frontend-guide.md. They predate
+    the frontend-guide amendment and are exempt; recorded here rather than left implicit.
+  - specs/008 and 013 carry API contracts but were NOT verified for endpoints during that
+    amendment. Their status is unknown, not exempt. Check them before assuming exemption.
   - A mechanical check (shared/tools/frontend-guide-check, wired into `make check`) is the
-    enforcement upgrade. It was considered and deferred: it needs a manifest convention so that a
-    tool can compare a prose document against source constants. The counted comparison in
-    speckit-orchestrate is the interim mechanism.
+    enforcement upgrade for the frontend-guide rules. Deferred: it needs a manifest convention
+    so that a tool can compare a prose document against source constants.
+  - No mechanical check enforces deferred.md. The guard is procedural: §7 forbids moving
+    in-scope work there to reach a clean exit, and §10 requires listing every deferred item in
+    the final report. A `make check` step reading deferred.md for entries that name no
+    unblocking step would be cheap, but it cannot tell an honest entry from a dishonest one.
 -->
 
 # SmartWardrobe Backend Constitution
@@ -290,9 +298,16 @@ MUST be switched off for that run (`email.enabled`, see §VIII), and the single 
   lists, every HTTP status it claims. A comparison that produces no counts did not happen.
   Re-reading is how feature 023's guide needed an inline delta section, and how 025 would have
   missed `eligible_pending` had the guide been written before that decision.
+- **Technical debt found, not fixed**: debt discovered while building a feature and left unfixed
+  MUST be recorded in `specs/<feature>/deferred.md` with what it is, why it is out of scope, and
+  what would unblock it. It MUST NOT be left as an unchecked task of the feature that found it,
+  because an unchecked task claims the feature is unfinished — which is both a different claim
+  and a false one. An entry that undermines an already-ticked task's evidence MUST name that
+  task, or `[X]` will be read as unconditional. Deferring is not parking: work that turns out to
+  belong to the feature moves back into `tasks.md` as a real task.
 - Archived modules must retain their folder tree structure but be completely removed from Wire DI
   configuration and route registration.
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 3.2.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-10-02
+**Version**: 3.3.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-10-02

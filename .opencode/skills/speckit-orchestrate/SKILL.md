@@ -121,16 +121,26 @@ feature in §7, before any push.
 
 ## §7 Loop C — converge and close out
 
+The loop after implementation is `converge → implement → converge`. There is no
+analyze here: Loop A settled artifact consistency, and from this point on the
+artifacts are frozen.
+
 1. Run `/speckit-converge` to find work that is specified but unbuilt.
-2. If it appends tasks, return to §5.
-3. Re-run `/speckit-analyze` once, since new tasks can contradict the artifacts
-   they came from.
-4. **Sync `frontend-guide.md`** if the feature has one. Implementation routinely
-   moves the contract after the guide is written — feature 023's guide needed an
-   inline delta section, and feature 025 would have missed `eligible_pending` had
-   the guide been written before that decision. Compare against the source and
-   **count** what you checked; a re-read that produces no numbers is a re-read
-   that did not happen:
+2. If it appends tasks, READ each new task against `spec.md` **before**
+   implementing it. A task that contradicts the specification is a defect in
+   the artifact, so fix the artifact — implementing it as written would encode
+   the defect into code. Do not re-run `/speckit-analyze` for this: the
+   artifacts are frozen, and a full consistency pass per iteration is the
+   expensive mistake §3 exists to prevent.
+3. If it appended anything, implement it through §5, then return to step 1.
+   **Cap 3 outer iterations, then escalate.**
+4. **Sync `frontend-guide.md`** if the feature has one — at the end of EVERY
+   outer iteration, so the last one also serves as the final-phase check.
+   Implementation routinely moves the contract after the guide is written:
+   feature 023's guide needed an inline delta section, and feature 025 would
+   have missed `eligible_pending` had the guide been written before that
+   decision. Compare against the source and **count** what you checked; a
+   re-read that produces no numbers is a re-read that did not happen:
    - every `json:"…"` tag the feature's DTOs emit → each must appear in the guide
    - every value of every enum the guide documents → compare against its Go
      constant block, in both directions
@@ -140,16 +150,26 @@ feature in §7, before any push.
 
    Correct every mismatch before continuing. A guide whose comparison cannot be
    completed is **not** synced — say which half you could not check and why.
-5. Run the full gate once: `make check`.
+5. Run `make check` **once, at close-out only** — never per iteration. It is
+   the pre-push gate, and §3 already budgets it at one run per feature.
+
+**Out-of-scope findings never become unchecked tasks.** Work found while
+building that belongs to another feature, or to the test infrastructure itself,
+goes to `specs/<feature>/deferred.md` — see `.specify/templates/deferred-template.md`
+— stating what it is, why it is out of scope, and what would unblock it.
+
+Leaving it as `- [ ]` in `tasks.md` reads as *unfinished work for THIS feature*.
+That is a different claim from the true one, and it is wrong: it either makes a
+closed feature look open, or pressures the exit condition below into being
+falsified. Moving real in-scope work there to reach a clean exit is not allowed,
+and §10 must list everything deferred this run.
 
 **Overall exit — all four must hold:**
 
 - 0 unchecked tasks in `tasks.md`
 - `/speckit-converge` reports full coverage
-- `/speckit-analyze` reports 0 CRITICAL and 0 HIGH
+- `/speckit-analyze` reported 0 CRITICAL and 0 HIGH in Loop A
 - if the feature has a `frontend-guide.md`, it was synced in step 4 this run
-
-Cap 3 outer iterations, then escalate.
 
 ## §8 Git policy
 
