@@ -7,7 +7,6 @@ import (
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -78,8 +77,8 @@ func TestAccountEligibilityReturnsDifferentAnswers(t *testing.T) {
 	// which is what puts the fourth account into "qualified but out of stock".
 	const quota = 2
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig(queryCode, "premium-monthly", quota, 1, &startsAt, nil)
-	campaigns := []sharedconfig.CampaignConfig{campaign}
+	campaign := testCampaign(queryCode, "premium-monthly", quota, 1, &startsAt, nil)
+	campaigns := []*entities.Campaign{campaign}
 
 	scenarios := []eligibilityScenario{
 		{
@@ -232,8 +231,8 @@ func TestAccountEligibilityReturnsDifferentAnswers(t *testing.T) {
 func TestAccountEligibilityReportsEligiblePendingWithNoReason(t *testing.T) {
 	// Quota 10 with nothing granted: room to spare, and a campaign still open.
 	startsAt := baseInstant().Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(queryCode, "premium-monthly", 10, 2, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(queryCode, "premium-monthly", 10, 2, &startsAt, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestQueryUC(t, campaigns, claims, newFakeSweepRunRepo(), newFakeUserBriefContract())
@@ -400,8 +399,8 @@ func TestAccountEligibilityReportsAlreadyClaimedOtherCampaign(t *testing.T) {
 func TestClaimsFilterNarrowsOnTheGrantInstant(t *testing.T) {
 	const quota = 10
 	startsAt := baseInstant().Add(-24 * time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(queryCode, "premium-monthly", quota, 0, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(queryCode, "premium-monthly", quota, 0, &startsAt, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestQueryUC(t, campaigns, claims, newFakeSweepRunRepo(), newFakeUserBriefContract())
@@ -549,17 +548,17 @@ func reasonsFromEverySituation(t *testing.T) []string {
 	futureEnd := baseInstant().Add(time.Hour)
 	pastEnd := baseInstant().Add(-time.Hour)
 
-	campaignSets := [][]sharedconfig.CampaignConfig{
+	campaignSets := [][]*entities.Campaign{
 		// An open campaign with room: the account qualifies and the budget allows.
-		{testCampaignConfig(queryCode, "premium-monthly", 10, 2, &pastStart, &futureEnd)},
+		{testCampaign(queryCode, "premium-monthly", 10, 2, &pastStart, &futureEnd)},
 		// The same campaign with its budget spent.
-		{testCampaignConfig(queryCode, "premium-monthly", 10, 2, &pastStart, &futureEnd)},
+		{testCampaign(queryCode, "premium-monthly", 10, 2, &pastStart, &futureEnd)},
 		// A campaign that has not opened.
-		{testCampaignConfig(queryCode, "premium-monthly", 10, 2, &futureStart, &futureEnd)},
+		{testCampaign(queryCode, "premium-monthly", 10, 2, &futureStart, &futureEnd)},
 		// A campaign that has closed.
-		{testCampaignConfig(queryCode, "premium-monthly", 10, 2, &pastStart, &pastEnd)},
+		{testCampaign(queryCode, "premium-monthly", 10, 2, &pastStart, &pastEnd)},
 		// A campaign whose plan_slug names nothing (FR-010).
-		{testCampaignConfig(queryCode, "khong-ton-tai-goi", 10, 2, &pastStart, &futureEnd)},
+		{testCampaign(queryCode, "khong-ton-tai-goi", 10, 2, &pastStart, &futureEnd)},
 		// No campaign at all.
 		{},
 	}

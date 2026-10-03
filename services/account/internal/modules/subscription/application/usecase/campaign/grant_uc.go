@@ -11,7 +11,6 @@ import (
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/adminaudit"
 
 	"github.com/google/uuid"
@@ -94,7 +93,12 @@ func grantOriginOf(ctx context.Context) grantOrigin {
 func (uc *CampaignUseCase) applyGrant(
 	txCtx context.Context,
 	payload identitydto.UserCreatedEventPayload,
-	campaign sharedconfig.CampaignConfig,
+	// campaign is the row the evaluator chose, read from the registry (026). A
+	// POINTER because it is the row itself and nothing may edit it between the
+	// decision and the write — the closed/budget re-read that guards that race is
+	// `GetByCodeForShare`, inside this same transaction (FR-045), and it produces
+	// its own value rather than mutating this one.
+	campaign *entities.Campaign,
 	plan *entities.SubscriptionPlan,
 	outcome quotaOutcome,
 	now time.Time,

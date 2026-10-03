@@ -7,8 +7,8 @@ import (
 
 	identitycontract "smart-wardrobe-be/services/account/contract/identity"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
-	sharedconfig "smart-wardrobe-be/shared/config"
 )
 
 // 025 T079e: the sweep records its health in the DATABASE (FR-059, SC-012).
@@ -54,22 +54,22 @@ func (l *toggledAccountLister) ListCreatedInWindow(
 
 // newHealthSweep wires a sweep over a toggleable window query and returns the
 // health store, the sweep and the toggle.
-func newHealthSweep(t *testing.T, campaigns []sharedconfig.CampaignConfig) (*fakeSweepRunRepo, uc_interfaces.ICampaignSweepUseCase, *toggledAccountLister) {
+func newHealthSweep(t *testing.T, campaigns []*entities.Campaign) (*fakeSweepRunRepo, uc_interfaces.ICampaignSweepUseCase, *toggledAccountLister) {
 	t.Helper()
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
 	sweepRuns := newFakeSweepRunRepo()
 	lister := &toggledAccountLister{}
 
-	sweep := NewCampaignSweepUseCase(h.uc.cfg, lister, claims, sweepRuns, h.uc, h.logger).(*CampaignSweepUseCase)
+	sweep := NewCampaignSweepUseCase(h.uc.cfg, lister, h.campaigns, claims, sweepRuns, h.uc, h.logger).(*CampaignSweepUseCase)
 	sweep.now = func() time.Time { return baseInstant() }
 	return sweepRuns, sweep, lister
 }
 
 // healthCampaigns is one open campaign, the shape a live sweep has.
-func healthCampaigns() []sharedconfig.CampaignConfig {
-	return []sharedconfig.CampaignConfig{
-		testCampaignConfig(queryCode, "premium-monthly", 50, 5, timePtr(baseInstant().Add(-time.Hour)), nil),
+func healthCampaigns() []*entities.Campaign {
+	return []*entities.Campaign{
+		testCampaign(queryCode, "premium-monthly", 50, 5, timePtr(baseInstant().Add(-time.Hour)), nil),
 	}
 }
 
@@ -166,9 +166,9 @@ func TestSweepClearsDegradedAfterASuccessfulRun(t *testing.T) {
 func TestSweepWritesAHealthRowForEveryCampaign(t *testing.T) {
 	const otherCode = "winter-2026-12"
 	startsAt := baseInstant().Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(queryCode, "premium-monthly", 50, 5, &startsAt, nil),
-		testCampaignConfig(otherCode, "premium-monthly", 10, 1, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(queryCode, "premium-monthly", 50, 5, &startsAt, nil),
+		testCampaign(otherCode, "premium-monthly", 10, 1, &startsAt, nil),
 	}
 	sweepRuns, sweep, lister := newHealthSweep(t, campaigns)
 	lister.failing = true

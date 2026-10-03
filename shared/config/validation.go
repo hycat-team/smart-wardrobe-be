@@ -10,12 +10,19 @@ import (
 // misconfigured drill can never resolve to a production schema (FR-027).
 var drillSchemaPattern = regexp.MustCompile(`^drill_[a-z0-9_]{1,48}$`)
 
-// campaignCodePattern keeps a campaign code to lowercase, digits and dashes
-// (025, FR-010). The code reaches a database column, an audit log and possibly a
-// queue name, so the alphabet is restricted on purpose: a code that is allowed to
-// contain slashes or spaces becomes a path traversal or a broken lookup the first
-// time somebody concatenates it.
-var campaignCodePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,63}$`)
+// campaignCodePattern is GONE (026 T011), and the reason is worth one line
+// because the rule it enforced is NOT.
+//
+// The PATTERN itself survives — it is `CHECK chk_campaigns_code_format` on
+// `subscription.campaigns` now, plus `400` on the admin create endpoint
+// (FR-011/FR-054). What disappeared is the reason it was HERE: 025 validated the
+// campaign list at STARTUP because the list was the configuration, and a bad
+// campaign had to be refused before it could grant a plan to a real account.
+//
+// After 026 the campaign list is data read at RUN time, so there is no startup
+// moment at which a campaign could be checked, and pretending otherwise would
+// reintroduce the dependency the move removed. `plan_slug` naming a missing plan
+// stays a runtime check for the same structural reason (FR-014).
 
 // validAppModes mirrors FR-044.
 var validAppModes = []string{"http", "worker", "all"}
@@ -117,12 +124,16 @@ func validateConfig(cfg *Config) error {
 	if cfg.Cache.OverviewTTLSeconds > MaxOverviewTTLSeconds {
 		return fmt.Errorf("cache overview_ttl_seconds must not exceed %d seconds (FR-074): a longer cache would keep a freshly granted plan invisible to the customer", MaxOverviewTTLSeconds)
 	}
-	// 025 T006: the campaign list and the sweep cadence are checked here, at
-	// startup, so a bad campaign fails the boot loudly instead of granting plans
-	// by accident or not granting them at all with no visible cause.
-	if err := validateCampaigns(cfg.Campaigns); err != nil {
-		return err
-	}
+	// 026 (FR-004, T011): the campaign LIST is no longer validated here, because
+	// it is no longer in the configuration. `subscription.campaigns` is read at run
+	// time and its shape is enforced where it is written — by `CHECK`/`PRIMARY KEY`
+	// on the table and by `400`/`422` on the admin endpoints (FR-010..FR-016,
+	// spec.md Câu 2).
+	//
+	// What is still validated at startup is the sweep CADENCE, because the cadence
+	// is still configuration: it is the knob of the mechanism, not campaign data, and
+	// a sweep running every ten seconds starves the grant queue it exists to catch
+	// up (025, FR-083).
 	if err := validateCampaignSweep(cfg.CampaignSweep); err != nil {
 		return err
 	}
@@ -160,68 +171,6 @@ func validateConfig(cfg *Config) error {
 	}
 	if err := validateGoogle(cfg); err != nil {
 		return err
-	}
-	return nil
-}
-
-// validateCampaigns enforces the FR-010 rules of data-model.md §4.1 for every
-// campaign in the list. An empty list is valid: campaigns are a deployment
-// decision, and an environment that declares none simply grants nothing.
-//
-// The plan_slug existence/active rule of the same table is NOT checked here —
-// loading configuration must not reach into the database, so that rule is
-// evaluated against subscription.subscription_plans at admission time.
-func validateCampaigns(campaigns []CampaignConfig) error {
-	seen := make(map[string]struct{}, len(campaigns))
-	for i := range campaigns {
-		if err := validateCampaign(campaigns[i], seen); err != nil {
-			return fmt.Errorf("campaigns[%d]: %w", i, err)
-		}
-	}
-	return nil
-}
-
-func validateCampaign(c CampaignConfig, seen map[string]struct{}) error {
-	code := strings.TrimSpace(c.Code)
-	if code == "" {
-		return fmt.Errorf("code is required (FR-010)")
-	}
-	if !campaignCodePattern.MatchString(code) {
-		return fmt.Errorf("code %q is invalid (want %s, FR-010)", code, campaignCodePattern)
-	}
-	if _, dup := seen[code]; dup {
-		// Two entries with the same code would share one budget and one priority
-		// watermark, so the operator's two campaigns would quietly become one.
-		return fmt.Errorf("code %q is duplicated in the campaign list (FR-010)", code)
-	}
-	seen[code] = struct{}{}
-
-	if strings.TrimSpace(c.PlanSlug) == "" {
-		return fmt.Errorf("plan_slug is required (FR-010)")
-	}
-	if c.Quota < 1 {
-		// Quota 0 is not an error to repair silently: it means "a campaign that
-		// grants nothing", which is a statement, not a typo.
-		return fmt.Errorf("quota must be at least 1 (FR-021), got %d", c.Quota)
-	}
-	if c.Reserve < 0 {
-		return fmt.Errorf("reserve must not be negative (FR-021), got %d", c.Reserve)
-	}
-
-	startsAt, err := parseCampaignInstant(c.StartsAt)
-	if err != nil {
-		return fmt.Errorf("starts_at is invalid: %w", err)
-	}
-	if strings.TrimSpace(c.EndsAt) == "" {
-		// Open-ended campaign (FR-009): no upper bound to validate.
-		return nil
-	}
-	endsAt, err := parseCampaignInstant(c.EndsAt)
-	if err != nil {
-		return fmt.Errorf("ends_at is invalid: %w", err)
-	}
-	if !endsAt.After(startsAt) {
-		return fmt.Errorf("ends_at (%s) must be after starts_at (%s, FR-013)", c.EndsAt, c.StartsAt)
 	}
 	return nil
 }

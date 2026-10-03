@@ -68,7 +68,7 @@ func ErrDepositInitFailed() *apperror.Error {
 }
 
 func ErrQueryWalletBalanceFailed() *apperror.Error {
-	return apperror.NewInternalError("Không thể truy vấn thông tin số dư ví.")
+	return apperror.NewInternalError("Không thể truy vấn số dư ví.")
 }
 
 func ErrWalletInsufficientBalance() *apperror.Error {
@@ -231,9 +231,9 @@ func ErrAdminGrantEmptyBatch() *apperror.Error {
 
 // ErrAdminGrantTooManyItems (024 FR-062).
 //
-// The wording matches contracts/admin-grant-api.md exactly. An administrator comparing
-// what they see against the contract should not have to guess which of two similar
-// sentences is the real one.
+// The wording matches contracts/admin-grant-api.md exactly, so an administrator
+// comparing what they see against the contract does not have to guess which of two
+// similar sentences is the real one.
 func ErrAdminGrantTooManyItems(max int) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Danh sách cấp gói tối đa %d tài khoản mỗi lần.", max))
 }
@@ -304,8 +304,7 @@ func ErrAdminGrantConcurrentModification() *apperror.Error {
 //
 // The check lives in the module contract, not in the provisioning body: "run inside
 // the caller's transaction" is a rule about the ADAPTER that hands the context in,
-// and keeping it there means every production door is covered without the business
-// logic having to defend itself.
+// so every production door is covered without the business logic defending itself.
 func ErrProvisioningRequiresCallerTransaction() *apperror.Error {
 	return apperror.NewInternalError("Không thể cấp phát gói hội viên mặc định vì thiếu giao dịch của yêu cầu tạo tài khoản.")
 }
@@ -356,7 +355,7 @@ func ErrCampaignReadWatermarkFailed(campaignCode string) *apperror.Error {
 //
 // Tạm thời: lượt cấp chưa tồn tại thì tài khoản chưa nhận gói, và thử lại là hành
 // vi đúng. Quan trọng: lỗi này phải làm hỏng cả giao dịch chứ không chỉ bỏ qua
-// lượt cấp — nếu gói đã cấp mà lượt cấp chưa ghi thì một lần quét bù sau đó sẽ
+// lượt cấp — nếu gói đã cấp mà lượt cấp chưa ghi thì một lần quét bù sau sẽ
 // cấp lại lần nữa.
 func ErrCampaignWriteClaimFailed(campaignCode string) *apperror.Error {
 	e := apperror.NewInternalError("Không thể ghi nhận lượt cấp của chiến dịch. Vui lòng thử lại sau.")
@@ -476,7 +475,7 @@ func ErrCampaignRecordAuditFailed(campaignCode string) *apperror.Error {
 // (FR-072).
 //
 // Nêu lại MÃ ĐÃ NHẬN, và đây là điểm cố ý: người vận hành gõ mã chiến dịch từ
-// một dòng tin khác (email cũ, màn hình cấu hình). Nếu thông bệp chỉ nói
+// một dòng tin khác (email cũ, màn hình cấu hình). Nếu thông bệch chỉ nói
 // "không tìm thấy", họ sẽ không biết là mình gõ sai hay hệ thống hỏng — và
 // FR-072 nêu rõ câu trả lời sai ở đây là "danh sách rỗng không giải thích",
 // tức câu trả lời khiến họ đi tìm vấn đề về hạn mức vốn không tồn tại.

@@ -10,7 +10,6 @@ import (
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	sharedevent "smart-wardrobe-be/shared/application/event"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -46,9 +45,9 @@ func TestCampaignQuotaGrantsExactlyOnceUnderConcurrency(t *testing.T) {
 	// below; folding it in here would mean the expected number depended on the
 	// order the goroutines happened to run, which is not a thing to assert.
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 1, 0, &startsAt, nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 1, 0, &startsAt, nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	var wg sync.WaitGroup
 	errs := make([]error, campaignRacers*4)
@@ -110,9 +109,9 @@ func TestCampaignQuotaReserveBranchIsReachable(t *testing.T) {
 	// before the watermark is still INSIDE the campaign's window — otherwise the
 	// test would be measuring the window rule instead of the reserve rule.
 	startsAt := baseInstant().Add(-2 * time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 2, 2, &startsAt, nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 2, 2, &startsAt, nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	// The watermark instant: the second main claim freezes it.
 	watermarkAt := baseInstant().Add(-time.Hour)
@@ -162,12 +161,12 @@ func TestCampaignQuotaReserveBranchIsReachable(t *testing.T) {
 // (`data-model.md` §6.2).
 func TestCampaignQuotaReserveIsSkippedWithoutWatermark(t *testing.T) {
 	startsAt := baseInstant().Add(-2 * time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 1, 3, &startsAt, nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 1, 3, &startsAt, nil)
 	claims := newFakeClaimRepo()
 	claims.watermarkMissing = true
 	// Main budget is full; the flag is deliberately absent.
 	claims.seed("launch-2026-10", uuid.New(), baseInstant().Add(-90*time.Minute), entities.GrantBucketMain, false)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	payload := identitydto.UserCreatedEventPayload{
 		UserID:       uuid.New(),
@@ -194,9 +193,9 @@ func TestCampaignQuotaReserveIsSkippedWithoutWatermark(t *testing.T) {
 // as `already_claimed` instead of granting twice, because a report that named it
 // anything else would send an operator looking for a bug that is not there.
 func TestCampaignQuotaRedeliveredMessageCreatesOneClaim(t *testing.T) {
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, timePtr(baseInstant()), nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, timePtr(baseInstant()), nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	userID := uuid.New()
 	payload := identitydto.UserCreatedEventPayload{
@@ -244,9 +243,9 @@ func TestCampaignQuotaRedeliveredMessageCreatesOneClaim(t *testing.T) {
 // an account created after it is not granted from the main budget.
 func TestCampaignQuotaWatermarkIsFrozenOnTheNthMainClaim(t *testing.T) {
 	const quota = 3
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", quota, 0, timePtr(baseInstant()), nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", quota, 0, timePtr(baseInstant()), nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	registeredAt := baseInstant()
 	grantedIDs := make([]uuid.UUID, 0, quota)
@@ -333,10 +332,10 @@ func TestCampaignQuotaDoesNotCountByExcludingFillsMainQuota(t *testing.T) {
 // that returns 0 on error grants past the ceiling on the very next message, and
 // the ceiling is the one number a campaign cannot exceed.
 func TestCampaignQuotaFailedCountDoesNotGrant(t *testing.T) {
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 1, 0, timePtr(baseInstant()), nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 1, 0, timePtr(baseInstant()), nil)
 	claims := newFakeClaimRepo()
 	claims.failNextCount = true
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	err := h.uc.ProcessUserCreated(t.Context(), identitydto.UserCreatedEventPayload{
 		UserID:       uuid.New(),
@@ -363,9 +362,9 @@ func TestCampaignQuotaFailedCountDoesNotGrant(t *testing.T) {
 // directly, so the failure says which rule broke rather than only that a number
 // was wrong.
 func TestCampaignQuotaLocksBeforeCounting(t *testing.T) {
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 1, 0, timePtr(baseInstant()), nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 1, 0, timePtr(baseInstant()), nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	h.granted(t, payload)

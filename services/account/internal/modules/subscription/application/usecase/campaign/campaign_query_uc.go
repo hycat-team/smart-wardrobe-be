@@ -48,6 +48,7 @@ import (
 // account the grant path refused, and support would tell the customer so.
 type CampaignQueryUseCase struct {
 	cfg          *sharedconfig.Config
+	campaignRepo repositories.ICampaignRepository
 	claimRepo    repositories.ICampaignClaimRepository
 	sweepRunRepo repositories.ICampaignSweepRunRepository
 	planRepo     repositories.ISubscriptionPlanRepository
@@ -72,6 +73,11 @@ type CampaignQueryUseCase struct {
 // write anything even by accident.
 func NewCampaignQueryUseCase(
 	cfg *sharedconfig.Config,
+	// campaignRepo is the registry (026). It replaced `cfg.Campaigns`, and it is a
+	// SEPARATE read from the ledger: "which campaigns exist" and "how many did each
+	// grant" are two tables, and merging them would put the budget counts behind
+	// the registry's own key.
+	campaignRepo repositories.ICampaignRepository,
 	claimRepo repositories.ICampaignClaimRepository,
 	sweepRunRepo repositories.ICampaignSweepRunRepository,
 	planRepo repositories.ISubscriptionPlanRepository,
@@ -81,6 +87,7 @@ func NewCampaignQueryUseCase(
 ) uc_interfaces.ICampaignQueryUseCase {
 	return &CampaignQueryUseCase{
 		cfg:          cfg,
+		campaignRepo: campaignRepo,
 		claimRepo:    claimRepo,
 		sweepRunRepo: sweepRunRepo,
 		planRepo:     planRepo,
@@ -91,25 +98,38 @@ func NewCampaignQueryUseCase(
 	}
 }
 
-// ListCampaigns returns every configured campaign with its derived state (FR-065).
+// ListCampaigns returns every registered campaign with its derived state (FR-065).
 //
 // ONE clock read for the whole list: a campaign rendered as `running` and the next
 // one rendered as `not_started` from two different readings of the clock is a
 // response that is internally inconsistent, and an operator comparing two rows of
 // the same page would have no way to tell which to believe.
+//
+// `ListAll`, NOT `ListOpen` (026). This endpoint must also show a campaign that is
+// not started, exhausted, expired or force-closed: FR-032 added `status = closed`
+// precisely so an operator can SEE that a campaign was closed and when, and a list
+// that hid closed campaigns would make that status unreachable. The grant path is
+// the one that wants the awake subset, and it asks for it separately (FR-040).
 func (uc *CampaignQueryUseCase) ListCampaigns(ctx context.Context, page, limit int) ([]*sub_dto.CampaignSummaryRes, int64, error) {
 	page, limit = uc_interfaces.NormalizeCampaignPagination(page, limit)
 	now := uc.now()
 
-	// The sweep health of every configured campaign in ONE query (FR-059). Read
+	campaigns, err := uc.campaignRepo.ListAll(ctx)
+	if err != nil {
+		return nil, 0, subscriptionerrors.ErrCampaignRegistryReadFailed()
+	}
+
+	// The sweep health of every registered campaign in ONE query (FR-059). Read
 	// from `campaign_sweep_runs` and never from the sweep worker's memory: the
 	// service runs several replicas, each with its own worker set, so an in-memory
 	// flag read by this replica says nothing about a failure another replica
 	// produced — and under APP_MODE=http there is no worker at all, so the flag
 	// would be permanently false.
-	codes := make([]string, 0, len(uc.cfg.Campaigns))
-	for i := range uc.cfg.Campaigns {
-		codes = append(codes, uc.cfg.Campaigns[i].Code)
+	codes := make([]string, 0, len(campaigns))
+	for _, campaign := range campaigns {
+		if campaign != nil {
+			codes = append(codes, campaign.Code)
+		}
 	}
 	sweepRuns, err := uc.sweepRunRepo.GetByCampaigns(ctx, codes)
 	if err != nil {
@@ -123,9 +143,11 @@ func (uc *CampaignQueryUseCase) ListCampaigns(ctx context.Context, page, limit i
 	// unrendered campaigns would mean a second code path — one for "in the page"
 	// and one for "in the total" — which is how the two drift and an operator sees
 	// a total that disagrees with the pages.
-	all := make([]*sub_dto.CampaignSummaryRes, 0, len(uc.cfg.Campaigns))
-	for i := range uc.cfg.Campaigns {
-		campaign := uc.cfg.Campaigns[i]
+	all := make([]*sub_dto.CampaignSummaryRes, 0, len(campaigns))
+	for _, campaign := range campaigns {
+		if campaign == nil {
+			continue
+		}
 		summary, err := uc.summarise(ctx, campaign, sweepRuns[campaign.Code], now)
 		if err != nil {
 			return nil, 0, err
@@ -137,8 +159,8 @@ func (uc *CampaignQueryUseCase) ListCampaigns(ctx context.Context, page, limit i
 	start := (page - 1) * limit
 	if start >= len(all) {
 		// An empty page rather than an error: asking for page 9 of a
-		// two-campaign list is a normal thing for an operator's pager to do, and
-		// an error would look like a fault.
+		// two-campaign list is a normal thing for an operator's pager to do, and an
+		// error would look like a fault.
 		return []*sub_dto.CampaignSummaryRes{}, total, nil
 	}
 	end := start + limit
@@ -150,27 +172,30 @@ func (uc *CampaignQueryUseCase) ListCampaigns(ctx context.Context, page, limit i
 
 // GetCampaign returns one campaign by code (FR-065, FR-072).
 func (uc *CampaignQueryUseCase) GetCampaign(ctx context.Context, campaignCode string) (*sub_dto.CampaignSummaryRes, error) {
-	campaign, ok := uc.findCampaign(campaignCode)
-	if !ok {
+	campaign, err := uc.findCampaign(ctx, campaignCode)
+	if err != nil {
+		return nil, err
+	}
+	if campaign == nil {
 		return nil, subscriptionerrors.ErrCampaignNotFound(campaignCode)
 	}
 	sweepRuns, err := uc.sweepRunRepo.GetByCampaigns(ctx, []string{campaign.Code})
 	if err != nil {
 		return nil, subscriptionerrors.ErrCampaignListSweepRunsFailed()
 	}
-	return uc.summarise(ctx, *campaign, sweepRuns[campaign.Code], uc.now())
+	return uc.summarise(ctx, campaign, sweepRuns[campaign.Code], uc.now())
 }
 
 // summarise derives one campaign's whole visible state from the ledger, the
-// configuration and the sweep table.
+// registry and the sweep table.
 //
-// The four inputs are the whole story of FR-065: the configuration says what the
+// The four inputs are the whole story of FR-065: the registry says what the
 // budget SHOULD be, the ledger says what it IS, the clock says whether the window
 // is open, and the sweep table says whether the mechanism is working. Nothing is
 // read twice and nothing is stored.
 func (uc *CampaignQueryUseCase) summarise(
 	ctx context.Context,
-	campaign sharedconfig.CampaignConfig,
+	campaign *entities.Campaign,
 	sweepRun *entities.CampaignSweepRun,
 	now time.Time,
 ) (*sub_dto.CampaignSummaryRes, error) {
@@ -213,8 +238,8 @@ func (uc *CampaignQueryUseCase) summarise(
 		RemainingMain:            maxInt64(0, quota-grantedMain),
 		RemainingCompensation:    maxInt64(0, reserve-grantedReserve),
 		HardCap:                  quota + reserve,
-		StartsAt:                 campaign.StartsAtTime,
-		EndsAt:                   campaign.EndsAtTime,
+		StartsAt:                 campaign.StartsAt,
+		EndsAt:                   campaign.EndsAt,
 		Status:                   deriveCampaignStatus(campaign, grantedMain, grantedTotal, now),
 	}
 	if watermarkSet {
@@ -265,7 +290,7 @@ func (uc *CampaignQueryUseCase) summarise(
 // and an operator who cannot tell them apart either keeps sending a closed
 // campaign or reopens a finished one.
 func deriveCampaignStatus(
-	campaign sharedconfig.CampaignConfig,
+	campaign *entities.Campaign,
 	grantedMain, grantedTotal int64,
 	now time.Time,
 ) string {
@@ -275,10 +300,14 @@ func deriveCampaignStatus(
 	// stopped for a reason no grant can change, and reporting it as
 	// `compensation` — which reads as "still granting" — would send an operator
 	// to watch a budget that can never be spent again.
-	if campaign.EndsAtTime != nil && !now.Before(*campaign.EndsAtTime) {
+	//
+	// 026 adds a sixth state ABOVE this one: `closed_at IS NOT NULL` wins over
+	// everything, because a campaign an operator closed must read as closed whether
+	// or not the clock happens to agree. FR-032/FR-046, and T040 wires it.
+	if campaign.EndsAt != nil && !now.Before(*campaign.EndsAt) {
 		return sub_dto.CampaignStatusExpired
 	}
-	if now.Before(campaign.StartsAtTime) {
+	if now.Before(campaign.StartsAt) {
 		return sub_dto.CampaignStatusNotStarted
 	}
 	// The hard ceiling is checked before the watermark: at `quota + reserve` grants
@@ -296,19 +325,37 @@ func deriveCampaignStatus(
 	return sub_dto.CampaignStatusRunning
 }
 
-// findCampaign looks a campaign up by code in the loaded configuration.
+// findCampaign looks a campaign up by code in the REGISTRY (026).
 //
-// Configuration is the ONLY source of which campaigns exist: they are declared in
-// a YAML file (data-model.md §4), not in a table, so a code that is not in it is
-// not merely ungranted but undeclared — which is the honest answer and the one
+// The registry is the only source of which campaigns exist: they are rows of
+// `subscription.campaigns`, written by the admin API, so a code that is not in it
+// is not merely ungranted but undeclared — which is the honest answer and the one
 // FR-072 asks for.
-func (uc *CampaignQueryUseCase) findCampaign(campaignCode string) (*sharedconfig.CampaignConfig, bool) {
-	for i := range uc.cfg.Campaigns {
-		if uc.cfg.Campaigns[i].Code == campaignCode {
-			return &uc.cfg.Campaigns[i], true
-		}
+//
+// `nil, nil` for absent and an error only for a database fault. Collapsing the two
+// would turn an outage into "this campaign does not exist", and an operator would
+// report a broken screen for a campaign that has been running for months.
+func (uc *CampaignQueryUseCase) findCampaign(ctx context.Context, campaignCode string) (*entities.Campaign, error) {
+	return uc.campaignRepo.GetByCode(ctx, campaignCode)
+}
+
+// requireCampaign is `findCampaign` with the FR-072 answer folded in: a code that
+// does not exist is 404, and a registry that cannot be read is 500.
+//
+// Two of the three per-account and per-claim endpoints ask the same question in
+// the same way, so it is asked here once. Handing each of them a
+// `GetByCode` call would mean three places that can forget the nil check, and a
+// forgotten nil check dereferences into a nil campaign and answers every account
+// `not_eligible`.
+func (uc *CampaignQueryUseCase) requireCampaign(ctx context.Context, campaignCode string) (*entities.Campaign, error) {
+	campaign, err := uc.findCampaign(ctx, campaignCode)
+	if err != nil {
+		return nil, err
 	}
-	return nil, false
+	if campaign == nil {
+		return nil, subscriptionerrors.ErrCampaignNotFound(campaignCode)
+	}
+	return campaign, nil
 }
 
 // maxInt64 is `max(0, n)` for the derived remainders.

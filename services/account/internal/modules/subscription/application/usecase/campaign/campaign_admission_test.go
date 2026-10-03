@@ -6,7 +6,6 @@ import (
 
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -32,9 +31,9 @@ func TestCampaignAdmissionPicksTheLatestStartingCampaign(t *testing.T) {
 	earlyStart := baseInstant().Add(-2 * time.Hour)
 	lateStart := baseInstant().Add(-1 * time.Hour)
 
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("first-campaign", "premium-monthly", 50, 5, &earlyStart, nil),
-		testCampaignConfig("second-campaign", "premium-quarterly", 50, 5, &lateStart, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign("first-campaign", "premium-monthly", 50, 5, &earlyStart, nil),
+		testCampaign("second-campaign", "premium-quarterly", 50, 5, &lateStart, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -77,8 +76,8 @@ func TestCampaignAdmissionPicksTheLatestStartingCampaign(t *testing.T) {
 func TestCampaignAdmissionIgnoresMessageArrivalOrder(t *testing.T) {
 	startsAt := baseInstant().Add(-24 * time.Hour)
 	endsAt := baseInstant().Add(24 * time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -113,8 +112,8 @@ func TestCampaignAdmissionIgnoresMessageArrivalOrder(t *testing.T) {
 func TestCampaignAdmissionRejectsAccountOutsideTheWindow(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
 	endsAt := baseInstant().Add(time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -152,8 +151,8 @@ func TestCampaignAdmissionRejectsAccountOutsideTheWindow(t *testing.T) {
 // the test accounts eating a launch campaign's 50 slots, stays invisible.
 func TestCampaignAdmissionSkipsAdministratorCreatedAccount(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -205,8 +204,8 @@ func TestCampaignAdmissionSkipsWhenNoCampaignIsConfigured(t *testing.T) {
 func TestCampaignAdmissionSkipsAfterCampaignEnd(t *testing.T) {
 	startsAt := baseInstant().Add(-2 * time.Hour)
 	endsAt := baseInstant().Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -235,8 +234,8 @@ func TestCampaignAdmissionSkipsAfterCampaignEnd(t *testing.T) {
 // one is "we will start", the other is "we are done".
 func TestCampaignAdmissionSkipsBeforeCampaignStart(t *testing.T) {
 	startsAt := baseInstant().Add(time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)

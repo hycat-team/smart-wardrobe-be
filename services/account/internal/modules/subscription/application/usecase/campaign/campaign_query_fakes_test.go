@@ -10,7 +10,6 @@ import (
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -67,6 +66,13 @@ func newFakeSweepRunRepo() *fakeSweepRunRepo {
 // failing every fifteen minutes for six hours into a six-hour-old timestamp, the
 // alarm an operator actually wants (data-model.md §5.1).
 func (f *fakeSweepRunRepo) RecordRun(ctx context.Context, results []repositories.CampaignSweepResult) error {
+	// An EMPTY result set is not a write. The repository returns early for it, and a
+	// fake that counted it would report a health write for a sweep that covered no
+	// campaign — which is how a sweep over an empty registry would look like it
+	// maintained something (026 SC-008).
+	if len(results) == 0 {
+		return nil
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.writes++
@@ -192,6 +198,7 @@ var _ identitycontract.IUserBriefContract = (*fakeUserBriefContract)(nil)
 // queryHarness is the look-up use case plus the fakes a test asserts on.
 type queryHarness struct {
 	uc        *CampaignQueryUseCase
+	campaigns *fakeCampaignRepo
 	claims    *fakeClaimRepo
 	sweepRuns *fakeSweepRunRepo
 	accounts  *fakeUserBriefContract
@@ -202,26 +209,32 @@ type queryHarness struct {
 // newTestQueryUC wires the look-up onto the SAME fakes the grant path uses, so a
 // ledger seeded for a grant-path test is readable by the look-up and vice versa.
 //
+// The registry is a separate fake from the claim ledger on purpose: `ListAll` must
+// show a CLOSED campaign (FR-032 adds `status = closed` precisely so an operator
+// can see it), and a fake that served the awake subset would make that state
+// unreachable here.
+//
 // The clock is pinned to `baseInstant` for the same reason it is in
 // `newTestUseCase`: a state machine whose transitions are all clock-driven cannot
 // be tested against a clock that moves.
 func newTestQueryUC(
 	t *testing.T,
-	campaigns []sharedconfig.CampaignConfig,
+	campaigns []*entities.Campaign,
 	claims *fakeClaimRepo,
 	sweepRuns *fakeSweepRunRepo,
 	accounts *fakeUserBriefContract,
 ) *queryHarness {
 	t.Helper()
-	cfg := campaignConfig(campaigns)
+	registry := newFakeCampaignRepo(campaigns...)
 	subs := newFakeSubRepo()
 	plans := newFakePlanRepo()
 	plans.put(testPlan("premium-monthly", 30))
 
-	uc := NewCampaignQueryUseCase(cfg, claims, sweepRuns, plans, subs, accounts, quietLogger{}).(*CampaignQueryUseCase)
+	uc := NewCampaignQueryUseCase(testConfig(), registry, claims, sweepRuns, plans, subs, accounts, quietLogger{}).(*CampaignQueryUseCase)
 	uc.now = func() time.Time { return baseInstant() }
 	return &queryHarness{
 		uc:        uc,
+		campaigns: registry,
 		claims:    claims,
 		sweepRuns: sweepRuns,
 		accounts:  accounts,

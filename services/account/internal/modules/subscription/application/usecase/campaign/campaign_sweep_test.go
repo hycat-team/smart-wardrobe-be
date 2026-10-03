@@ -10,7 +10,6 @@ import (
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 
 	"github.com/google/uuid"
@@ -184,8 +183,8 @@ func TestCampaignSweepWatermarkIsFrozenWhenTwoSweepsRace(t *testing.T) {
 	)
 	registeredBase := baseInstant().Add(-8 * time.Hour)
 	startsAt := registeredBase.Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(code, "premium-monthly", quota, reserve, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(code, "premium-monthly", quota, reserve, &startsAt, nil),
 	}
 
 	// Twelve accounts inside the campaign window, oldest first — more than the
@@ -273,8 +272,8 @@ func TestCampaignSweepGrantsALateArrivalAndMarksItLate(t *testing.T) {
 	const code = "launch-2026-10"
 	registeredAt := baseInstant().Add(-8 * time.Hour)
 	startsAt := registeredAt.Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(code, "premium-monthly", 50, 5, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(code, "premium-monthly", 50, 5, &startsAt, nil),
 	}
 
 	account := sweepAccount(registeredAt, false)
@@ -422,8 +421,8 @@ func TestCampaignSweepGrantsAnAccountThatNeverReceivedAMessage(t *testing.T) {
 	const code = "launch-2026-10"
 	registeredAt := baseInstant().Add(-20 * time.Minute)
 	startsAt := registeredAt.Add(-time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(code, "premium-monthly", 50, 5, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(code, "premium-monthly", 50, 5, &startsAt, nil),
 	}
 
 	// Eligible, inside the window, and no message was ever delivered: the sweep is

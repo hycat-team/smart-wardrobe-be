@@ -237,38 +237,24 @@ admin:
 # ============================================================
 # Business - Campaigns (025 signup campaign grant)
 # ============================================================
-# Campaigns are DATA, not code: a new campaign is a new list entry (FR-011).
-# plan_slug must reference an EXISTING and ACTIVE plan (FR-010).
-# quota/reserve of a RUNNING campaign are immutable - end it and open a new code
-# instead, because every past claim records which part it came from.
-# No environment variable exists for this block: edit this file (R10).
-campaigns:
-    - code: launch-2026-10
-      plan_slug: premium-monthly
-      quota: 50
-      reserve: 5
-      starts_at: "2026-10-02T00:00:00+07:00"
-      # Optional (FR-009). When set, must be after starts_at (FR-013).
-      ends_at: null
-    # 025 T089: the SECOND campaign, and this list entry is the whole of US5.
-    # Opening a campaign is a YAML edit - no migration, no code change, no
-    # restart with new binaries (FR-011).
-    #
-    # DEV FILE ONLY. NEVER copy this entry into configs/config.production.yaml:
-    # FR-011 gives the account to the LATEST-STARTING campaign, so a sample
-    # declared in production would take real signups away from launch-2026-10 and
-    # every check would stay green. See quickstart.md's safety gate and T106.
-    #
-    # It opens on 2026-11-01, so it does not disturb dev behaviour before then. To
-    # exercise it locally, move starts_at into the past (quickstart.md 1.2).
-    - code: sample-2026-11
-      plan_slug: premium-monthly
-      quota: 10
-      reserve: 2
-      starts_at: "2026-11-01T00:00:00+07:00"
-      ends_at: "2026-12-01T00:00:00+07:00"
-# Catch-up sweep cadence for ALL campaigns at once (FR-083). It is a separate
-# block, not a per-campaign field: one sweep worker serves every campaign.
+# 026: the `campaigns` block is GONE from this file. Campaigns are DATA and they
+# live in the table `subscription.campaigns`, which the admin API writes
+# (FR-001/FR-002). Editing this file no longer opens a campaign - it would only
+# add a key that no code reads, which is worse than nothing because it looks
+# authoritative.
+#
+# The campaign that is already running (`launch-2026-10`) was carried over
+# verbatim by the migration `seed_launch_campaign`, so removing this block changes
+# no meaning (spec.md Câu 5, US6).
+#
+# To open a campaign: POST /api/v1/admin/campaigns. No commit, no tag, no deploy.
+# `launch-2026-10` and the dev-only `sample-2026-11` were both created here before;
+# the sample is now created through the same API.
+#
+# `campaign_sweep` STAYS, and it is not an oversight. One sweep worker runs once
+# for every campaign, so its cadence belongs to the deployment rather than to any
+# campaign - and keeping it here is what keeps configuration loading free of any
+# database access (FR-003, FR-004).
 campaign_sweep:
     interval_seconds: 900     # 15 minutes; floor 60
     run_on_start: true        # sweep once at startup to close the gap left by the last run

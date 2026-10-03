@@ -8,6 +8,7 @@ import (
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	sharedconfig "smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/pkg/logger"
@@ -73,6 +74,7 @@ const (
 type CampaignSweepUseCase struct {
 	cfg       *sharedconfig.Config
 	accounts  identitycontract.CampaignAccountLister
+	campaigns repositories.ICampaignRepository
 	claimRepo repositories.ICampaignClaimRepository
 	// sweepRuns is where the run's HEALTH is recorded (025 T079c, FR-059).
 	//
@@ -101,6 +103,11 @@ type CampaignSweepUseCase struct {
 func NewCampaignSweepUseCase(
 	cfg *sharedconfig.Config,
 	accounts identitycontract.CampaignAccountLister,
+	// campaigns is the registry (026). It replaced `cfg.Campaigns`, and it is the
+	// same collaborator the grant path uses — so the sweep and the queue read the
+	// SAME list through the same query, and a campaign created a second ago is
+	// picked up by the next run without a deploy (FR-071).
+	campaigns repositories.ICampaignRepository,
 	claimRepo repositories.ICampaignClaimRepository,
 	sweepRuns repositories.ICampaignSweepRunRepository,
 	campaignUC uc_interfaces.ICampaignUseCase,
@@ -109,6 +116,7 @@ func NewCampaignSweepUseCase(
 	return &CampaignSweepUseCase{
 		cfg:        cfg,
 		accounts:   accounts,
+		campaigns:  campaigns,
 		claimRepo:  claimRepo,
 		sweepRuns:  sweepRuns,
 		campaignUC: campaignUC,
@@ -132,26 +140,45 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 	now := uc.now()
 	report := uc_interfaces.CampaignSweepReport{SweptAt: now}
 
+	// THE REGISTRY IS RE-READ ON EVERY RUN (026, FR-070/FR-071). This is the whole
+	// reason the list may live in the database: a campaign created five minutes
+	// ago, from a browser, is swept by the run that starts in one sweep period —
+	// with no deploy, no restart and no in-memory list that would need invalidating.
+	//
+	// `ListOpen` returns only what is not force-closed (FR-031), so a closed
+	// campaign is not swept while its health row and its claim ledger stay untouched
+	// (spec.md Câu 9). The window is decided by `anyCampaignAwake` below, through
+	// the SAME predicate the message path's condition 2 uses (FR-080).
+	campaigns, err := uc.campaigns.ListOpen(ctx)
+	if err != nil {
+		// No health row is written, and that is deliberate rather than an oversight:
+		// the set of campaigns this run would have covered is exactly what the failed
+		// query was supposed to return, so any row written here would be a guess. The
+		// error travels to the worker, which logs it, and the NEXT run records the
+		// campaigns that exist by then. Inventing rows for campaigns we could not read
+		// would be the false all-clear FR-059 exists to prevent.
+		return report, subscriptionerrors.ErrCampaignRegistryReadFailed()
+	}
+
 	// Conditions 1 and 2, BORROWED rather than restated. `anyCampaignAwake` is the
 	// same function the message path's condition 2 calls, so the sweep cannot
 	// conclude that a campaign is open while the message path concludes it is
-	// closed. Reading the campaign list here and deciding for itself is precisely
-	// how two paths drift (FR-080).
-	if len(uc.cfg.Campaigns) == 0 || !newCampaignEvaluator(uc.cfg.Campaigns, now).anyCampaignAwake() {
-		uc.recordSuccess(ctx, report)
+	// closed. Deciding for itself here is precisely how two paths drift (FR-080).
+	if len(campaigns) == 0 || !newCampaignEvaluator(campaigns, now).anyCampaignAwake() {
+		uc.recordSuccess(ctx, report, nil)
 		uc.log.Info("campaign sweep skipped; no campaign is inside its window",
-			zap.Int("campaigns", len(uc.cfg.Campaigns)))
+			zap.Int("campaigns", len(campaigns)))
 		return report, nil
 	}
 
-	claimed, err := uc.alreadyClaimed(ctx)
+	claimed, err := uc.alreadyClaimed(ctx, campaigns)
 	if err != nil {
-		uc.recordFailure(ctx, report, err)
+		uc.recordFailure(ctx, report, campaigns, err)
 		return report, err
 	}
 
 	filter := identitycontract.CampaignAccountFilter{
-		From:  earliestCampaignStart(uc.cfg.Campaigns),
+		From:  earliestCampaignStart(campaigns),
 		To:    now,
 		Limit: sweepBatchSize,
 	}
@@ -159,14 +186,14 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 	consecutiveFailures := 0
 	for {
 		if err := ctx.Err(); err != nil {
-			uc.recordFailure(ctx, report, err)
+			uc.recordFailure(ctx, report, campaigns, err)
 			return report, err
 		}
 
 		page, err := uc.accounts.ListCreatedInWindow(ctx, filter)
 		if err != nil {
-			failure := subscriptionerrors.ErrCampaignAccountsQueryFailed(windowLabel(uc.cfg.Campaigns))
-			uc.recordFailure(ctx, report, failure)
+			failure := subscriptionerrors.ErrCampaignAccountsQueryFailed(windowLabel(campaigns))
+			uc.recordFailure(ctx, report, campaigns, failure)
 			return report, failure
 		}
 		if page == nil || len(page.Items) == 0 {
@@ -175,7 +202,7 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 
 		consecutiveFailures, err = uc.processBatch(ctx, page.Items, claimed, now, &report, consecutiveFailures)
 		if err != nil {
-			uc.recordFailure(ctx, report, err)
+			uc.recordFailure(ctx, report, campaigns, err)
 			return report, err
 		}
 
@@ -201,7 +228,7 @@ func (uc *CampaignSweepUseCase) Sweep(ctx context.Context) (uc_interfaces.Campai
 		}
 	}
 
-	uc.recordSuccess(ctx, report)
+	uc.recordSuccess(ctx, report, campaigns)
 	return report, nil
 }
 
@@ -347,19 +374,29 @@ func (uc *CampaignSweepUseCase) countLateness(account *identitydto.UserBriefCont
 // shared path, which answers `already_claimed` for them. That is slower, never
 // wrong, which is the only acceptable direction for an optimisation.
 //
+// The budget comes from the REGISTRY ROW (026), never from configuration: after the
+// move there is nowhere else it could come from, and reading it from the same row
+// the grant path reads is what keeps the two paths from disagreeing about how many
+// claims a campaign can hold.
+//
 // A failure here is NOT downgraded to an empty set. An empty set would mean "no
 // account has ever been granted", and the sweep would then push every one of them
 // through the shared path — correct, but it converts one failed query into a
 // full-window storm of transactions.
-func (uc *CampaignSweepUseCase) alreadyClaimed(ctx context.Context) (map[uuid.UUID]struct{}, error) {
+func (uc *CampaignSweepUseCase) alreadyClaimed(
+	ctx context.Context,
+	campaigns []*entities.Campaign,
+) (map[uuid.UUID]struct{}, error) {
 	claimed := make(map[uuid.UUID]struct{})
-	for i := range uc.cfg.Campaigns {
-		campaign := uc.cfg.Campaigns[i]
+	for _, campaign := range campaigns {
+		if campaign == nil {
+			continue
+		}
 		// The ceiling, not the batch size: asking for more than a campaign can hold
 		// would be asking for rows that cannot exist.
 		limit := campaign.Quota + campaign.Reserve
 		if limit <= 0 {
-			// `quota` is validated to be >= 1, so this is unreachable. Guarded rather
+			// `quota` is CHECKed to be >= 1, so this is unreachable. Guarded rather
 			// than assumed: a zero limit would be read as "no limit" by the ledger
 			// and would ask for its own default instead of skipping.
 			continue
@@ -380,87 +417,27 @@ func (uc *CampaignSweepUseCase) alreadyClaimed(ctx context.Context) (map[uuid.UU
 // earliestCampaignStart is the lower bound of the sweep window.
 //
 // The EARLIEST start, not the latest: the window has to contain every account
-// that could belong to any configured campaign, and a later start would silently
-// exclude accounts from a campaign that opened earlier. Accounts before the
-// earliest start cannot qualify for anything, and the query excludes them for
-// free.
-func earliestCampaignStart(campaigns []sharedconfig.CampaignConfig) time.Time {
-	earliest := campaigns[0].StartsAtTime
-	for i := range campaigns {
-		if campaigns[i].StartsAtTime.Before(earliest) {
-			earliest = campaigns[i].StartsAtTime
+// that could belong to any open campaign, and a later start would silently exclude
+// accounts from a campaign that opened earlier. Accounts before the earliest start
+// cannot qualify for anything, and the query excludes them for free.
+func earliestCampaignStart(campaigns []*entities.Campaign) time.Time {
+	earliest := campaigns[0].StartsAt
+	for _, campaign := range campaigns {
+		if campaign.StartsAt.Before(earliest) {
+			earliest = campaign.StartsAt
 		}
 	}
 	return earliest
 }
 
-// windowLabel names the campaigns in a log line or error cause. Configured codes
-// are already restricted to `^[a-z0-9][a-z0-9-]{2,63}$`, so joining them cannot
-// put a path separator or a control character into a log message.
-func windowLabel(campaigns []sharedconfig.CampaignConfig) string {
+// windowLabel names the campaigns in a log line or error cause. Registry codes are
+// CHECKed against `^[a-z0-9][a-z0-9-]{2,63}$`, so joining them cannot put a path
+// separator or a control character into a log message.
+func windowLabel(campaigns []*entities.Campaign) string {
 	if len(campaigns) == 1 {
 		return campaigns[0].Code
 	}
 	return "multiple"
-}
-
-// recordSuccess writes the health of a run that finished, for EVERY configured
-// campaign (025 T079c, FR-059).
-//
-// ONE write for all campaigns rather than one per campaign: a sweep covers every
-// campaign by design, and a per-campaign write would make a partial recording —
-// half the campaigns marked healthy, half still showing the last fault — possible
-// in a way a single statement is not.
-//
-// The degraded flag is CLEARED, not merely left alone: it describes the most
-// recent sweep, and a run that completed without error is the answer to "is the
-// mechanism granting again" — whatever happened an hour ago. `degraded_reason` is
-// cleared with it, because a stale reason beside a healthy flag would name a fault
-// that no longer exists.
-func (uc *CampaignSweepUseCase) recordSuccess(ctx context.Context, report uc_interfaces.CampaignSweepReport) {
-	uc.persistHealth(ctx, report.SweptAt, true, "")
-}
-
-// recordFailure writes the health of a run that could not finish (FR-059).
-//
-// `LastSweepAt` is deliberately NOT advanced: it answers "when did a sweep last
-// succeed", and a failed run is not evidence that one did. The repository enforces
-// the same asymmetry on the UPDATE, so a failure cannot overwrite it here even if
-// a future caller passes the wrong instant. A sweep that fails every fifteen
-// minutes for six hours therefore reports a `LastSweepAt` six hours old, which is
-// the useful alarm.
-func (uc *CampaignSweepUseCase) recordFailure(ctx context.Context, report uc_interfaces.CampaignSweepReport, err error) {
-	uc.persistHealth(ctx, report.SweptAt, false, err.Error())
-}
-
-// persistHealth writes one row per configured campaign.
-//
-// The failure of the WRITE ITSELF is logged and swallowed rather than returned.
-// The sweep has already finished by the time this runs, and its grants are
-// already committed — turning "could not record that the run was healthy" into a
-// returned error would make a successful sweep look failed, and a caller that
-// retries on that error would sweep the whole window again for no reason. What is
-// lost is only the record; the grants stand, and the next run rewrites the row.
-//
-// A campaign that has never been swept has NO row until a run happens, and the
-// look-up reads that absence as `lastSweepAt` unset rather than as the zero time —
-// which is the truth, and is exactly what an operator needs to be told.
-func (uc *CampaignSweepUseCase) persistHealth(ctx context.Context, sweptAt time.Time, succeeded bool, reason string) {
-	results := make([]repositories.CampaignSweepResult, 0, len(uc.cfg.Campaigns))
-	for i := range uc.cfg.Campaigns {
-		results = append(results, repositories.CampaignSweepResult{
-			CampaignCode:  uc.cfg.Campaigns[i].Code,
-			SweptAt:       sweptAt,
-			Succeeded:     succeeded,
-			FailureReason: reason,
-		})
-	}
-	if err := uc.sweepRuns.RecordRun(ctx, results); err != nil {
-		uc.log.Error("campaign sweep could not record its health; the operator look-up will show the previous state",
-			zap.String("degraded_reason", reason),
-			zap.Error(err),
-		)
-	}
 }
 
 // logSkippedAccount records a skip the sweep decided on its own (FR-061).

@@ -11,7 +11,6 @@ import (
 	notificationcontract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	sharedevent "smart-wardrobe-be/shared/application/event"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -30,8 +29,8 @@ import (
 // month for registering, and they get charged for it.
 func TestCampaignGrantAppliesPlanWithAutoRenewOff(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -76,8 +75,8 @@ func TestCampaignGrantAppliesPlanWithAutoRenewOff(t *testing.T) {
 func TestCampaignGrantWritesAClaimExpiryMatchingTheSubscription(t *testing.T) {
 	registeredAt := baseInstant().Add(-8 * time.Hour)
 	startsAt := registeredAt.Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: registeredAt}
 	if !h.granted(t, payload) {
@@ -133,8 +132,8 @@ func TestCampaignGrantWritesAClaimExpiryMatchingTheSubscription(t *testing.T) {
 func TestCampaignGrantEventIsStampedOnProcessingNotRegistration(t *testing.T) {
 	registeredAt := baseInstant().Add(-8 * time.Hour)
 	startsAt := registeredAt.Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	// Registered eight hours ago; the harness clock is "now". A message this late
 	// must still grant (FR-078), which is the half that was always right.
@@ -187,8 +186,8 @@ func TestCampaignGrantEventIsStampedOnProcessingNotRegistration(t *testing.T) {
 // is real and the quota is not.
 func TestCampaignGrantRereadsSubscriptionBeforePublishing(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -222,8 +221,8 @@ func TestCampaignGrantRereadsSubscriptionBeforePublishing(t *testing.T) {
 // the message.
 func TestCampaignGrantUpdatesAiEntitlementToPremium(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -255,8 +254,8 @@ func TestCampaignGrantUpdatesAiEntitlementToPremium(t *testing.T) {
 // grant means the AI service may apply the entitlement twice.
 func TestCampaignGrantWritesExactlyOneHistoryRow(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -285,9 +284,9 @@ func TestCampaignGrantWritesExactlyOneHistoryRow(t *testing.T) {
 // message is retried rather than dead-lettered.
 func TestCampaignGrantIsAtomicWhenPublishingFails(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 	h.publisher.failNext = true
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
@@ -315,8 +314,8 @@ func TestCampaignGrantIsAtomicWhenPublishingFails(t *testing.T) {
 // by a mail server being down.
 func TestCampaignGrantSurvivesEmailFailure(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 	h.notif.fail = true
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
@@ -347,8 +346,8 @@ func TestCampaignGrantSurvivesEmailFailure(t *testing.T) {
 // answering "who gave this customer Premium?" reads the audit trail.
 func TestCampaignGrantRecordsCampaignOriginInTheAuditTrail(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -378,9 +377,9 @@ func TestCampaignGrantRecordsCampaignOriginInTheAuditTrail(t *testing.T) {
 // expiry is left exactly as it was.
 func TestCampaignGrantDoesNotExtendAnExistingPremiumTerm(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, claims)
 
 	// Already on Premium with ten days left.
 	userID := uuid.New()
@@ -425,8 +424,8 @@ func TestCampaignGrantDoesNotExtendAnExistingPremiumTerm(t *testing.T) {
 // campaign quota figure.
 func TestCampaignGrantSendsOneEmailWithNoCampaignQuota(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -484,8 +483,8 @@ func TestCampaignGrantSendsOneEmailWithNoCampaignQuota(t *testing.T) {
 // above and fails this one.
 func TestCampaignEmailNamesThePlanTermRatherThanThirtyDays(t *testing.T) {
 	startsAt := baseInstant().Add(-time.Hour)
-	campaign := testCampaignConfig("launch-2026-10", "premium-quarterly", 50, 5, &startsAt, nil)
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+	campaign := testCampaign("launch-2026-10", "premium-quarterly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []*entities.Campaign{campaign}, newFakeClaimRepo())
 
 	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
 	if !h.granted(t, payload) {
@@ -512,8 +511,8 @@ func TestCampaignGrantSkipsEmailForAccountsThatWereNotGranted(t *testing.T) {
 	// FR-078 working as intended, not a window failure.
 	startsAt := baseInstant().Add(-time.Hour)
 	endsAt := baseInstant().Add(time.Hour)
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &startsAt, &endsAt),
 	}
 	h := newTestUseCase(t, campaigns, newFakeClaimRepo())
 

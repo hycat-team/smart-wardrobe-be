@@ -10,9 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
-
-	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -70,9 +67,6 @@ func loadConfig() (*Config, error) {
 	applyEnvOverrides(&cfg)
 	cfg.Server.FrontEndOrigins = splitFrontEndOrigins(cfg.Server.FrontEndOrigin)
 	cfg.Google.ClientIDs = googleAudiences(cfg.Google.ClientIDRaw, cfg.Google.WebClientID)
-	if err := parseCampaignWindows(&cfg); err != nil {
-		return nil, err
-	}
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
@@ -80,53 +74,21 @@ func loadConfig() (*Config, error) {
 	return &cfg, nil
 }
 
-// parseCampaignWindows turns the campaign boundaries into time values once, at
-// load time, and normalises them to the service timezone (025 T007).
+// parseCampaignWindows is GONE (026 T010).
 //
-// The zone is taken from timeutils.GetNow(cfg.Database.TimeZone) rather than
-// time.Now(), because the campaign window has to be read in the same zone the
-// database and the rest of the service use (R6, constitution §VIII). A campaign
-// boundary expressed in another zone would land on the wrong day.
-func parseCampaignWindows(cfg *Config) error {
-	location := timeutils.GetNow(cfg.Database.TimeZone).Location()
-	for i := range cfg.Campaigns {
-		campaign := &cfg.Campaigns[i]
-		startsAt, err := parseCampaignInstant(campaign.StartsAt)
-		if err != nil {
-			return fmt.Errorf("campaigns[%d]: starts_at is invalid: %w", i, err)
-		}
-		campaign.StartsAtTime = startsAt.In(location)
-		if strings.TrimSpace(campaign.EndsAt) == "" {
-			// Open-ended campaign (FR-009): nil means "no upper bound", which is
-			// not the same instant as the zero time.
-			campaign.EndsAtTime = nil
-			continue
-		}
-		endsAt, err := parseCampaignInstant(campaign.EndsAt)
-		if err != nil {
-			return fmt.Errorf("campaigns[%d]: ends_at is invalid: %w", i, err)
-		}
-		normalized := endsAt.In(location)
-		campaign.EndsAtTime = &normalized
-	}
-	return nil
-}
-
-// parseCampaignInstant parses one campaign boundary. RFC3339 is required, WITH
-// its zone: FR-008 demands that every environment read the same instant, and a
-// zone-less value would be interpreted as UTC on a UTC server — 7 hours off for
-// a Vietnam-time boundary (R6).
-func parseCampaignInstant(raw string) (time.Time, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return time.Time{}, fmt.Errorf("value is empty")
-	}
-	parsed, err := time.Parse(time.RFC3339, trimmed)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%q is not RFC3339 with an explicit time zone (want 2026-10-02T00:00:00+07:00)", raw)
-	}
-	return parsed, nil
-}
+// 025 needed it because the campaign list lived HERE: `starts_at`/`ends_at` were
+// RFC3339 strings that had to be parsed into instants once at load time and
+// normalised to the service timezone (025 T007). Campaign boundaries are columns
+// of `subscription.campaigns` now, read as `time.Time`/`*time.Time` through the
+// entity, so there is nothing to parse and nothing to normalise.
+//
+// That is not a simplification for its own sake. Parsing at load time meant the
+// zone question (FR-008, R6, constitution §VIII) had to be answered by a startup
+// check on a string; a TIMESTAMPTZ column carries the instant unambiguously and
+// makes the zone-less value unrepresentable (FR-013). The consequence is the one
+// that matters: `loadConfig` no longer touches anything that knows about a
+// campaign, so the claim in FR-003 — loading configuration performs ZERO database
+// queries — is structural rather than a promise (SC-010).
 
 // splitCSVList parses a comma-separated value into a trimmed, non-empty slice.
 func splitCSVList(raw string) []string {
@@ -329,19 +291,26 @@ func applyEnvOverrides(cfg *Config) {
 	overrideInt("COMMUNITY_LIKE_RATE_LIMIT_PER_HOUR", &cfg.Community.LikeRateLimitPerHour)
 
 	// 025 T008 (R10): the signup campaign grant deliberately has NO environment
-	// override in this function.
+	// override in this function, and 026 (FR-081, R10) keeps that answer rather
+	// than reopening it.
 	//
-	// Two reasons, both about a second configuration path for one meaning:
-	//  1. `campaigns` is a LIST, and a list cannot be carried by a single env
-	//     value. Env overrides apply to single values only.
-	//  2. `campaign_sweep` lives in the same YAML file as the campaigns it
-	//     sweeps, so a CAMPAIGN_SWEEP_INTERVAL_SECONDS variable would let two
-	//     files disagree about one interval (data-model.md §4.1.1).
+	// The question it used to answer is now empty: the `campaigns` block is gone,
+	// and a LIST cannot be carried by a single env value in the first place. What
+	// remains is `campaign_sweep`, a single value that COULD have gained an
+	// override — and must not, for 025's original reason: a
+	// CAMPAIGN_SWEEP_INTERVAL_SECONDS variable would give one interval a second
+	// configuration path, so two files could disagree about how often the catch-up
+	// sweep runs.
 	//
-	// Changing quota, reserve or the sweep interval therefore means editing
-	// configs/config.yaml or configs/config.production.yaml, exactly like every
-	// other campaign value. The absence is written down in .env.example and
-	// .env.production.example so an operator does not go hunting for a variable
+	// After 026 there is a third and better reason: campaign DATA is not
+	// environment-specific at all. The database IS the environment boundary — each
+	// deployment has its own database, so `launch-2026-10` differs per environment
+	// with no variable anywhere (spec.md Câu 10). Moving between environments stays
+	// a matter of the connection settings and DNS, never a code or config change
+	// (constitution §VIII).
+	//
+	// Do not add a CAMPAIGN_* key here. The absence is documented in .env.example
+	// and .env.production.example so an operator does not go hunting for a variable
 	// that never existed.
 }
 

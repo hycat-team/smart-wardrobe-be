@@ -35,8 +35,8 @@ func (uc *CampaignQueryUseCase) ListClaims(
 	// empty page reads as "this campaign granted nobody", which is a different
 	// fact and the one that would send an operator looking for a budget fault
 	// that does not exist.
-	if _, ok := uc.findCampaign(campaignCode); !ok {
-		return nil, 0, subscriptionerrors.ErrCampaignNotFound(campaignCode)
+	if _, err := uc.requireCampaign(ctx, campaignCode); err != nil {
+		return nil, 0, err
 	}
 	if err := validateClaimsWindow(filter); err != nil {
 		return nil, 0, err
@@ -93,9 +93,9 @@ func (uc *CampaignQueryUseCase) GetAccountEligibility(
 	campaignCode string,
 	userID uuid.UUID,
 ) (*sub_dto.CampaignAccountEligibilityRes, error) {
-	campaign, ok := uc.findCampaign(campaignCode)
-	if !ok {
-		return nil, subscriptionerrors.ErrCampaignNotFound(campaignCode)
+	campaign, err := uc.requireCampaign(ctx, campaignCode)
+	if err != nil {
+		return nil, err
 	}
 
 	account, err := uc.accounts.GetByID(ctx, userID)
@@ -180,11 +180,25 @@ func (uc *CampaignQueryUseCase) GetAccountEligibility(
 	}
 
 	// Conditions 1 to 7, through the SAME evaluator the grant path calls (FR-080).
+	//
+	// The candidate set comes from the REGISTRY (026, FR-040) rather than from the
+	// configuration, and it is read FRESH here rather than reused from the row
+	// above: the evaluator picks among ALL awake campaigns, so feeding it one
+	// campaign would answer a different question than the grant path asks. The
+	// check below then compares the two answers.
+	//
+	// The read is a failure, not a skip: reporting "not eligible" because the
+	// registry could not be read would write an infrastructure fault into a support
+	// ticket as a verdict about a customer.
+	candidates, err := uc.campaignRepo.ListOpen(ctx)
+	if err != nil {
+		return nil, subscriptionerrors.ErrCampaignRegistryReadFailed()
+	}
 	sub, err := uc.subRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, subscriptionerrors.ErrCampaignGetAccountFailed()
 	}
-	verdict := newCampaignEvaluator(uc.cfg.Campaigns, now).
+	verdict := newCampaignEvaluator(candidates, now).
 		evaluate(ctx, userID, account.CreatedAt, account.CreatedByAdmin, sub)
 	if verdict.Campaign == nil {
 		result.Eligibility = sub_dto.CampaignEligibilityNotEligible
@@ -233,7 +247,7 @@ func (uc *CampaignQueryUseCase) GetAccountEligibility(
 	}
 	outcome := newQuotaDecider(nil).chooseBucket(
 		claimInput{
-			Campaign:     *campaign,
+			Campaign:     campaign,
 			Plan:         plan,
 			UserID:       userID,
 			RegisteredAt: account.CreatedAt,

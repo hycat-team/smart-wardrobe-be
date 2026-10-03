@@ -10,8 +10,6 @@ import (
 	notificationcontract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
-	sharedconfig "smart-wardrobe-be/shared/config"
-	sharedentities "smart-wardrobe-be/shared/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -664,42 +662,4 @@ type passThroughUow struct{}
 
 func (passThroughUow) Execute(ctx context.Context, fn func(ctx context.Context) error) error {
 	return fn(ctx)
-}
-
-// ---- helpers ----
-
-func testCampaignConfig(code string, planSlug string, quota, reserve int, startsAt, endsAt *time.Time) sharedconfig.CampaignConfig {
-	return sharedconfig.CampaignConfig{
-		Code:         code,
-		PlanSlug:     planSlug,
-		Quota:        quota,
-		Reserve:      reserve,
-		StartsAt:     startsAt.Format(time.RFC3339),
-		StartsAtTime: *startsAt,
-		EndsAtTime:   endsAt,
-	}
-}
-
-func testPlan(slug string, durationDays int) *entities.SubscriptionPlan {
-	days := durationDays
-	return &entities.SubscriptionPlan{
-		// A real id, not uuid.Nil: `ValidatePlanChangedPayload` refuses a payload
-		// whose `toPlanId` is unset, and it is right to — a nil UUID looks like a
-		// valid identifier all the way into the receiver's grant table, where it
-		// would be written as a real policy reference.
-		AuditableEntity: sharedentities.AuditableEntity{
-			BaseEntity: sharedentities.BaseEntity{ID: uuid.New()},
-		},
-		Slug:               slug,
-		Name:               "Premium Tháng",
-		IsActive:           true,
-		DurationDays:       &days,
-		PlanKind:           1,
-		TierRank:           1,
-		AICostPolicyID:     uuid.New(),
-		MaxWardrobeItems:   100,
-		MaxOutfits:         20,
-		AiOutfitDailyQuota: 10,
-		AiChatDailyQuota:   20,
-	}
 }

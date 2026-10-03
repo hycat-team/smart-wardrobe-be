@@ -3,83 +3,46 @@ package config
 import (
 	"bytes"
 	"os"
-	"sort"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
 )
 
-// 025 T106 (SC-014, T089): BOTH shipped config files declare a `campaigns` block,
-// both parse, and they are deliberately NOT required to be identical.
+// 026 T012 (SC-008, FR-002): this file INVERTS 025's T106.
 //
-// WHY NOT IDENTICAL — the part that matters, and the reason this is a test rather
-// than a comment:
+// 025 T106 asserted that BOTH shipped config files DECLARE a `campaigns` block,
+// and that config.yaml declares two campaigns while config.production.yaml
+// declares exactly one. Every one of those assertions is now false, and a test
+// that still asserted them would be a machine for putting the block back: the
+// second source of truth 026 exists to end (spec.md Câu 1).
 //
-//   configs/config.yaml            carries TWO campaigns (launch + a sample)
-//   configs/config.production.yaml carries ONE (launch only)
+// The assertions below therefore run in the OPPOSITE direction, which is what
+// makes this a real guard rather than a deleted test:
 //
-// FR-011 gives the account to the LATEST-STARTING candidate campaign. So a test
-// that demanded the two files match would be a mechanism for pushing a dev
-// fixture into production: the moment somebody added the sample to production to
-// make such a test pass, the sample would start WONNING on FR-011 and take real
-// signups away from `launch-2026-10` — with every check still green, because the
-// sample is a perfectly valid campaign. That is the exact failure quickstart.md's
-// safety gate is written about, and quickstart.md 1.2 still says "add the block
-// to BOTH files", which is right for the block and wrong for its contents.
+//   - `campaigns` MUST BE ABSENT from both files. Re-adding it would create two
+//     sources for the registry, and every count derived from `quota`/`reserve`
+//     would then be wrong against one of them.
+//   - `campaign_sweep` MUST STILL BE PRESENT in both files. It is the cadence of
+//     the catch-up sweep — a knob of the mechanism, not campaign data — and it is
+//     what keeps configuration loading free of database access (FR-003/FR-004).
+//     Deleting it by association would silently disable the sweep.
 //
-// So this test asserts presence and validity on both sides, and asserts the
-// DIFFERENCE on purpose. It never compares the two lists for equality, and if a
-// future edit makes them equal this test must be re-read, not silently updated.
+// WHY THE "2 IN DEV / 1 IN PRODUCTION" ASSERTIONS ARE GONE RATHER THAN INVERTED.
+// They were about WHICH campaigns each file carried, and that question no longer
+// has an answer in configuration. It has an answer in the registry, where an
+// operator creates campaigns through the API. Keeping a per-environment list
+// assertion here would keep a test guarding a question this package cannot ask.
 //
-// It must also NOT be "weakened" into only checking config.yaml: a file missing
-// the block is the failure mode the requirement exists for, because viper's exact
-// unmarshal treats an absent key as an empty list rather than an error, so the
-// service would boot and silently grant nothing.
+// WHY THE KEY-ABSENT QUESTION IS ASKED OF THE RAW FILE, NOT OF THE DECODED
+// STRUCT. `UnmarshalExact` treats an absent key as an empty list rather than as
+// an error, so the service would boot happily on a file that declared nothing —
+// which is exactly why this test reads the YAML instead of trusting the load.
+// The companion test below closes the second half: the key does not exist in the
+// STRUCT either, so there is no code path that could reintroduce it.
 
-// shippedCampaignCodes loads one shipped config file and returns its campaign
-// codes, sorted, so a failure message is stable.
-func shippedCampaignCodes(t *testing.T, path string) []string {
-	t.Helper()
-
-	baseEnv(t)
-	t.Setenv("CONFIG_FILE", path)
-	t.Setenv("SERVER_ENV", "local")
-
-	cfg, err := loadConfig()
-	if err != nil {
-		t.Fatalf("%s must load: %v", path, err)
-	}
-	if len(cfg.Campaigns) == 0 {
-		t.Fatalf("%s declares no campaign. The loader treats an ABSENT `campaigns` key as an "+
-			"empty list rather than an error, so the service would boot, every grant would be "+
-			"skipped, and nothing anywhere would report it (SC-014)", path)
-	}
-
-	codes := make([]string, 0, len(cfg.Campaigns))
-	for i, campaign := range cfg.Campaigns {
-		if campaign.Code == "" {
-			t.Errorf("%s campaigns[%d] has no code", path, i)
-		}
-		if campaign.StartsAtTime.IsZero() {
-			t.Errorf("%s campaigns[%d] (%s): starts_at was not parsed into an instant (025 T007)", path, i, campaign.Code)
-		}
-		// An empty `seen`: the duplicate-code rule is a property of the WHOLE list,
-		// which validateCampaigns already covers over every shipped file below.
-		if err := validateCampaign(campaign, map[string]struct{}{}); err != nil {
-			t.Errorf("%s campaigns[%d] (%s) is not a shape FR-010 accepts: %v", path, i, campaign.Code, err)
-		}
-		codes = append(codes, campaign.Code)
-	}
-	if err := validateCampaignSweep(cfg.CampaignSweep); err != nil {
-		t.Errorf("%s: %v", path, err)
-	}
-
-	sort.Strings(codes)
-	return codes
-}
-
-// yamlHasTopLevelKey reports whether the raw file carries the key at all, which
-// is a different question from "the list is non-empty" and the one SC-014 asks.
+// yamlHasTopLevelKey reports whether the raw file carries the key at all.
 func yamlHasTopLevelKey(t *testing.T, path, key string) bool {
 	t.Helper()
 
@@ -95,72 +58,127 @@ func yamlHasTopLevelKey(t *testing.T, path, key string) bool {
 	return v.IsSet(key)
 }
 
-func TestBothShippedConfigsDeclareAndParseTheCampaignsBlock(t *testing.T) {
+// TestShippedConfigsNoLongerDeclareTheCampaignsBlock is the inverted T106
+// (FR-002, SC-008).
+func TestShippedConfigsNoLongerDeclareTheCampaignsBlock(t *testing.T) {
 	local, prod := repoConfigs(t)
 
 	for _, path := range []string{local, prod} {
-		if !yamlHasTopLevelKey(t, path, "campaigns") {
-			t.Errorf("%s has no `campaigns` key (SC-014)", path)
-		}
-		if !yamlHasTopLevelKey(t, path, "campaign_sweep") {
-			t.Errorf("%s has no `campaign_sweep` key; one sweep worker serves every campaign (FR-083)", path)
-		}
-		codes := shippedCampaignCodes(t, path)
-		if len(codes) == 0 {
-			t.Errorf("%s yielded no campaign", path)
+		if yamlHasTopLevelKey(t, path, "campaigns") {
+			t.Errorf("%s declares a `campaigns` key. Campaigns live in the table "+
+				"`subscription.campaigns` and are written by the admin API (026 FR-001/FR-002). "+
+				"A key here that no code reads is worse than an absent one: it looks "+
+				"authoritative to the next operator who opens a campaign \"by editing the file\".",
+				path)
 		}
 	}
 }
 
-// TestTheTwoConfigsDifferOnPurpose records WHY they differ, so the difference is
-// never "fixed" by copying the dev list into production.
-//
-// The launch campaign must be in both files — that is the campaign customers are
-// being sold right now. The dev-only sample must be in config.yaml and absent from
-// production: FR-011 picks the latest STARTING campaign, so a sample declared in
-// production would out-rank the launch campaign the moment its start date passed
-// and would take real signups away from it, silently.
-func TestTheTwoConfigsDifferOnPurpose(t *testing.T) {
+// TestSweepCadenceStaysInConfiguration pins the half of 025 that survives, and
+// the half a careless cleanup would have taken with it (FR-004).
+func TestSweepCadenceStaysInConfiguration(t *testing.T) {
 	local, prod := repoConfigs(t)
 
-	localCodes := shippedCampaignCodes(t, local)
-	prodCodes := shippedCampaignCodes(t, prod)
+	for _, path := range []string{local, prod} {
+		if !yamlHasTopLevelKey(t, path, "campaign_sweep") {
+			t.Errorf("%s has no `campaign_sweep` key; one sweep worker serves every campaign "+
+				"(025 FR-083) and the cadence is a deployment knob, not campaign data (026 FR-004)",
+				path)
+		}
+		baseEnv(t)
+		t.Setenv("CONFIG_FILE", path)
+		t.Setenv("SERVER_ENV", "local")
 
-	if len(localCodes) != 2 {
-		t.Errorf("configs/config.yaml declares %d campaigns (%v), want 2: the launch campaign plus the "+
-			"dev-only sample that is the whole of US5 (T089)", len(localCodes), localCodes)
-	}
-	if len(prodCodes) != 1 {
-		t.Errorf("configs/config.production.yaml declares %d campaigns (%v), want exactly 1. "+
-			"FR-011 gives the account to the LATEST-STARTING campaign, so a second campaign here "+
-			"steals real signups from launch-2026-10 with every check still green "+
-			"(see quickstart.md's safety gate)",
-			len(prodCodes), prodCodes)
-	}
-
-	if !contains(prodCodes, "launch-2026-10") {
-		t.Errorf("configs/config.production.yaml must declare launch-2026-10 — that is the campaign "+
-			"customers were sold; got %v", prodCodes)
-	}
-	if !contains(localCodes, "launch-2026-10") {
-		t.Errorf("configs/config.yaml must declare launch-2026-10 too; got %v", localCodes)
-	}
-
-	for _, code := range prodCodes {
-		if code != "launch-2026-10" {
-			t.Errorf("configs/config.production.yaml declares %q. Only the launch campaign belongs "+
-				"there: a campaign declared in production that starts later wins FR-011 and takes "+
-				"real signups away from launch-2026-10. Move the sample to configs/config.yaml "+
-				"(T089, quickstart.md's safety gate)", code)
+		cfg, err := loadConfig()
+		if err != nil {
+			t.Fatalf("%s must load without a `campaigns` block: %v", path, err)
+		}
+		if err := validateCampaignSweep(cfg.CampaignSweep); err != nil {
+			t.Errorf("%s: %v", path, err)
 		}
 	}
 }
 
-func contains(list []string, want string) bool {
-	for _, item := range list {
-		if item == want {
-			return true
+// TestValidateCampaignSweepRejectsExplicitIntervalBelowTheFloor is 025's SC-013,
+// kept: the campaign LIST is gone but the sweep CADENCE is still configuration,
+// and an interval below the floor is still a misconfiguration rather than a
+// default to apply.
+//
+// The two are different situations even though both arrive as the same number in
+// Go: 0 written down is a misconfiguration to reject, 0 because the key was
+// missing is a default to apply. `validateCampaignSweep` only ever sees the
+// former — the loader installs the default while the key is still absent.
+func TestValidateCampaignSweepRejectsExplicitIntervalBelowTheFloor(t *testing.T) {
+	for _, interval := range []int{0, 59} {
+		if err := validateCampaignSweep(CampaignSweepConfig{IntervalSeconds: interval}); err == nil {
+			t.Errorf("interval_seconds %d must fail at startup (FR-083)", interval)
 		}
 	}
-	return false
+}
+
+func TestValidateCampaignSweepAcceptsTheFloor(t *testing.T) {
+	sweep := CampaignSweepConfig{IntervalSeconds: DefaultCampaignSweepIntervalSeconds}
+	if err := validateCampaignSweep(sweep); err != nil {
+		t.Errorf("the floor itself must be accepted: %v", err)
+	}
+	if err := validateCampaignSweep(CampaignSweepConfig{IntervalSeconds: 900}); err != nil {
+		t.Errorf("the shipped cadence must be accepted: %v", err)
+	}
+}
+
+// TestCampaignSweepDefaultsWhenTheBlockIsAbsent proves the default path against a
+// real configuration file rather than a hand-built struct: repoConfigs is copied
+// with the `campaign_sweep` block removed, so the key is genuinely absent.
+func TestCampaignSweepDefaultsWhenTheBlockIsAbsent(t *testing.T) {
+	local, _ := repoConfigs(t)
+	baseEnv(t)
+	t.Setenv("CONFIG_FILE", configWithoutSweepBlock(t, local))
+	t.Setenv("SERVER_ENV", "local")
+
+	cfg, err := loadConfig()
+	if err != nil {
+		t.Fatalf("a config without the sweep block must still load: %v", err)
+	}
+	if cfg.CampaignSweep.IntervalSeconds != DefaultCampaignSweepIntervalSeconds {
+		t.Errorf("campaign_sweep.interval_seconds = %d, want the default %d",
+			cfg.CampaignSweep.IntervalSeconds, DefaultCampaignSweepIntervalSeconds)
+	}
+	if !cfg.CampaignSweep.RunOnStart {
+		t.Error("campaign_sweep.run_on_start must default to true (FR-079, SC-016)")
+	}
+}
+
+// configWithoutSweepBlock copies a config file with the top-level
+// `campaign_sweep:` block (header line plus its indented body) removed, so the
+// "key absent" code path can be exercised against a configuration that is
+// otherwise valid.
+func configWithoutSweepBlock(t *testing.T, source string) string {
+	t.Helper()
+
+	raw, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	kept := make([]string, 0, 256)
+	skipping := false
+	for _, line := range strings.Split(string(raw), "\n") {
+		if skipping {
+			if strings.TrimSpace(line) == "" || strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+				continue
+			}
+			skipping = false
+		}
+		if strings.HasPrefix(line, "campaign_sweep:") {
+			skipping = true
+			continue
+		}
+		kept = append(kept, line)
+	}
+
+	target := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(target, []byte(strings.Join(kept, "\n")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return target
 }

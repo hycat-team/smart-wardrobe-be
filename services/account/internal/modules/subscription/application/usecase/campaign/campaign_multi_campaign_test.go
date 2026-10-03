@@ -23,7 +23,6 @@ import (
 
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -38,9 +37,9 @@ func TestASecondCampaignNeedsNoSourceChange(t *testing.T) {
 	firstStarts := baseInstant().Add(-72 * time.Hour)
 	secondStarts := baseInstant().Add(-1 * time.Hour)
 
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &firstStarts, nil),
-		testCampaignConfig("sample-2026-11", "premium-quarterly", 10, 2, &secondStarts, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &firstStarts, nil),
+		testCampaign("sample-2026-11", "premium-quarterly", 10, 2, &secondStarts, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -161,9 +160,9 @@ func TestAnAccountCreatedAfterEndsAtIsNotGrantedWhenTheMessageArrivesLate(t *tes
 	// closed campaign's WINDOW and not to the mechanism having switched itself
 	// off. Without it the answer would be `campaign_sleeping`, and the test would
 	// prove nothing at all about `ends_at`.
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &closedStarts, &closedEnds),
-		testCampaignConfig("sample-2026-11", "premium-monthly", 10, 2, &openStarts, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &closedStarts, &closedEnds),
+		testCampaign("sample-2026-11", "premium-monthly", 10, 2, &openStarts, nil),
 	}
 
 	claims := newFakeClaimRepo()
@@ -240,10 +239,10 @@ func TestAnExpiredCampaignDoesNotGrantAnAccountTheRunningCampaignMisses(t *testi
 	closedEnds := baseInstant().Add(-5 * 24 * time.Hour)
 	openStarts := baseInstant().Add(-3 * 24 * time.Hour)
 
-	campaigns := []sharedconfig.CampaignConfig{
+	campaigns := []*entities.Campaign{
 		// A real `ends_at` that has already passed — the only kind of end there is.
-		testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &closedStarts, &closedEnds),
-		testCampaignConfig("sample-2026-11", "premium-monthly", 10, 2, &openStarts, nil),
+		testCampaign("launch-2026-10", "premium-monthly", 50, 5, &closedStarts, &closedEnds),
+		testCampaign("sample-2026-11", "premium-monthly", 10, 2, &openStarts, nil),
 	}
 	claims := newFakeClaimRepo()
 	h := newTestUseCase(t, campaigns, claims)
@@ -324,15 +323,15 @@ func TestAnAccountThatJoinedAnEarlierCampaignIsSkippedByALaterOne(t *testing.T) 
 	earlierStarts := baseInstant().Add(-72 * time.Hour)
 	laterStarts := baseInstant().Add(-48 * time.Hour)
 
-	earlier := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &earlierStarts, nil)
+	earlier := testCampaign("launch-2026-10", "premium-monthly", 50, 5, &earlierStarts, nil)
 	// A DIFFERENT plan for the second campaign, and the reason is the test's:
 	// condition 5 (FR-018) refuses an account already on the chosen campaign's
 	// plan, so sharing `plan_slug` would let that rule answer first and the
 	// one-participation rule would never be exercised.
-	later := testCampaignConfig("sample-2026-11", "premium-quarterly", 10, 2, &laterStarts, nil)
+	later := testCampaign("sample-2026-11", "premium-quarterly", 10, 2, &laterStarts, nil)
 
 	claims := newFakeClaimRepo()
-	h := newTestUseCase(t, []sharedconfig.CampaignConfig{earlier}, claims)
+	h := newTestUseCase(t, []*entities.Campaign{earlier}, claims)
 
 	veteran := identitydto.UserCreatedEventPayload{
 		UserID:       uuid.New(),
@@ -354,7 +353,7 @@ func TestAnAccountThatJoinedAnEarlierCampaignIsSkippedByALaterOne(t *testing.T) 
 		t.Fatalf("read the granted subscription: %v", err)
 	}
 	firstExpiry := *carried.ExpiresAt
-	restarted := newTestUseCase(t, []sharedconfig.CampaignConfig{earlier, later}, claims)
+	restarted := newTestUseCase(t, []*entities.Campaign{earlier, later}, claims)
 	restarted.subs.put(carried)
 
 	// The control runs first, so the refusal below cannot be mistaken for "the

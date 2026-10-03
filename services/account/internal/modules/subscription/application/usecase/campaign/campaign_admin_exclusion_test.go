@@ -13,7 +13,6 @@ import (
 
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 )
 
 // 025 T095-T096: the administrator exclusion on the RECEIVING side (US6).
@@ -56,8 +55,8 @@ func TestCampaignSweepExcludesAdministratorAccountsWithoutConsumingBudget(t *tes
 	registeredAt := baseInstant().Add(-20 * time.Minute)
 	startsAt := registeredAt.Add(-time.Hour)
 	// ONE slot. This is what makes the arrangement unforgiving.
-	campaigns := []sharedconfig.CampaignConfig{
-		testCampaignConfig(code, "premium-monthly", 1, 0, &startsAt, nil),
+	campaigns := []*entities.Campaign{
+		testCampaign(code, "premium-monthly", 1, 0, &startsAt, nil),
 	}
 
 	// Oldest first, so the sweep meets the administrator's account before the

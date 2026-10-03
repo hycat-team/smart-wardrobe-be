@@ -41,6 +41,17 @@ const (
 	PaymentResolveCreationFailed AuditAction = "payment.resolve_creation_failed"
 	AIPricingUpdate              AuditAction = "ai.pricing_update"
 	AICostPolicyUpdate           AuditAction = "ai.cost_policy_update"
+
+	// 026 (FR-060): the campaign lifecycle, written by the admin registry use case
+	// into the SAME transaction as the campaign row it describes.
+	//
+	// Dotted names, because they are actions ON the `campaign` target type rather
+	// than on the subscription: an operator reading "who granted away Premium"
+	// filters on `subscription.grant`, and a campaign open/close must not show up
+	// in that answer — it moved no entitlement (FR-033).
+	CampaignCreate AuditAction = "campaign.create"
+	CampaignUpdate AuditAction = "campaign.update"
+	CampaignClose  AuditAction = "campaign.close"
 )
 
 // 024 T178: `AIGrantCreate` ("ai.grant_create") is GONE, and this is the note
