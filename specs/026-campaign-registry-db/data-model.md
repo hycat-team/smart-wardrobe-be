@@ -237,13 +237,32 @@ DROP TABLE IF EXISTS subscription.campaigns;
 ```sql
 SELECT * FROM subscription.campaigns
 WHERE closed_at IS NULL
-  AND starts_at <= :now
-  AND (ends_at IS NULL OR :now < ends_at)
 ORDER BY starts_at DESC, code DESC;
 ```
 
 `code DESC` là tie-break tất định khi hai chiến dịch cùng `starts_at`. Bộ đánh giá thuần sau đó lọc
 theo `registered_at` và chọn `starts_at` lớn nhất — giữ nguyên `data-model.md §6.1` của 025.
+
+> **Hiệu chỉnh (sau `/speckit-analyze` vòng 3, khi triển khai).** Bản đầu của mục này đặt **cả hai vế
+> cửa sổ theo `now`** vào SQL. Biểu thức đó **loại bỏ** chiến dịch đã hết hạn khỏi tập hàng, nên một
+> tài khoản gặp chiến dịch đã kết thúc sẽ thấy tập rỗng và nhận `campaign_not_configured` thay vì
+> **`campaign_sleeping`**. Điều đó trái `spec.md` Câu 4 và FR-031, trái `quickstart.md` V2 bước 5, và
+> trái hành vi của 025 mà FR-042/FR-043 yêu cầu giữ nguyên.
+>
+> Vì vậy **SQL chỉ lọc `closed_at IS NULL`**, và vế "còn thức theo `now`" thuộc về **`isAwake` trong bộ
+> đánh giá thuần** — đúng như `data-model.md` §4.3 và `research.md` R9 đã nói. Tập ứng viên **kết quả
+> y hệt**; chỉ **mã lý do quan sát được** là khác, và mã lý do là thứ hợp đồng quyết định.
+
+| Phần việc | Nơi thực hiện |
+|---|---|
+| Lọc "chưa bị đóng cưỡng bức" | SQL (`WHERE closed_at IS NULL`) |
+| Lọc "còn thức" theo `now` | `isAwake` trong bộ đánh giá thuần |
+| Lọc "tài khoản nằm trong cửa sổ" theo `registered_at` | `selectCampaign` trong bộ đánh giá thuần |
+| Chọn `starts_at` lớn nhất, tie-break `code DESC` | `selectCampaign` |
+
+Repository có **hai** phương thức đọc: `ListOpen` (chỉ `closed_at IS NULL`) cho **đường cấp gói** và
+**đường quét bù**, và `ListAll` cho **API tra cứu** — vì trang quản trị phải hiện được chiến dịch đã
+đóng, nếu không `status = "closed"` (FR-032) không bao giờ tới được người đọc.
 
 ### 4.2 Đọc lại dưới khoá chia sẻ trong transaction cấp gói (FR-045)
 

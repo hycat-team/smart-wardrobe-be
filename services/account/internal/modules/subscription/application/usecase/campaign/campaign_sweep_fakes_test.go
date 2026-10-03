@@ -11,7 +11,6 @@ import (
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 	sharedentities "smart-wardrobe-be/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -181,9 +180,14 @@ func (f *fakeAccountLister) queryCount() int {
 // the FR-011 window rule compares the account's registration against them. A
 // sweep on one clock and a grant on another would produce a disagreement that
 // looks like a rule bug and is not one.
+//
+// The sweep gets the GRANT harness's registry, not a copy of the slice: reading the
+// same rows the message path reads is what makes FR-080's "one set of rules"
+// meaningful here, and it is what a later edit that adds a sweep-only campaign
+// path would break.
 func newTestSweep(
 	t *testing.T,
-	campaigns []sharedconfig.CampaignConfig,
+	campaigns []*entities.Campaign,
 	accounts []*identitydto.UserBriefContractDTO,
 ) (*testHarness, *fakeAccountLister, uc_interfaces.ICampaignSweepUseCase) {
 	t.Helper()
@@ -193,6 +197,7 @@ func newTestSweep(
 	sweep := NewCampaignSweepUseCase(
 		h.uc.cfg,
 		lister,
+		h.campaigns,
 		claims,
 		newFakeSweepRunRepo(),
 		h.uc,

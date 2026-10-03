@@ -11,6 +11,19 @@ const (
 	DepositTransaction AuditTargetType = "deposit_transaction"
 	AIModelConfig      AuditTargetType = "ai_model_config"
 	AICostPolicy       AuditTargetType = "ai_cost_policy"
+	// Campaign is the campaign REGISTRY row (`subscription.campaigns`), introduced
+	// by 026 (FR-063).
+	//
+	// It is a target type of its own rather than a reuse of `subscription_plan` or
+	// `user_subscription` because neither describes it: a plan grant targets the
+	// account that received the entitlement, while a campaign create/update/close
+	// targets the promotion itself and changes nobody's rights (FR-033).
+	//
+	// `target_id` is NULL for every campaign row, because the existing audit filter
+	// takes a UUID while a campaign is keyed by a text code (research.md R8). The
+	// code travels in `payload.campaignCode`, which is what the per-campaign audit
+	// endpoint filters on.
+	Campaign AuditTargetType = "campaign"
 )
 
 // 024 T178: `AIPolicyGrant` ("ai_policy_grant") is GONE, and this is the note

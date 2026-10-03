@@ -29,8 +29,10 @@ import (
 // second identity column would be one more value that could disagree with it.
 type CampaignSweepRun struct {
 	// CampaignCode is the primary key. It matches `CampaignClaim.CampaignCode`
-	// rather than a foreign key: campaigns are declared in a YAML file
-	// (data-model.md §4), not in a table, so there is no row to point at.
+	// rather than a foreign key: campaigns are rows of
+	// `subscription.campaigns` since 026, written by the admin API, and the key is
+	// TEXT on both sides by design — a foreign key would orphan a claim that names a
+	// historical code (FR-091).
 	CampaignCode string `gorm:"type:varchar(64);primaryKey"`
 	// LastSweepAt is the instant of the most recent sweep that COMPLETED.
 	//

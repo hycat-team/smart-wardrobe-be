@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -25,8 +24,15 @@ import (
 // campaign which is switched off, has not started, or does not apply to
 // administrators never opens a transaction. Reordering them would not change any
 // answer — it would only make the common skips pay for a lock.
+//
+// IT STILL READS NOTHING ITSELF (026, FR-040). The rows are handed to it by the
+// caller, which reads them from `subscription.campaigns` through
+// `ICampaignRepository.ListOpen` — one indexed query per signup message, no cache
+// (FR-080). That boundary is what keeps conditions 1-7 testable with no database
+// at all, and it is why the type below is `[]*entities.Campaign` and not a
+// repository.
 type campaignEvaluator struct {
-	campaigns []sharedconfig.CampaignConfig
+	campaigns []*entities.Campaign
 	now       time.Time
 }
 
@@ -37,7 +43,7 @@ type campaignEvaluator struct {
 // names the condition that stopped it. Carrying the reason rather than a bare
 // bool is what FR-061 asks for — every skip has to be able to say why.
 type eligibility struct {
-	Campaign *sharedconfig.CampaignConfig
+	Campaign *entities.Campaign
 	Reason   SkipReason
 }
 
@@ -48,7 +54,7 @@ type eligibility struct {
 // per-condition would let a message that arrives exactly at `ends_at` be
 // admitted by condition 2 and rejected by condition 7, and the resulting skip
 // reason would name the wrong rule.
-func newCampaignEvaluator(campaigns []sharedconfig.CampaignConfig, now time.Time) *campaignEvaluator {
+func newCampaignEvaluator(campaigns []*entities.Campaign, now time.Time) *campaignEvaluator {
 	return &campaignEvaluator{campaigns: campaigns, now: now}
 }
 
@@ -65,14 +71,26 @@ func (e *campaignEvaluator) evaluate(
 	sub *entities.UserSubscription,
 ) eligibility {
 	// Condition 1: is the mechanism switched on at all?
+	//
+	// An EMPTY REGISTRY IS A NORMAL STATE now (026, SC-008), not a
+	// misconfiguration: campaigns are created through the admin API, so the very
+	// first boot of a fresh environment has none, and it must start, serve and
+	// schedule the catch-up sweep without a single warning. The reason code is the
+	// one 025 used, so the published set of twelve `reason` codes is unchanged
+	// (FR-050).
 	if len(e.campaigns) == 0 {
 		return eligibility{Reason: SkipCampaignNotConfigured}
 	}
 
-	// Condition 2: is any campaign awake? "Awake" is a CLOCK question, answered
-	// before anything is read from the database: a campaign that has not opened or
-	// has closed cannot be granted from, and knowing that without a query is what
-	// keeps the queue moving when a campaign is over.
+	// Condition 2: is any campaign awake? "Awake" is a CLOCK question answered
+	// from the rows the caller already read: a campaign that has not opened, has run
+	// out its window, or has been force-closed cannot be granted from, and knowing
+	// that without a lock is what keeps the queue moving when a campaign is over.
+	//
+	// It is answered AFTER the one indexed query rather than instead of it, because
+	// the registry is no longer in memory (FR-040). What condition 2 still buys is
+	// that the query is the only thing this evaluation costs: no transaction, no
+	// advisory lock and no counts for a campaign that is asleep.
 	if !e.anyCampaignAwake() {
 		return eligibility{Reason: e.sleepReason()}
 	}
@@ -84,10 +102,11 @@ func (e *campaignEvaluator) evaluate(
 		return eligibility{Reason: reason}
 	}
 
-	// Condition 7 (FR-011): choose the candidate that starts LATEST. Evaluated
-	// before conditions 5 and 6 because those two are about the CHOSEN campaign's
-	// plan — an account already on the winning campaign's plan is not eligible for
-	// it, and that is a different answer than being ineligible for both.
+	// Condition 7 (FR-011/FR-040): choose the candidate that starts LATEST, with
+	// `code DESC` as the deterministic tie-break. Evaluated before conditions 5 and
+	// 6 because those two are about the CHOSEN campaign's plan — an account already
+	// on the winning campaign's plan is not eligible for it, and that is a different
+	// answer than being ineligible for both.
 	chosen := e.selectCampaign(registeredAt)
 	if chosen == nil {
 		return eligibility{Reason: SkipOutsideWindow}
@@ -136,8 +155,8 @@ func adminSkipReason(createdByAdmin bool) SkipReason {
 
 // anyCampaignAwake reports whether at least one campaign is inside its window.
 func (e *campaignEvaluator) anyCampaignAwake() bool {
-	for i := range e.campaigns {
-		if e.isAwake(e.campaigns[i]) {
+	for _, campaign := range e.campaigns {
+		if campaign != nil && e.isAwake(campaign) {
 			return true
 		}
 	}
@@ -149,25 +168,51 @@ func (e *campaignEvaluator) anyCampaignAwake() bool {
 // Two codes, not one, because the two need different people to act: the first is
 // a countdown, the second is a retrospective. Collapsing them would make a
 // campaign that ended on schedule look misconfigured.
+//
+// A FORCE-CLOSED campaign (026, FR-031) falls into "already finished", which is
+// exactly right: `campaign_sleeping` is the code 025 already used for "this
+// campaign is over", so a campaign closed by an operator needs no new reason and
+// the published set of twelve `reason` codes is unchanged (FR-050). The codes are
+// not split per campaign — `selectCampaign` below skips closed campaigns, so by
+// the time this runs they cannot reach the "not started" branch.
 func (e *campaignEvaluator) sleepReason() SkipReason {
-	for i := range e.campaigns {
-		if e.now.Before(e.campaigns[i].StartsAtTime) {
+	for _, campaign := range e.campaigns {
+		if campaign.ClosedAt != nil {
+			continue
+		}
+		if e.now.Before(campaign.StartsAt) {
 			return SkipCampaignNotStarted
 		}
 	}
 	return SkipCampaignSleeping
 }
 
-// isAwake reports whether `now` lies inside the campaign's window.
+// isAwake is THE ONE DEFINITION of "this campaign can still grant", used by
+// condition 2 and by the candidate set of `selectCampaign` (026, data-model.md
+// §4.3, FR-031/FR-040).
 //
-// `ends_at` is OPTIONAL (FR-009): a campaign with none is open-ended, and a
-// nil end is not "the zero time", which is why it is compared as a pointer rather
-// than as a value.
-func (e *campaignEvaluator) isAwake(campaign sharedconfig.CampaignConfig) bool {
-	if e.now.Before(campaign.StartsAtTime) {
+// Three terms, and the third is new:
+//
+//	starts_at <= now  &&  now < ends_at   — the window 025 checked
+//	closed_at IS NULL                     — 026's force-close (FR-031)
+//
+// The closed term is why "closed" is not a fourth window term. A force-closed
+// campaign is asleep wherever the clock is: its window may still say it is open,
+// and an open-ended campaign has no window term at all. Folding it into the
+// window would mean rewriting the window for closed campaigns, and the registry
+// would then need to mutate `ends_at` on close — which is exactly the write a
+// one-way close must not do.
+//
+// `ends_at` is OPTIONAL: a campaign with none is open-ended, and a nil end is not
+// "the zero time", which is why it is compared as a pointer.
+func (e *campaignEvaluator) isAwake(campaign *entities.Campaign) bool {
+	if campaign.ClosedAt != nil {
 		return false
 	}
-	if campaign.EndsAtTime != nil && !e.now.Before(*campaign.EndsAtTime) {
+	if e.now.Before(campaign.StartsAt) {
+		return false
+	}
+	if campaign.EndsAt != nil && !e.now.Before(*campaign.EndsAt) {
 		return false
 	}
 	return true
@@ -188,30 +233,54 @@ func (e *campaignEvaluator) isAwake(campaign sharedconfig.CampaignConfig) bool {
 // signups (FR-013). Note the asymmetry is deliberate: the window asks "was this
 // account inside A?", the liveness asks "is A still open?", and an account can
 // fail either without failing the other.
-func (e *campaignEvaluator) selectCampaign(registeredAt time.Time) *sharedconfig.CampaignConfig {
-	var chosen *sharedconfig.CampaignConfig
-	for i := range e.campaigns {
-		candidate := &e.campaigns[i]
+//
+// THE TIE-BREAK IS `code DESC` (026, FR-040, spec.md Câu 6). 025 did not need one:
+// a YAML list cannot contain two entries with the same code, but it CAN contain
+// two with the same `starts_at`, and the winner among them depended on the order
+// the operator happened to write them down. With the registry an operator can add
+// a campaign from any screen at any time, so an unpinned tie would make the same
+// account land in a different campaign depending on which row the database
+// returned first — and FR-041 requires the choice to be a deterministic function
+// of (rows, `registered_at`) and of nothing else.
+//
+// The same ordering appears in the repository's `ORDER BY`, which is not a second
+// rule: it makes the SQL's row order stable, and this comparison makes the CHOICE
+// stable even if a caller hands the rows over in another order.
+func (e *campaignEvaluator) selectCampaign(registeredAt time.Time) *entities.Campaign {
+	var chosen *entities.Campaign
+	for _, candidate := range e.campaigns {
+		if candidate == nil {
+			continue
+		}
 		// `c.still_running(now)`, the first term of §6.1's candidate set. It is not
 		// spelled out here: `isAwake` IS that term — the very function condition 2
 		// asks with — so "this campaign is awake" has ONE definition in this
 		// package. A second copy of the comparison is a second rule, and two rules
 		// about the same window eventually disagree (FR-080).
-		if !e.isAwake(*candidate) {
+		if !e.isAwake(candidate) {
 			continue
 		}
 		// Half-open [starts_at, ends_at): the start instant is INSIDE the window.
-		if registeredAt.Before(candidate.StartsAtTime) {
+		if registeredAt.Before(candidate.StartsAt) {
 			continue
 		}
-		if candidate.EndsAtTime != nil && !registeredAt.Before(*candidate.EndsAtTime) {
+		if candidate.EndsAt != nil && !registeredAt.Before(*candidate.EndsAt) {
 			continue
 		}
-		if chosen == nil || candidate.StartsAtTime.After(chosen.StartsAtTime) {
+		if chosen == nil || startsLaterThan(candidate, chosen) {
 			chosen = candidate
 		}
 	}
 	return chosen
+}
+
+// startsLaterThan implements the two-key ordering of FR-040: newest `starts_at`
+// wins, and the LATEST `code` breaks the tie.
+func startsLaterThan(candidate, chosen *entities.Campaign) bool {
+	if candidate.StartsAt.Equal(chosen.StartsAt) {
+		return candidate.Code > chosen.Code
+	}
+	return candidate.StartsAt.After(chosen.StartsAt)
 }
 
 // isOnPlanWithLiveTerm implements condition 5 (FR-018).

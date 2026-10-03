@@ -6,7 +6,6 @@ import (
 
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -44,8 +43,8 @@ func seededCampaign(t *testing.T,
 	quota, reserve int,
 	startsAt, endsAt *time.Time,
 	main, reserveGrants int,
-) (*queryHarness, sharedconfig.CampaignConfig) {
-	campaign := testCampaignConfig(queryCode, "premium-monthly", quota, reserve, startsAt, endsAt)
+) (*queryHarness, *entities.Campaign) {
+	campaign := testCampaign(queryCode, "premium-monthly", quota, reserve, startsAt, endsAt)
 	claims := newFakeClaimRepo()
 	for i := 0; i < main; i++ {
 		claims.seed(
@@ -69,7 +68,7 @@ func seededCampaign(t *testing.T,
 	}
 	h := newTestQueryUC(
 		t,
-		[]sharedconfig.CampaignConfig{campaign},
+		[]*entities.Campaign{campaign},
 		claims,
 		newFakeSweepRunRepo(),
 		newFakeUserBriefContract(),

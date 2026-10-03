@@ -230,21 +230,19 @@ admin:
 # ============================================================
 # Business - Campaigns (025 signup campaign grant)
 # ============================================================
-# Campaigns are DATA, not code: a new campaign is a new list entry (FR-011).
-# plan_slug must reference an EXISTING and ACTIVE plan (FR-010).
-# quota/reserve of a RUNNING campaign are immutable - end it and open a new code
-# instead, because every past claim records which part it came from.
-# No environment variable exists for this block: edit this file (R10).
-campaigns:
-    - code: launch-2026-10
-      plan_slug: premium-monthly
-      quota: 50
-      reserve: 5
-      starts_at: "2026-10-02T00:00:00+07:00"
-      # Optional (FR-009). When set, must be after starts_at (FR-013).
-      ends_at: null
-# Catch-up sweep cadence for ALL campaigns at once (FR-083). It is a separate
-# block, not a per-campaign field: one sweep worker serves every campaign.
+# 026: the `campaigns` block is GONE from this file, and this is the file where
+# its absence matters most. `launch-2026-10` - quota 50, reserve 5, opened
+# 2026-10-02T00:00:00+07:00 - was carried into `subscription.campaigns` verbatim by
+# the migration `seed_launch_campaign` before this block was removed, so the switch
+# changed no meaning (spec.md Câu 5, US6/SC-004). Do NOT re-add it: a second source
+# for the registry is the failure 026 exists to end (FR-001, Câu 1).
+#
+# To open or close a campaign: POST /api/v1/admin/campaigns and
+# POST /api/v1/admin/campaigns/{code}/close. No commit, no tag, no deploy.
+#
+# `campaign_sweep` STAYS on purpose (FR-004): the cadence belongs to the
+# deployment, not to any campaign, and configuration loading must not touch the
+# database (FR-003).
 campaign_sweep:
     interval_seconds: 900     # 15 minutes; floor 60
     run_on_start: true        # sweep once at startup to close the gap left by the last run

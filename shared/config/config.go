@@ -36,7 +36,6 @@ type Config struct {
 	RAG                 RAG                        `mapstructure:"rag"`
 	Subscription        Subscription               `mapstructure:"subscription"`
 	Wardrobe            WardrobeProcessing         `mapstructure:"wardrobe"`
-	Campaigns           []CampaignConfig           `mapstructure:"campaigns"`
 	CampaignSweep       CampaignSweepConfig        `mapstructure:"campaign_sweep"`
 	Outbox              OutboxConfig               `mapstructure:"outbox"`
 	Admin               AdminConfig                `mapstructure:"admin"`
@@ -127,57 +126,55 @@ type WardrobeProcessing struct {
 // starves the grant queue it is supposed to catch up.
 const DefaultCampaignSweepIntervalSeconds = 60
 
-// CampaignConfig is ONE entry of the signup campaign grant list (025, FR-010).
+// CampaignConfig is GONE (026 T009, FR-002).
 //
-// A campaign is data, not code: opening a new one is a new list entry and never a
-// source change (FR-011, FR-090). The mechanism is named after the feature rather
-// than after any single campaign, so the second campaign does not turn the first
-// name into a lie.
+// Feature 025 declared a campaign here, as an entry of the `campaigns` YAML list,
+// which made a campaign "data, not code" — but the file is compiled INTO the
+// image, so opening one still required a commit, a tag and a deploy, and closing
+// one early had no path at all (spec.md §2.2).
 //
-// Every field below is checked at startup by validateCampaigns; the rule is
-// repeated on each field so the reason travels with the value.
-type CampaignConfig struct {
-	// Code identifies the campaign. It is written to the campaign_code column
-	// and into the audit trail, so it must be non-empty, unique in the list and
-	// match ^[a-z0-9][a-z0-9-]{2,63}$ — a restricted alphabet keeps a code that
-	// ends up in a queue or file name from breaking path traversal.
-	Code string `mapstructure:"code"`
-	// PlanSlug is the plan granted to an eligible account. Must be non-empty
-	// here; that the plan EXISTS and is ACTIVE is checked against the database
-	// at admission time, because loading configuration must not reach into the
-	// database. Granting an inactive plan would grant something with no
-	// commercial value (FR-010).
-	PlanSlug string `mapstructure:"plan_slug"`
-	// Quota is the main budget: the number of accounts that fill the main part
-	// and freeze the priority watermark. Must be >= 1 (FR-021) — zero would be a
-	// campaign that grants nothing, i.e. meaningless rather than invalid.
-	Quota int `mapstructure:"quota"`
-	// Reserve is the compensation budget, a CEILING and not a target (FR-032).
-	// Must be >= 0 (FR-021); zero means the hard ceiling is exactly Quota.
-	Reserve int `mapstructure:"reserve"`
-	// StartsAt is the instant the campaign opens, RFC3339 WITH an explicit zone.
-	// A zone-less value is rejected: a UTC server would then apply a
-	// Vietnam-time boundary 7 hours off (FR-008, R6, constitution §VIII).
-	StartsAt string `mapstructure:"starts_at"`
-	// EndsAt is the instant the campaign closes, or empty/null for an open-ended
-	// campaign (FR-009). When set it must be strictly after StartsAt (FR-013).
-	EndsAt string `mapstructure:"ends_at"`
-
-	// StartsAtTime is StartsAt parsed once at load time (025 T007); EndsAtTime is
-	// EndsAt parsed the same way, or nil for an open-ended campaign. Neither is
-	// mapped from YAML or from the environment: a derived field that had to be
-	// kept in sync by hand is a field that will eventually be wrong.
-	StartsAtTime time.Time  `mapstructure:"-"`
-	EndsAtTime   *time.Time `mapstructure:"-"`
-}
+// The six fields it carried (`code`, `plan_slug`, `quota`, `reserve`, `starts_at`,
+// `ends_at`) are now the first six columns of `subscription.campaigns`, read as the
+// entity `subscription/domain/entities.Campaign` at RUN time. Two of 025's seven
+// startup rules moved with them and are now enforced where the data is written:
+//
+//	rule                    025 (startup)          026 (write time)
+//	empty / malformed code  validateCampaign       CHECK chk_campaigns_code_format
+//	duplicate code          validateCampaign       PRIMARY KEY
+//	blank plan_slug         validateCampaign       CHECK chk_campaigns_plan_slug_not_blank
+//	quota >= 1              validateCampaign       CHECK chk_campaigns_quota
+//	reserve >= 0            validateCampaign       CHECK chk_campaigns_reserve
+//	window / zone           validateCampaign       TIMESTAMPTZ + CHECK chk_campaigns_window
+//	plan exists and active  checked at admission   UNCHANGED — still a runtime check
+//
+// The last row is the one that did NOT move: whether `plan_slug` names an existing
+// and active plan is only knowable against the database, and loading configuration
+// must not reach into it (FR-003, FR-014). A grant against a missing plan is
+// skipped with `plan_unavailable`, which is 025's answer and is still correct.
+//
+// Note what is NOT here either: a campaign that boots but is wrong. That failure
+// mode is gone because campaigns are no longer loaded at startup — bad DATA cannot
+// be written in the first place (spec.md Câu 2).
 
 // CampaignSweepConfig sets the cadence of the catch-up sweep for EVERY campaign
 // at once (025, FR-083).
 //
-// WHY IT SITS OUTSIDE THE campaigns LIST. One sweep worker runs once for all
-// campaigns currently in effect, so putting the interval in each list entry would
-// start N workers for N campaigns and force the question "who sweeps first".
-// A single action cadence directly under `campaigns` has no such ambiguity.
+// WHY IT SURVIVED THE MOVE OF THE CAMPAIGN LIST INTO THE DATABASE (026). The
+// `campaigns` block became the table `subscription.campaigns` — campaigns are
+// OPERATIONAL DATA now, and a list of them cannot live in a file compiled into the
+// image (FR-001/FR-002). The sweep CADENCE is not campaign data: it is the knob of
+// the mechanism, one per deployment, identical for every campaign, and nothing
+// about it changes when an operator opens or closes a campaign.
+//
+// That is the whole reason the two were separated in 025 and the reason keeping
+// this one closes no door: loading configuration still never touches the database
+// (FR-003, constitution §I/§VIII), because everything in this struct is a value
+// somebody wrote down.
+//
+// WHY IT SITS OUTSIDE ANY PER-CAMPAIGN FIELD. One sweep worker runs once for all
+// campaigns currently in effect, so a per-campaign interval would start N workers
+// for N campaigns and force the question "who sweeps first". A single action
+// cadence has no such ambiguity.
 type CampaignSweepConfig struct {
 	// IntervalSeconds is the sweep period. Must be >= 60
 	// (DefaultCampaignSweepIntervalSeconds); an absent key falls back to it.

@@ -11,6 +11,7 @@ import (
 
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
@@ -30,6 +31,7 @@ func timePtr(t time.Time) *time.Time { return &t }
 // testHarness wires a use case against fakes and records what it decided.
 type testHarness struct {
 	uc        *CampaignUseCase
+	campaigns *fakeCampaignRepo
 	claims    *fakeClaimRepo
 	subs      *fakeSubRepo
 	plans     *fakePlanRepo
@@ -40,23 +42,30 @@ type testHarness struct {
 	logger    *recordingLogger
 }
 
-// newTestUseCase builds the use case with a campaign list and a claim ledger.
-func newTestUseCase(t *testing.T, campaigns []sharedconfig.CampaignConfig, claims *fakeClaimRepo) *testHarness {
+// newTestUseCase builds the use case over a REGISTRY and a claim ledger (026).
+//
+// The campaigns are served by `fakeCampaignRepo`, which applies the same awake
+// filter the real `ListOpen` applies. Handing the use case the rows directly would
+// skip that filter — and would then be a test of a code path that no longer exists,
+// because T016 reads the registry rather than a list in memory.
+func newTestUseCase(t *testing.T, campaigns []*entities.Campaign, claims *fakeClaimRepo) *testHarness {
 	t.Helper()
 	h := &testHarness{
-		claims: claims,
-		subs:   newFakeSubRepo(),
-		plans:  newFakePlanRepo(),
-		events: newFakeEventRepo(),
-		audit:  &fakeAuditContract{},
-		notif:  &fakeNotifContract{},
-		logger: &recordingLogger{},
+		campaigns: newFakeCampaignRepo(campaigns...),
+		claims:    claims,
+		subs:      newFakeSubRepo(),
+		plans:     newFakePlanRepo(),
+		events:    newFakeEventRepo(),
+		audit:     &fakeAuditContract{},
+		notif:     &fakeNotifContract{},
+		logger:    &recordingLogger{},
 	}
 	h.plans.put(testPlan("premium-monthly", 30))
 	h.plans.put(testPlan("premium-quarterly", 90))
 	h.publisher = &fakePublisher{}
 	h.uc = NewCampaignUseCase(
-		campaignConfig(campaigns),
+		testConfig(),
+		h.campaigns,
 		claims,
 		h.subs,
 		h.plans,
@@ -74,6 +83,22 @@ func newTestUseCase(t *testing.T, campaigns []sharedconfig.CampaignConfig, claim
 	// after launch is worse than no test at all.
 	h.uc.now = func() time.Time { return baseInstant() }
 	return h
+}
+
+// testConfig is the configuration the campaign package still receives.
+//
+// It carries the TIME ZONE and nothing else, and that is the point after 026: the
+// campaign list is not configuration any more, so there is no field here to put it
+// in (FR-001/FR-002). A test that still needed to smuggle campaigns through config
+// would be a test of the old architecture.
+func testConfig() *sharedconfig.Config {
+	return &sharedconfig.Config{
+		Database: sharedconfig.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		CampaignSweep: sharedconfig.CampaignSweepConfig{
+			IntervalSeconds: sharedconfig.DefaultCampaignSweepIntervalSeconds,
+			RunOnStart:      true,
+		},
+	}
 }
 
 // releasingUow releases the fake claim ledger's advisory lock when the closure
@@ -213,14 +238,6 @@ func asMap(t *testing.T, payload any) map[string]any {
 		t.Fatalf("unmarshal published payload: %v", err)
 	}
 	return out
-}
-
-// campaignConfig wraps a campaign list the way the loader would have produced it.
-func campaignConfig(campaigns []sharedconfig.CampaignConfig) *sharedconfig.Config {
-	return &sharedconfig.Config{
-		Campaigns: campaigns,
-		Database:  sharedconfig.Database{TimeZone: "Asia/Ho_Chi_Minh"},
-	}
 }
 
 // quietLogger discards everything. Used where a test asserts on state only and a

@@ -28,6 +28,15 @@ var ProviderSet = wire.NewSet(
 	// per campaign; merging them would put a mutable flag into an interface whose
 	// premise is that nothing is ever updated.
 	persistence.NewCampaignSweepRunRepository,
+	// 026 T020: the campaign REGISTRY (FR-001). Registered before the claim ledger
+	// because it is now the source the ledger's own paths ask "which campaigns
+	// exist" — and registering it here is what makes a missing registry a wiring
+	// error at startup rather than a nil interface discovered by the first account
+	// created after a campaign opens.
+	//
+	// It has no delete path at all (FR-005), so nothing else in this set can
+	// remove a campaign row out from under the ledger that references it by text.
+	persistence.NewCampaignRepository,
 	caching.NewRedisSubscriptionOverviewCache,
 	payos.NewPayOSService,
 )

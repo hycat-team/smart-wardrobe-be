@@ -38,6 +38,7 @@ import (
 // file is the only place that opens one, and it opens exactly ONE.
 type CampaignUseCase struct {
 	cfg                 *sharedconfig.Config
+	campaignRepo        repositories.ICampaignRepository
 	claimRepo           repositories.ICampaignClaimRepository
 	subRepo             repositories.IUserSubscriptionRepository
 	planRepo            repositories.ISubscriptionPlanRepository
@@ -55,6 +56,11 @@ type CampaignUseCase struct {
 
 func NewCampaignUseCase(
 	cfg *sharedconfig.Config,
+	// campaignRepo is the registry, and it is the ONLY source of which campaigns
+	// exist (026, FR-001). It replaced `cfg.Campaigns`: one indexed query per
+	// signup message, no cache (FR-080), and no second copy of the list that could
+	// disagree with the table.
+	campaignRepo repositories.ICampaignRepository,
 	claimRepo repositories.ICampaignClaimRepository,
 	subRepo repositories.IUserSubscriptionRepository,
 	planRepo repositories.ISubscriptionPlanRepository,
@@ -77,6 +83,7 @@ func NewCampaignUseCase(
 ) uc_interfaces.ICampaignUseCase {
 	return &CampaignUseCase{
 		cfg:                 cfg,
+		campaignRepo:        campaignRepo,
 		claimRepo:           claimRepo,
 		subRepo:             subRepo,
 		planRepo:            planRepo,
@@ -120,19 +127,33 @@ func (uc *CampaignUseCase) ProcessUserCreated(ctx context.Context, payload ident
 	if err != nil {
 		return sharedevent.RetryableError{Err: subscriptionerrors.ErrCampaignReadSubscriptionFailed(payload.UserID)}
 	}
-	evaluator := newCampaignEvaluator(uc.cfg.Campaigns, now)
+	// THE REGISTRY READ. One indexed query per signup message (FR-040, FR-080) —
+	// no cache, deliberately: a cached list would let a replica keep granting from
+	// a campaign another replica has just closed, which is the exact failure the
+	// "close it early" goal exists to prevent (research.md R7).
+	//
+	// It is a RETRYABLE failure, not a skip. Substituting an empty list would turn
+	// a database problem into `campaign_not_configured` on every account, and the
+	// operator would read a quiet queue as "no promotion is running" rather than as
+	// a fault.
+	campaigns, err := uc.campaignRepo.ListOpen(ctx)
+	if err != nil {
+		return sharedevent.RetryableError{Err: subscriptionerrors.ErrCampaignRegistryReadFailed()}
+	}
+	evaluator := newCampaignEvaluator(campaigns, now)
 	verdict := evaluator.evaluate(ctx, payload.UserID, payload.RegisteredAt, payload.CreatedByAdmin, sub)
 	if verdict.Campaign == nil {
 		uc.logSkip(payload.UserID, "", verdict.Reason)
 		return nil
 	}
 
-	campaign := *verdict.Campaign
+	campaign := verdict.Campaign
 
-	// FR-010: the configured plan must exist AND be active. Loading configuration
-	// cannot check this — it must not reach into the database — so it is checked
-	// here, where the plan row is read anyway. Granting an inactive plan grants
-	// something with no commercial value.
+	// FR-010: the configured plan must exist AND be active. The registry cannot
+	// check this — loading configuration must not reach into the database, and a
+	// write to the registry must not be able to fail because a plan is paused —
+	// so it is checked here, where the plan row is read anyway. Granting an
+	// inactive plan grants something with no commercial value.
 	plan, err := uc.planRepo.GetBySlug(ctx, campaign.PlanSlug)
 	if err != nil {
 		return sharedevent.RetryableError{Err: subscriptionerrors.ErrCampaignLoadPlanFailed(campaign.PlanSlug)}
@@ -223,7 +244,7 @@ func (uc *CampaignUseCase) logSkip(userID uuid.UUID, campaignCode string, reason
 // so without this one field a grant recovered by the sweep is indistinguishable
 // from one the message path handled on time, and the FR-082 latency signal cannot
 // be read from the logs (see `grant_uc.go`).
-func (uc *CampaignUseCase) logGranted(ctx context.Context, userID uuid.UUID, campaign sharedconfig.CampaignConfig, plan *entities.SubscriptionPlan, outcome quotaOutcome) {
+func (uc *CampaignUseCase) logGranted(ctx context.Context, userID uuid.UUID, campaign *entities.Campaign, plan *entities.SubscriptionPlan, outcome quotaOutcome) {
 	uc.log.Info("campaign plan granted",
 		zap.String("user_id", userID.String()),
 		zap.String("campaign_code", campaign.Code),

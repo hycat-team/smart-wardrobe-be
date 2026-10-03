@@ -7,7 +7,6 @@ import (
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
-	sharedconfig "smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -69,7 +68,11 @@ type quotaOutcome struct {
 // claimInput is everything the decider needs, gathered by the caller so that this
 // function performs no I/O of its own choosing.
 type claimInput struct {
-	Campaign     sharedconfig.CampaignConfig
+	// Campaign is the registry row the evaluator chose (026, FR-001). A pointer
+	// because it is read, never copied into a decision: the quota arithmetic only
+	// ever asks `Code`, `Quota` and `Reserve`, and a value copy of the whole row is
+	// one more copy that could drift from the row it was read from.
+	Campaign     *entities.Campaign
 	Plan         *entities.SubscriptionPlan
 	UserID       uuid.UUID
 	RegisteredAt time.Time
