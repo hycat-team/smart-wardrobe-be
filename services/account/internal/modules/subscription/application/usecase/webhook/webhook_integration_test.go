@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strconv"
 	"testing"
@@ -18,8 +19,10 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/webhookprocessingstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
+	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 	"smart-wardrobe-be/shared/infrastructure/db"
 
 	"github.com/gin-gonic/gin"
@@ -195,16 +198,23 @@ func buildWebhookPayload(orderCode int64, amount string) []byte {
 		strconv.FormatInt(orderCode, 10) + `","code":"00","desc":"success"},"signature":"ignored-by-fake"}`)
 }
 
-func newWebhookUseCase(dbConn *gorm.DB) ucInterfaces.IPaymentWebhookUseCase {
+// newWebhookUseCase wires the use case over the real repositories AND hands back
+// the recording publisher, so a test can count what the publish step emitted.
+//
+// The publisher used to be created and dropped inside this helper, which meant no
+// test in this file could observe it. Returning it is what lets T116 assert a
+// COUNT of published messages rather than the absence of an error.
+func newWebhookUseCase(dbConn *gorm.DB) (ucInterfaces.IPaymentWebhookUseCase, *integrationPublisher) {
 	cfg := config.Config{}
 	cfg.Database.TimeZone = "Asia/Ho_Chi_Minh"
 	// 024 T051: the settlement path now publishes through the single helper, so
 	// the integration fixture wires the real publisher against the real
 	// repositories rather than a stub — that is what makes this test able to
 	// catch a regression in the publish step.
+	publisher := &integrationPublisher{}
 	planChangePublisher := subscription.NewPlanChangePublisher(
 		persistence.NewUserSubscriptionEventRepository(dbConn),
-		&integrationPublisher{},
+		publisher,
 	)
 	return NewPaymentWebhookUseCase(
 		&cfg,
@@ -223,17 +233,57 @@ func newWebhookUseCase(dbConn *gorm.DB) ucInterfaces.IPaymentWebhookUseCase {
 		zap.NewNop(),
 		nil,
 		planChangePublisher,
-	)
+	), publisher
 }
 
 // integrationPublisher records published events without touching a broker.
+//
+// 025 T116: the topic is recorded alongside the payload. Asserting only the
+// payload count would pass even if the message went out on the wrong topic,
+// which is a different failure from the one FR-095 names.
 type integrationPublisher struct {
-	events []any
+	events []publishedWebhookEvent
 }
 
-func (p *integrationPublisher) Publish(_ context.Context, _ string, payload any) error {
-	p.events = append(p.events, payload)
+// publishedWebhookEvent pairs the topic a message went to with its payload.
+type publishedWebhookEvent struct {
+	topic   string
+	payload any
+}
+
+func (p *integrationPublisher) Publish(_ context.Context, topic string, payload any) error {
+	p.events = append(p.events, publishedWebhookEvent{topic: topic, payload: payload})
 	return nil
+}
+
+// publishedWebhookEventType reads `eventType` out of a captured payload. The
+// payload struct is unexported in the mapper package by design (constitution §II:
+// the JSON is the contract), so going through JSON asserts on what the receiver
+// would actually receive.
+func publishedWebhookEventType(t *testing.T, payload any) string {
+	t.Helper()
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal published plan-change payload: %v", err)
+	}
+	var decoded struct {
+		EventType string `json:"eventType"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("decode published plan-change payload: %v", err)
+	}
+	return decoded.EventType
+}
+
+// webhookPlanChangeHistory reads back the plan-change history this file's
+// cleanup emptied, ordered so a failure message names the row it found.
+func webhookPlanChangeHistory(t *testing.T, dbConn *gorm.DB) []entities.UserSubscriptionEvent {
+	t.Helper()
+	var rows []entities.UserSubscriptionEvent
+	if err := dbConn.Order("occurred_at asc").Find(&rows).Error; err != nil {
+		t.Fatalf("read plan-change history: %v", err)
+	}
+	return rows
 }
 
 // ---- Tests ----
@@ -242,7 +292,7 @@ func TestIntegrationProcessWebhookAppliesDirectPurchaseIdempotently(t *testing.T
 	dbConn := openWebhookTestDB(t)
 	cleanupWebhookTables(t, dbConn)
 	userID := seedWebhookScenario(t, dbConn)
-	uc := newWebhookUseCase(dbConn)
+	uc, _ := newWebhookUseCase(dbConn)
 	ctx := context.Background()
 
 	payload := buildWebhookPayload(webhookOrderCode, "99000")
@@ -289,7 +339,7 @@ func TestIntegrationProcessWebhookRejectsAmountMismatch(t *testing.T) {
 	dbConn := openWebhookTestDB(t)
 	cleanupWebhookTables(t, dbConn)
 	seedWebhookScenario(t, dbConn)
-	uc := newWebhookUseCase(dbConn)
+	uc, _ := newWebhookUseCase(dbConn)
 
 	err := uc.ProcessWebhook(context.Background(), buildWebhookPayload(webhookOrderCode, "99001"), "sig")
 	if err == nil {
@@ -301,7 +351,7 @@ func TestIntegrationProcessWebhookSkipsUnsuccessfulEvents(t *testing.T) {
 	dbConn := openWebhookTestDB(t)
 	cleanupWebhookTables(t, dbConn)
 	seedWebhookScenario(t, dbConn)
-	uc := newWebhookUseCase(dbConn)
+	uc, _ := newWebhookUseCase(dbConn)
 
 	raw := []byte(`{"code":"01","desc":"failed","success":false,"data":{"orderCode":` + strconv.FormatInt(webhookOrderCode, 10) + `,"amount":"99000","reference":"ref-fail","currency":"VND","code":"01","desc":"failed"},"signature":"x"}`)
 	if err := uc.ProcessWebhook(context.Background(), raw, "sig"); err != nil {
@@ -320,7 +370,7 @@ func TestIntegrationProcessWebhookSkipsUnsuccessfulEvents(t *testing.T) {
 func TestIntegrationProcessWebhookAcksUnknownOrderCode(t *testing.T) {
 	dbConn := openWebhookTestDB(t)
 	cleanupWebhookTables(t, dbConn)
-	uc := newWebhookUseCase(dbConn)
+	uc, _ := newWebhookUseCase(dbConn)
 	ctx := context.Background()
 
 	// Mirrors the payOS webhook-URL test sample: orderCode 123 is never ours.
@@ -335,5 +385,108 @@ func TestIntegrationProcessWebhookAcksUnknownOrderCode(t *testing.T) {
 	}
 	if inbox.ProcessingStatus != string(webhookprocessingstatus.InvestigationRequired) {
 		t.Fatalf("expected inbox status %q, got %q", webhookprocessingstatus.InvestigationRequired, inbox.ProcessingStatus)
+	}
+}
+
+// TestIntegrationPayOSSettlementPublishesExactlyOnePlanChangeEvent is 025 T116's
+// contribution to FR-095: proof that the plan-change event is published on the
+// GATEWAY branch of the purchase path, i.e. `purchase_workflow.go:120`.
+//
+// The purchase path already had one proof — `purchase/plan_change_event_test.go`
+// covers the WALLET branch at `purchase/wallet.go:144` with fakes that always run
+// in `make test-race`. The gateway branch is a separate call site in a separate
+// function reached only when a real payment settles, and it had no coverage at
+// all. FR-095 names the failure mode this leaves open: a branch that publishes
+// nothing "does not report an error anywhere". `ProcessWebhook` would still return
+// nil, the subscription would still be upgraded, the customer would still have
+// paid — and the AI service would never hear about the plan they bought.
+//
+// So the assertions here are COUNTS, never the absence of an error: exactly one
+// plan-change history row and exactly one `subscription.plan.changed` on the
+// topic. The row is read back out of the real `user_subscription_events` table
+// rather than counted in a fake, because the history row is what the outbox
+// event's `sourceEventId` points at and a row that was never persisted would
+// leave the receiver holding a dangling id.
+//
+// The plan deliberately ends up on the happy publish branch and only that branch:
+// the seeded subscription has a nil `ExpiresAt` and a nil `FallbackPlanID`, so the
+// lifetime-fallback publish at `purchase_workflow.go:81` is not entered, and the
+// seeded plan tier is above the current one, so the wallet-credit branch at `:90`
+// is not entered either. One publish call site, therefore "exactly one" is a
+// meaningful number rather than an accident of two branches firing.
+//
+// This sends no email. `integrationNotif` is a fake with no transport, and the
+// use case is built from `config.Config{}` rather than the loaded yaml, so even
+// though the settlement does enter its payment-success notification branch the
+// message cannot leave the process. Zero outbound mail, as the constitution's cap
+// on a verification run requires.
+func TestIntegrationPayOSSettlementPublishesExactlyOnePlanChangeEvent(t *testing.T) {
+	dbConn := openWebhookTestDB(t)
+	cleanupWebhookTables(t, dbConn)
+	userID := seedWebhookScenario(t, dbConn)
+	uc, publisher := newWebhookUseCase(dbConn)
+	ctx := context.Background()
+
+	if err := uc.ProcessWebhook(ctx, buildWebhookPayload(webhookOrderCode, "99000"), "sig"); err != nil {
+		t.Fatalf("webhook settlement failed: %v", err)
+	}
+
+	// The settlement really upgraded the plan. Without this the counts below would
+	// be satisfied by a webhook that did nothing at all, which is a different test.
+	sub, err := persistence.NewUserSubscriptionRepository(dbConn).GetByUserID(ctx, userID)
+	if err != nil || sub == nil {
+		t.Fatalf("reload subscription: %v", err)
+	}
+	if sub.CurrentPlanCode != "premium-webhook" {
+		t.Fatalf("expected subscription upgraded to premium-webhook, got %q", sub.CurrentPlanCode)
+	}
+
+	// FR-095, history half: exactly one row, carrying the transition this
+	// settlement actually performed and pointing at the transaction that paid for it.
+	rows := webhookPlanChangeHistory(t, dbConn)
+	if len(rows) != 1 {
+		t.Fatalf("FR-095: a settled PayOS purchase must write exactly one plan-change history row, got %d", len(rows))
+	}
+	if rows[0].EventType != string(subscriptioneventtype.ACTIVATED) {
+		t.Fatalf("expected history row type %q, got %q", subscriptioneventtype.ACTIVATED, rows[0].EventType)
+	}
+	if rows[0].UserID != userID {
+		t.Fatalf("expected history row for user %s, got %s", userID, rows[0].UserID)
+	}
+	if rows[0].SourceDepositTransactionID == nil {
+		t.Fatal("expected the history row to name the deposit transaction it came from")
+	}
+	tx, err := persistence.NewDepositTransactionRepository(dbConn).GetByOrderCode(ctx, webhookOrderCode)
+	if err != nil || tx == nil {
+		t.Fatalf("reload transaction: %v", err)
+	}
+	if *rows[0].SourceDepositTransactionID != tx.ID {
+		t.Fatalf("expected history row to reference transaction %s, got %s", tx.ID, *rows[0].SourceDepositTransactionID)
+	}
+
+	// FR-095, event half: exactly one message, on the right topic, describing the
+	// same transition. A count of zero here is the failure FR-095 exists to catch,
+	// and it would otherwise be invisible.
+	if len(publisher.events) != 1 {
+		t.Fatalf("FR-095: a settled PayOS purchase must publish exactly one subscription.plan.changed, got %d", len(publisher.events))
+	}
+	if publisher.events[0].topic != eventconstants.TopicSubscriptionPlanChanged {
+		t.Fatalf("expected topic %q, got %q", eventconstants.TopicSubscriptionPlanChanged, publisher.events[0].topic)
+	}
+	if got := publishedWebhookEventType(t, publisher.events[0].payload); got != string(subscriptioneventtype.ACTIVATED) {
+		t.Fatalf("expected published event type %q, got %q", subscriptioneventtype.ACTIVATED, got)
+	}
+
+	// Exactly one has to mean exactly one even when the gateway retries. A replay
+	// that produced a second row or a second message would double-grant downstream,
+	// so the count is re-checked rather than assumed.
+	if err := uc.ProcessWebhook(ctx, buildWebhookPayload(webhookOrderCode, "99000"), "sig"); err != nil {
+		t.Fatalf("replayed webhook must be a no-op success, got %v", err)
+	}
+	if rows := webhookPlanChangeHistory(t, dbConn); len(rows) != 1 {
+		t.Fatalf("FR-095: a replayed settlement must not add history, got %d rows", len(rows))
+	}
+	if len(publisher.events) != 1 {
+		t.Fatalf("FR-095: a replayed settlement must not publish again, got %d messages", len(publisher.events))
 	}
 }
