@@ -95,6 +95,14 @@ type mockWardrobeContractForWorker struct {
 	getStaleProcessingItemsFn  func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error)
 	getByFashionItemIDsFn      func(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error)
 	getFailedItemsForCleanupFn func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error)
+	countOwnersFn              func(ctx context.Context, fashionItemIDs []uuid.UUID, excludeWardrobeItemIDs []uuid.UUID) (map[uuid.UUID]int64, error)
+}
+
+func (m *mockWardrobeContractForWorker) CountFashionItemOwnersByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID, excludeWardrobeItemIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	if m.countOwnersFn != nil {
+		return m.countOwnersFn(ctx, fashionItemIDs, excludeWardrobeItemIDs)
+	}
+	return map[uuid.UUID]int64{}, nil
 }
 
 func (m *mockWardrobeContractForWorker) GetWardrobeItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
@@ -382,9 +390,115 @@ func TestCleanupFailedItemsPublishes(t *testing.T) {
 	}
 }
 
-type mockMediaServiceForWorker struct{}
+func TestCleanupFailedItemsDeletesSharedAssetWhenSoleOwner(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	userID := uuid.New()
+	var getFailedCount int
+	media := &mockMediaServiceForWorker{}
+	uc := &FashionWorkerUseCase{
+		wardrobeContract: &mockWardrobeContractForWorker{
+			getFailedItemsForCleanupFn: func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				if getFailedCount == 0 {
+					getFailedCount++
+					return []*wardrobeDto.WardrobeItemContractDTO{{
+						ID:            itemID,
+						UserID:        userID,
+						FashionItemID: &fashionItemID,
+					}}, nil
+				}
+				return nil, nil
+			},
+			countOwnersFn: func(ctx context.Context, fashionItemIDs []uuid.UUID, excludeWardrobeItemIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+				return map[uuid.UUID]int64{}, nil
+			},
+		},
+		fashionItemRepo: &mockFashionItemRepoForWorker{
+			getByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
+				fi := &entities.FashionItem{ImagePublicID: "pub-1"}
+				fi.ID = fashionItemID
+				return []*entities.FashionItem{fi}, nil
+			},
+		},
+		eventPublisher: &mockEventPublisherForWorker{
+			publishFn: func(ctx context.Context, topic string, payload any) error { return nil },
+		},
+		uow: &mockUOWForWorker{
+			executeFn: func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) },
+		},
+		mediaService: media,
+		logger:       &mockLogger{},
+	}
+	run := workerlog.New("cleanup", "test")
+	if err := uc.CleanupFailedItems(context.Background(), run); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(media.deletedPublicIDs) != 1 || media.deletedPublicIDs[0] != "pub-1" {
+		t.Fatalf("expected DeleteImage(pub-1) once, got %v", media.deletedPublicIDs)
+	}
+}
+
+func TestCleanupFailedItemsSkipsDeleteWhenShared(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	userID := uuid.New()
+	var getFailedCount int
+	publishCalls := 0
+	media := &mockMediaServiceForWorker{}
+	uc := &FashionWorkerUseCase{
+		wardrobeContract: &mockWardrobeContractForWorker{
+			getFailedItemsForCleanupFn: func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				if getFailedCount == 0 {
+					getFailedCount++
+					return []*wardrobeDto.WardrobeItemContractDTO{{
+						ID:            itemID,
+						UserID:        userID,
+						FashionItemID: &fashionItemID,
+					}}, nil
+				}
+				return nil, nil
+			},
+			countOwnersFn: func(ctx context.Context, fashionItemIDs []uuid.UUID, excludeWardrobeItemIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+				return map[uuid.UUID]int64{fashionItemID: 1}, nil
+			},
+		},
+		fashionItemRepo: &mockFashionItemRepoForWorker{
+			getByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
+				fi := &entities.FashionItem{ImagePublicID: "pub-1"}
+				fi.ID = fashionItemID
+				return []*entities.FashionItem{fi}, nil
+			},
+		},
+		eventPublisher: &mockEventPublisherForWorker{
+			publishFn: func(ctx context.Context, topic string, payload any) error {
+				publishCalls++
+				return nil
+			},
+		},
+		uow: &mockUOWForWorker{
+			executeFn: func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) },
+		},
+		mediaService: media,
+		logger:       &mockLogger{},
+	}
+	run := workerlog.New("cleanup", "test")
+	if err := uc.CleanupFailedItems(context.Background(), run); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(media.deletedPublicIDs) != 0 {
+		t.Fatalf("expected no DeleteImage call, got %v", media.deletedPublicIDs)
+	}
+	if publishCalls != 1 {
+		t.Fatalf("expected 1 publish, got %d", publishCalls)
+	}
+}
+
+type mockMediaServiceForWorker struct {
+	deletedPublicIDs []string
+}
 
 func (m *mockMediaServiceForWorker) DeleteImage(ctx context.Context, publicID string) error {
+	m.deletedPublicIDs = append(m.deletedPublicIDs, publicID)
 	return nil
 }
 func (m *mockMediaServiceForWorker) GenerateUploadSignature(ctx context.Context, params shared_dto.UploadSignatureParams) (*shared_dto.UploadSignatureResult, error) {

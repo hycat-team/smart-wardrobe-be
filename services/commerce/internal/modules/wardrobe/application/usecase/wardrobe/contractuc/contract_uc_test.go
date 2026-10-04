@@ -35,7 +35,7 @@ func TestGetWardrobeItemsByUserID_ReturnsPureItems(t *testing.T) {
 		},
 	}
 
-	uc := contractuc.NewWardrobeContractUseCase(repo)
+	uc := contractuc.NewWardrobeContractUseCase(repo, nil)
 	res, err := uc.GetWardrobeItemsByUserID(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

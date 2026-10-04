@@ -24,6 +24,7 @@ type IWardrobeItemRepository interface {
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
 	GetByUserIDAndFashionItemIDs(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)
 	GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)
+	CountItemsGroupedByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID, excludeItemIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 	GetUserFashionItemCounts(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]int64, error)
 	CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) (int64, error)
 	GetItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error)
@@ -50,4 +51,5 @@ type IOutfitRepository interface {
 	UpdateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
 	DeleteOutfit(ctx context.Context, id uuid.UUID) error
 	GetFashionItemIDsByOutfitIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error)
+	CountOutfitItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 }

@@ -33,8 +33,10 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 			break
 		}
 
+		failedItemIDs := make([]uuid.UUID, 0, len(items))
 		fashionIDs := make([]uuid.UUID, 0, len(items))
 		for _, item := range items {
+			failedItemIDs = append(failedItemIDs, item.ID)
 			if item.FashionItemID != nil {
 				fashionIDs = append(fashionIDs, *item.FashionItemID)
 			}
@@ -46,6 +48,10 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 				fashionItemMap = sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
 			}
 		}
+
+		deletablePublicIDs := uc.deletableImageAssets(ctx, fashionIDs, failedItemIDs, fashionItemMap, run)
+		deletedPublicIDs := map[string]bool{}
+
 		for _, item := range items {
 			run.AddTotal(1)
 			imagePublicID := ""
@@ -54,25 +60,19 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 					imagePublicID = fi.ImagePublicID
 				}
 			}
-			if imagePublicID != "" {
+			if deletablePublicIDs[imagePublicID] && !deletedPublicIDs[imagePublicID] {
 				if err := uc.mediaService.DeleteImage(ctx, imagePublicID); err != nil {
 					run.ChildWarn(uc.logger, "Failed to delete image from Cloudinary during failed item cleanup",
 						zap.String("itemId", item.ID.String()),
 						zap.String("publicId", imagePublicID),
 						zap.Error(err),
 					)
+				} else {
+					deletedPublicIDs[imagePublicID] = true
 				}
 			}
 
-			err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-				payload := wardrobeDto.WardrobeEventPayload{
-					ItemID: item.ID,
-					UserID: item.UserID,
-					Action: eventconstants.ActionDeleted,
-				}
-				return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeDeleted, payload)
-			})
-			if err != nil {
+			if err := uc.publishWardrobeDeleted(ctx, item.ID, item.UserID); err != nil {
 				run.ChildError(uc.logger, "Failed to delete item from database during failed item cleanup",
 					zap.String("itemId", item.ID.String()),
 					zap.Error(err),
@@ -94,6 +94,83 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 		zap.Int("publishedDeleteEventCount", publishedDeleteEventCount),
 	)
 	return nil
+}
+
+// deletableImageAssets returns the set of Cloudinary public IDs whose fashion
+// item has no remaining owner, so a shared image asset is destroyed only when
+// the failed items being cleaned are its last owners. Owners are the wardrobe
+// items of every item type, the outfit items and the active brand items, with
+// the wardrobe items being cleaned in this page excluded. An unresolvable owner
+// count makes every asset non-deletable: failing safe keeps a live image.
+func (uc *FashionWorkerUseCase) deletableImageAssets(
+	ctx context.Context,
+	fashionIDs []uuid.UUID,
+	failedItemIDs []uuid.UUID,
+	fashionItemMap map[uuid.UUID]*entities.FashionItem,
+	run *workerlog.Run,
+) map[string]bool {
+	deletable := map[string]bool{}
+	if len(fashionIDs) == 0 {
+		return deletable
+	}
+
+	otherOwners := map[uuid.UUID]int64{}
+	ownersResolved := true
+	if owners, err := uc.wardrobeContract.CountFashionItemOwnersByFashionIDs(ctx, fashionIDs, failedItemIDs); err == nil {
+		for fashionItemID, count := range owners {
+			otherOwners[fashionItemID] += count
+		}
+	} else {
+		ownersResolved = false
+		run.ChildWarn(uc.logger, "Failed to count wardrobe/outfit owners before image cleanup", zap.Error(err))
+	}
+	if uc.brandContract != nil {
+		if brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs); err == nil {
+			for _, brandItem := range brandItems {
+				otherOwners[brandItem.FashionItemID]++
+			}
+		} else {
+			ownersResolved = false
+			run.ChildWarn(uc.logger, "Failed to count brand owners before image cleanup", zap.Error(err))
+		}
+	}
+
+	for _, fashionItemID := range fashionIDs {
+		fashionItem := fashionItemMap[fashionItemID]
+		if fashionItem == nil || fashionItem.ImagePublicID == "" {
+			continue
+		}
+		if !ownersResolved {
+			run.ChildWarn(uc.logger, "Skipped image deletion: owner reference count unavailable",
+				zap.String("fashionItemId", fashionItemID.String()),
+				zap.String("publicId", fashionItem.ImagePublicID),
+			)
+			continue
+		}
+		if count := otherOwners[fashionItemID]; count > 0 {
+			run.ChildWarn(uc.logger, "Skipped image deletion: fashion item still referenced by other owners",
+				zap.String("fashionItemId", fashionItemID.String()),
+				zap.String("publicId", fashionItem.ImagePublicID),
+				zap.Int64("otherOwnerCount", count),
+			)
+			continue
+		}
+		deletable[fashionItem.ImagePublicID] = true
+	}
+	return deletable
+}
+
+// publishWardrobeDeleted emits the delete event that removes the wardrobe row of
+// a failed item, inside the unit of work so it joins the outbox transaction.
+func (uc *FashionWorkerUseCase) publishWardrobeDeleted(ctx context.Context, itemID uuid.UUID, userID uuid.UUID) error {
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		payload := wardrobeDto.WardrobeEventPayload{
+			ItemID: itemID,
+			UserID: userID,
+			Action: eventconstants.ActionDeleted,
+		}
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeDeleted, payload)
+	})
 }
 
 // staleOwner identifies the item that owns a fashion item's analysis.

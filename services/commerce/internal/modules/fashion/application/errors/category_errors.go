@@ -25,5 +25,5 @@ func ErrCategoryOtherImmutable() *apperror.Error {
 }
 
 func ErrCategoryHasUserItems() *apperror.Error {
-	return apperror.NewBadRequest("Không thể xóa danh mục đang có trang phục người dùng.")
+	return apperror.NewBadRequest("Không thể xóa danh mục đang có trang phục tham chiếu.")
 }

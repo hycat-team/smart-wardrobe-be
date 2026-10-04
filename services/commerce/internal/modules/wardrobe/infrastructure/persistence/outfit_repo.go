@@ -143,3 +143,29 @@ func (r *OutfitRepository) GetFashionItemIDsByOutfitIDs(ctx context.Context, out
 	}
 	return fashionIDs, nil
 }
+
+// CountOutfitItemsByFashionIDs counts outfit items grouped by fashion_item_id.
+// Outfit items are physical rows referencing a fashion item, so they keep the
+// shared image asset alive.
+func (r *OutfitRepository) CountOutfitItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	result := make(map[uuid.UUID]int64)
+	if len(fashionItemIDs) == 0 {
+		return result, nil
+	}
+	rows := []struct {
+		FashionItemID uuid.UUID
+		Count         int64
+	}{}
+	err := r.GetDB(ctx).Model(&entities.OutfitItem{}).
+		Select("fashion_item_id, COUNT(*) AS count").
+		Where("fashion_item_id IN ?", fashionItemIDs).
+		Group("fashion_item_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.FashionItemID] = row.Count
+	}
+	return result, nil
+}

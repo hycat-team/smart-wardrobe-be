@@ -143,7 +143,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iFashionItemRepository := persistence3.NewFashionItemRepository(gormDB)
 	iFashionItemUseCase := fashion_item.NewFashionItemUseCase(iFashionItemRepository)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
-	iWardrobeContractUseCase := contractuc2.NewWardrobeContractUseCase(iWardrobeItemRepository)
+	iWardrobeContractUseCase := contractuc2.NewWardrobeContractUseCase(iWardrobeItemRepository, iOutfitRepository)
 	iWardrobeContract := contract2.NewWardrobeContract(iWardrobeContractUseCase)
 	iCategoryUseCase := category.NewCategoryUseCase(iCategoryRepository, iFashionItemRepository, iWardrobeContract)
 	iFashionContract := contract3.NewFashionContract(iFashionItemUseCase, iCategoryUseCase)

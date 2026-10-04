@@ -192,12 +192,14 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 	}
 
 	if len(fashionIDs) > 0 {
-		userItemCount, err := uc.wardrobeContract.CountItemsByFashionIDs(ctx, fashionIDs)
+		owners, err := uc.wardrobeContract.CountFashionItemOwnersByFashionIDs(ctx, fashionIDs, nil)
 		if err != nil {
 			return err
 		}
-		if userItemCount > 0 {
-			return fashionerrors.ErrCategoryHasUserItems()
+		for _, count := range owners {
+			if count > 0 {
+				return fashionerrors.ErrCategoryHasUserItems()
+			}
 		}
 	}
 

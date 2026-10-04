@@ -221,6 +221,34 @@ func (r *WardrobeItemRepository) CountItems(ctx context.Context, fashionItemIDs 
 	return count, nil
 }
 
+// CountItemsGroupedByFashionIDs counts non-deleted wardrobe items of every item
+// type grouped by fashion_item_id, optionally excluding the given wardrobe item
+// IDs. Used to resolve how many owners still reference a fashion item before its
+// shared image is removed, and to guard category deletion.
+func (r *WardrobeItemRepository) CountItemsGroupedByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID, excludeItemIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	result := make(map[uuid.UUID]int64)
+	if len(fashionItemIDs) == 0 {
+		return result, nil
+	}
+	query := r.GetDB(ctx).Model(&entities.WardrobeItem{}).
+		Select("fashion_item_id, COUNT(*) AS count").
+		Where("fashion_item_id IN ? AND is_deleted = ?", fashionItemIDs, false)
+	if len(excludeItemIDs) > 0 {
+		query = query.Where("id NOT IN ?", excludeItemIDs)
+	}
+	rows := []struct {
+		FashionItemID uuid.UUID
+		Count         int64
+	}{}
+	if err := query.Group("fashion_item_id").Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.FashionItemID] = row.Count
+	}
+	return result, nil
+}
+
 func (r *WardrobeItemRepository) GetItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
 	db := buildWardrobeItemSearchQuery(r.GetDB(ctx), fashionItemIDs, filterByFashionItems, itemType)
