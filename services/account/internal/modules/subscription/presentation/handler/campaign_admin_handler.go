@@ -27,6 +27,14 @@ const (
 	successAdminGetCampaign           = "Đã xử lý yêu cầu tra cứu trạng thái chiến dịch."
 	successAdminListCampaignClaims    = "Đã xử lý yêu cầu tra cứu danh sách tài khoản được cấp gói."
 	successAdminGetAccountEligibility = "Đã xử lý yêu cầu tra cứu trạng thái tài khoản trong chiến dịch."
+	// successAdminGetCampaignAudit says the REQUEST WAS READ, which is a different claim
+	// from "the trail is complete" and is the only one this endpoint can make.
+	//
+	// Nhật ký kiểm toán được ghi BẤT ĐỒNG BỘ từ dòng outbox (FR-060), nên một thao tác vừa
+	// thành công có thể chưa xuất hiện. Một thông điệp khẳng định "đã xem đủ nhật ký" sẽ
+	// khiến người vận hành tưởng thao tác vừa rồi chưa được ghi lại — đúng nhầm lẫn mà
+	// FR-060 đã cảnh báo. Cùng cách viết với ba thông điệp trên: yêu cầu đã được xử lý.
+	successAdminGetCampaignAudit = "Đã xử lý yêu cầu tra cứu nhật ký chiến dịch."
 )
 
 // CampaignAdminHandler serves the read-only operator look-up (025 T081, FR-065 to
@@ -191,6 +199,61 @@ func (h *CampaignAdminHandler) GetAccountEligibility(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Success(c, successAdminGetAccountEligibility, result)
+	return nil
+}
+
+// GetCampaignAudit
+// @Summary Tra cứu nhật ký kiểm toán của một chiến dịch
+// @Description Trả về nhật ký ai/lúc nào/đổi gì cho đúng một chiến dịch, có phân trang. Mọi bản ghi có targetType là campaign và targetId là null; mã chiến dịch nằm trong payload.campaignCode. Trả 404 khi mã không tồn tại, và nhật ký rỗng không phải câu trả lời cho một mã lạ.
+// @Tags Admin Campaign
+// @Produce json
+// @Param code path string true "Mã chiến dịch"
+// @Param page query int false "Trang"
+// @Param limit query int false "Số bản ghi/trang"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[sub_dto.CampaignAuditLogRes]}
+// @Failure 400 {object} shared_pres.APIResponse
+// @Failure 403 {object} shared_pres.APIResponse
+// @Failure 404 {object} shared_pres.APIResponse
+// @Failure 429 {object} shared_pres.APIResponse
+// @Router /api/v1/admin/campaigns/{code}/audit [get]
+//
+// IT IS HERE, ON THE READ-ONLY LOOK-UP, AND NOT ON `CampaignRegistryHandler`, because
+// nothing about it writes. The trail is written by the three write operations through the
+// audit outbox; this one only reads what a consumer already wrote (FR-060), so putting it
+// on the writer would give the write side a reason to grow a read method and would move an
+// endpoint that grants nobody anything out of the type whose whole purpose is that it does
+// not (FR-069).
+//
+// THE 404 IS NOT DECIDED HERE, and that is the part worth reading. The trail lives in the
+// `admin` module, which cannot know which campaigns exist, so it answers an unknown code
+// with an EMPTY PAGE. This handler must therefore ask the REGISTRY first — and it must do
+// so through the use case, not through the repository: constitution §IV forbids a handler
+// reaching a repository, and §II forbids this module reading `shared.admin_audit_logs`
+// directly. `CampaignQueryUseCase.ListCampaignAudit` makes that ordering, and the comment
+// on the interface method says why it is the requirement rather than a detail.
+func (h *CampaignAdminHandler) GetCampaignAudit(c *gin.Context) error {
+	// THE SAME `campaignPathParams` the other three reads bind: `:code` is required
+	// identically on all of them, and a second declaration would be a second answer to
+	// "what does a missing code look like".
+	var params campaignPathParams
+	if err := validation.BindURI(c, &params); err != nil {
+		return err
+	}
+	var req shared_dto.PaginationQuery
+	if err := validation.BindQuery(c, &req); err != nil {
+		return err
+	}
+	items, total, err := h.campaign.ListCampaignAudit(c.Request.Context(), params.Code, req.Page, req.Limit)
+	if err != nil {
+		return err
+	}
+	// THE PAGE IS BUILT HERE AND NOT IN THE USE CASE, so the use case answers the
+	// QUESTION (this campaign's trail) and the handler answers the ENVELOPE. That split is
+	// why the three other paginated reads on this handler look identical.
+	shared_pres.Success(c, successAdminGetCampaignAudit, &shared_dto.PaginationResult[*sub_dto.CampaignAuditLogRes]{
+		Items:    items,
+		Metadata: shared_dto.BuildPaginationMetadata(req, total),
+	})
 	return nil
 }
 

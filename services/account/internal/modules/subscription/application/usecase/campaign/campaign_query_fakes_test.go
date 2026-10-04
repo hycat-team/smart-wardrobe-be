@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	admincontract "smart-wardrobe-be/services/account/contract/admin"
 	identitycontract "smart-wardrobe-be/services/account/contract/identity"
+	admindto "smart-wardrobe-be/services/account/dto/admin"
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
@@ -230,7 +232,8 @@ func newTestQueryUC(
 	plans := newFakePlanRepo()
 	plans.put(testPlan("premium-monthly", 30))
 
-	uc := NewCampaignQueryUseCase(testConfig(), registry, claims, sweepRuns, plans, subs, accounts, quietLogger{}).(*CampaignQueryUseCase)
+	uc := NewCampaignQueryUseCase(testConfig(), registry, claims, sweepRuns, plans, subs, accounts,
+		&fakeCampaignAuditLookup{}, quietLogger{}).(*CampaignQueryUseCase)
 	uc.now = func() time.Time { return baseInstant() }
 	return &queryHarness{
 		uc:        uc,
@@ -252,3 +255,62 @@ func queryAccount(createdAt time.Time, createdByAdmin bool) *identitydto.UserBri
 		CreatedByAdmin: createdByAdmin,
 	}
 }
+
+// fakeCampaignAuditLookup stands in for the `admin` module's audit trail (026 T067).
+//
+// IT IS A CONTRACT AND NOT A REPOSITORY, and that is what it is modelling: this module
+// must not read `shared.admin_audit_logs` directly (constitution §II), so the only thing
+// a campaign test can hold is the narrow view — which is exactly what the production code
+// holds.
+//
+// `calls` EXISTS FOR ONE ASSERTION, and it is the important one. The endpoint's contract
+// says an unknown campaign code must be 404 and NEVER an empty page, and the only way to
+// prove the ordering is to observe whether the trail was asked at all: a use case that
+// consulted the contract first would return 404 with `calls == 1`, and one that consults
+// it second returns 404 with `calls == 0`.
+type fakeCampaignAuditLookup struct {
+	mu sync.Mutex
+	// rows answers `ListByCampaignCode`, keyed by campaign code. An absent key answers an
+	// EMPTY PAGE — which is precisely what the real contract does for a code nobody typed,
+	// and the reason the caller has to check the registry first.
+	rows map[string][]*admindto.AdminAuditLogDTO
+	// err fails the read, so a test can prove the failure is surfaced rather than turned
+	// into an empty trail (an empty trail reads as "nobody changed this campaign").
+	err   error
+	calls int
+	// lastCode is the code the contract was asked about, and `lastPage`/`lastLimit` the
+	// pagination it was handed, so a test can assert the use case normalised them rather
+	// than passing the handler's raw query through.
+	lastCode            string
+	lastPage, lastLimit int
+}
+
+func (f *fakeCampaignAuditLookup) ListByCampaignCode(
+	_ context.Context,
+	campaignCode string,
+	page, limit int,
+) ([]*admindto.AdminAuditLogDTO, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.lastCode, f.lastPage, f.lastLimit = campaignCode, page, limit
+	if f.err != nil {
+		return nil, 0, f.err
+	}
+	rows := f.rows[campaignCode]
+	return rows, int64(len(rows)), nil
+}
+
+func (f *fakeCampaignAuditLookup) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
+
+func (f *fakeCampaignAuditLookup) lastQuery() (string, int, int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.lastCode, f.lastPage, f.lastLimit
+}
+
+var _ admincontract.ICampaignAuditLookup = (*fakeCampaignAuditLookup)(nil)

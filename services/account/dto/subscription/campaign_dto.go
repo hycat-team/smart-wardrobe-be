@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"bytes"
+	"encoding/json"
 	"time"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
@@ -255,12 +257,19 @@ type CampaignCloseReq struct {
 // WHY THE TIMESTAMPS ARE STRINGS. Identical to `CampaignCreateReq`: RFC3339 WITH a
 // zone is a rule this layer can state and a `time.Time` cannot (FR-013).
 //
-// WHAT IS DELIBERATELY NOT DECIDED HERE. `endsAt: null` must eventually CLEAR the
-// window end (contract §4.1), and telling `null` apart from an absent key needs a
-// representation this type does not have yet; that is US4's task (T061), together
-// with re-checking `ends_at > starts_at` against the MERGED window. Until then an
-// absent `endsAt` keeps the stored value, which is the safe half of the rule: it
-// cannot silently end a campaign that is running.
+// WHY `EndsAt` NEEDS A CUSTOM `UnmarshalJSON` (026 T061, contract §4.1). `endsAt`
+// has THREE states, not two: the key ABSENT means "leave the stored end date alone",
+// an explicit `null` means "CLEAR it", and a string means "set it". Every ordinary Go
+// representation collapses two of them: `encoding/json` maps a JSON `null` to a nil
+// pointer, so `*string` cannot tell absent from clear — and `**string` does not help,
+// because for a null literal the decoder stops at the first settable pointer and zeroes
+// the OUTER one, leaving `{}` and `{"endsAt":null}` both nil. Measured on this
+// repository's Go toolchain, not assumed.
+//
+// So the KEY'S PRESENCE is recorded by this struct rather than by the decoder, and
+// `EndsAtUpdate` below is how the use case asks. The field itself stays a plain
+// `*string`, so the JSON shape, the Swagger schema and anything that round-trips this
+// struct are untouched.
 type CampaignUpdateReq struct {
 	// Version is the version the client read, and it is REQUIRED (FR-055). `0` is
 	// not a version any row can hold — the column defaults to 1 and only ever
@@ -283,7 +292,104 @@ type CampaignUpdateReq struct {
 	StartsAt *string `json:"startsAt"`
 	// EndsAt is when it closes, RFC3339 with a zone. Optional and editable
 	// regardless of grants (FR-023).
+	//
+	// `null` CLEARS the end date and makes the campaign open-ended again; the key
+	// being absent leaves it alone. The two are different requests, which is why
+	// this type decodes itself — see the header and `EndsAtUpdate` below.
 	EndsAt *string `json:"endsAt"`
+
+	// endsAtSent and endsAtCleared record what the KEY carried, which the JSON
+	// decoder cannot express on a `*string`.
+	//
+	// UNEXPORTED and read through `EndsAtUpdate`, because the consumer of this DTO is
+	// another package: an exported flag would become part of the request contract and
+	// a client could not set it anyway, while a method keeps the question and its
+	// answer in one place.
+	endsAtSent    bool
+	endsAtCleared bool
+}
+
+// UnmarshalJSON decodes the request and records whether `endsAt` was sent at all.
+//
+// THE ALIAS IS THE WHOLE POINT. `type plain CampaignUpdateReq` drops this method, so
+// the first decode is exactly the one the struct would have received on its own — and
+// adding a field to the struct needs no change here. The SECOND decode exists only to
+// answer a question the first one cannot: `encoding/json` reports a JSON `null` and an
+// absent key identically for a pointer field, so the raw key set is what tells them
+// apart.
+//
+// ERRORS ARE RETURNED UNWRAPPED, on purpose: `TranslateValidationError` recognises
+// `*json.UnmarshalTypeError` and answers with the service's standard 400 naming the
+// field, while a wrapped error would degrade into a generic "cannot unmarshal" — a
+// worse answer for the same wrong request.
+func (r *CampaignUpdateReq) UnmarshalJSON(data []byte) error {
+	type plain CampaignUpdateReq
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*r = CampaignUpdateReq(decoded)
+
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &keys); err != nil {
+		return err
+	}
+	if value, present := keys["endsAt"]; present {
+		r.endsAtSent = true
+		r.endsAtCleared = bytes.Equal(bytes.TrimSpace(value), []byte("null"))
+	}
+	return nil
+}
+
+// EndsAtUpdate reports what `endsAt` asked for, in the three states the contract
+// defines (026 T061, contract §4.1): key ABSENT keeps the stored `ends_at`, an
+// explicit `null` CLEARS it, and a string sets it.
+//
+// A caller asks two questions and never has to guess a third — and it must test
+// `cleared` FIRST, because a cleared request arrives with a nil `value` and must not
+// be read as an absent one.
+func (r CampaignUpdateReq) EndsAtUpdate() (cleared bool, value *string) {
+	return r.endsAtCleared, r.EndsAt
+}
+
+// CampaignAuditLogRes is one row of a campaign's audit trail, as
+// GET /admin/campaigns/:code/audit returns it (026 T069, FR-063, contract §6.2).
+//
+// IT IS ITS OWN RESPONSE TYPE AND NOT `dto/admin.AdminAuditLogDTO`, and the whole
+// reason is `targetId`. That shared DTO declares `json:"targetId,omitempty"`, so a nil
+// pointer is OMITTED rather than emitted as `null` — and EVERY campaign row has a
+// null `target_id`, because the audit trail's existing filter takes a UUID while a
+// campaign is keyed by a text code (FR-063, research.md R8). Reusing it would make the
+// invariant invisible on the one endpoint that exists to show it, and dropping
+// `omitempty` from the shared DTO would break the audit endpoint already in
+// production.
+//
+// So `TargetID` HERE CARRIES NO `omitempty`, and that single difference is what makes
+// FR-063 observable — and assertable.
+type CampaignAuditLogRes struct {
+	ID          uuid.UUID `json:"id"`
+	ActorUserID uuid.UUID `json:"actorUserId"`
+	// Action is `campaign.create`, `campaign.update` or `campaign.close`. They are
+	// actions ON the campaign rather than on the subscription because a campaign
+	// operation moves nobody's entitlement (FR-033), and an operator answering "who
+	// gave away Premium" filters on `subscription.grant`.
+	Action string `json:"action"`
+	// TargetType is `campaign` for every row on this endpoint.
+	TargetType string `json:"targetType"`
+	// TargetID is ALWAYS null here, and it is emitted rather than omitted — see the
+	// type header.
+	TargetID *uuid.UUID `json:"targetId"`
+	// Payload carries `campaignCode` plus whatever the operation changed: the created
+	// values, `before`/`after` for an edit, the closure `reason`. It is a document
+	// because the three operations genuinely carry different keys, and a struct of
+	// three optional sub-objects would add nesting to every reader for no gain.
+	Payload map[string]any `json:"payload"`
+	// RequestIP is omitted when the caller sent none — the one field here where
+	// absence means "not provided" rather than "null".
+	RequestIP *string `json:"requestIp,omitempty"`
+	// CreatedAt is AFTER the operator's operation succeeded, because the trail is
+	// written asynchronously from the outbox (FR-060).
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // CampaignClaimRes is one granted account in

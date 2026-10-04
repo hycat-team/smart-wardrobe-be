@@ -217,6 +217,22 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		// (FR-053). An edit moves the budget a campaign is still allowed to hand out,
 		// which makes it as consequential as the close.
 		adminCampaigns.PATCH("/:code", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignRegistryHandler.Update))
+		// 026 T067 (FR-053, FR-063): the audit trail of one campaign.
+		//
+		// IT JOINS THIS GROUP AND NOT A NEW ONE, for the reason the group comment makes
+		// concrete: the Gin trap is a STATIC segment registered BESIDE a parameter at the
+		// same level. `audit` is a static segment, but it sits at the level BELOW `:code`
+		// — the same shape as the `claims` and `eligibility` routes above — so there is
+		// no conflict to panic at startup, and
+		// `campaign_no_delete_route_test.go` calls the real `Init` so a regression is a
+		// `go test` failure rather than a service that refuses to boot.
+		//
+		// IT IS A `GET` ON THE READ-ONLY HANDLER even though the trail records writes.
+		// Reading an audit trail changes nothing: the rows were written asynchronously by
+		// the existing consumer, the grant path does not consult them, and nothing on
+		// this route can spend a slot or grant a plan (FR-069). FR-053's role check and
+		// limiter are inherited from the group like every other route above.
+		adminCampaigns.GET("/:code/audit", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.GetCampaignAudit))
 	}
 }
 

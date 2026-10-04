@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/services/account/internal/modules/admin/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/admin/domain/repositories"
+	"smart-wardrobe-be/shared/domain/constants/adminaudit"
 	shared_repos "smart-wardrobe-be/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -59,12 +60,7 @@ func (r *AdminAuditLogRepository) List(ctx context.Context, filter repositories.
 		return nil, 0, err
 	}
 
-	if page < 1 {
-		page = 1
-	}
-	if limit <= 0 || limit > 200 {
-		limit = 20
-	}
+	page, limit = normalizeAuditPagination(page, limit)
 	offset := (page - 1) * limit
 
 	var logs []*entities.AdminAuditLog
@@ -74,6 +70,73 @@ func (r *AdminAuditLogRepository) List(ctx context.Context, filter repositories.
 	}
 
 	return logs, total, nil
+}
+
+// ListByCampaignCode returns one page of the trail of EXACTLY ONE campaign (026 T065,
+// FR-063).
+//
+// THE TWO TERMS ARE BOTH REQUIRED, and dropping either one is a bug that looks correct:
+//
+//   - `target_type = 'campaign'` keeps every other audit row out. Without it the page
+//     would include the rows for whatever else happens to carry the same code in its
+//     payload, and the operator would be shown somebody else's change under this
+//     campaign;
+//   - `payload->>'campaignCode' = ?` is the selector, because FR-063 stores the code there
+//     and leaves `target_id` NULL. The `->>` operator returns TEXT rather than JSON, so
+//     the comparison is a plain string equality — the same expression
+//     `ExistsRecentChange` already uses for `payload->>'newValue'`, which is why the
+//     column is declared `jsonb` rather than `text`.
+//
+// THE PARAMETER IS BOUND, NOT INTERPOLATED. `?` with a value is what keeps a code
+// containing a quote from changing the query's meaning; the payload is data, not SQL.
+//
+// ORDERED BY `created_at DESC, id DESC`. The trailing key is not decoration: a campaign's
+// create and its first edit routinely land inside one millisecond, and without a second
+// key PostgreSQL may return those two rows in either order between two identical calls —
+// so a screen would show the edit above the create it followed. `id` is unique and
+// monotonic, which makes the order total.
+func (r *AdminAuditLogRepository) ListByCampaignCode(
+	ctx context.Context,
+	campaignCode string,
+	page, limit int,
+) ([]*entities.AdminAuditLog, int64, error) {
+	db := r.GetDB(ctx).
+		Model(&entities.AdminAuditLog{}).
+		Where("target_type = ?", string(adminaudit.Campaign)).
+		Where("payload->>'campaignCode' = ?", campaignCode)
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	page, limit = normalizeAuditPagination(page, limit)
+
+	var logs []*entities.AdminAuditLog
+	err := db.Order("created_at DESC, id DESC").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&logs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return logs, total, nil
+}
+
+// normalizeAuditPagination clamps a caller-supplied page and limit.
+//
+// IT IS EXTRACTED rather than copied into both listing methods, because the two must
+// agree: an operator paging through the campaign trail and an administrator paging
+// through the general audit screen would otherwise be able to reach different pages with
+// the same `page=0&limit=0`, and the clamp is the kind of rule that has to be one rule.
+func normalizeAuditPagination(page, limit int) (int, int) {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 20
+	}
+	return page, limit
 }
 
 func (r *AdminAuditLogRepository) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {

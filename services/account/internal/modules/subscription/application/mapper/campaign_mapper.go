@@ -3,6 +3,7 @@ package mapper
 import (
 	"time"
 
+	admindto "smart-wardrobe-be/services/account/dto/admin"
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
@@ -144,6 +145,53 @@ func MapCampaignSummaryRes(
 		WatermarkAt: watermarkAt,
 		Status:      status,
 	}
+}
+
+// MapCampaignAuditLogRes maps one cross-module audit DTO into the campaign trail's own
+// response shape (026 T069, FR-063, contract §6.2).
+//
+// IT EXISTS BECAUSE THE SHARED DTO CANNOT CARRY FR-063. `dto/admin.AdminAuditLogDTO`
+// declares `json:"targetId,omitempty"`, so a nil pointer is dropped from the JSON — and
+// every campaign row has a NULL `target_id` (the code travels in `payload.campaignCode`
+// because the audit filter takes a UUID). Reusing that DTO would make the invariant
+// invisible on the one endpoint that exists to show it, and dropping `omitempty` from it
+// would change an endpoint already in production. `sub_dto.CampaignAuditLogRes` declares
+// the field WITHOUT `omitempty`, so the null is emitted and a client can see it.
+//
+// THE MAPPING COPIES AND DOES NOT DECIDE. `TargetID` is carried over as it arrived —
+// nil in, nil out — because inventing a UUID here would make a campaign row look like it
+// pointed at something, and the whole reason it is null is that a campaign code is not a
+// UUID. `Payload` is copied by reference on purpose: it is a JSON document, the same one
+// the row holds, and re-encoding it would be a second chance to lose a key.
+func MapCampaignAuditLogRes(log *admindto.AdminAuditLogDTO) *sub_dto.CampaignAuditLogRes {
+	if log == nil {
+		return nil
+	}
+	return &sub_dto.CampaignAuditLogRes{
+		ID:          log.ID,
+		ActorUserID: log.ActorUserID,
+		Action:      log.Action,
+		TargetType:  log.TargetType,
+		TargetID:    log.TargetID,
+		Payload:     log.Payload,
+		RequestIP:   log.RequestIP,
+		CreatedAt:   log.CreatedAt,
+	}
+}
+
+// MapCampaignAuditLogResList maps one page of the trail.
+//
+// AN EMPTY RESULT IS AN EMPTY SLICE, never nil, for the reason `CampaignAccountPage`
+// gives: the response is serialised straight into `items`, and a JSON `null` there reads
+// as "the field is missing" where the truth is "there are none of this campaign".
+func MapCampaignAuditLogResList(logs []*admindto.AdminAuditLogDTO) []*sub_dto.CampaignAuditLogRes {
+	items := make([]*sub_dto.CampaignAuditLogRes, 0, len(logs))
+	for _, log := range logs {
+		if mapped := MapCampaignAuditLogRes(log); mapped != nil {
+			items = append(items, mapped)
+		}
+	}
+	return items
 }
 
 // remainingOf is `max(0, budget - granted)` for the two derived remainders.
