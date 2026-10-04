@@ -81,6 +81,16 @@ func openAuditTestDB(t *testing.T) *gorm.DB {
 		"goose_db_version", true, zap.NewNop()); err != nil {
 		t.Fatalf("run migrations: %v", err)
 	}
+	// Registered before the cleanup below so the seeded campaign is restored LAST
+	// (cleanups are last-in-first-out) — 026 T081.
+	//
+	// NOTHING IN THIS FILE'S ASSERTIONS DEPENDS ON THE SEEDED CAMPAIGN: it reads one
+	// code at a time through `GetByCode`, and every code it asks about carries this
+	// file's prefix. The isolation is here so that stays true — a registry-wide read
+	// added to this file later would otherwise meet a row this file never created, and
+	// `TestIntegrationAnUnknownCampaignCodeNeverAnswersAnEmptyTrail` in particular
+	// would be asserting against a registry it had not isolated.
+	isolateSeededCampaign(t, dbConn)
 	t.Cleanup(func() {
 		dbConn.Exec("DELETE FROM subscription.campaign_claims WHERE campaign_code LIKE ?", dbAuditPrefix+"%")
 		dbConn.Exec("DELETE FROM subscription.campaigns WHERE code LIKE ?", dbAuditPrefix+"%")
@@ -341,6 +351,10 @@ func openAuditCampaign(t *testing.T, f *auditFixture, code string) *sub_dto.Camp
 	if err != nil {
 		t.Fatalf("create the campaign %s: %v", code, err)
 	}
+	// THE PRECONDITION (026 T081): this suite owns its prefix and nothing else, so a
+	// row left behind by another fixture — or the seeded `launch-2026-10` — is
+	// reported here rather than showing up as a surprising `total` in a trail read.
+	requireRegistryIsolatedTo(t, f.campaign, dbAuditPrefix, code)
 	return summary
 }
 

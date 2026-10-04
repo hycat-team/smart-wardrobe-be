@@ -69,6 +69,11 @@ func openRunningCampaignWithWindow(t *testing.T, f *dbGrantFixture, suffix strin
 	}, nil); err != nil {
 		t.Fatalf("create the campaign: %v", err)
 	}
+	// THE PRECONDITION (026 T081). This file's whole subject is WHICH campaign an
+	// account lands in after the window moves, so a foreign row in the registry is
+	// fatal to the claim rather than incidental: the seeded `launch-2026-10` starts at
+	// exactly `baseInstant()` and FR-040 gives it the selection.
+	requireRegistryIsolatedTo(t, f.campaign, dbTimePrefix, code)
 	return code
 }
 
