@@ -324,3 +324,174 @@ Phần còn lại của thư mục (`01`, `02`, `rollback_cloudinary_urls`, `see
 
 ⚠️ **`truncate_all_tables.sql` xoá toàn bộ dữ liệu.** Không chạy nó trên cơ sở
 dữ liệu mà bạn không sẵn sàng mất.
+
+---
+
+## Chuẩn bị chạy thật — dọn dữ liệu seed ở production
+
+Hai script dưới đây **không thuộc feature nào**. Chúng dọn dữ liệu demo đã tích
+tụ trong lúc demo sản phẩm, chuẩn bị đưa production lên vận hành thật.
+
+Chúng là ngoại lệ duy nhất so với cảnh báo ở đầu file này. Cảnh báo đó nói
+"Không dùng script này trên production" vì các script còn lại **xoá dữ liệu thật
+mà không hỏi**. Hai script này khác ở chỗ chúng phân biệt rõ dữ liệu seed với
+dữ liệu người dùng thật, và chúng từ chối chạy nếu không xác minh được ranh
+giới đó.
+
+### `12-dry_run_preprod_cleanup.sql` — XEM, không ghi
+
+Bảy bảng báo cáo, chạy bao nhiêu lần cũng được:
+
+| # | Nội dung |
+|---|---|
+| 1, 1b | 70 tài khoản seed sẽ bị xoá, liệt kê **đầy đủ tên** — đọc trước khi chạy file 13 |
+| 2 | 26 tài khoản được giữ, kèm số wardrobe/outfit/subscription/deposit của từng người |
+| 3 | Số dòng sẽ xoá theo từng bảng, kèm lý do thứ tự |
+| 4 | Dòng bị xoá bởi `CASCADE`, không có lệnh `DELETE` riêng |
+| 5 | Dữ liệu **giữ nguyên** — nếu một bảng ở đây bằng 0 mà bạn không xoá nó, hãy dừng lại |
+| 6 | Baseline phải còn lại (bảng này phải khớp tuyệt đối) |
+| 7 | Kỳ vọng sau khi dọn, để đối chiếu với file 13 |
+
+### `13-preprod_cleanup.sql` — GHI
+
+Một transaction, `\set ON_ERROR_STOP on`, xoá theo 5 bước. **Ba guard dừng
+script trước khi ghi bất cứ thứ gì:**
+
+1. Bắt buộc `-v apply=1`. Thiếu, hoặc bằng bất kỳ giá trị nào khác, script
+   thoát ngay.
+2. Danh sách tài khoản được giữ phải khớp **DANH TÍCH**, không chỉ khớp số
+   lượng. Thiếu một, thừa một, hoặc truyền sai định dạng đều `RAISE EXCEPTION`
+   → rollback.
+3. Baseline config phải còn nguyên — 2 plan, 9 category, 2 cost policy,
+   8 operation, 7 model config, 32 + 3 dòng goose. Sai số → rollback.
+
+**Danh sách tài khoản được giữ nằm ngoài git**, ở
+`docs/temp/preprod-kept-users.txt` (thư mục `docs/temp` đã nằm trong
+`.gitignore:730`). Truyền vào lúc chạy bằng `-v kept_users=`. Lý do không để
+trong file SQL: đó là tài khoản người dùng thật, và repo không nên chứa nó.
+
+**`COMMIT` nằm ở cuối file**, sau cả khối báo cáo. Nếu câu báo cáo hỏng thì
+`ON_ERROR_STOP` dừng script trước `COMMIT` và việc dọn được hoàn tác. Đặt
+`COMMIT` trước báo cáo nghĩa là báo cáo hỏng không cứu được dữ liệu — bạn mất
+dữ liệu mà không có bản đối chiếu để biết đã mất gì.
+
+Kiểm danh sách được truyền vào **trước mọi lệnh `DELETE`**, không phải ở guard 2
+cuối file. Nếu kiểm cuối thì script đã xoá xong 5 bước rồi mới phát hiện thiếu
+đầu vào — đúng trường hợp mà transaction phải cứu ta.
+
+#### Chạy
+
+Chạy từ thư mục gốc repo. **Cần có dump backup trước** — script xoá vĩnh viễn.
+
+Trên máy này **không có `psql` trên host** — `psql` chỉ nằm trong container
+`postgres-closy-dev`. PowerShell cũng không có toán tử `<`, nên phải nạp file
+qua đường ống.
+
+Mật khẩu production đặt sẵn ở biến môi trường user scope `PGPROD_PW`, nên không
+gõ mật khẩu vào lệnh (tránh lọt vào PowerShell history và log của container):
+
+```powershell
+# đặt biến (chỉ cần một lần, mở cửa sổ PowerShell mới để nó nạp)
+[Environment]::SetEnvironmentVariable("PGPROD_PW", "<pwd>", "User")
+```
+
+Đọc danh sách tài khoản được giữ (bỏ dòng comment và dòng trống):
+
+```powershell
+$kept = (Get-Content docs/temp/preprod-kept-users.txt | Where-Object { $_ -and $_ -notmatch '^\s*#' }) -join ','
+```
+
+Ba lệnh dưới đây là dạng chạy được:
+
+```powershell
+# 1. Xem kế hoạch
+Get-Content -Raw -Encoding UTF8 database/scripts/12-dry_run_preprod_cleanup.sql | docker exec -i -e PGPASSWORD=$env:PGPROD_PW postgres-closy-dev psql -h host.docker.internal -p 15432 -U closy -d closy_db -q
+```
+
+```powershell
+# 2. Chạy thật
+Get-Content -Raw -Encoding UTF8 database/scripts/13-preprod_cleanup.sql | docker exec -i -e PGPASSWORD=$env:PGPROD_PW postgres-closy-dev psql -h host.docker.internal -p 15432 -U closy -d closy_db -q -v apply=1 -v kept_users="$kept"
+```
+
+```powershell
+# 3. Chạy lại file 12 — bảng [7] phải khớp cột actual_remaining
+Get-Content -Raw -Encoding UTF8 database/scripts/12-dry_run_preprod_cleanup.sql | docker exec -i -e PGPASSWORD=$env:PGPROD_PW postgres-closy-dev psql -h host.docker.internal -p 15432 -U closy -d closy_db -q
+```
+
+Ba chỗ dễ nhầm trong các lệnh trên:
+
+- **`host.docker.internal`**, không phải `localhost`. Bạn đứng ngoài container
+  nên `localhost` là máy bạn; container cần tên đó để vòng về host.
+- **`-e PGPASSWORD=$env:PGPROD_PW`** truyền mật khẩu vào container. Thiếu nó,
+  `psql` hỏi interactive và đọc từ đường ống sẽ hỏng.
+- **Không dùng `-f`.** File phải nạp qua đường ống vì PowerShell không có `<`.
+
+DSN đầy đủ (`host=... user=... password=... dbname=...`) — cùng format với biến
+`MIGRATION_DSN` ở `Makefile:33` — dùng cho `psql`, `pg_dump` và `goose`, và cho
+môi trường có `psql` trên host.
+
+#### Ai bị xoá, ai được giữ
+
+**Xoá 70 tài khoản seed**, khớp với bốn script trong thư mục này:
+
+| Mẫu username | SL | Nguồn |
+|---|---|---|
+| `fb_cust_*` (`@closy.local`) | 60 | `seed_fill_customer_user_ids.sql` |
+| `conv_user_*` (`@test.com`) | 6 | `seed_feature_006_dashboard.sql` |
+| `owner_branda`, `staff_branda` | 2 | `seed_feature_006_dashboard.sql` |
+| `demo*` (`@hycat.online`) | 2 | seed demo users |
+
+Kèm 3 brand seed (Thời Trang ABC, Fashion XYZ, Demo Regis) với toàn bộ dữ liệu
+brand/loyalty/dashboard đi theo, và 31 `fashion_items` không còn ai dùng.
+
+**Giữ 26 tài khoản** — danh sách nằm ở
+`docs/temp/preprod-kept-users.txt` — cùng **toàn bộ** dữ liệu của họ: `admin`,
+`user`, và 24 tài khoản Gmail/FPT đã đăng ký thật. `user` giữ nguyên 184
+wardrobe items, 19 outfits, 31 deposit, 225 AI event; `admin` giữ 81 wardrobe
+items.
+
+#### Baseline KHÔNG được xoá
+
+`database/init/03-seed.sql` được mount vào `/docker-entrypoint-initdb.d`, và
+Postgres chỉ chạy nó **một lần** lúc data dir còn rỗng. Production đã có dữ
+liệu nên file đó không bao giờ chạy lại. Xoá một trong những dòng dưới đây là
+mất vĩnh viễn:
+
+| Bảng | SL | Mất thì |
+|---|---|---|
+| `subscription.subscription_plans` | 2 | Account service **không boot** — Catalog Validator cần đúng một plan `free` đang active ([`catalog_validator.go`](../../services/account/internal/modules/subscription/application/validator/catalog_validator.go)) |
+| `fashion.categories` | 9 | Mất danh mục, không tự tạo lại |
+| `aiexecutor.ai_cost_policies` | 2 | Plan mất `ai_cost_policy_id` ⇒ account không boot |
+| `aiexecutor.ai_cost_policy_operations` | 8 | Mất cấu hình route AI |
+| `aiexecutor.ai_model_configs` | 7 | Mất bảng giá model |
+| `public.goose_db_version` | 32 | Goose coi là chưa migration nào và chạy lại từ đầu |
+| `public.goose_db_version_commerce` | 3 | Như trên, cho commerce |
+
+#### Kiểm chứng
+
+Cả hai script đã chạy thử trên bản sao database (`closy_clone`) dựng từ
+`pg_dump` của production. Bảy tình huống, tất cả đều đúng:
+
+| Tình huống | Kết quả |
+|---|---|
+| Danh sách đúng 26 tên | Chạy xong, guard 2 và 3 pass, số dòng xoá khớp dự đoán |
+| Chạy lần hai | **0 dòng** ở mọi bảng (idempotent) |
+| Không truyền `-v apply` | Dừng, DB không đổi |
+| `apply=0` / `yes` / `TRUE` | Dừng, DB không đổi |
+| Không truyền `-v kept_users` | Dừng **trước** lệnh `DELETE` đầu tiên |
+| `kept_users` rỗng | Dừng trước lệnh `DELETE` đầu tiên |
+| Thêm tài khoản lạ vào DB | Guard 2 chặn → rollback |
+| Danh sách thiếu 1 tên | Guard 2 chặn → rollback |
+| Danh sách thừa 1 tên không tồn tại | Guard 2 chặn → rollback |
+| Tắt plan `free` | Guard 3 chặn → rollback |
+
+#### Điều script này **không** làm
+
+- Không xoá `outbox_records` (422), `refresh_tokens` (308), `campaign_claims`
+  (4), `user_daily_quotas`, `admin_audit_logs`. Đã quyết định giữ.
+- Không xoá `subscription.campaigns` — campaign `launch-2026-10` do migration
+  `20261003165500` tạo, xoá thì campaign biến mất khỏi sản phẩm.
+- Không xoá `deposit_transactions`, `ai_usage_events`, `ai_usage_period_ledgers`,
+  `ai_policy_grants` — đều là dữ liệu của 26 tài khoản được giữ.
+- Không `VACUUM`. Bảng vẫn còn dung lượng cũ trên đĩa cho tới khi chạy
+  `VACUUM FULL` (giữ mọi thứ, không cần thiết).
