@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
@@ -122,13 +123,51 @@ func (r *CampaignRepository) GetByCodeForShare(ctx context.Context, campaignCode
 
 // Create inserts a new campaign.
 //
-// The duplicate-code case is left to the `PRIMARY KEY` rather than pre-checked:
-// a read-then-write has a window between the two statements, and two
-// administrators creating the same code at the same moment is exactly the case
-// where the loser must be told 409 (FR-054) rather than be inserted under a name
-// that already exists.
+// A duplicate code is a `PRIMARY KEY` violation, and it is NOT pre-checked with a
+// read: a `GetByCode` followed by an insert has a window between the two statements,
+// and two administrators creating the same code at the same moment is exactly the
+// case FR-054 assigns 409 to. Letting the constraint decide removes the window and
+// leaves ONE mechanism — the same `PRIMARY KEY` that made the code unique in the
+// first place (FR-011).
+//
+// THE VIOLATION IS TRANSLATED HERE, AND THAT IS THE LAYER'S JOB. The raw error is a
+// PostgreSQL driver error, so naming its type above `infrastructure` would be a
+// driver import in the application layer (constitution §IV). Here it becomes the
+// domain sentinel `repositories.ErrCampaignCodeExists`, and the use case compares
+// against that.
 func (r *CampaignRepository) Create(ctx context.Context, campaign *entities.Campaign) error {
-	return r.GetDB(ctx).Create(campaign).Error
+	if err := r.GetDB(ctx).Create(campaign).Error; err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("%w: %s", repositories.ErrCampaignCodeExists, campaign.Code)
+		}
+		return err
+	}
+	return nil
+}
+
+// sqlStateCarrier is the one method this package needs from a driver's error.
+//
+// WHY IT IS AN INTERFACE AND NOT `*pgconn.PgError`. Naming the concrete driver type
+// here is harmless, but it would turn a transitive dependency of the GORM postgres
+// driver into a DIRECT dependency of this service module — a module-graph edit
+// justified by nothing more than a type assertion. `SQLState() string` is part of the
+// SQL standard's error reporting and every PostgreSQL error returned by pgx carries
+// it, so asserting on the method rather than the type is both smaller and correct.
+type sqlStateCarrier interface {
+	SQLState() string
+}
+
+// postgresUniqueViolation is SQLSTATE 23505.
+//
+// The one class of constraint violation that means "the row you asked for is already
+// there", as distinct from a CHECK failure (which FR-012/FR-013 already refused at
+// the API, so reaching one here means the validator and the schema disagree — a bug
+// worth a 500) or a foreign-key failure.
+const postgresUniqueViolation = "23505"
+
+func isUniqueViolation(err error) bool {
+	var carrier sqlStateCarrier
+	return errors.As(err, &carrier) && carrier.SQLState() == postgresUniqueViolation
 }
 
 // Update writes the mutable fields and reports whether a row changed (FR-055).

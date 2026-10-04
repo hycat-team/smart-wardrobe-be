@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"time"
+
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
@@ -32,6 +34,99 @@ import (
 // is a decision. Neither has a source row to map FROM. They are built where the
 // inputs live — `campaign_query_uc.go` — and this file stays the one place that
 // converts persisted rows into response shapes.
+
+// CampaignGrantCounts carries the two ledger counts a campaign summary needs
+// (026 T032).
+//
+// A STRUCT rather than two positional `int64`s, because the two numbers are the ones
+// FR-043's rule reasons about as a pair — "the main part is full and the reserve is
+// not" is the difference between `compensation` and `running` — and two bare arguments
+// at a call site are indistinguishable to a reader who has forgotten which is which.
+//
+// They are two SEPARATE counts and never a total: deriving the reserve as
+// `total - main` is the mistake research.md R2b exists to forbid, and a shape that
+// makes people reach for a total is a shape that invites it.
+type CampaignGrantCounts struct {
+	// Main is `COUNT(*)` of claims in the `main` bucket: the grants that drew on
+	// `quota`.
+	Main int64
+	// Compensation is `COUNT(*)` of claims in the `reserve` bucket: the grants that
+	// drew on the ceiling above `quota`.
+	Compensation int64
+}
+
+// MapCampaignSummaryRes maps one registry row plus its ledger counts into the
+// operator's summary shape (026 T032, FR-051).
+//
+// IT IS THE ONLY PLACE A `CampaignSummaryRes` IS BUILT, and that is the reason it
+// takes the counts instead of reading them. Both callers — the read endpoints and the
+// write endpoints that return the campaign they just changed — must produce the SAME
+// shape, and two builders for one response is how a `remainingMain` starts disagreeing
+// with a `hardCap` on two screens an operator compares side by side.
+//
+// WHAT COMES FROM WHERE, and the split is deliberate:
+//
+//   - the row supplies identity and configuration: `code`, `planSlug`, `quota`,
+//     `reserve`, `startsAt`, `endsAt`;
+//   - the counts supply consumption, and everything DERIVED from it — the total, the
+//     two remainders and the hard ceiling. Deriving them here rather than at each call
+//     site is what makes `grantedTotalCount == grantedMainCount +
+//     grantedCompensationCount` and `hardCap == quota + reserve` structural instead of
+//     repeated;
+//   - `watermarkAt` is the claim that FILLED the main budget, which no arithmetic on
+//     the counts can recover, so it is passed in as the instant the ledger reported
+//     (nil until the main budget fills);
+//   - `status` is passed in because deriving it is a RULE, and rules live beside the
+//     other rules — see `deriveCampaignStatus` in `campaign_query_uc.go`, whose header
+//     explains why it must not move here.
+//
+// NOTHING ELSE IS SET. `PlanName`, `Degraded`, `DegradedReason` and `LastSweepAt` are
+// filled by the caller because each needs a table this mapper must not know about —
+// the plan catalogue, the sweep health table — and `closedAt`/`budgetLocked`/`version`
+// arrive with the next read-API phase (T039/T050). A mapper that went looking for them
+// would turn one pure conversion into a fan-out of four queries.
+func MapCampaignSummaryRes(
+	campaign *entities.Campaign,
+	counts CampaignGrantCounts,
+	watermarkAt *time.Time,
+	status string,
+) *sub_dto.CampaignSummaryRes {
+	if campaign == nil {
+		return nil
+	}
+	quota := int64(campaign.Quota)
+	reserve := int64(campaign.Reserve)
+	grantedTotal := counts.Main + counts.Compensation
+
+	return &sub_dto.CampaignSummaryRes{
+		Code:                     campaign.Code,
+		PlanSlug:                 campaign.PlanSlug,
+		Quota:                    campaign.Quota,
+		Reserve:                  campaign.Reserve,
+		GrantedMainCount:         counts.Main,
+		GrantedCompensationCount: counts.Compensation,
+		GrantedTotalCount:        grantedTotal,
+		// `max(0, …)` rather than the bare subtraction. A campaign whose budget was
+		// LOWERED below what it already granted would otherwise answer with a negative
+		// number of slots left, and a page an operator reads at a glance would show
+		// "-3 suất còn lại" on a field no client is expected to handle being negative.
+		RemainingMain:         remainingOf(quota, counts.Main),
+		RemainingCompensation: remainingOf(reserve, counts.Compensation),
+		HardCap:               quota + reserve,
+		StartsAt:              campaign.StartsAt,
+		EndsAt:                campaign.EndsAt,
+		WatermarkAt:           watermarkAt,
+		Status:                status,
+	}
+}
+
+// remainingOf is `max(0, budget - granted)` for the two derived remainders.
+func remainingOf(budget, granted int64) int64 {
+	if granted > budget {
+		return 0
+	}
+	return budget - granted
+}
 
 // MapCampaignClaimRes maps one grant row to its response shape
 // (contracts/campaign-query-api.md §3.3).

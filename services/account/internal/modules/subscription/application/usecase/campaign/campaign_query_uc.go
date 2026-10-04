@@ -8,6 +8,7 @@ import (
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	sharedconfig "smart-wardrobe-be/shared/config"
@@ -224,24 +225,22 @@ func (uc *CampaignQueryUseCase) summarise(
 	}
 
 	grantedTotal := grantedMain + grantedReserve
-	quota := int64(campaign.Quota)
-	reserve := int64(campaign.Reserve)
 
-	summary := &sub_dto.CampaignSummaryRes{
-		Code:                     campaign.Code,
-		PlanSlug:                 campaign.PlanSlug,
-		Quota:                    campaign.Quota,
-		Reserve:                  campaign.Reserve,
-		GrantedMainCount:         grantedMain,
-		GrantedCompensationCount: grantedReserve,
-		GrantedTotalCount:        grantedTotal,
-		RemainingMain:            maxInt64(0, quota-grantedMain),
-		RemainingCompensation:    maxInt64(0, reserve-grantedReserve),
-		HardCap:                  quota + reserve,
-		StartsAt:                 campaign.StartsAt,
-		EndsAt:                   campaign.EndsAt,
-		Status:                   deriveCampaignStatus(campaign, grantedMain, grantedTotal, now),
-	}
+	// The shape is built by the ONE mapper (026 T032), not here. The write endpoints
+	// return the same type, and a second builder for one response is how a
+	// `remainingMain` starts disagreeing with a `hardCap` between two screens an
+	// operator compares side by side.
+	//
+	// `status` is computed by `deriveCampaignStatus` and passed in rather than derived
+	// in the mapper, because that function is a RULE and rules live beside the other
+	// rules; `PlanName`, `Degraded` and `LastSweepAt` are set below because each needs a
+	// table the mapper must not know about.
+	summary := mapper.MapCampaignSummaryRes(
+		campaign,
+		mapper.CampaignGrantCounts{Main: grantedMain, Compensation: grantedReserve},
+		nil,
+		deriveCampaignStatus(campaign, grantedMain, grantedTotal, now),
+	)
 	if watermarkSet {
 		summary.WatermarkAt = &watermarkAt
 	}
@@ -356,19 +355,6 @@ func (uc *CampaignQueryUseCase) requireCampaign(ctx context.Context, campaignCod
 		return nil, subscriptionerrors.ErrCampaignNotFound(campaignCode)
 	}
 	return campaign, nil
-}
-
-// maxInt64 is `max(0, n)` for the derived remainders.
-//
-// A negative "slots remaining" would be nonsense on a page an operator reads at a
-// glance, and the arithmetic that produces it (a quota lowered on a live campaign
-// below what it already granted) is exactly the situation where an operator most
-// needs the number to be a number rather than a complaint.
-func maxInt64(floor, value int64) int64 {
-	if value < floor {
-		return floor
-	}
-	return value
 }
 
 // unusedUUID keeps the uuid import honest for the account-id signature below.

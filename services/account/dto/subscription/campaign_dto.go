@@ -102,6 +102,64 @@ type CampaignSummaryRes struct {
 	LastSweepAt *time.Time `json:"lastSweepAt"`
 }
 
+// 026 T029 (FR-052): the first WRITE request — open a campaign.
+//
+// WHY THIS FILE NOW HOLDS A WRITE REQUEST. The header above says there is none, and
+// that was true for 025: FR-069 made the whole phase read-only. 026 is the feature
+// that ends that, because "open a campaign without a deploy" (spec.md §2.2) is only
+// possible through an API. The comment is corrected rather than deleted so the
+// change is visible: the read-only guarantee moved from the whole feature to
+// `CampaignAdminHandler`, which still holds an interface with no write method on it.
+//
+// WHY `quota` AND `planSlug` ARE POINTERS AND `reserve` IS NOT. FR-054 separates
+// "thiếu trường bắt buộc" (400) from "`quota = 0`" and "`planSlug` rỗng" (422), and
+// those two cannot be told apart on a plain `int`/`string`: both arrive as the zero
+// value. A pointer is what distinguishes "the field was absent" from "the field was
+// sent with an empty value", which is the only way to answer 400 and 422 correctly
+// without a second rule that guesses.
+//
+// `reserve` needs no pointer because it is OPTIONAL and its absent value has a
+// meaning of its own — 0 (data-model.md §2.1 `DEFAULT 0`) — so "absent" and "sent 0"
+// produce the same row and may share one representation. It is still a pointer so
+// that a negative value reaches the validator instead of being silently dropped.
+//
+// WHY `startsAt`/`endsAt` ARE STRINGS. Two reasons, both from FR-013. A
+// `time.Time` field would hand parsing to Gin's decoder, which accepts a format the
+// operator's documentation does not show, so the accepted inputs would differ from
+// the documented ones with nothing to say so (the same argument
+// `campaignClaimsQuery.from`/`.to` makes). And the zone-less value FR-013 rejects
+// cannot be represented by a Go `time.Time` at all — it would be read in the SERVER's
+// zone, seven hours off in production, and stored as an instant nobody typed. Parsing
+// the string here keeps "must carry a zone" a rule the code can state.
+type CampaignCreateReq struct {
+	// Code identifies the campaign and is immutable afterwards (FR-024).
+	//
+	// Restricted to `^[a-z0-9][a-z0-9-]{2,63}$`, matching `chk_campaigns_code_format`
+	// (FR-011). A malformed code is a 400 — a broken shape, not a wrong meaning
+	// (FR-054) — and the alphabet is restricted because the code reaches an audit
+	// payload and possibly a queue or file name.
+	Code string `json:"code" binding:"required"`
+	// PlanSlug is the plan granted to an eligible account. Required (FR-014).
+	//
+	// Whether the plan EXISTS and is ACTIVE is checked at RUN time, not here and not
+	// at startup (FR-003, FR-014): a wrong slug must not be able to crash a service,
+	// and it makes that one campaign grant nothing rather than failing a write.
+	PlanSlug *string `json:"planSlug" binding:"required"`
+	// Quota is the main budget. `>= 1` (FR-012); zero is 422, not 400, because the
+	// field was sent.
+	Quota *int `json:"quota" binding:"required"`
+	// Reserve is the compensation CEILING, not a target. Optional, `>= 0`, default 0.
+	Reserve *int `json:"reserve"`
+	// StartsAt is the instant the campaign opens, RFC3339 WITH an explicit zone.
+	StartsAt string `json:"startsAt" binding:"required"`
+	// EndsAt is the instant it closes, RFC3339 with a zone, or absent/null for an
+	// open-ended campaign. When present it must be strictly AFTER StartsAt (FR-013).
+	//
+	// A pointer, and that is what makes `"endsAt": null` differ from `"endsAt": ""`:
+	// the first is an open-ended campaign, the second is a malformed timestamp.
+	EndsAt *string `json:"endsAt"`
+}
+
 // CampaignClaimRes is one granted account in
 // GET /admin/campaigns/:code/claims (contracts/campaign-query-api.md §3.3).
 type CampaignClaimRes struct {

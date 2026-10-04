@@ -52,8 +52,13 @@ func (passAuthMiddleware) OptionalHandle() gin.HandlerFunc {
 // anything. That lets the test exercise route registration — the whole subject —
 // without standing up four collaborators it would never reach. A request sent here
 // would panic in the handler, and the tests below never send one.
+//
+// The seventh nil is `CampaignRegistryHandler` (026 T035), added between the read-only
+// look-up and the auth middleware: the write face is a separate type precisely so the
+// look-up's constructor can never hold a unit of work.
 func newTestRouter() *Router {
 	return NewRouter(
+		nil,
 		nil,
 		nil,
 		nil,
@@ -91,6 +96,14 @@ func TestRouterRegistersEveryCampaignRouteWithoutPanicking(t *testing.T) {
 		if _, ok := got["GET "+path]; !ok {
 			t.Errorf("expected GET %s to be registered; the router has:\n%s", path, routeList(engine))
 		}
+	}
+
+	// 026 T035: the create route shares the group's static path with the list route, so
+	// this is also the check that Gin accepted a second METHOD on it. A conflict would
+	// have panicked in `Init` above; landing on a different path would 404 every real
+	// request while every other assertion here stayed green.
+	if _, ok := got["POST /admin/campaigns"]; !ok {
+		t.Errorf("expected POST /admin/campaigns to be registered; the router has:\n%s", routeList(engine))
 	}
 }
 

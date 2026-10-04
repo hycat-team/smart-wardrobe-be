@@ -24,6 +24,11 @@ var ProviderSet = wire.NewSet(
 	// makes FR-069 structural: the handler's only collaborator is an interface with
 	// no write method anywhere behind it.
 	handler.NewCampaignAdminHandler,
+	// 026 T035: the campaign WRITE face. Registered beside the read-only look-up and
+	// for the same structural reason it is a separate type: this one depends on
+	// `ICampaignRegistryUseCase`, which holds a unit of work and an audit contract, and
+	// that is exactly what `CampaignAdminHandler`'s constructor must never hold.
+	handler.NewCampaignRegistryHandler,
 	// 024 T100: the bulk-grant limiter is a ROUTE dependency, so it is provided
 	// here rather than inside the handler. Registering it in the set makes the
 	// router's requirement visible to Wire instead of leaving a nil limiter to be
