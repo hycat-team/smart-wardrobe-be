@@ -256,10 +256,21 @@ mã lạ), `429`, `500`.
 
 | Endpoint | Trước 026 | Sau 026 |
 |---|---|---|
-| `GET /api/v1/admin/campaigns` | Danh sách chiến dịch, 17 trường mỗi phần tử | **không đổi đường dẫn, không đổi tên/kiểu trường nào**; thêm `closedAt`, `budgetLocked`, `version` |
-| `GET /api/v1/admin/campaigns/{code}` | Chi tiết một chiến dịch, 17 trường | **không đổi**; thêm `closedAt`, `budgetLocked`, `version` |
+| `GET /api/v1/admin/campaigns` | Danh sách chiến dịch, **18** trường mỗi phần tử | **không đổi đường dẫn, không đổi tên/kiểu trường nào**; thêm `closedAt`, `budgetLocked`, `version` → **21** |
+| `GET /api/v1/admin/campaigns/{code}` | Chi tiết một chiến dịch, **18** trường | **không đổi**; thêm `closedAt`, `budgetLocked`, `version` → **21** |
 | `GET /api/v1/admin/campaigns/{code}/claims` | Danh sách tài khoản được cấp | **không đổi** — không thêm trường nào |
 | `GET /api/v1/admin/campaigns/{code}/eligibility/{userId}` | Kết luận cho một tài khoản | **không đổi** — không thêm trường nào; vẫn 6 giá trị `eligibility` và 12 mã `reason` |
+
+> **Số 18 và 21 lấy từ đâu** — đừng đếm lại tay, hãy tin ba nguồn này, chúng cùng khớp:
+> 1. `contracts/campaign-query-api-delta.md` §2 liệt kê tường minh **18** trường có trước 026.
+> 2. Ví dụ JSON ở §4.2 của chính file này có **21** khoá (18 + 3 trường 026 thêm).
+> 3. `TestCampaignSummaryResponseKeysAreExactlyTheContract` khoá **đúng 21** khoá và thất bại
+>    theo **cả hai chiều** — thiếu khoá lẫn khoá thừa — và
+>    `TestTheHealthySummaryOmitsDegradedReason` khoá nốt ngoại lệ `omitempty` của `degradedReason`.
+>
+> Bản soạn đầu ghi "17 trường", tức đã **đếm thiếu `degradedReason`** và mâu thuẫn với ví dụ ngay
+> dưới nó. Đã sửa. Vì lỗi nằm ở văn xuôi nên không kiểm thử nào bắt được — đó là lý do file này
+> được đối chiếu **có đếm** ở T075 và ở vòng hội tụ lần 3.
 
 Nguồn danh sách chiến dịch **đổi từ tệp cấu hình sang cơ sở dữ liệu**, nhưng điều đó không nhìn
 thấy được từ hợp đồng: một mã không có trong sổ vẫn trả `404` y như trước.

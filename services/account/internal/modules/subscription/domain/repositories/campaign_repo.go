@@ -62,21 +62,27 @@ type ICampaignRepository interface {
 	// R6).
 	//
 	// THE WINDOW IS NOT PART OF THIS PREDICATE, and the placement is deliberate
-	// rather than an oversight. `data-model.md` §4.1 writes the "still awake"
-	// query as `closed_at IS NULL AND starts_at <= :now AND (ends_at IS NULL OR
-	// :now < ends_at)`, and `campaignEvaluator.isAwake` is specified to be the SAME
-	// predicate in Go (data-model.md §4.3). The two cannot both be the one that
-	// runs: if the SQL already dropped every campaign outside its window, the
-	// evaluator would receive an empty list for a campaign that is merely asleep,
-	// and condition 2 would report `campaign_not_configured` where the
-	// specification says a closed campaign must report `campaign_sleeping`
-	// (spec.md Câu 4, quickstart V2 step 5) — and FR-042/FR-043 require 025's
+	// rather than an oversight. There is an obvious "still awake" query —
+	// `closed_at IS NULL AND starts_at <= :now AND (ends_at IS NULL OR
+	// :now < ends_at)` — and the specification had to reject it explicitly
+	// (spec.md Câu 6, research.md R6, data-model.md §4.1). If the SQL dropped
+	// every campaign outside its window, the evaluator would receive an empty
+	// list for a campaign that is merely asleep, and condition 1 would report
+	// `campaign_not_configured` where an account outside the window must see
+	// `campaign_sleeping` (spec.md Câu 4) — and FR-042/FR-043 require 025's
 	// conditions to keep their existing behaviour.
 	//
 	// So the SQL keeps the ONE term no amount of application logic can recover —
 	// a force-closed campaign is never a candidate — and `isAwake` applies the
 	// window. The SELECTED campaign set is identical either way; only the reason
 	// code an account observes when nothing is awake stays meaningful.
+	//
+	// CAVEAT, recorded rather than designed away: when the registry holds ONLY
+	// closed campaigns this predicate matches nothing at all, so the grant path
+	// reports `campaign_not_configured`, not `campaign_sleeping`. That is the
+	// accepted consequence of the placement above, not an oversight — see
+	// deferred.md D-04. An eligibility look-up addressed at a specific code is
+	// unaffected.
 	//
 	// The cost is one comparison in Go on a handful of rows: the registry is a few
 	// rows for the whole product lifetime, so there is no index to save (plan.md,

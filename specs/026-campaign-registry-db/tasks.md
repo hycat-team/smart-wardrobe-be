@@ -359,7 +359,8 @@ task dưới đây sửa đúng chỗ đó, thay vì thêm việc mới ở nơi
     2. Hệ quả với T059: `TestIntegrationSeedInsertIsIdempotent` (`campaign_seed_integration_test.go:150`) lấy `Up` bằng helper đó rồi `dbConn.Exec` — theo đọc mã thì nó sẽ chạy **cả** `INSERT … ON CONFLICT DO NOTHING` **và** `DELETE FROM subscription.campaigns WHERE code = 'launch-2026-10'` của phần `Down`, rồi đếm và đòi đúng 1 hàng ⇒ kiểm thử đó **chắc chắn FAIL** khi có CSDL, chứ không chỉ "chưa từng chạy". **Chưa kiểm chứng được** vì lần này cấm mọi lệnh CSDL; cần một lần chạy có `TEST_DATABASE_URL` để xác nhận trước khi sửa.
   - **Bằng chứng phản chứng (đã chạy).** Chèn `ALTER TABLE subscription.campaign_claims ADD CONSTRAINT … FOREIGN KEY (campaign_code) REFERENCES subscription.campaigns (code)` vào `Up` của migration lược đồ ⇒ FAIL với **2** lỗi (khớp `FOREIGN KEY` + khớp `reach` "an ALTER of it"). Chèn `ALTER TABLE subscription.campaign_sweep_runs ADD COLUMN …` vào `Up` của migration seed ⇒ FAIL, và thông báo chỉ đúng tên tệp + tên bảng. Cả hai đã hoàn nguyên; in ra phần `Up` trong thông báo lỗi xác nhận phạm vi **không** còn lẫn phần `Down`.
 
-- [ ] T086 Khẳng định tĩnh hình dạng mà migration lược đồ khai báo — đúng **10** cột FR-010, **5** ràng buộc `chk_campaigns_*`, `ix_campaigns_starts_at`, và `trg_campaigns_immutable_budget` — theo FR-010/FR-011/FR-012/FR-013/FR-021/FR-031 (missing)
+- [x] T086 Khẳng định tĩnh hình dạng mà migration lược đồ khai báo — đúng **10** cột FR-010, **5** ràng buộc `chk_campaigns_*`, `ix_campaigns_starts_at`, và `trg_campaigns_immutable_budget` — theo FR-010/FR-011/FR-012/FR-013/FR-021/FR-031 (missing)
+  - **[X] Đã làm** (ô checkbox bị bỏ sót khi worker ghi thân task; đã tick lại sau khi xác nhận hai kiểm thử `TestTheRegistryUpSectionDeclaresExactlyTheRequiredColumnsAndConstraints` và `TestTheRegistryUpSectionDeclaresTheSortIndexAndTheBudgetTrigger` đều **PASS**).
   - **Phục vụ**: FR-010 (danh sách cột bắt buộc), và qua tên ràng buộc: FR-011 (`chk_campaigns_code_format`), FR-012 (`chk_campaigns_quota`, `chk_campaigns_reserve`), FR-013 (`chk_campaigns_window`), FR-014 (`chk_campaigns_plan_slug_not_blank`), FR-021 (`trg_campaigns_immutable_budget`), FR-031/FR-032 (cột `closed_at`); quickstart §1.1 liệt kê **chính xác** tên cột, tên ràng buộc, tên chỉ mục và tên trigger này.
   - **Bằng chứng chưa có**: `TestIntegrationRegistryKeepsItsShape` (`campaign_schema_guard_integration_test.go:137`, danh sách 10 cột + 2 index tại `:140`–`:154`) và `TestIntegrationTriggerExistsOnTheCampaignsTable` (`campaign_guard_integration_test.go`, truy vấn `pg_trigger`) đều `t.Skip` không có CSDL. **Không** có khẳng định nào khác về tên trigger hay tên ràng buộc — grep toàn kho cho `chk_campaigns`/`trg_campaigns` chỉ ra các dòng nằm trong `*_integration_test.go` và trong chính phần migration.
   - **Vì sao đáng bổ sung dù không cấp hạ tầng**: `campaign_repo_impl.go:176`–`:177` ghi lý do của riêng nó — danh sách cột `Update` là điểm mấu chốt để `code` không bao giờ bị viết lại và `closed_at` không bao giờ bị xoá (FR-024/FR-034). Nếu một cột bị đổi tên trong migration mà entity Go chưa kịp đổi, GORM **không** báo lỗi biên dịch; nó im lặng bỏ cột khỏi mọi câu `SELECT`/`INSERT`. Đó là loại hỏng chỉ CSDL mới thấy, và nó đang không được ai thấy.
@@ -388,9 +389,70 @@ task dưới đây sửa đúng chỗ đó, thay vì thêm việc mới ở nơi
   - **Bằng chứng chưa có**: hai khẳng định duy nhất về truy vấn thật là `TestIntegrationListOpenExcludesClosedCampaigns` và `TestIntegrationListAllOrdersNewestFirstWithCodeTieBreak` (`campaign_repo_integration_test.go`), cả hai `openRegistryTestDB` ⇒ skip. T084 khoá vế lọc của **fake** (`fakeCampaignRepo.ListOpen`), **không** phải của repository thật.
   - **Mã nguồn tự thừa nhận khoảng trống này** — `campaign_repo_impl.go:63`–`:67`: *"a copy that dropped `code DESC` would keep every behavioural test green while making the result non-deterministic"*. Tức là thứ tự sắp xếp của truy vấn thật **không có** bảo vệ nào ngoài CSDL. Vế lọc còn nặng hơn: mất `closed_at IS NULL` trong `ListOpen` (`:57`–`:60`) là đường cấp gói và quét bù bắt đầu cấp lại cho một chiến dịch đã đóng — đúng thứ FR-031 sinh ra để chặn — trong khi mọi kiểm thử hành vi vẫn xanh vì chúng đi qua fake.
   - **Hướng làm**: bắt SQL thật mà không cần CSDL, theo đúng tiền lệ đã có trong kho: `admin_audit_log_campaign_test.go:124` (`campaignAuditStatements`) chạy repository trên một dialector **không tới được** với `gormlogger.Interface` tự bắt câu lệnh. Ở đây thuận hơn: `listOrdered` chỉ phát **một** câu `Find` (không đếm trước), nên câu bắt được mang trọn cả `WHERE` lẫn `ORDER BY`. Khẳng định `closed_at IS NULL` cho `ListOpen`, `code DESC` cho `ListAll`, và thứ tự không có `starts_at`/`ends_at` cho cả hai.
-  - **Phạm vi**: chỉ đọc. Không sửa `campaign_repo_impl.go`, không sửa `ListOpen` — vế `closed_at IS NULL` một mình là quyết định đã đóng băng (A-1/C-9), và điều này chỉ ghi lại nó.
+  - **Phạm vi**: chỉ đọc. Không sửa `campaign_repo_impl.go`, không sửa `ListOpen` — vế `closed_at IS NULL` một mình là quyết định đã chốt (`spec.md` Câu 6, `research.md` R6 và R9, `data-model.md` §4.1), và điều này chỉ ghi lại nó.
   - **[X] Đã làm.** Tệp mới `campaign_repo_list_query_sql_test.go`, hai kiểm thử: `TestTheListOpenQueryFiltersOnClosedAtInSQL` và `TestTheListAllQueryOrdersNewestFirstWithCodeTieBreak`. Chạy `NewCampaignRepository` trên dialector **không tới được** (`127.0.0.1:1`) với `DisableAutomaticPing` và một `registrySQLCapture` (nhúng `gormlogger.Interface`, `ParamsFilter` giữ placeholder) bắt câu lệnh — đúng tiền lệ `admin_audit_log_campaign_test.go:124`. `registryListStatement` còn khẳng định **đúng một** câu được bắt: nếu sau này có thêm một lần đếm trước `Find` thì các khẳng định này sẽ lặng lẽ bắt đầu đọc **sai** câu, và đó chính xác là lý do `campaignAuditStatements` chỉ bắt được `WHERE` chứ không bắt được `ORDER BY`.
   - **Câu SQL thật mà kiểm thử bắt được** (chạy thật, không phải suy ra): `SELECT * FROM "campaigns" WHERE closed_at IS NULL ORDER BY starts_at DESC, code DESC` cho `ListOpen`, và `SELECT * FROM "campaigns" ORDER BY starts_at DESC, code DESC` cho `ListAll`. **Không có** định ngữ schema trong câu lệnh: `TableName()` trả tên trần và schema đến từ `search_path` của kết nối, nên các khẳng định đòi `FROM "campaigns"` chứ không phải `FROM "subscription"."campaigns"` — đòi định ngữ mà repository không bao giờ viết ra là đòi sai trên một câu lệnh đúng.
   - **Bốn khẳng định phụ đáng giữ, mỗi cái bắt một hỏng khác nhau**: (1) `ORDER BY` phải **đúng** `starts_at DESC, code DESC` — so từng phần sẽ chấp nhận `ORDER BY code DESC, starts_at DESC`, tức thứ tự ngược; (2) `= NULL` bị cấm, vì trong SQL nó là **UNKNOWN** chứ không phải so sánh, nên sẽ lặng lẽ khớp **không** hàng nào và biến mọi chiến dịch thành `campaign_not_configured` thay vì lọc; (3) `ListAll` **không** được mang `closed_at` (FR-032 — danh sách vận hành viên phải vẫn thấy chiến dịch đã đóng); (4) **cửa sổ thời gian không được nằm trong SQL** (FR-042, `spec.md` Câu 6) — vế kiểm thử là `ends_at`, `now()`, `starts_at >`/`<`/`IS`/`BETWEEN`, **không** phải tên cột trần, vì `starts_at DESC` trong `ORDER BY` không phải vế cửa sổ.
   - **Chỉ đọc**: `campaign_repo_impl.go` **không** bị sửa (đã sửa rồi hoàn nguyên trong lúc làm phản chứng; đã đối chiếu lại `closed_at IS NULL` và `starts_at DESC, code DESC` ở đúng dòng cũ). Vế `closed_at IS NULL` được **ghi lại**, không đổi; **không** có kiểm thử nào khẳng định điều ngược lại (xem `deferred.md` D-04).
   - **Bằng chứng phản chứng (đã chạy).** Gỡ `, code DESC` khỏi `Order(...)` ⇒ **cả hai** kiểm thử FAIL ở khẳng định `ORDER BY`. Bỏ hẳn vế `Where("closed_at IS NULL")` ⇒ kiểm thử `ListOpen` FAIL ở FR-070, còn `ListAll` vẫn xanh (đúng: nó không mang vế lọc nào). Thêm `.Where("ends_at IS NULL OR ends_at > now()")` vào `ListOpen` ⇒ FAIL ở cả hai vế `ends_at` và `now()`, đúng tinh thần FR-042. Cả ba đã hoàn nguyên và xác nhận gói xanh.
+
+---
+
+## Phase 12: Convergence (lần 3)
+
+**Purpose**: Vòng thứ ba, chạy sau khi T081–T088 đã xong. Khác hai vòng trước, lần này **không**
+tìm thấy yêu cầu nào còn thiếu *mã hoặc kiểm thử*: mọi nhóm FR/SC được giao đều đã có đường mã
+và bằng chứng chạy được trong `go test` thường, hoặc đã được `deferred.md` D-01 ghi nhận là
+đang chờ CSDL thật. Task duy nhất dưới đây là **lỗi số liệu trong một tài liệu 026 tự sinh ra**,
+không phải hàng việc còn thiếu.
+
+- [x] T089 Sửa số trường của hình dạng `CampaignSummaryRes` trong bảng "TRƯỚC → SAU" của
+  `specs/026-campaign-registry-db/frontend-guide.md` §4, theo FR-093/SC-005 (partial)
+  - **Phục vụ**: FR-093 (026 phải ship `frontend-guide.md`), SC-005 (khác biệt hình dạng của 4 API
+    đọc so với production chỉ là **các trường thêm vào**), và T075 — task đã tick với lời hứa đã
+    đối chiếu guide với DTO "**có đếm** mọi thẻ `json:"…"` mà DTO của 026 phát ra".
+  - **Bằng chứng chưa có — và đây là toàn bộ bằng chứng**: `frontend-guide.md:259` và `:260` viết cột
+    "Trước 026" là **"17 trường"**. Con số đó sai, và sai theo ba nguồn độc lập trong chính kho:
+    1. Hợp đồng đóng băng `contracts/campaign-query-api-delta.md:35`–`:38` liệt kê **18** trường cũ
+       (`code`, `planSlug`, `planName`, `quota`, `reserve`, `grantedMainCount`,
+       `grantedCompensationCount`, `grantedTotalCount`, `remainingMain`, `remainingCompensation`,
+       `hardCap`, `startsAt`, `endsAt`, `watermarkAt`, `status`, `degraded`, `degradedReason`,
+       `lastSweepAt`) — 18, không phải 17.
+    2. Ví dụ JSON ngay dưới cùng của chính guide (`frontend-guide.md:277`–`:299`, mục "4.2 Ví dụ sau
+       026") liệt kê **21** khoá, tức 18 + 3 trường 026 thêm — khớp với ví dụ của hợp đồng
+       (`campaign-query-api-delta.md:42`–`:65`) và với mục §4.1 của chính guide.
+    3. DTO thật có **21** thẻ `json` và kiểm thử đã khoá đúng 21: `campaign_dto.go:42`–`:154`
+       (`CampaignSummaryRes`), `campaign_read_contract_shape_test.go:84`
+       (`if len(campaignSummaryResponseKeys) != 21`).
+  - **Vì sao đáng sửa**: đây là bảng người làm FE dùng để đối chiếu hợp đồng, và nó **tự mâu thuẫn** —
+    cột "Trước 026" nói 17 trong khi ví dụ của chính file ngay dưới nó có 21 khoá (18 + 3). Người đọc
+    không có cách nào biết `degradedReason` có được tính là "một trường" hay không, vì file vừa đưa
+    nó vào ví dụ vừa đếm thiếu nó ở cột bên cạnh. Sai lệch nằm ở **văn xuôi**, không ở hành vi, nên
+    không kiểm thử nào bắt được — đúng lý do T075 cần đọc tay và đã đọc hụt.
+  - **Phạm vi**: chỉ hai ô trong bảng §4. **Không** sửa DTO, **Không** sửa kiểm thử, **không** sửa
+    `spec.md`/`plan.md`/`research.md`/`data-model.md`/`contracts/`/`quickstart.md`. Nên nói rõ cả hai
+    vế để khỏi phải đoán: **18** trường trước 026 và **21** sau 026 (18 + `closedAt`, `budgetLocked`,
+    `version`) — hoặc bỏ hẳn con số và chỉ để danh sách tên trường, tùy người quyết.
+  - **Không** cần thêm kiểm thử: `TestCampaignSummaryResponseKeysAreExactlyTheContract` đã khoá đúng
+    21 khoá và **thất bại theo hai chiều** (thiếu khoá lẫn khoá thừa — xem
+    `campaign_read_contract_shape_test.go:83`), và `TestTheHealthySummaryOmitsDegradedReason` đã khoá
+    nốt ngoại lệ `omitempty` của `degradedReason`. Phần hợp đồng đã có bằng chứng máy đọc được đầy đủ.
+
+  - ⚠️ **Ba lỗi tài liệu phát hiện ở vòng này, CẦN NGƯỜI QUYẾT — không tự sửa.**
+    1. `research.md:130`–`:136` (R6) **vẫn** in nguyên vế cửa sổ vào SQL của truy vấn chọn chiến
+       dịch: `WHERE closed_at IS NULL` / `AND starts_at <= :now` / `AND (ends_at IS NULL OR
+       :now < ends_at)`, và mở đầu bằng câu *"repository đọc một truy vấn các chiến dịch **còn thức**"*.
+       Điều đó trái với `spec.md` Câu 6 (`:276` chỉ có `closed_at IS NULL`; bảng phân công `:286`–`:289`),
+       với `data-model.md:252` và `:258`–`:259` ("**SQL chỉ lọc `closed_at IS NULL`**"), và với mã thật
+       `campaign_repo_impl.go:57`–`:60`. Nó cũng **tự mâu thuẫn với chính R9 của nó**
+       (`research.md:198`: "`ListOpen()` (**chỉ** `closed_at IS NULL`)"). Đây là lỗi **còn sót** của
+       đúng lớp lỗi mà orchestrator đã sửa ở `spec.md` Câu 6 ở vòng trước — nhưng `research.md` là
+       artifact đóng băng, nên **chỉ báo cáo, không sửa**.
+    2. `tasks.md:391` vẫn dẫn "(A-1/C-9)" cho quyết định `ListOpen` chỉ lọc `closed_at`. Hai neo đó
+       **không tồn tại** ở bất kỳ tệp nào trong `specs/026-` (grep toàn thư mục: một kết quả duy nhất,
+       chính dòng này). `deferred.md` D-04 đã được sửa sang `spec.md` Câu 6 + `research.md` R9, nhưng
+       dòng T088 thì chưa. Không sửa được vì `converge` không được viết lại task đã có.
+    3. Ô checkbox của **T086** ở `tasks.md:362` là `- [ ]` trong khi thân của nó ghi `**[X] Đã làm**`
+       và hai kiểm thử nó sinh ra (`TestTheRegistryUpSectionDeclaresExactlyTheRequiredColumnsAndConstraints`,
+       `TestTheRegistryUpSectionDeclaresTheSortIndexAndTheBudgetTrigger`) đều **PASS** khi chạy. Tức
+       "T001–T088 đã tick" không đúng cho T086. Sửa ô checkbox là việc của orchestrator.
