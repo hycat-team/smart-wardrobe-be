@@ -162,7 +162,7 @@ Module mới: `services/commerce/internal/modules/community/`. Cross-service: `s
 
 ## Phase 7: User Story 5 - Feed explore/following + hot ranking (Priority: P2)
 
-**Goal**: `type=explore|following`, `sort=hot|latest`, default explore+hot; following chỉ bài theo dõi (+ chính mình); guest → 401.
+**Goal**: `type=explore|following`, `sort=hot|latest`, default explore+hot; following chỉ bài của người đang theo dõi (không gồm bài của chính mình); guest → 401.
 
 ### Implementation
 

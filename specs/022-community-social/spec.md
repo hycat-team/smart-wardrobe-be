@@ -38,7 +38,7 @@
 14. **Tương thích API cũ**: giữ nguyên đường dẫn, envelope phản hồi và hình dạng DTO hiện có cho các thao tác bài đăng/like/comment/upload, chỉ bổ sung trường mới và endpoint mới nhằm giảm chi phí cho đội frontend. Các trường liên quan bán lại (trạng thái chuyển nhượng, người mua, giá bán...) bị loại bỏ.
 15. **Không nằm trong đợt này**: thông báo (notification) cho like/comment/follow, tiểu sử (bio), chế độ riêng tư/bài chỉ người theo dõi, chặn/báo cáo, và đồng bộ bài đăng khi outfit bị chỉnh sửa (chỉ xử lý cascade khi xóa).
 16. **Khách chưa đăng nhập (guest)**: chỉ đọc công khai (feed, bài, comment, trang cá nhân, search); mọi thao tác ghi cần đăng nhập. Guest gọi feed `type=following` nhận lỗi xác thực (401).
-17. **Feed `following`** bao gồm cả bài của chính người xem. Bài của người dùng đang bị vô hiệu hóa/khóa bị ẩn khỏi công khai nhưng dữ liệu được giữ lại (không tự xóa).
+17. **Feed `following`** chỉ bao gồm bài của những người người xem đang theo dõi, **không** bao gồm bài của chính người xem. Bài của người dùng đang bị vô hiệu hóa/khóa bị ẩn khỏi công khai nhưng dữ liệu được giữ lại (không tự xóa).
 18. **Vòng đời bài/comment**: dùng xóa mềm. Bài do tác giả tự xóa **không thể khôi phục** (kể cả admin); admin ẩn/xóa và khôi phục nội dung **do admin ẩn/xóa**. Tác giả vẫn thấy bài của mình khi bị admin ẩn, kèm trạng thái "đang bị ẩn". Đổi username không có chuyển hướng; URL profile cũ trả không tìm thấy.
 19. **Giới hạn nội dung**: tối đa **10 media/bài** (ảnh ≤10MB, jpg/png/webp; video ≤100MB, mp4/webm, thời lượng ≤60s); `title` ≤150 ký tự; `content` ≤5000 ký tự; comment ≤1000 ký tự. Một outfit có thể gắn vào nhiều bài; khi cập nhật được đổi sang outfit khác thuộc sở hữu nhưng **không đổi loại bài**. Không có like cho comment.
 20. **Thứ tự bình luận**: bình luận gốc **mới nhất trước**; phản hồi (cấp 1) trong mỗi gốc **cũ nhất trước**. Hiển thị số lượng phản hồi; không nhúng sẵn phản hồi trong danh sách feed. Xóa bình luận gốc còn phản hồi → hiển thị "bình luận đã bị xóa"; nếu không còn phản hồi thì ẩn hẳn.
@@ -66,7 +66,7 @@
 - Q: Reply vào comment cấp 2? → A: Tự động gắn lên comment gốc.
 - Q: Notification đợt này? → A: Không làm.
 - Q: Guest xem được gì? → A: Chỉ đọc công khai; thao tác ghi cần đăng nhập; guest gọi feed `following` nhận 401.
-- Q: Feed `following` có gồm bài của chính mình / bài của user bị khóa? → A: Gồm bài của chính mình; bài của user bị vô hiệu hóa bị ẩn khỏi công khai.
+- Q: Feed `following` có gồm bài của chính mình / bài của user bị khóa? → A: Không gồm bài của chính mình (chỉ bài của người đang theo dõi); bài của user bị vô hiệu hóa bị ẩn khỏi công khai.
 - Q: Vòng đời xóa bài và quyền khôi phục? → A: Xóa mềm; bài tác giả tự xóa không thể khôi phục (kể cả admin); admin chỉ khôi phục nội dung do admin ẩn; tác giả vẫn thấy bài bị ẩn của mình kèm trạng thái.
 - Q: Giới hạn media và nội dung? → A: 10 media/bài (ảnh ≤10MB jpg/png/webp; video ≤100MB mp4/webm ≤60s); title ≤150; content ≤5000; comment ≤1000 ký tự.
 - Q: Một outfit gắn nhiều bài? Cập nhật có đổi loại bài? → A: Có thể gắn nhiều bài; đổi được outfit khác thuộc sở hữu nhưng không đổi loại bài.
@@ -180,8 +180,8 @@ Người dùng xem bảng tin mặc định (`explore`) được xếp theo đ�
 
 1. **Given** caller không truyền `type`, **When** lấy bảng tin, **Then** mặc định là `explore`.
 2. **Given** có bài mới hơn nhưng ít tương tác và bài cũ hơn nhưng nhiều tương tác, **When** sắp xếp `hot`, **Then** thứ tự phản ánh điểm hot (không thuần theo thời gian) trong cửa sổ thời gian.
-3. **Given** người dùng theo dõi một số người, **When** lấy bảng tin `following`, **Then** chỉ trả về bài của những người đang theo dõi (và bài của chính mình nếu có).
-4. **Given** người dùng chưa theo dõi ai, **When** lấy `following`, **Then** trả về danh sách rỗng (hoặc chỉ bài của chính họ) không lỗi.
+3. **Given** người dùng theo dõi một số người, **When** lấy bảng tin `following`, **Then** chỉ trả về bài của những người đang theo dõi, không gồm bài của chính mình.
+4. **Given** người dùng chưa theo dõi ai, **When** lấy `following`, **Then** trả về danh sách rỗng, không lỗi.
 5. **Given** bài nằm ngoài cửa sổ thời gian hot, **When** sắp xếp `hot`, **Then** bài đó không lọt vào kết quả hot nhưng vẫn có thể xuất hiện khi sắp xếp `latest`.
 
 ---
@@ -257,7 +257,7 @@ Quản trị viên xem danh sách bài đăng và bình luận, có thể ẩn/x
 - **FR-017**: Hệ thống MUST cung cấp tìm kiếm tổng hợp với tham số `q`, trả về hai tập kết quả độc lập (users, posts), mỗi tập phân trang riêng.
 - **FR-018**: Với tìm kiếm bài đăng, hệ thống MUST chỉ so khớp trong phạm vi **200 ký tự đầu** của nội dung; ngưỡng này MUST cấu hình được.
 - **FR-019**: Hệ thống MUST cho phép lọc bảng tin theo `type` = `explore` hoặc `following`, mặc định `explore` khi caller không truyền.
-- **FR-020**: Bảng tin `following` MUST chỉ chứa bài của những người người dùng đang theo dõi (và bài của chính người dùng nếu có).
+- **FR-020**: Bảng tin `following` MUST chỉ chứa bài của những người người dùng đang theo dõi; MUST NOT chứa bài của chính người dùng.
 - **FR-021**: Hệ thống MUST hỗ trợ sắp xếp `hot` (mặc định) và `latest`; `hot` tính tại thời điểm truy vấn dựa trên tương tác và suy giảm theo thời gian, giới hạn trong một cửa sổ thời gian cấu hình được, không dùng bảng điểm lưu sẵn; cơ chế này MUST áp dụng chung cho cả `explore` và `following`.
 - **FR-022**: Điểm hot MUST chỉ tính trên tập bài trong cửa sổ thời gian cấu hình (MUST NOT full-table scan).
 - **FR-023**: Hệ thống MUST hỗ trợ phân trang cho bảng tin, danh sách like, danh sách follow và kết quả tìm kiếm. Danh sách bình luận gốc và phản hồi MUST giữ dạng mảng (không phân trang) để tương thích frontend hiện có.

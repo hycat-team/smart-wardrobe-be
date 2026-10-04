@@ -288,7 +288,7 @@ FE build URL upload Cloudinary: `https://api.cloudinary.com/v1_1/{cloud}/{resour
 - `postType`: `outfit` | `media` (optional)
 - `username`, `page`, `limit` (giữ)
 
-Guest gọi `type=following` → 401. `following` chỉ chứa bài của người đang theo dõi (+ bài của chính mình).
+Guest gọi `type=following` → 401. `following` chỉ chứa bài của người đang theo dõi (không gồm bài của chính mình).
 
 ### 3.7 Share path
 

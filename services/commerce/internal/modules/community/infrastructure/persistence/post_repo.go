@@ -57,7 +57,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, filter repositories.PostF
 	}
 	if filter.Type == feedtype.Following && filter.FollowingOf != nil {
 		sub := r.GetDB(ctx).Model(&entities.Follow{}).Select("followee_id").Where("follower_id = ?", *filter.FollowingOf)
-		db = db.Where("(posts.user_id IN (?) OR posts.user_id = ?)", sub, *filter.FollowingOf)
+		db = db.Where("posts.user_id IN (?)", sub)
 	}
 	if filter.Sort == feedsort.Hot {
 		db = db.Where("posts.created_at >= now() - make_interval(days => ?)", filter.HotWindowDays)

@@ -1,12 +1,15 @@
 package post
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/community/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/feedtype"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/mediatype"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/posttype"
+	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/repositories"
 	"smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
@@ -89,6 +92,49 @@ func TestValidatePostInput(t *testing.T) {
 		media := []dto.PostMediaReq{{MediaType: "gif", MediaURL: "https://x/y.gif"}}
 		err := uc.validatePostInput(posttype.Media, nil, "x", media)
 		require.Error(t, err)
+	})
+}
+
+// feedCapturingPostRepo records the filter passed to ListFeed. It embeds the
+// interface so only ListFeed needs a real implementation.
+type feedCapturingPostRepo struct {
+	repositories.IPostRepository
+	captured repositories.PostFilter
+}
+
+func (f *feedCapturingPostRepo) ListFeed(_ context.Context, filter repositories.PostFilter) (*repositories.PostListResult, error) {
+	f.captured = filter
+	return &repositories.PostListResult{}, nil
+}
+
+func TestGetFeedFilter(t *testing.T) {
+	viewer := uuid.New()
+
+	t.Run("following passes the viewer as the only follow source", func(t *testing.T) {
+		repo := &feedCapturingPostRepo{}
+		uc := &PostUseCase{cfg: testConfig(), postRepo: repo}
+
+		_, err := uc.GetFeed(context.Background(), &viewer, dto.GetFeedQueryReq{Type: "following"})
+		require.NoError(t, err)
+		assert.Equal(t, feedtype.Following, repo.captured.Type)
+		require.NotNil(t, repo.captured.FollowingOf)
+		assert.Equal(t, viewer, *repo.captured.FollowingOf)
+	})
+
+	t.Run("following without a viewer is unauthorized", func(t *testing.T) {
+		uc := &PostUseCase{cfg: testConfig(), postRepo: &feedCapturingPostRepo{}}
+		_, err := uc.GetFeed(context.Background(), nil, dto.GetFeedQueryReq{Type: "following"})
+		require.Error(t, err)
+	})
+
+	t.Run("explore never carries a follow source", func(t *testing.T) {
+		repo := &feedCapturingPostRepo{}
+		uc := &PostUseCase{cfg: testConfig(), postRepo: repo}
+
+		_, err := uc.GetFeed(context.Background(), &viewer, dto.GetFeedQueryReq{})
+		require.NoError(t, err)
+		assert.Equal(t, feedtype.Explore, repo.captured.Type)
+		assert.Nil(t, repo.captured.FollowingOf)
 	})
 }
 

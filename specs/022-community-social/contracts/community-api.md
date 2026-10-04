@@ -22,6 +22,7 @@ Phân trang: `PaginationResult<T> = { items: T[], metadata: { page, limit, total
 - Query: `type` (explore|following, default explore), `sort` (hot|latest, default hot),
   `postType` (outfit|media, optional), `username` (optional), `page`, `limit`.
 - Guest gọi `type=following` → 401.
+- `type=following` chỉ trả bài của người người xem đang theo dõi, **không** gồm bài của chính người xem.
 - Response: `200` `PaginationResult<PostRes>`.
 
 ### `GET /posts/{postPublicID}` — Chi tiết bài
