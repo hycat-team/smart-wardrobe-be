@@ -169,12 +169,20 @@ func (e *campaignEvaluator) anyCampaignAwake() bool {
 // a countdown, the second is a retrospective. Collapsing them would make a
 // campaign that ended on schedule look misconfigured.
 //
-// A FORCE-CLOSED campaign (026, FR-031) falls into "already finished", which is
-// exactly right: `campaign_sleeping` is the code 025 already used for "this
-// campaign is over", so a campaign closed by an operator needs no new reason and
-// the published set of twelve `reason` codes is unchanged (FR-050). The codes are
-// not split per campaign — `selectCampaign` below skips closed campaigns, so by
-// the time this runs they cannot reach the "not started" branch.
+// A FORCE-CLOSED campaign (026, FR-031) is SKIPPED here rather than reported
+// asleep, and that is worth being precise about because the two paths are not
+// the same. On the grant path a closed campaign is already gone before this
+// runs — `ListOpen` filters `closed_at IS NULL`, so a registry holding only
+// closed campaigns arrives EMPTY and condition 1 answers
+// `campaign_not_configured`. The per-code eligibility look-up is a different
+// function that does its own selection and answers `outside_window`. Neither
+// reaches this function, and the measured values are in deferred.md D-04.
+//
+// What this function does answer is a campaign that is still OPEN but past its
+// window, which is 025's "this campaign is over". So the published set of
+// twelve `reason` codes is unchanged either way (FR-050) — but a closed
+// campaign reports neither of these two codes, and nothing here should be read
+// as saying it does.
 func (e *campaignEvaluator) sleepReason() SkipReason {
 	for _, campaign := range e.campaigns {
 		if campaign.ClosedAt != nil {

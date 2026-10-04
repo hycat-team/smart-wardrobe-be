@@ -8,9 +8,59 @@ Không mục nào chặn việc đóng 026. Chúng được ghi ở đây chứ 
 một khẳng định khác vừa là sai.
 
 - **D-01 làm suy yếu bằng chứng của 10 task đã tick.** Đọc D-01 trước khi tin bất kỳ task nào
-  trong danh sách đó.
+  trong danh sách đó. **Cập nhật 04/10/2026: V1+V2 đã chạy thật — xem mục "ĐÃ CHẠY THẬT" bên dưới;
+  D-01 vẫn mở nhưng nhỏ hơn nhiều, và nó đã tự báo thêm hai lỗi mà chỉ chạy mới lộ ra.**
 - **D-02 đã gỡ** — hợp đồng đã được sửa trong lần chống, xem mục D-02 bên dưới.
 - **D-03 là flake hiếm** khi `make test-integration` chạy đồng thời hai gói trên cùng một CSDL.
+
+---
+
+## ĐÃ CHẠY THẬT — V1 + V2 trên dev stack, 04/10/2026
+
+Không phải mục riêng của D-01, mà là **bằng chứng gỡ được một phần D-01**. Ghi ở đây vì nó thay đổi
+mức độ tin cậy của các ô `[X]` bên dưới.
+
+- **Môi trường**: dev stack sẵn có — Postgres `smart_wardrobe_db` (user `admin`) chứa sẵn **55 claim**
+  phản ánh dữ liệu thật; account service phải **rebuild** (`docker compose … up -d --build account`)
+  vì image cũ không bind-mount source. Bằng chứng binary đã đúng: `GET /api/v1/admin/campaigns` trả
+  **401** thay vì **404**.
+- **Migration được container tự áp lúc boot** (`DATABASE_MIGRATE_ON_START=true`, `/migrations` bake
+  trong image) nên **không** cần `make migrate-up svc=account`. Sau đó `max(version_id) = 20261003165500`.
+- **Email: 0 email rời khỏi máy.** Theo hiến pháp §"Outbound email volume during verification", kịch bản
+  cần nhiều tài khoản thì **phải** tắt đường email: đặt `EMAIL_ENABLED=false` trong `.env` (đã revert
+  sau khi chạy, không commit). `SmtpSender.Send` trả `nil` trước khi mở socket, và email worker ack
+  rồi bỏ message — nên không dựng phiên SMTP nào. OTP **vẫn** sinh và nằm trong Redis vì
+  `redis_otp_service.go` không đọc cờ này.
+
+### Kết quả
+
+| Bước | Kết quả |
+|---|---|
+| Tạo `verify-026` (quota 2, `startsAt 2026-10-03`) | `version 1`, `status running`, `remainingMain 2` |
+| Đăng ký acc#1 → `confirm-otp` | ✅ **ĐƯỢC CẤP** — claim `verify-026` / `premium-monthly` / `grant_bucket = main`; `user_subscriptions.current_plan_code` chuyển `free` → **`premium-monthly`** (tier 1, hết hạn 03/11) |
+| Tra cứu campaign sau grant | `grantedMainCount = 1`, `remainingMain = 1`, **`budgetLocked = true`** (đóng băng ngân sách vì đã có claim) |
+| `eligibility(acc#1)` | `granted`, `granted = true` |
+| `close` (`version 1`) | `closedAt` có giá trị, `version` → **2**, `status = closed` |
+| Đăng ký acc#2 | ✅ **0 claim** ở mọi chiến dịch; `current_plan_code` vẫn `free` / tier 0 |
+
+### Hai lỗi mà CHỈ chạy thật mới lộ ra
+
+1. **`quickstart.md` V1 dùng `startsAt = 2020-01-01` — không bao giờ thắng.** FR-040 chọn `starts_at`
+   **lớn nhất**; seed `launch-2026-10` có `2026-10-02`. `verify-026` với `2020` sẽ không bao giờ được
+   chọn, và acc#1 sẽ bị đánh giá với hàng seed. **Đã sửa** thành `2026-10-03` kèm cảnh báo. Cùng loại
+   lỗi với cái T081 đã sửa trong test — nhưng nằm trong quy trình kiểm chứng, nên không ai thấy.
+2. **Bước 4 của V1 xanh vì lý do sai.** Khi `verify-026` đóng, nó bị `ListOpen` loại và đường cấp gói
+   **rơi xuống** `launch-2026-10`. Ở DB này chiến dịch đó **đã hết quota** (`quota_main`), nên bước 4 xanh
+   **không phải nhờ `close`**. Điều kiện đã sửa thành **campaign-scoped**: "0 claim từ `verify-026`".
+3. **Đường tra cứu theo mã không dùng chung `evaluate()`** — nó trả `outside_window` cho chiến dịch đã
+   đóng, không phải `campaign_sleeping`. Sửa ở D-04, `spec.md` §11.3 và `quickstart.md` V2.
+
+### Điều kiện tiên quyết mà D-01 vẫn chưa đóng
+
+Một chiến dịch không bao giờ bị xoá được (registry không có `Delete`, đúng thiết kế), nên sau lần chạy
+này DB dev **vĩnh viễn** có: `verify-026` ở trạng thái `closed`, và hai tài khoản
+`verify026acct1@example.com` / `verify026acct2@example.com` (acc#1 còn giữ `premium-monthly` từ
+`verify-026`). Không dọn được bằng API.
 
 ---
 
@@ -171,11 +221,26 @@ một khẳng định khác vừa là sai.
   định: `spec.md` Câu 6 (phần "Phân công"), `research.md` R9, và hợp đồng ghi bằng văn xuôi ở
   `campaign_repo.go:73`.
 
-- **Đã gỡ thế nào**: orchestrator đã hiệu chỉnh `spec.md` §11.2–11.3 và `quickstart.md` V1–V2:
-  phần đảm bảo được giữ nguyên là **0 dòng cấp**; mã quan sát được được nêu đúng là
-  `campaign_not_configured`, kèm ghi chú trỏ tới nơi `campaign_sleeping` **vẫn** được chứng minh
-  (`TestEvaluatorExcludesForceClosedCampaigns`, và đường tra cứu theo mã khi sổ còn chiến dịch
-  khác). Tập 12 mã `reason` của 025 **không đổi**.
+- **Đã gỡ thế nào (lần 1 — suy luận, và SAI một phần)**: orchestrator đã hiệu chỉnh `spec.md` §11.2–11.3 và
+  `quickstart.md` V1–V2: phần đảm bảo được giữ nguyên là **0 dòng cấp**. Tập 12 mã `reason` **không đổi**.
+
+- **Đã gỡ thế nào (lần 2 — sau khi đo thật trên dev stack 04/10/2026)**: bản hiệu chỉnh lần 1 còn **một
+  câu sai** — nó nói đường tra cứu theo mã vẫn cho `campaign_sleeping`. Đo thực nghiệm thì **không**:
+
+  | Đường | Tình huống | `reason` quan sát được | Nguồn |
+  |---|---|---|---|
+  | Tra cứu theo mã | `verify-026` đã đóng cưỡng bức | **`outside_window`** | `campaign_query_claims_uc.go:214` |
+  | Tra cứu theo mã | `launch-2026-10` còn mở, hết quota | **`quota_main`** | `eligibility = eligible_but_exhausted` |
+  | Thông điệp | sổ **rỗng** (chỉ có chiến dịch đã đóng ⇒ `ListOpen` rỗng) | `campaign_not_configured` | `admission_uc.go:81-82` |
+  | Thông điệp | sổ **còn** chiến dịch mở khác | rơi xuống chiến dịch đó, lý do **của chiến dịch đó** | `admission_uc.go:94-113` |
+
+  Nguyên nhân gốc của sự lệch: **đường tra cứu theo mã KHÔNG dùng chung `evaluate()`** — nó tự chọn
+  ứng viên và gán `outside_window` khi không ra ứng viên nào. Hai đường cùng trả lời "chiến dịch này
+  còn cấp được không" nhưng **không** cùng bộ mã. Bản hiệu chỉnh lần 1 đã giả định chúng chung mã.
+  Cả `quickstart.md` V2 và `spec.md` §11.3 đã viết lại theo bảng trên.
+
+  `campaign_sleeping` vẫn còn đúng nghĩa và còn được chứng minh, nhưng **chỉ** cho chiến dịch **còn mở**
+  đã qua `ends_at` — không phải cho chiến dịch bị đóng cưỡng bức.
 
 - **Không sửa mã, và không thêm kiểm thử khẳng định ngược lại.** Đổi `ListOpen` để giữ chiến
   dịch đã đóng sẽ phá lại chính quyết định mà `spec.md` Câu 6 và `research.md` R9 đã chốt (xem
