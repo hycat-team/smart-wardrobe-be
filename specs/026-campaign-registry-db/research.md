@@ -124,18 +124,25 @@ làm bản sao rollback, nhưng binary mới **không đọc** nó.
 
 ---
 
-## R6 — Chọn chiến dịch: một truy vấn "còn thức", bộ chọn thuần, tie-break tất định
+## R6 — Chọn chiến dịch: một truy vấn "còn mở", bộ chọn thuần, tie-break tất định
 
-**Quyết định**: repository đọc một truy vấn các chiến dịch **còn thức**:
+**Quyết định**: repository đọc một truy vấn các chiến dịch **còn mở**:
 ```sql
 SELECT * FROM subscription.campaigns
 WHERE closed_at IS NULL
-  AND starts_at <= :now
-  AND (ends_at IS NULL OR :now < ends_at)
 ORDER BY starts_at DESC, code DESC;
 ```
 rồi **bộ đánh giá thuần** (`admission_uc.go`) lọc tiếp theo `registered_at` và chọn `starts_at` lớn
 nhất. Tie-break `code DESC` làm kết quả **tất định** khi hai chiến dịch cùng `starts_at`.
+
+> **Hiệu chỉnh (lộ ra ở vòng hội tụ lần 3).** Bản soạn đầu đặt cả hai vế cửa sổ vào SQL và gọi đó là
+> truy vấn chiến dịch "**còn thức**". Điều đó sai, và sai theo **bốn** hướng: trái `spec.md` Câu 6 (đã
+> sửa ở cùng đợt), trái `data-model.md` ("SQL chỉ lọc `closed_at IS NULL`"), trái mã thật
+> `campaign_repo_impl.go:57-60`, và **tự mâu thuẫn với R9 của chính file này** (`ListOpen()` *chỉ*
+> `closed_at IS NULL`). Cửa sổ `starts_at`/`ends_at` **không** nằm ở SQL — nó nằm ở bộ đánh giá
+> thuần, cùng vế `registered_at`. Câu hỏi SQL trả lời là "chiến dịch nào **chưa bị đóng**", không
+> phải "chiến dịch nào còn thức"; `isAwake` mới là nơi trả lời câu hỏi thứ hai — và nó thuần túy để
+> kiểm thử được, đó là lý do nó không bị đẩy xuống SQL.
 
 **BẰNG CHỨNG**: `selectCampaign` (`admission_uc.go:191-215`) đã tách hai instant: cửa sổ so
 `registered_at`, "còn thức" so `now`. Giữ nguyên hai vế đó nhưng nguồn danh sách đổi thành repository.
