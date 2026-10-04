@@ -246,152 +246,13 @@ func (uc *CampaignRegistryUseCase) recordCreateAudit(
 	return nil
 }
 
-// recordCloseAudit writes the ONE outbox row a successful close owes (FR-060).
+// ---- US3: the update path ----
 //
-// IT IS SEPARATE FROM `recordCreateAudit` rather than a shared helper with a flag,
-// because the two payloads share almost nothing: a create has no "before" (the
-// campaign did not exist) and a close has no configuration to describe (nothing
-// about the plan or the budget changed). One function with a boolean deciding which
-// of the two shapes to build is a function that has to be read twice to know which
-// fields the per-campaign audit read endpoint will find.
-//
-// `before`/`after` ARE PRESENT HERE, and that is what makes a closure readable
-// weeks later: `before.closedAt` empty against `after.closedAt` set is the whole
-// change, side by side with the version that moved (contract §6.3). The reason
-// travels beside them because "who stopped this promotion and why" is the question
-// the screen exists to answer (SC-011).
-func (uc *CampaignRegistryUseCase) recordCloseAudit(
-	ctx context.Context,
-	actorAdminID uuid.UUID,
-	campaignCode string,
-	reason string,
-	beforeVersion int,
-	closedAt time.Time,
-	requestIP *string,
-) error {
-	err := uc.auditLogContract.Record(ctx, admin_dto.RecordAuditLogInput{
-		ActorUserID: actorAdminID,
-		Action:      string(adminaudit.CampaignClose),
-		TargetType:  string(adminaudit.Campaign),
-		// Intentionally nil: FR-063, identically to the create record.
-		TargetID: nil,
-		Payload: map[string]any{
-			"campaignCode": campaignCode,
-			"reason":       reason,
-			"before": map[string]any{
-				"closedAt": "",
-				"version":  beforeVersion,
-			},
-			"after": map[string]any{
-				// UTC and RFC3339 for the same reason `endsAtForAudit` uses it: the
-				// payload is compared against another row later, on a screen written by
-				// somebody else.
-				"closedAt": closedAt.UTC().Format(time.RFC3339),
-				"version":  beforeVersion + 1,
-			},
-		},
-		RequestIP: requestIP,
-	})
-	if err != nil {
-		// FR-060/FR-061, and the same line as the create: the outbox row is part of
-		// THIS transaction, so returning the error rolls the closure back with it.
-		// A registry whose `closed_at` and whose audit trail disagree is exactly what
-		// FR-062 exists to prevent.
-		return subscriptionerrors.ErrCampaignRegistryAuditFailed(campaignCode, err)
-	}
-	return nil
-}
-
-// Close force-closes a campaign and returns it as the read endpoints would render
-// it (FR-030/FR-031/FR-034, contract §5).
-//
-// THE ORDER OF THE FOUR ANSWERS IS THE WHOLE METHOD, and it is not an
-// implementation detail — contract §4.3 and §5.3 fix it, and each step exists
-// because of a specific operator mistake:
-//
-//  1. `GetByCode` INSIDE this transaction, and a code nobody typed answers 404
-//     immediately. `UPDATE ... WHERE code = ? AND version = ?` returns ZERO ROWS for
-//     both "no such code" and "wrong version", so a method that looked only at the
-//     row count would answer 412 to an operator who mistyped a code — telling them
-//     to reload a campaign that does not exist.
-//  2. ALREADY CLOSED ⇒ 200, no second audit row, and NO version comparison at all.
-//     A retried request, a double-click, and two administrators closing the same
-//     campaign at the same moment all arrive here, and all three must succeed
-//     (FR-034). The version is deliberately not consulted: the row has moved on
-//     since the client last read it, which is precisely the situation idempotence
-//     exists to absorb.
-//  3. `UPDATE ... WHERE version = ?` and zero rows means somebody else wrote in
-//     between, which is 412 (FR-055) — refused rather than overwritten, so no
-//     administrator's change is lost and no audit row describes a change that did
-//     not happen.
-//  4. The audit outbox row, INSIDE the same transaction (FR-060/FR-061).
-//
-// WHAT THE RESPONSE IS, AND WHAT IT IS NOT. It is the campaign's own registry row
-// after the change, plus the derived `status`, built by the SAME mapper the read
-// endpoints and `Create` use — so no screen has to reformat one shape into
-// another. It is NOT a full operator summary: the ledger counts and the priority
-// watermark are not read here, because the registry WRITER holds no claim
-// repository and giving it one would make the write path a second reader of the
-// ledger for three numbers the client refreshes anyway. The count fields therefore
-// read as zero on this response and are correct on the next `GET`; `closedAt` and
-// `status` — the two things this operation changed — are exact.
-//
-// `closed_at` IS WRITTEN BY THE DATABASE (`now()` inside the repository's
-// statement), never by the value this process reads from its own clock. It answers
-// "when was this campaign closed" to somebody reading the trail weeks later, and a
-// caller is not a trustworthy witness to its own request.
-func (uc *CampaignRegistryUseCase) Close(
-	ctx context.Context,
-	actorAdminID uuid.UUID,
-	campaignCode string,
-	req *sub_dto.CampaignCloseReq,
-	requestIP *string,
-) (*sub_dto.CampaignSummaryRes, error) {
-	// 400 (the binder, for a missing `version` or `reason`) and 422 (a blank reason)
-	// BEFORE ANY I/O: a rejected closure opens no transaction, takes no row lock and
-	// writes no outbox row, so a typo cannot produce a trace saying somebody tried.
-	reason, err := validateCampaignClose(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var closed *entities.Campaign
-	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		stored, err := uc.requireRegistryRow(txCtx, campaignCode)
-		if err != nil {
-			return err
-		}
-		// STEP 2 — the idempotent answer, ABOVE the version check (contract §5.3).
-		// Returning early is what makes "no second audit row" true rather than
-		// aspirational: there is no code path below this line that can write one.
-		if stored.ClosedAt != nil {
-			closed = stored
-			return nil
-		}
-		closed, err = uc.closeWithAudit(txCtx, actorAdminID, stored, req, reason, requestIP)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// FR-032: the response says `closed` rather than what the clock or the budget
-	// would otherwise say. `deriveCampaignStatus` reads the reloaded row, so this is
-	// the real stored state and not the pre-update one.
-	uc.log.Info("campaign registry row closed",
-		zap.String("campaign_code", closed.Code),
-		zap.String("actor_user_id", actorAdminID.String()),
-		zap.Int("version", closed.Version),
-		zap.Time("closed_at", *closed.ClosedAt),
-	)
-
-	return mapper.MapCampaignSummaryRes(
-		closed,
-		mapper.CampaignGrantCounts{},
-		nil,
-		deriveCampaignStatus(closed, 0, 0, uc.now()),
-	), nil
-}
+// `recordCloseAudit`, `Close` and `closeWithAudit` were moved OUT of this file to
+// `registry_close_uc.go`: they are the force-close path, and with them inline this
+// file sat past the production size limit (code-hygiene H1) before US3 added a
+// single line. The split is a FILE boundary only — one type, and one transaction per
+// operation either way.
 
 // requireRegistryRow is the 404 half of FR-054's ordering, asked once so `Close`
 // and `Update` cannot answer it differently.
@@ -414,97 +275,221 @@ func (uc *CampaignRegistryUseCase) requireRegistryRow(
 	return campaign, nil
 }
 
-// closeWithAudit is the BODY of `Close`'s single transaction: the conditional
-// `UPDATE`, the reload, and the audit outbox row — in that order, so that either
-// all three stand or none does.
+// Update edits a campaign that already exists (026 T052, FR-020..FR-023, FR-055,
+// contract §4).
 //
-// IT IS A SEPARATE FUNCTION for the reason `insertWithAudit` is one: the ORDER of
-// the two writes is FR-060/FR-061, and an order is only visible when the statements
-// are neighbours. The reload sits between them deliberately — `closed_at` is the
-// DATABASE's instant and the version is the STATEMENT's arithmetic, so neither is
-// known to this process until the row is read back inside the same transaction.
-func (uc *CampaignRegistryUseCase) closeWithAudit(
+// THE ORDER OF THE FOUR ANSWERS IS THE WHOLE METHOD, exactly as in `Close` and for
+// the same reason (contract §4.3):
+//
+//  1. `GetByCode` INSIDE this transaction: a code nobody typed is 404 at once. The
+//     conditional `UPDATE ... WHERE code = ? AND version = ?` reports ZERO ROWS for
+//     both "no such code" and "wrong version", so an implementation that consulted
+//     only the row count would answer 412 to an operator who mistyped a code.
+//  2. NOTHING CHANGED ⇒ 200 as a NO-OP: no `UPDATE`, no version bump, no audit row
+//     (FR-055's exception, US3 scenario 4). This is ABOVE the version check on
+//     purpose — a screen that resubmits an unchanged form must succeed quietly, and
+//     a history that recorded "quota changed from 120 to 120" would be worse than no
+//     history at all.
+//  3. THE BUDGET IMMUTABILITY CHECK (FR-020/FR-021): grants exist AND one of
+//     `planSlug`/`quota`/`reserve` differs ⇒ 422 with the message that names the way
+//     out. This is the APPLICATION layer of the two FR-021 demands; the
+//     `trg_campaigns_immutable_budget` trigger is the other, and it is the only one
+//     a hand-written SQL UPDATE cannot walk around. The check reads the ledger
+//     INSIDE this transaction, so a grant committing in between cannot slip past it.
+//  4. `UPDATE ... WHERE version = ?`, zero rows ⇒ 412, then the audit outbox row in
+//     the SAME transaction (FR-055, FR-060/FR-061).
+//
+// WHAT THE RESPONSE CARRIES, AND WHY IT IS NOT THE REQUEST ECHOED. `version` comes
+// from the row re-read AFTER the statement, because `version + 1` is computed by
+// PostgreSQL and nothing in this process knows it until the row is read back. A
+// client that received the version it sent would send it again and be refused with
+// 412 for its own successful edit.
+//
+// `ends_at > starts_at` IS NOT RE-CHECKED HERE AGAINST THE MERGED WINDOW. Merging
+// the two timestamps with the stored ones and re-deciding the rule is US4's task
+// (T061), together with `endsAt: null` clearing the window; until it lands an absent
+// timestamp keeps the stored value, which is the safe half — it cannot silently end a
+// campaign that is running.
+func (uc *CampaignRegistryUseCase) Update(
 	ctx context.Context,
 	actorAdminID uuid.UUID,
-	existing *entities.Campaign,
-	req *sub_dto.CampaignCloseReq,
-	reason string,
+	campaignCode string,
+	req *sub_dto.CampaignUpdateReq,
 	requestIP *string,
-) (*entities.Campaign, error) {
-	// `req.Version` IS THE ONE COMPARED, never `existing.Version`.
-	//
-	// Reading the row first and then comparing against what the read returned would
-	// make the conditional UPDATE unconditional: it could never change zero rows for
-	// a stale client, so FR-055's 412 would be unreachable and the second
-	// administrator's close would silently overwrite the first one's state. The read
-	// above exists to answer "does this campaign exist", not "what version is it" —
-	// the two answers have to come from different places or one of them is theatre.
-	updated, err := uc.campaignRepo.Close(ctx, existing.Code, req.Version)
+) (*sub_dto.CampaignSummaryRes, error) {
+	// 400 and 422 BEFORE ANY I/O, as in `Create` and `Close`: a rejected edit opens no
+	// transaction, takes no row lock and writes no outbox row.
+	edit, err := validateCampaignUpdate(req)
 	if err != nil {
-		// The database refused. The operator's inputs were already correct — 412 and
-		// 404 have both been ruled out above — so the cause goes to `Cause` and the
-		// client is told to retry rather than invited to change the form.
-		return nil, subscriptionerrors.ErrCampaignRegistryWriteFailed(existing.Code, err)
-	}
-	if !updated {
-		// STEP 3 — the version moved between the read above and this statement. The
-		// campaign still exists (step 1 proved it in this transaction), so this is
-		// the 412 and not the 404 (FR-055, contract §4.3).
-		return nil, subscriptionerrors.ErrCampaignVersionConflict(existing.Code)
+		return nil, err
 	}
 
-	// The reload, under the SHARE lock this transaction already holds from its own
-	// UPDATE. It is what makes the response and the audit row carry the DATABASE's
-	// closure instant and the STATEMENT's version instead of this process's guesses:
-	// `closed_at = now()` is evaluated by PostgreSQL, and `version + 1` is computed
-	// there too. Reading it back is one extra SELECT on a single-row primary key, on
-	// an operation an operator performs a handful of times in a campaign's life.
-	reloaded, err := uc.campaignRepo.GetByCodeForShare(ctx, existing.Code)
+	var updated *entities.Campaign
+	var changes campaignChanges
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		stored, err := uc.requireRegistryRow(txCtx, campaignCode)
+		if err != nil {
+			return err
+		}
+		// The candidate is built from the STORED row, not from an empty entity: an
+		// omitted field must keep its current value, and the repository's UPDATE
+		// writes all five mutable columns unconditionally (so it cannot be asked to
+		// write "leave this alone").
+		candidate, moved := mergeCampaignUpdate(stored, edit)
+		// STEP 2 — the no-op answer. Taken BEFORE the version check and before the
+		// immutability check, because a request that changes nothing has nothing to
+		// conflict with and nothing to refuse.
+		if moved.empty() {
+			updated = stored
+			return nil
+		}
+		changes = moved
+		updated, err = uc.updateWithAudit(txCtx, actorAdminID, stored, candidate, moved, req, requestIP)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// TWO MESSAGES, because FR-055's no-op changes nothing and a log line saying
+	// "updated" for a request that wrote nothing would send whoever reads the trail
+	// looking for a change that did not happen — the same confusion the no-op rule
+	// exists to prevent in the AUDIT trail, repeated in the log.
+	if changes.empty() {
+		uc.log.Info("campaign registry update was a no-op",
+			zap.String("campaign_code", updated.Code),
+			zap.String("actor_user_id", actorAdminID.String()),
+			zap.Int("version", updated.Version),
+		)
+	} else {
+		uc.log.Info("campaign registry row updated",
+			zap.String("campaign_code", updated.Code),
+			zap.String("actor_user_id", actorAdminID.String()),
+			zap.Int("version", updated.Version),
+			zap.Strings("changed_fields", changes.names()),
+		)
+	}
+
+	return mapper.MapCampaignSummaryRes(
+		updated,
+		mapper.CampaignGrantCounts{},
+		nil,
+		deriveCampaignStatus(updated, 0, 0, uc.now()),
+	), nil
+}
+
+// updateWithAudit is the BODY of `Update`'s single transaction: the immutability
+// check, the conditional `UPDATE`, the reload, and the audit outbox row.
+//
+// IT IS A SEPARATE FUNCTION for the reason `insertWithAudit` and `closeWithAudit`
+// are: the ORDER of those writes is FR-060/FR-061, and an order is only visible when
+// the statements are neighbours. The reload sits between them for the same reason it
+// does on close — `version + 1` belongs to the STATEMENT, so the only honest source
+// for the number the client must send next is the row itself.
+//
+// `req.Version` IS THE ONE COMPARED, never `stored.Version`, for the reason
+// `closeWithAudit` gives: comparing against what the read returned would make the
+// conditional UPDATE unconditional and FR-055's 412 unreachable.
+func (uc *CampaignRegistryUseCase) updateWithAudit(
+	ctx context.Context,
+	actorAdminID uuid.UUID,
+	stored *entities.Campaign,
+	candidate *entities.Campaign,
+	changes campaignChanges,
+	req *sub_dto.CampaignUpdateReq,
+	requestIP *string,
+) (*entities.Campaign, error) {
+	// STEP 3 — FR-020's application layer. Asked only when a BUDGET column is among
+	// the changes, so moving `endsAt` on a live campaign costs no ledger read and is
+	// never refused (FR-023).
+	if changes.touchesBudget() {
+		granted, err := uc.campaignRepo.ExistsClaims(ctx, stored.Code)
+		if err != nil {
+			return nil, subscriptionerrors.ErrCampaignRegistryReadFailed()
+		}
+		if granted {
+			return nil, subscriptionerrors.ErrCampaignBudgetLocked(stored.Code)
+		}
+	}
+
+	written, err := uc.campaignRepo.Update(ctx, candidate, req.Version)
+	if err != nil {
+		// 412 and 404 were both ruled out above, so a failure here is the database.
+		return nil, subscriptionerrors.ErrCampaignRegistryWriteFailed(stored.Code, err)
+	}
+	if !written {
+		// STEP 4 — the version moved between this transaction's read and its UPDATE.
+		// The campaign still exists (step 1 proved it here), so this is the 412.
+		return nil, subscriptionerrors.ErrCampaignVersionConflict(stored.Code)
+	}
+
+	reloaded, err := uc.campaignRepo.GetByCodeForShare(ctx, stored.Code)
 	if err != nil {
 		return nil, subscriptionerrors.ErrCampaignRegistryReadFailed()
 	}
-	if reloaded == nil || reloaded.ClosedAt == nil {
-		// Unreachable through this method: the UPDATE above reported one row changed,
-		// and no delete path exists (FR-005). Reported rather than passed through,
-		// because a nil dereference here would turn a data-layer surprise into a
-		// crash on an operator-facing endpoint.
-		return nil, subscriptionerrors.ErrCampaignRegistryWriteFailed(existing.Code, errRegistryReloadLostClose)
+	if reloaded == nil {
+		return nil, subscriptionerrors.ErrCampaignRegistryWriteFailed(stored.Code, errRegistryReloadLostUpdate)
 	}
 
-	if err := uc.recordCloseAudit(
-		ctx, actorAdminID, reloaded.Code, reason, existing.Version, *reloaded.ClosedAt, requestIP,
-	); err != nil {
+	if err := uc.recordUpdateAudit(ctx, actorAdminID, stored, reloaded, changes, requestIP); err != nil {
 		return nil, err
 	}
 	return reloaded, nil
 }
 
-// errRegistryReloadLostClose reports that the reload after a successful `Close`
-// found no row, or one without `closed_at`.
+// recordUpdateAudit writes the ONE outbox row an edit that changed something owes
+// (FR-060, contract §6.3).
 //
-// It is a PACKAGE-LEVEL SENTINEL, the sanctioned exception to "no bare
-// `errors.New`" (code-hygiene H8): it is a fact about the data layer rather than
-// anything the operator did, so it has no HTTP status of its own and no
-// `apperror` factory would be the right shape — the use case wraps it into
-// `ErrCampaignRegistryWriteFailed` before it leaves this package.
+// `payload.before`/`payload.after` CARRY ONLY THE FIELDS THAT MOVED, and that is what
+// makes them readable. A payload repeating the whole campaign would make "what did
+// this administrator actually change" a diff every reader had to compute, which is
+// the work the audit trail exists to have already done — and it would put unchanged
+// values on both sides of a comparison, so a reader could no longer tell a field that
+// was left alone from one that was rewritten with its own value.
 //
-// It is UNREACHABLE through `Close` on a healthy registry: the conditional UPDATE
-// reported one row changed and no delete path exists (FR-005). It is named so that
-// the unreachable branch reports what it saw instead of dereferencing a nil row on
-// an administrator-facing endpoint.
-var errRegistryReloadLostClose = errors.New("campaign registry: the closed row did not come back")
-
-// endsAtForAudit renders the optional window end for an audit payload.
-//
-// UTC and RFC3339, and the reason is that the payload is read WEEKS LATER by somebody
-// comparing two rows: a value that keeps the writer's offset (`+07:00`) would render
-// differently depending on which administrator's browser produced it, and two audit
-// lines for the same change would not compare equal. `""` rather than null for an
-// open-ended campaign, so the key is present and a reader does not have to distinguish
-// "absent" from "empty".
-func endsAtForAudit(endsAt *time.Time) string {
-	if endsAt == nil {
-		return ""
+// `version` IS IN BOTH SIDES even though it is not something an operator typed: it is
+// the optimistic-concurrency token, it moved, and an audit line that could not say
+// which revision of the row it describes would be unusable for the concurrent-edit
+// question FR-055 exists to answer.
+func (uc *CampaignRegistryUseCase) recordUpdateAudit(
+	ctx context.Context,
+	actorAdminID uuid.UUID,
+	before *entities.Campaign,
+	after *entities.Campaign,
+	changes campaignChanges,
+	requestIP *string,
+) error {
+	err := uc.auditLogContract.Record(ctx, admin_dto.RecordAuditLogInput{
+		ActorUserID: actorAdminID,
+		Action:      string(adminaudit.CampaignUpdate),
+		TargetType:  string(adminaudit.Campaign),
+		// Intentionally nil: FR-063, identically to create and close.
+		TargetID: nil,
+		Payload: map[string]any{
+			"campaignCode": after.Code,
+			"before":       changes.auditSide(before),
+			"after":        changes.auditSide(after),
+		},
+		RequestIP: requestIP,
+	})
+	if err != nil {
+		// FR-060/FR-061, and the same line as the other two operations: the outbox row
+		// is part of THIS transaction, so returning the error rolls the edit back with
+		// it. A row whose values and whose history disagree is what FR-062 forbids.
+		return subscriptionerrors.ErrCampaignRegistryAuditFailed(after.Code, err)
 	}
-	return endsAt.UTC().Format(time.RFC3339)
+	return nil
 }
+
+// errRegistryReloadLostUpdate reports that the reload after a successful `Update`
+// found no row.
+//
+// A PACKAGE-LEVEL SENTINEL for the same reason as `errRegistryReloadLostClose`
+// (code-hygiene H8's sanctioned exception): it is a fact about the data layer rather
+// than anything the operator did, so it has no HTTP status of its own and no
+// `apperror` factory would be the right shape.
+//
+// UNREACHABLE on a healthy registry — the conditional UPDATE reported one row
+// changed, and no delete path exists (FR-005). It is named so the branch reports what
+// it saw instead of dereferencing a nil row on an administrator-facing endpoint.
+var errRegistryReloadLostUpdate = errors.New("campaign registry: the updated row did not come back")

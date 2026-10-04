@@ -95,6 +95,33 @@ type CampaignSummaryRes struct {
 	// campaign can have both — closing one does not touch `ends_at` (contract §5.2)
 	// — and a campaign with `ClosedAt` nil is not thereby still open.
 	ClosedAt *time.Time `json:"closedAt"`
+	// BudgetLocked is true once this campaign has granted at least once, and it is
+	// DERIVED from the two counts above rather than stored (026 T050, FR-020).
+	//
+	// IT IS WHAT A SCREEN DISABLES THE BUDGET FIELDS ON. The moment one claim
+	// exists, `planSlug`, `quota` and `reserve` are immutable — at the application
+	// layer AND in `trg_campaigns_immutable_budget` (FR-020/FR-021) — so a form
+	// that still lets an operator type into them is a form that offers an edit
+	// guaranteed to end in a 422.
+	//
+	// DERIVED RATHER THAN STORED, and that is the whole argument: a stored flag
+	// would need synchronising along a second path when the first claim commits,
+	// and two paths are exactly how a budget number ends up wrong. Computed from
+	// the counts beside it, it cannot disagree with them.
+	//
+	// ON A WRITE RESPONSE IT READS `false`, because the registry writer holds no
+	// ledger repository and passes zero counts — the same limitation `ClosedAt`
+	// does not have, and the next `GET` corrects it. The alternative (giving the
+	// writer a claim repository for one boolean) would make the write path a
+	// second reader of the ledger, which is what 025 R7 warns against.
+	BudgetLocked bool `json:"budgetLocked"`
+	// Version is the optimistic-concurrency token (026 T050, FR-055).
+	//
+	// IT IS ON THE RESPONSE BECAUSE THE CLIENT CANNOT COMPUTE IT. It is read from
+	// the row that was actually written — never echoed from the request — so a
+	// stale client learns the truth on the next read instead of sending a version
+	// the row no longer has and being refused with 412 for a reason it cannot see.
+	Version int `json:"version"`
 	// WatermarkAt is the `registered_at` of the claim that filled the main budget,
 	// or nil when that has not happened. It is the instant every later priority
 	// comparison uses (FR-030).
@@ -200,6 +227,63 @@ type CampaignCloseReq struct {
 	// record (contract §6.3). Trimmed by the validator before use, so a box holding
 	// three spaces is a 422 rather than an audit row that reads as blank.
 	Reason *string `json:"reason" binding:"required"`
+}
+
+// CampaignUpdateReq edits a campaign that already exists (026 T051, FR-052,
+// contract `campaign-registry-api.md` §4).
+//
+// EVERY FIELD BUT `version` IS OPTIONAL, AND AN ABSENT FIELD MEANS "UNCHANGED".
+// That is what makes a `PATCH` a `PATCH`: an operator raising the budget sends
+// only `quota`, and a campaign whose budget is frozen cannot be edited by sending
+// the whole row back with one number changed — a form that always submits
+// everything would have to re-derive the current values on the client, and two
+// clients would disagree about what "unchanged" means.
+//
+// WHY THE THREE MONEY FIELDS ARE POINTERS. Same reasoning as `CampaignCreateReq`:
+// FR-054 separates "thiếu trường bắt buộc" (400) from "sai nghĩa" (422), and on a
+// plain `int` an absent `quota` arrives as `0` — which is also a real quota that
+// must be refused with 422. Only a pointer can tell "leave it alone" from "set it
+// to zero, which is nonsense".
+//
+// WHY `code` IS NOT A FIELD. FR-024 makes the code immutable, and a body field
+// that must be rejected would be a second way to ask the same question the URL
+// already answers. Instead the code is simply NOT HERE: a client that sends it
+// has it ignored, nothing changes, and the request is a no-op — which is T054's
+// assertion, and it holds because the field does not exist rather than because a
+// check refuses it.
+//
+// WHY THE TIMESTAMPS ARE STRINGS. Identical to `CampaignCreateReq`: RFC3339 WITH a
+// zone is a rule this layer can state and a `time.Time` cannot (FR-013).
+//
+// WHAT IS DELIBERATELY NOT DECIDED HERE. `endsAt: null` must eventually CLEAR the
+// window end (contract §4.1), and telling `null` apart from an absent key needs a
+// representation this type does not have yet; that is US4's task (T061), together
+// with re-checking `ends_at > starts_at` against the MERGED window. Until then an
+// absent `endsAt` keeps the stored value, which is the safe half of the rule: it
+// cannot silently end a campaign that is running.
+type CampaignUpdateReq struct {
+	// Version is the version the client read, and it is REQUIRED (FR-055). `0` is
+	// not a version any row can hold — the column defaults to 1 and only ever
+	// increments — so `binding:"required"` refusing the zero value is exactly the
+	// "thiếu trường bắt buộc → 400" row of FR-054 and nothing more.
+	Version int `json:"version" binding:"required"`
+	// PlanSlug is the plan this campaign grants. Optional. Changeable only while
+	// `budgetLocked` is false (FR-020); a blank value is 422, not 400.
+	PlanSlug *string `json:"planSlug"`
+	// Quota is the main budget, `>= 1` (FR-012). Optional. Changeable only while
+	// `budgetLocked` is false.
+	Quota *int `json:"quota"`
+	// Reserve is the compensation ceiling, `>= 0`. Optional, and it defaults to
+	// NOTHING rather than to 0: an omitted `reserve` leaves the stored ceiling
+	// alone, which is the opposite of the create rule and is right here (an
+	// omitted field means unchanged).
+	Reserve *int `json:"reserve"`
+	// StartsAt is when the campaign opens, RFC3339 with a zone. Optional, and
+	// editable whether or not the campaign has granted (FR-023).
+	StartsAt *string `json:"startsAt"`
+	// EndsAt is when it closes, RFC3339 with a zone. Optional and editable
+	// regardless of grants (FR-023).
+	EndsAt *string `json:"endsAt"`
 }
 
 // CampaignClaimRes is one granted account in

@@ -14,10 +14,10 @@ import (
 //
 // WHY THIS IS A SEPARATE FILE AND NOT A BLOCK INSIDE `registry_uc.go`. FR-054 draws
 // one line that cuts through all three operations: `400` is a request that cannot be
-// READ, `422` is a request that reads fine and means nothing useful. Every rule here
-// is on one side of that line or the other, so putting them in one place makes the
-// line visible — and the next operation to be written (update, close) adds its rules
-// here rather than re-deciding where the line is.
+// READ, `422` is a request that reads fine and means nothing useful. Every rule here is
+// on one side of that line or the other, so putting them in one place makes the line
+// visible — and each operation (create, update, close) adds its rules HERE rather than
+// re-deciding where the line is.
 //
 // WHY THE VALIDATION RUNS BEFORE ANY I/O. All of it is pure: a rejected campaign never
 // opens a transaction, never takes a lock and never writes an outbox row. The operator
@@ -242,4 +242,101 @@ func parseCampaignInstant(raw, field string) (time.Time, error) {
 		return time.Time{}, subscriptionerrors.ErrCampaignTimestampMalformed(field)
 	}
 	return parsed, nil
+}
+
+// campaignUpdate is the validated form of an edit: only the fields the client SENT,
+// already turned into the types the row uses.
+//
+// EVERY FIELD IS A POINTER, and that is the requirement rather than a convenience.
+// "Absent" and "present with that value" are different requests, and a plain field
+// would collapse them — an absent `quota` arriving as `0` would be written over a
+// campaign's real budget. The use case merges this onto the stored row, and the
+// pointers are what let it tell which columns the operator actually named.
+//
+// The consequence is that this function CANNOT produce the row to write, and that is
+// correct: `ends_at > starts_at` is a comparison between two instants where either
+// may come from the existing row, so it needs the row. What is checked here is
+// everything decidable from the request alone, which is exactly the half that must
+// happen BEFORE a transaction is opened.
+type campaignUpdate struct {
+	planSlug *string
+	quota    *int
+	reserve  *int
+	startsAt *time.Time
+	endsAt   *time.Time
+}
+
+// validateCampaignUpdate applies FR-054's table to an edit, for the fields the client
+// sent. Absent fields are not inspected at all: there is nothing to inspect.
+//
+// SAME ORDER AS THE CREATE VALIDATOR, and for the same reason — an operator fixing a
+// form reads top to bottom and stops at the first thing that is wrong, so reporting
+// the last violation costs them a round of edits per error.
+//
+// WHAT IS *NOT* DECIDED HERE, and why it cannot be:
+//
+//   - whether the campaign exists (404). That is a read, and a read inside a
+//     transaction is FR-055's ordering requirement, not a validation rule;
+//   - whether the budget has already been granted (422, FR-020). Also a read, and it
+//     must be the read of the SAME transaction that writes, or a grant committed in
+//     between would slip past;
+//   - whether anything changes at all (FR-055's no-op). Needs the stored values.
+//
+// Those three live in `Update`, and each of them is a decision about the WORLD rather
+// than about the shape of a request — which is the line this file has followed since
+// T030.
+func validateCampaignUpdate(req *sub_dto.CampaignUpdateReq) (campaignUpdate, error) {
+	var out campaignUpdate
+
+	if req.PlanSlug != nil {
+		// Trimmed before comparison, for the same reason create trims: the column's
+		// CHECK is `btrim(plan_slug) <> ''`, so three spaces would pass an emptiness
+		// test and then be refused by the schema as a raw `check_violation` no
+		// operator can read.
+		planSlug := strings.TrimSpace(*req.PlanSlug)
+		if planSlug == "" {
+			return out, subscriptionerrors.ErrCampaignInvalidField(fieldPlanSlug, "không được để trống")
+		}
+		out.planSlug = &planSlug
+	}
+
+	// 422, NOT 400, AND THE REASON IS THE SAME ONE CREATE GIVES: the binder has proved
+	// the field was SENT (it is a pointer), and a quota of zero is a campaign that
+	// grants nobody — a wrong number, not an unreadable request (FR-054).
+	if req.Quota != nil {
+		if *req.Quota < 1 {
+			return out, subscriptionerrors.ErrCampaignInvalidField(fieldQuota, "phải lớn hơn hoặc bằng 1")
+		}
+		out.quota = req.Quota
+	}
+	if req.Reserve != nil {
+		if *req.Reserve < 0 {
+			return out, subscriptionerrors.ErrCampaignInvalidField(fieldReserve, "không được âm")
+		}
+		out.reserve = req.Reserve
+	}
+
+	// FR-013 again: RFC3339 WITH a zone, per field, and the field name in the message
+	// so an operator with two timestamps knows which one is wrong. An empty string is
+	// a MALFORMED timestamp, not an absent one — exactly as on create.
+	if req.StartsAt != nil {
+		startsAt, err := parseCampaignInstant(*req.StartsAt, fieldStartsAt)
+		if err != nil {
+			return out, err
+		}
+		out.startsAt = &startsAt
+	}
+	if req.EndsAt != nil {
+		endsAt, err := parseCampaignInstant(*req.EndsAt, fieldEndsAt)
+		if err != nil {
+			return out, err
+		}
+		out.endsAt = &endsAt
+	}
+
+	// `version` IS NOT CHECKED HERE, for the same reason `validateCampaignClose` does
+	// not check it: any integer is well-formed, and whether it is the CURRENT one is
+	// the conditional UPDATE's question. Checking it against the row read above would
+	// duplicate the UPDATE's decision and make the 412 unreachable.
+	return out, nil
 }

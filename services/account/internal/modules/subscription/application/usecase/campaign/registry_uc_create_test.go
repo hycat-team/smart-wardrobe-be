@@ -63,6 +63,31 @@ type registryStub struct {
 	// a test can assert that the version it read is the one compared (FR-055) rather
 	// than only that the call happened.
 	closeVersions []int
+
+	// ---- the update side (026 T052/T056) ----
+	//
+	// The update stub is a CONDITIONAL statement rather than a recorder, for the same
+	// reason the close one is: `UPDATE ... WHERE code = ? AND version = ?` reports zero
+	// rows for both "no such code" and "wrong version", and FR-055's 412 is produced
+	// from that report. A stub that simply returned true would make the 412
+	// unreachable and the whole optimistic-concurrency mechanism untested.
+	updateErr error
+	// updateVersions records every `expectedVersion` handed to `Update`, so a test can
+	// assert the CLIENT's version was compared rather than the row's.
+	updateVersions []int
+	// granted drives `ExistsClaims` — FR-020's "has this campaign granted at least
+	// once". A set rather than a bool because one fixture may hold several campaigns.
+	granted map[string]bool
+	// ledgerReads records every campaign code `ExistsClaims` was asked about, and
+	// `claimsErr` makes that read fail.
+	//
+	// BOTH EXIST FOR ONE ASSERTION: FR-023 says a window-only edit stays legal on a
+	// campaign that has already granted, so the implementation must consult the
+	// ledger ONLY when a budget column moves. In production that read is an `EXISTS`
+	// round trip on a campaign's whole lifetime of grants, so "it did not read" is a
+	// claim about a query, not about a bool.
+	ledgerReads []string
+	claimsErr   error
 }
 
 func (s *registryStub) Create(_ context.Context, campaign *entities.Campaign) error {
@@ -119,8 +144,42 @@ func (s *registryStub) GetByCodeForShare(ctx context.Context, campaignCode strin
 	return s.GetByCode(ctx, campaignCode)
 }
 
-func (s *registryStub) Update(context.Context, *entities.Campaign, int) (bool, error) {
-	return false, nil
+func (s *registryStub) Update(_ context.Context, campaign *entities.Campaign, expectedVersion int) (bool, error) {
+	s.updateVersions = append(s.updateVersions, expectedVersion)
+	if s.updateErr != nil {
+		return false, s.updateErr
+	}
+	stored, ok := s.rows[campaign.Code]
+	if !ok || stored.Version != expectedVersion {
+		return false, nil
+	}
+	copied := *campaign
+	// The version is bumped BY THE STUB, exactly as `Close` bumps it, because the
+	// statement computes `version + 1` inside PostgreSQL. A stub that let the caller
+	// write the increment would hide a use case that forgot to pass the right
+	// expected version.
+	copied.Version = stored.Version + 1
+	s.rows[campaign.Code] = &copied
+	return true, nil
+}
+
+// ExistsClaims answers FR-020's condition from the `granted` set a test seeds, and
+// records that it was asked — see `ledgerReads` above for why that matters.
+func (s *registryStub) ExistsClaims(_ context.Context, campaignCode string) (bool, error) {
+	s.ledgerReads = append(s.ledgerReads, campaignCode)
+	if s.claimsErr != nil {
+		return false, s.claimsErr
+	}
+	return s.granted[campaignCode], nil
+}
+
+// markGranted states that the campaign has at least one claim, which is what makes
+// its budget immutable (FR-020).
+func (s *registryStub) markGranted(campaignCode string) {
+	if s.granted == nil {
+		s.granted = map[string]bool{}
+	}
+	s.granted[campaignCode] = true
 }
 
 // Close reproduces the repository's conditional statement: one row changes only when
@@ -145,8 +204,6 @@ func (s *registryStub) Close(_ context.Context, campaignCode string, expectedVer
 	s.rows[campaignCode] = &copied
 	return true, nil
 }
-
-func (s *registryStub) ExistsClaims(context.Context, string) (bool, error) { return false, nil }
 
 var _ repositories.ICampaignRepository = (*registryStub)(nil)
 
