@@ -269,24 +269,31 @@ làm ngược, binary mới đọc bảng chưa tồn tại và không cấp gó
 
 ### Câu 6 — Cơ chế chọn chiến dịch (FR-011) khi nguồn là CSDL
 
-**Truy vấn.** CSDL trả về **tập chiến dịch còn thức** bằng **một** câu, không có `LIMIT` và không có vế
+**Truy vấn.** CSDL trả về **tập chiến dịch còn mở** bằng **một** câu, không có `LIMIT` và không có vế
 `registered_at`:
 ```sql
 SELECT * FROM subscription.campaigns
 WHERE closed_at IS NULL
-  AND starts_at <= :now
-  AND (ends_at IS NULL OR :now < ends_at)
 ORDER BY starts_at DESC, code DESC;
 ```
-Hai vế đầu dùng `now` — đó là câu hỏi "chiến dịch còn **thức** không" (`isAwake`).
+SQL chỉ lọc `closed_at`. **Cửa sổ thời gian `starts_at`/`ends_at` KHÔNG nằm ở SQL** — xem
+"Phân công" bên dưới.
 
-**Ai làm gì — phân công trách nhiệm rõ ràng, mỗi việc đúng một nơi:**
+**Phân công trách nhiệm rõ ràng, mỗi việc đúng một nơi:**
 
 | Việc | Nơi thực hiện |
 |---|---|
-| Lọc "còn thức" theo `now` | SQL (vế `closed_at` + hai vế cửa sổ trên `now`) |
+| Lọc `closed_at IS NULL` | **SQL** (`ListOpen`) |
+| Lọc "còn **thức**" theo `now` (hai vế cửa sổ) | **bộ đánh giá thuần** (`isAwake`) |
 | Lọc "tài khoản có nằm trong cửa sổ của chiến dịch không" theo `registered_at` | **bộ đánh giá thuần** |
-| Chọn `starts_at` lớn nhất, tie-break `code DESC` | **bộ đánh giá thuần** |
+| Chọn `starts_at` lớn nhất, tie-break `code DESC` | **bộ đánh giá thuần** (thứ tự vẫn được SQL sắp sẵn) |
+
+> **Hiệu chỉnh (lộ ra ở vòng hội tụ lần 2).** Bản soạn đầu in cả hai vế cửa sổ vào SQL và gán
+> "lọc còn thức theo `now`" cho SQL. Điều đó **không khớp mã đã viết**: `ListOpen` chỉ lọc
+> `closed_at IS NULL` (`campaign_repo_impl.go:57-60`, và `campaign_repo.go:73` nêu rõ điều kiện
+> này bằng văn xuôi), cũng không khớp `research.md` R9. Quyết định đã chốt là **cửa sổ nằm ở bộ
+> đánh giá thuần**, nên văn xuôi ở đây sai và câu chữ đã sửa cho khớp. Hệ quả của quyết định này
+> được ghi ở §11.3 và `deferred.md` D-04.
 
 **Vì sao tách vậy.** Vế `registered_at` nằm ở bộ đánh giá chứ không ở SQL, là để giữ nguyên tính
 thuần của điều kiện 1–7 của 025: nó nhận danh sách hàng và **không** tự truy vấn, nên vẫn kiểm thử
@@ -969,7 +976,7 @@ tạo một tài khoản mới và chứng minh **không** có dòng `campaign_c
 > `reason = campaign_sleeping`. Mã đó **không quan sát được** trên đường thông điệp với sổ chỉ có
 > chiến dịch đã đóng: `ListOpen` lọc `closed_at IS NULL`, nên tập ứng viên thức rỗng và **điều kiện 1**
 > trả `campaign_not_configured` trước khi tới bất kỳ kiểm tra nào về chiến dịch. Đây là hệ quả trực tiếp
-> của quyết định đặt cửa sổ ở bộ đánh giá thuần (A-1), không phải hồi quy.
+> của quyết định đặt cửa sổ ở **bộ đánh giá thuần** (xem Câu 6 và `research.md` R9), không phải hồi quy.
 >
 > Phần đảm bảo được giữ nguyên và là phần quan trọng: **0 dòng cấp**. Mã `campaign_sleeping` của 025 vẫn
 > còn đúng nghĩa và còn được chứng minh ở **tầng bộ đánh giá** cho một chiến dịch *có mặt* nhưng không
