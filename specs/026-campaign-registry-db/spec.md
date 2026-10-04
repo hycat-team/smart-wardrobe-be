@@ -972,16 +972,29 @@ tài khoản trở lên MUST đặt `email.enabled: false` (hoặc `EMAIL_ENABLE
 Là phần bước 3–5 của V1, tách riêng để chạy độc lập: trên một chiến dịch đã `closed_at IS NOT NULL`,
 tạo một tài khoản mới và chứng minh **không** có dòng `campaign_claims` nào sinh ra cho tài khoản đó.
 
-> **Hiệu chỉnh so với bản soạn đầu (lộ ra ở vòng hội tụ, sửa tại đây).** Bản gốc yêu cầu
-> `reason = campaign_sleeping`. Mã đó **không quan sát được** trên đường thông điệp với sổ chỉ có
-> chiến dịch đã đóng: `ListOpen` lọc `closed_at IS NULL`, nên tập ứng viên thức rỗng và **điều kiện 1**
-> trả `campaign_not_configured` trước khi tới bất kỳ kiểm tra nào về chiến dịch. Đây là hệ quả trực tiếp
-> của quyết định đặt cửa sổ ở **bộ đánh giá thuần** (xem Câu 6 và `research.md` R9), không phải hồi quy.
+> **Hiệu chỉnh so với bản soạn đầu (lộ ra ở vòng hội tụ, rồi **đo lại trên CSDL thật**).**
 >
-> Phần đảm bảo được giữ nguyên và là phần quan trọng: **0 dòng cấp**. Mã `campaign_sleeping` của 025 vẫn
-> còn đúng nghĩa và còn được chứng minh ở **tầng bộ đánh giá** cho một chiến dịch *có mặt* nhưng không
-> thức (`TestEvaluatorExcludesForceClosedCampaigns`), cũng như trên đường tra cứu theo mã khi sổ còn
-> chiến dịch khác chưa đóng. Không thay đổi tập 12 mã `reason`.
+> Bản gốc yêu cầu `reason = campaign_sleeping`. Mã đó **không quan sát được** trên đường thông điệp với
+> sổ chỉ có chiến dịch đã đóng: `ListOpen` lọc `closed_at IS NULL`, nên danh sách đưa vào bộ đánh giá
+> **rỗng**, và **điều kiện 1** trả `campaign_not_configured` (`admission_uc.go:81-82`) trước khi tới bất kỳ
+> kiểm tra nào về chiến dịch.
+>
+> **Đo thực nghiệm (V1+V2 trên dev stack, 04/10/2026) đã lộ thêm một điều mà bản hiệu chỉnh đầu sai.**
+> Đường **tra cứu theo mã** *không* dùng chung `evaluate()`: nó tự chọn ứng viên và khi không ra
+> ứng viên nào thì gán `outside_window` (`campaign_query_claims_uc.go:214`). Quan sát được:
+>
+> | Chiến dịch | `eligibility` | `reason` |
+> |---|---|---|
+> | `verify-026` (đã đóng cưỡng bức) | `not_eligible` | **`outside_window`** |
+> | `launch-2026-10` (còn mở, hết quota) | `eligible_but_exhausted` | **`quota_main`** |
+>
+> Nên câu "tra cứu theo mã trả `campaign_sleeping`" là **sai** và đã bị gỡ khỏi cả `quickstart.md`.
+> Bảng trên là bằng chứng máy đọc được, không phải suy luận.
+>
+> Phần đảm bảo được giữ nguyên và là phần quan trọng: **0 dòng cấp**. Mã `campaign_sleeping` vẫn còn
+> đúng nghĩa và còn được chứng minh ở **tầng bộ đánh giá** cho một chiến dịch *có mặt* nhưng đã qua
+> `ends_at` (`TestEvaluatorExcludesForceClosedCampaigns`) — nhưng **không** phải vì đã đóng cưỡng bức.
+> Không thay đổi tập 12 mã `reason`.
 
 ### 11.4 V3 — Bất biến ngân sách
 

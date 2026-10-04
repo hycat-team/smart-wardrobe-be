@@ -163,7 +163,9 @@ và worker quét bù vẫn lên lịch như 025.
    ```powershell
    $body = @{
      code = 'verify-026'; planSlug = 'premium-monthly'; quota = 2; reserve = 0
-     startsAt = '2020-01-01T00:00:00+07:00'; endsAt = $null
+     # MUST be later than the seeded launch-2026-10 (2026-10-02) and not in the
+     # future. See the warning at step 5 - 2020-01-01 never wins FR-040.
+     startsAt = '2026-10-03T00:00:00+07:00'; endsAt = $null
    } | ConvertTo-Json
    Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/v1/admin/campaigns' `
      -Headers @{ Authorization = 'Bearer <token>' } -ContentType 'application/json' -Body $body
@@ -180,11 +182,28 @@ và worker quét bù vẫn lên lịch như 025.
 
 4. Đăng ký một tài khoản mới thứ hai.
 5. **Điều kiện đạt**:
-   - Bước 2: tài khoản nhận gói.
-   - Bước 4: tài khoản **không** nhận gói. **Xem hiệu chỉnh V2 bên dưới** về mã `reason` quan sát
-     được trên đường thông điệp.
+   - Bước 2: tài khoản nhận gói. **Đã đo:** claim ghi vào `verify-026`, `plan_slug = premium-monthly`,
+     `grant_bucket = main`, và `user_subscriptions.current_plan_code` chuyển sang `premium-monthly`.
+   - Bước 4: tài khoản **không** nhận gói **từ `verify-026`**. **Đừng** viết điều kiện này là
+     "tài khoản không nhận gói" — xem cảnh báo ngay dưới.
    - Trong **suốt** quá trình **không** có commit/tag/deploy nào.
    - Từ bước 3, `GET /api/v1/admin/campaigns/verify-026` trả `status = "closed"`, `closedAt` khác null.
+
+> **`startsAt` PHẢI LỚN HƠN HÀNG SEED, VÀ ≤ HIỆN TẠI.** Bản soạn đầu dùng `2020-01-01`, và nó **không
+> dùng được** trên bất kỳ DB nào đã áp migration seed: FR-040 chọn chiến dịch có `starts_at` **lớn
+> nhất**, mà seed `launch-2026-10` có `starts_at = 2026-10-02`. `verify-026` với `2020` sẽ **không bao
+> giờ** được chọn, và tài khoản ở bước 2 sẽ bị đánh giá **mỗi lần với hàng seed** — V1 xanh vì lý do
+> sai. Dùng ngày **sau** seed và **không vượt quá** hiện tại, ví dụ `2026-10-03T00:00:00+07:00`.
+>
+> Đây là **cùng loại lỗi** với cái đã sửa ở T081: hàng seed đè lên dữ liệu kiểm thử. Ở đây nó nằm
+> trong quy trình kiểm chứng, mà trước đó không ai chạy được nên không ai thấy.
+>
+> **⚠️ BƯỚC 4 XANH VÌ LÝ DO SAI NẾU CHỈ ĐỌC HỒ SƠ.** Khi `verify-026` đã đóng, nó bị `ListOpen` loại
+> khỏi ứng viên, và đường cấp gói **rơi xuống chiến dịch kế tiếp**. Trên DB có seed, đó là
+> `launch-2026-10` — và nó sẽ cấp cho tài khoản thứ hai **nếu còn quota**. Trên DB đo được, nó đã hết
+> quota (`quota_main`), nên bước 4 xanh **không phải nhờ `close`**. Vì vậy điều kiện đạt phải là
+> **campaign-scoped**: "0 claim từ `verify-026`". Muốn chứng minh FR-031 thật sự thì phải làm một
+> biến thể: cho hết quota `launch-2026-10` **không** liên quan, và so sánh với lúc chiến dịch còn mở.
 
 ### V2 — Chiến dịch đã đóng **không cấp gói cho tài khoản mới** (bắt buộc)
 
@@ -192,18 +211,23 @@ Trên một chiến dịch đã `closed_at IS NOT NULL`:
 1. Tạo một tài khoản mới.
 2. **Điều kiện đạt**: **0** dòng `campaign_claims` mới cho tài khoản đó; API tra cứu trả
    `eligibility = "not_eligible"`.
-3. **Ghi chú về mã `reason`** — đọc trước khi chạy, nếu không sẽ dễ kết luận sai:
-   - Trên **đường thông điệp**, với sổ chỉ có chiến dịch đã đóng, mã quan sát được là
-     **`campaign_not_configured`**, **không** phải `campaign_sleeping`. Lý do: `ListOpen` lọc
-     `closed_at IS NULL`, nên tập ứng viên thức rỗng và **điều kiện 1** trả về trước khi tới kiểm tra
-     chiến dịch.
-   - Mã `campaign_sleeping` của 025 là mã của **tầng bộ đánh giá** cho một chiến dịch *có mặt* nhưng
-     không thức. Muốn quan sát nó trên CSDL thật thì sổ phải còn **một** chiến dịch khác chưa đóng và
-     chưa thức — thiết lập mà bản V1 này không dựng.
-   - Dù bất kỳ mã nào, **điều kiện đạt cốt lõi là 0 dòng cấp**. Nếu bạn cần `campaign_sleeping` thì hãy
-     kiểm tra bằng `TestEvaluatorExcludesForceClosedCampaigns` thay vì bằng quickstart.
-   - Lý do lịch sử: bản soạn đầu của V2 yêu cầu `campaign_sleeping`; yêu cầu đó không quan sát được và
-     đã được hiệu chỉnh ở `spec.md` §11.3.
+3. **Ghi chú về mã `reason`** — đọc trước khi chạy, nếu không sẽ dễ kết luận sai. **Toàn bộ mục này
+   viết lại từ kết quả đo thực tế**, không phải từ suy luận:
+   - **Đường tra cứu theo mã** (`/eligibility/{userId}`) cho chiến dịch đã đóng trả
+     **`outside_window`**, **không phải** `campaign_sleeping`. Đo được:
+     `verify-026 (đã đóng) -> eligibility = not_eligible, reason = outside_window`. Lý do: đường này
+     **không** dùng chung `evaluate()` — nó tự chọn ứng viên và khi không ra ứng viên nào thì gán
+     `outside_window` (`campaign_query_claims_uc.go:214`).
+   - **Đường thông điệp** với sổ chỉ có chiến dịch đã đóng trả **`campaign_not_configured`**: `ListOpen`
+     lọc `closed_at IS NULL`, nên danh sách rỗng và **điều kiện 1** trả về
+     (`admission_uc.go:81-82`).
+   - Nhưng nếu sổ **còn** chiến dịch khác đang mở, tài khoản sẽ **rơi xuống chiến dịch đó** và lý do
+     là của chiến dịch đó — không phải của chiến dịch đã đóng. Đo được:
+     `launch-2026-10 -> eligibility = eligible_but_exhausted, reason = quota_main`.
+   - Mã `campaign_sleeping` của 025 là mã của **tầng bộ đánh giá** cho một chiến dịch *còn mở* nhưng đã
+     qua `ends_at`. Nó **không** dành cho chiến dịch bị đóng cưỡng bức. Kiểm tra bằng
+     `TestEvaluatorExcludesForceClosedCampaigns`, **không** bằng quickstart.
+   - Dù bất kỳ mã nào, **điều kiện đạt cốt lõi là 0 dòng cấp**.
 
 ```sql
 SELECT count(*) FROM subscription.campaign_claims
