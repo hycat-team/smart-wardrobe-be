@@ -60,6 +60,43 @@ type ICampaignRegistryUseCase interface {
 		requestIP *string,
 	) (*sub_dto.CampaignSummaryRes, error)
 
+	// Update edits a campaign that already exists (026 T052, FR-020..FR-023,
+	// FR-055, contract `campaign-registry-api.md` §4).
+	//
+	// IT IS THE OPERATION THAT CARRIES THE FEATURE'S MOST IMPORTANT INVARIANT, and
+	// the interface says so by listing what a client must know before calling it:
+	//
+	//   - the code comes from the PATH and `code` is NOT a body field, because
+	//     FR-024 makes it immutable. `campaign_claims` and `campaign_sweep_runs`
+	//     reference it as text, so a rename orphans a campaign's whole history — a
+	//     body field that had to be rejected would be a second place to ask the
+	//     question the URL already answers;
+	//   - `version` is REQUIRED, and a version that moved is 412. That is the whole
+	//     point: two administrators editing one campaign must produce one winner
+	//     and one refusal, never a silent overwrite;
+	//   - 404 IS ANSWERED BEFORE 412 IS CONSIDERED, because
+	//     `UPDATE ... WHERE code = ? AND version = ?` reports zero rows for BOTH
+	//     "no such code" and "wrong version" and an operator who mistyped a code
+	//     must not be told to reload a campaign that does not exist;
+	//   - a PATCH THAT CHANGES NOTHING IS A NO-OP: 200, no write, no version bump,
+	//     no audit row (FR-055, US3 scenario 4). A screen that resubmits an
+	//     unchanged form must not manufacture a history entry for a change that did
+	//     not happen;
+	//   - `planSlug`, `quota` and `reserve` are refused with 422 once the campaign
+	//     has granted at least once (FR-020/FR-021), with a message that names the
+	//     way out — close this code and open a new one.
+	//
+	// THE RESPONSE IS THE SAME `CampaignSummaryRes` the read endpoints return, and
+	// its `version` is the one the write PRODUCED rather than the one the request
+	// carried, so the next edit from the same screen is never stale by construction.
+	Update(
+		ctx context.Context,
+		actorAdminID uuid.UUID,
+		campaignCode string,
+		req *sub_dto.CampaignUpdateReq,
+		requestIP *string,
+	) (*sub_dto.CampaignSummaryRes, error)
+
 	// Close force-closes a campaign and is ONE-WAY (FR-030/FR-031/FR-034, contract
 	// `campaign-registry-api.md` §5).
 	//
@@ -89,16 +126,14 @@ type ICampaignRegistryUseCase interface {
 	) (*sub_dto.CampaignSummaryRes, error)
 }
 
-// `Update` IS NOT HERE YET, AND THAT IS ITS OWN STATEMENT.
+// `Update` WAS THE LAST METHOD MISSING, AND IT IS HERE NOW (026 T052).
 //
-// This interface was introduced by Phase 3 (US1) with `Create` alone and completed
-// by Phase 4 (US2, `Close`). `Update` arrives with US3 (T052), and it will be
-// declared HERE, in this interface, when it is implemented.
-//
-// Declaring a method no code implements would mean the concrete use case could not
-// satisfy its own interface, so the constructor could not return it and Wire could
-// not wire it — a build failure invented by an interface that was honest about its
-// own future. The point of an interface in this codebase is that the presentation
-// layer depends on the SET OF OPERATIONS IT MAY PERFORM, so an operator interface
-// that listed an edit nobody could invoke would be a promise the router does not
-// keep.
+// This interface was introduced by Phase 3 (US1) with `Create` alone, completed by
+// Phase 4 (US2, `Close`) and finished by Phase 5 (US3, `Update`). The declaration
+// deliberately arrived WITH the implementation rather than before it: a method no
+// code implements would mean the concrete use case could not satisfy its own
+// interface, so the constructor could not return it and Wire could not wire it — a
+// build failure invented by an interface that was honest about its own future. The
+// point of an interface in this codebase is that the presentation layer depends on
+// the SET OF OPERATIONS IT MAY PERFORM, so an operator interface that listed an
+// edit nobody could invoke would be a promise the router does not keep.

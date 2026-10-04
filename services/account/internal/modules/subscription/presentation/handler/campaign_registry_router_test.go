@@ -75,6 +75,51 @@ type registryStub struct {
 	lastCloseReq  *sub_dto.CampaignCloseReq
 	closeResult   *sub_dto.CampaignSummaryRes
 	closeErr      error
+
+	// ---- the update side (026 T053/T058) ----
+	//
+	// SEPARATE FIELDS AGAIN, for the same reason as the close's: an edit carries the
+	// code in the PATH and its own body shape, and sharing `err` with either
+	// operation would make a test reach for the wrong field to script its refusal.
+	updateCalls int
+	// lastUpdateCode is asserted for the same reason as `lastCloseCode`:
+	// `CampaignUpdateReq` has NO `code` field (FR-024), so the URL segment is the only
+	// way a code can reach this method.
+	lastUpdateCode string
+	lastUpdateReq  *sub_dto.CampaignUpdateReq
+	updateResult   *sub_dto.CampaignSummaryRes
+	updateErr      error
+}
+
+// Update records the edit and answers from the script.
+//
+// `version` is echoed into the default result on purpose: FR-055 says the response
+// carries the version the write PRODUCED, and a stub that always answered
+// `version: 1` would let a handler that echoed the request pass every test here.
+func (s *registryStub) Update(
+	_ context.Context,
+	actorAdminID uuid.UUID,
+	campaignCode string,
+	req *sub_dto.CampaignUpdateReq,
+	requestIP *string,
+) (*sub_dto.CampaignSummaryRes, error) {
+	s.updateCalls++
+	s.lastActor = actorAdminID
+	s.lastIP = requestIP
+	s.lastUpdateCode = campaignCode
+	copied := *req
+	s.lastUpdateReq = &copied
+	if s.updateErr != nil {
+		return nil, s.updateErr
+	}
+	if s.updateResult != nil {
+		return s.updateResult, nil
+	}
+	return &sub_dto.CampaignSummaryRes{
+		Code:         campaignCode,
+		Version:      req.Version + 1,
+		BudgetLocked: false,
+	}, nil
 }
 
 func (s *registryStub) Create(
@@ -153,6 +198,12 @@ func registryEngine(
 		// "/:code/close"` is the shape that panics at startup when it is wrong, and
 		// only registering both proves it does not.
 		campaigns.POST("/:code/close", limiter.Handle(), shared_pres.WrapHandler(h.Close))
+		// 026 T058: the edit route. It is registered in THIS engine, on the same group
+		// with the same middleware, because the Gin tree is the subject: `PATCH
+		// "/:code"` beside `POST "/:code/close"` is a parameter registered beside a
+		// parameter, and only building the real tree proves the R11 conflict (a static
+		// segment beside a parameter) is still absent.
+		campaigns.PATCH("/:code", limiter.Handle(), shared_pres.WrapHandler(h.Update))
 	}
 	return engine
 }

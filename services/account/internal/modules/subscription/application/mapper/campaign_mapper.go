@@ -82,9 +82,17 @@ type CampaignGrantCounts struct {
 //
 // NOTHING ELSE IS SET. `PlanName`, `Degraded`, `DegradedReason` and `LastSweepAt` are
 // filled by the caller because each needs a table this mapper must not know about —
-// the plan catalogue, the sweep health table — and `budgetLocked`/`version` arrive
-// with the next read-API phase (T050). A mapper that went looking for them would
-// turn one pure conversion into a fan-out of four queries.
+// the plan catalogue, the sweep health table — and a mapper that went looking for
+// them would turn one pure conversion into a fan-out of four queries.
+//
+// `budgetLocked` AND `version` ARE SET HERE (026 T050), and for opposite reasons.
+// `version` is a property of the ROW, so copying it is the only thing that can be
+// correct — and copying the row rather than echoing the caller's request is what
+// makes the response carry the version the write actually produced (FR-055).
+// `budgetLocked` is a property of the COUNTS, and the counts are already an
+// argument: deriving it from them rather than reading a column is what makes the
+// flag incapable of disagreeing with the two numbers an operator reads it beside,
+// and it is why no `budget_locked` column was added (data-model.md §2.1).
 func MapCampaignSummaryRes(
 	campaign *entities.Campaign,
 	counts CampaignGrantCounts,
@@ -120,7 +128,19 @@ func MapCampaignSummaryRes(
 		// so copying it here is what keeps the read endpoints and the write endpoints
 		// showing the same closure instant — and nil here genuinely means "never
 		// force-closed", because `closed_at` is nullable for exactly that reason.
-		ClosedAt:    campaign.ClosedAt,
+		ClosedAt: campaign.ClosedAt,
+		// FR-020's condition, spelled exactly as the spec states it: immutable as
+		// soon as AT LEAST ONE claim exists. Both buckets count, because a campaign
+		// whose main budget filled and whose reserve then paid out has granted from
+		// both — and reading only the main count would leave such a campaign
+		// editable, which is precisely the corruption the immutability exists to
+		// prevent (data-model.md §2.2: `EXISTS` over `campaign_claims`, no bucket
+		// filter).
+		BudgetLocked: grantedTotal > 0,
+		// FR-055: the token is the ROW's, never the caller's. On a write response
+		// this is therefore the version the `UPDATE` produced, which is the only
+		// value the client's next write may legitimately send.
+		Version:     campaign.Version,
 		WatermarkAt: watermarkAt,
 		Status:      status,
 	}

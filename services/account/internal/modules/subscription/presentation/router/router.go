@@ -199,6 +199,24 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		// administrator budget as the other writes is what stops a retry loop from
 		// spending it twice.
 		adminCampaigns.POST("/:code/close", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignRegistryHandler.Close))
+		// 026 T053 (FR-020..FR-024, FR-055): the edit endpoint.
+		//
+		// `PATCH "/:code"` REUSES THE SAME PARAMETER SEGMENT the read routes use, and
+		// that is deliberate rather than incidental: a second parameter name for the
+		// same value would be a second binding answer to "which campaign", and the
+		// handler binds ONE `campaignPathParams` for all of them (contract §4).
+		//
+		// REGISTERED BESIDE `POST "/:code/close"` AND NOT BESIDE A STATIC SEGMENT, which
+		// is the whole R11 trap: Gin panics at startup when a static path segment is
+		// registered beside a parameter at the same level. `PATCH "/:code"` adds no
+		// static segment, so the group stays valid — and
+		// `campaign_route_registration_test.go` calls the real `Init` so a regression is
+		// a `go test` failure instead of a service that refuses to boot.
+		//
+		// THE SAME `RolesAuthorize` AND THE SAME LIMITER, inherited from the group
+		// (FR-053). An edit moves the budget a campaign is still allowed to hand out,
+		// which makes it as consequential as the close.
+		adminCampaigns.PATCH("/:code", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignRegistryHandler.Update))
 	}
 }
 

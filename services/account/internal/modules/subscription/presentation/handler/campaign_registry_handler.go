@@ -37,6 +37,11 @@ const (
 	// is now closed would be a claim about the FUTURE of a one-way operation whose
 	// whole meaning is that it cannot be taken back (FR-034).
 	successAdminCloseCampaign = "Đã xử lý yêu cầu đóng chiến dịch."
+	// successAdminUpdateCampaign is worded like the other two, and for the same reason:
+	// the response beside it reports a `version` that just moved, so a message
+	// claiming "the campaign has been updated" would describe an instant the client
+	// has not seen yet. It says the REQUEST was processed, which is what happened.
+	successAdminUpdateCampaign = "Đã xử lý yêu cầu cập nhật chiến dịch."
 )
 
 // CampaignRegistryHandler serves the three campaign write endpoints.
@@ -100,6 +105,66 @@ func (h *CampaignRegistryHandler) Create(c *gin.Context) error {
 	// answers 200 for everything else, so the distinction survives the refactor that
 	// would otherwise replace it.
 	shared_pres.Created(c, successAdminCreateCampaign, summary)
+	return nil
+}
+
+// Update
+// @Summary Sửa một chiến dịch đang tồn tại
+// @Description Sửa planSlug/quota/reserve khi chiến dịch chưa cấp gói cho ai, và sửa startsAt/endsAt bất kể đã cấp hay chưa. Trả 404 khi mã không tồn tại (trước cả khi so phiên bản), 422 khi chiến dịch đã cấp mà thân có đổi planSlug/quota/reserve, 412 khi phiên bản lệch, và 200 no-op (không ghi, không tăng phiên bản, không ghi nhật ký) khi không trường nào đổi.
+// @Tags Admin Campaign
+// @Accept json
+// @Produce json
+// @Param code path string true "Mã chiến dịch"
+// @Param body body sub_dto.CampaignUpdateReq true "Phiên bản mong đợi và các trường cần sửa"
+// @Success 200 {object} shared_pres.APIResponse{data=sub_dto.CampaignSummaryRes}
+// @Failure 400 {object} shared_pres.APIResponse
+// @Failure 403 {object} shared_pres.APIResponse
+// @Failure 404 {object} shared_pres.APIResponse
+// @Failure 412 {object} shared_pres.APIResponse
+// @Failure 422 {object} shared_pres.APIResponse
+// @Failure 429 {object} shared_pres.APIResponse
+// @Router /api/v1/admin/campaigns/{code} [patch]
+func (h *CampaignRegistryHandler) Update(c *gin.Context) error {
+	// The SAME `campaignPathParams` the read routes and `Close` bind: `Code` is
+	// required identically on all of them, and a second declaration would be a second
+	// answer to "what does a missing code look like".
+	//
+	// AND IT IS THE ONLY PLACE THE CODE EXISTS. `code` is immutable after creation
+	// (FR-024), so `CampaignUpdateReq` has no such field: a body that could contradict
+	// the URL would have ambiguous authority, and the body value would be silently
+	// ignored here.
+	var params campaignPathParams
+	if err := validation.BindURI(c, &params); err != nil {
+		return err
+	}
+
+	var req sub_dto.CampaignUpdateReq
+	if err := validation.BindJSON(c, &req); err != nil {
+		return err
+	}
+
+	// FR-060, for the same reason `Create` and `Close` do it: the audit row has to
+	// name WHO changed the campaign, and an unidentified administrator would leave an
+	// edit nobody can be shown to have performed.
+	actorAdminID, err := contextutils.GetUserId(c)
+	if err != nil || actorAdminID == uuid.Nil {
+		return apperror.NewUnauthorized("Vui lòng đăng nhập để thực hiện thao tác quản lý chiến dịch.")
+	}
+
+	// FR-060: the request IP makes a disputed edit traceable to a connection and not
+	// only to an account.
+	clientIP := c.ClientIP()
+
+	summary, err := h.registry.Update(c.Request.Context(), actorAdminID, params.Code, &req, &clientIP)
+	if err != nil {
+		return err
+	}
+
+	// 200, INCLUDING for the no-op (FR-055's exception, contract §4.4). The handler
+	// cannot tell a no-op from a real edit and does not need to: the state the
+	// operator asked for is the state the response describes, and the body carries the
+	// version the row actually has so the next edit from this screen is not stale.
+	shared_pres.Success(c, successAdminUpdateCampaign, summary)
 	return nil
 }
 
