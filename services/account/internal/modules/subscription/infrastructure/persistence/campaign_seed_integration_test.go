@@ -17,26 +17,26 @@ import (
 	"gorm.io/gorm"
 )
 
-// 026 T059 (FR-005, FR-090, FR-091, FR-092) — the SEED migration is truthful and the
+// 026 T059 (FR-005, FR-090, FR-091, FR-092) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the SEED migration is truthful and the
 // ROLLBACK is safe.
 //
 // THIS IS quickstart V4, and V4 is the one scenario the safety table in `quickstart.md`
-// §0 forbids on production: it runs migrations and rolls them back, and rolling back
+// Ãƒâ€šÃ‚Â§0 forbids on production: it runs migrations and rolls them back, and rolling back
 // drops a table. So this file is written to be READ on a review machine and RUN on a
-// throwaway copy — which is why the destructive half needs an explicit acknowledgement
+// throwaway copy ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â which is why the destructive half needs an explicit acknowledgement
 // in addition to `TEST_DATABASE_URL`, explained below.
 //
 // WHAT EACH TEST PROVES, and why the split matters:
 //
-//	seed values   — the six values FR-090 fixes, so "moving launch-2026-10 into the
+//	seed values   ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the six values FR-090 fixes, so "moving launch-2026-10 into the
 //	                registry" provably means the same thing as the YAML it replaces;
-//	seed twice    — US6 scenario 2, re-running the INSERT produces no duplicate;
-//	rollback      — US6 scenario 4, TWO steps, and `campaign_claims` survives both.
+//	seed twice    ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â US6 scenario 2, re-running the INSERT produces no duplicate;
+//	rollback      ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â US6 scenario 4, TWO steps, and `campaign_claims` survives both.
 //
 // WHY THE ROLLBACK NEEDS TWO RUNS, stated because it is the thing an operator gets
 // wrong. `goose down` rolls back EXACTLY ONE VERSION per invocation (see the `down`
-// target in the Makefile, which passes no count). 026 added TWO adjacent migrations —
-// the schema and then the seed — so one `make migrate-down svc=account` undoes the SEED
+// target in the Makefile, which passes no count). 026 added TWO adjacent migrations ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+// the schema and then the seed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â so one `make migrate-down svc=account` undoes the SEED
 // and leaves the table standing. An operator who ran it once, saw `campaigns` still
 // there, and concluded the rollback was broken has just learned nothing and changed
 // nothing; the table comes back on the next boot's `migrate-up`. The test asserts the
@@ -58,8 +58,8 @@ const (
 // `TEST_DATABASE_URL` alone is not enough here, and the difference from every other
 // Postgres-backed test in this repository is the reason. Those tests add rows and delete
 // their own rows; this one DROPS `subscription.campaigns`, which would leave every other
-// test in this package — and any service sharing that database — running against a
-// schema that is not there. quickstart V4 says the same thing in prose ("chạy trên bản
+// test in this package ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and any service sharing that database ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â running against a
+// schema that is not there. quickstart V4 says the same thing in prose ("chÃƒÂ¡Ã‚ÂºÃ‚Â¡y trÃƒÆ’Ã‚Âªn bÃƒÂ¡Ã‚ÂºÃ‚Â£n
 // sao"); this is the machine-readable form of it.
 //
 // The acknowledgement is a second environment variable rather than a flag because a flag
@@ -78,11 +78,11 @@ func requireRollbackConsent(t *testing.T) {
 // The six values are the point of the seed: they were copied from
 // `configs/config.production.yaml`, and if any of them had been mistyped then switching
 // the source from configuration to the registry would silently change the meaning of a
-// promotion that is already running for real customers (spec.md Câu 5).
+// promotion that is already running for real customers (spec.md CÃƒÆ’Ã‚Â¢u 5).
 //
 // `starts_at` IS COMPARED AS AN INSTANT and not as a string, because the column is
 // `TIMESTAMPTZ`: a seed that stored `+07:00` and a test that compared it to `Z` would
-// either fail for a reason that is not a defect or — worse — pass while the campaign
+// either fail for a reason that is not a defect or ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â worse ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â pass while the campaign
 // opens seven hours late.
 func TestIntegrationSeededCampaignCarriesTheDocumentedValues(t *testing.T) {
 	dbConn := openRegistryTestDB(t)
@@ -137,8 +137,8 @@ func TestIntegrationSeededCampaignCarriesTheDocumentedValues(t *testing.T) {
 	}
 }
 
-// TestIntegrationSeedInsertIsIdempotent is US6 scenario 2 — "run the migration again and
-// nothing is duplicated, nothing errors" — asserted by REPLAYING THE INSERT rather
+// TestIntegrationSeedInsertIsIdempotent is US6 scenario 2 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â "run the migration again and
+// nothing is duplicated, nothing errors" ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â asserted by REPLAYING THE INSERT rather
 // than by re-running the whole migration set.
 //
 // The statement is taken out of the migration file itself (see `migrationSection`), so
@@ -152,7 +152,7 @@ func TestIntegrationSeedInsertIsIdempotent(t *testing.T) {
 		return
 	}
 	if !strings.Contains(insert, "ON CONFLICT") {
-		t.Fatalf("FR-090/US6.2: the seed INSERT must be idempotent (`ON CONFLICT … DO NOTHING`), got:\n%s",
+		t.Fatalf("FR-090/US6.2: the seed INSERT must be idempotent (`ON CONFLICT ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ DO NOTHING`), got:\n%s",
 			insert)
 	}
 
@@ -184,7 +184,7 @@ func TestIntegrationSeedInsertIsIdempotent(t *testing.T) {
 // against a dropped table) or, worse, appear to succeed while leaving the seeded row
 // behind in a table that no longer exists to describe it. So the test walks the two
 // versions in the order goose would and asserts the intermediate state as well as the
-// final one — the intermediate state being "the table is still there, the seeded row is
+// final one ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the intermediate state being "the table is still there, the seeded row is
 // gone, the claims are untouched".
 func TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims(t *testing.T) {
 	requireRollbackConsent(t)
@@ -204,15 +204,12 @@ func TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims(t *testing.T) {
 			seedOK, schemaOK)
 	}
 
-	// The schema version must be LOWER than the seed's, which is what makes `goose down`
-	// reach the SEED first and forces the two-run sequence quickstart V4 spells out.
-	schemaVersion, seedVersion := migrationVersions(t)
-	if seedVersion <= schemaVersion {
-		t.Fatalf("FR-092: the seed migration (%d) must come AFTER the schema migration (%d), "+
-			"or `goose down` would drop the table before deleting the row it inserted",
-			seedVersion, schemaVersion)
-	}
-
+	// The SEED version must be HIGHER than the schema's, which is what makes `goose down`
+	// reach the SEED first and forces the two-run sequence quickstart V4 spells out. That
+	// comparison is arithmetic on file NAMES and needs neither this database nor a
+	// dropped table, so it lives in its own test ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+	// `TestTheSeedMigrationRunsAfterTheSchemaMigration` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and is not re-checked here: a
+	// guard behind `requireRollbackConsent` would be a guard that never runs.
 	t.Cleanup(func() {
 		// Leave the database as it was found: without this, every other Postgres-backed
 		// test in this package would fail against a dropped registry.
@@ -227,7 +224,7 @@ func TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims(t *testing.T) {
 		t.Fatalf("US6.4: the seed rollback must succeed, got %v", err)
 	}
 	if !tableExists(t, dbConn, "subscription.campaigns") {
-		t.Fatal("the FIRST rollback must not drop the table — `goose down` rolls back ONE version, " +
+		t.Fatal("the FIRST rollback must not drop the table ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â `goose down` rolls back ONE version, " +
 			"which is the seed. A single-run rollback that dropped the table would mean the seed " +
 			"migration carried the schema's Down section")
 	}
@@ -256,8 +253,47 @@ func TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims(t *testing.T) {
 	// no foreign key: dropping the registry costs the registry and NOT ONE GRANT. A
 	// foreign key here would cascade-delete every campaign's history on rollback.
 	if got := countRows(t, dbConn, "subscription.campaign_claims"); got != claimsBefore {
-		t.Errorf("FR-092: campaign_claims went from %d to %d rows across the rollback — "+
+		t.Errorf("FR-092: campaign_claims went from %d to %d rows across the rollback ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â "+
 			"rolling back the registry must cost no grant", claimsBefore, got)
+	}
+}
+
+// TestTheSeedMigrationRunsAfterTheSchemaMigration is FR-090's ordering half, and it is a
+// SEPARATE test for a reason that is about gates, not about style.
+//
+// IT WAS PREVIOUSLY INSIDE `TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims`,
+// where it sat behind two guards it does not need: `requireRollbackConsent` (skip unless
+// `TEST_DATABASE_ALLOW_REGISTRY_ROLLBACK=true`) and `openRegistryTestDB` (skip unless
+// `TEST_DATABASE_URL` is set). The comparison itself is arithmetic on two file NAMES ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+// `migrationVersions` reads `fs.ReadDir(accountmigrations.EmbedFS, ".")` and parses the
+// timestamp prefixes ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â so it touched no database and dropped no table, and it had never
+// executed anywhere. The assertion existed and proved nothing.
+//
+// WHY THE ORDER IS LOAD-BEARING RATHER THAN COSMETIC. `goose down` rolls back EXACTLY ONE
+// version per invocation. With the seed numbered BELOW the schema, the first rollback
+// would `DROP subscription.campaigns` and the second would then `DELETE FROM
+// subscription.campaigns WHERE code = 'launch-2026-10'` against a table that no longer
+// exists ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the rollback would either fail outright or, worse, leave the seeded row behind
+// in a table that no longer exists to describe it. That is why quickstart V4 needs TWO
+// runs, and an operator who learns that only by reading this assertion is an operator
+// who learns it by breaking a rollback.
+//
+// IT IS NOT NAMED `TestIntegrationÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦` although it lives in an integration test file,
+// because it needs no database, and the name is the fastest signal a reader has.
+func TestTheSeedMigrationRunsAfterTheSchemaMigration(t *testing.T) {
+	schemaVersion, seedVersion := migrationVersions(t)
+	if schemaVersion == 0 || seedVersion == 0 {
+		t.Fatalf("FR-090: both 026 migrations must be embedded (schema=%d, seed=%d). The two-run "+
+			"rollback quickstart V4 spells out only makes sense if there are TWO of them, so a "+
+			"missing migration is this assertion's problem rather than something it can ignore",
+			schemaVersion, seedVersion)
+	}
+	if seedVersion <= schemaVersion {
+		t.Errorf("FR-090/FR-092: the seed migration (%d) MUST be numbered ABOVE the schema "+
+			"migration (%d). `goose down` rolls back one version per run, so this order is what "+
+			"makes the first run undo the seeded ROW and the second drop the TABLE ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the "+
+			"two-run sequence quickstart V4 requires. Reversed, the table would be dropped before "+
+			"the row is deleted from it", seedVersion, schemaVersion)
 	}
 }
 
@@ -267,7 +303,7 @@ func TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims(t *testing.T) {
 // The two Down sections are read as TEXT so that the property is checked even where the
 // rollback cannot be run. A `TRUNCATE subscription.campaign_claims`, or a `DROP` of the
 // ledger, would be invisible to the behavioural test above in the one environment where
-// that test is skipped — which is every developer machine and CI without a provisioned
+// that test is skipped ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â which is every developer machine and CI without a provisioned
 // database, and therefore most of the places a regression would be introduced.
 func TestIntegrationRegistryDownSectionsDoNotTouchTheClaimLedger(t *testing.T) {
 	for _, name := range []string{registrySchemaMigration, registrySeedMigration} {
@@ -296,7 +332,7 @@ func TestIntegrationRegistryDownSectionsDoNotTouchTheClaimLedger(t *testing.T) {
 // one that protects an operator's work.
 //
 // The seed's Down deletes by CODE. A `DELETE FROM subscription.campaigns` without a
-// `WHERE` would be a valid rollback on a fresh database and catastrophic on a live one —
+// `WHERE` would be a valid rollback on a fresh database and catastrophic on a live one ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
 // it would remove every campaign an administrator created through the new API. That
 // damage happens on the deploy where someone rolls back, which is the worst possible
 // moment to discover it.
@@ -319,8 +355,15 @@ func TestIntegrationSeedDownIsScopedToTheSeededRow(t *testing.T) {
 //
 // IT READS THE EMBEDDED FILES RATHER THAN THE DIRECTORY, because the embedded set is
 // what the binary ships and what `RunMigrations` applies. Reading the directory would
-// let the two drift — a migration left on disk but excluded from the embed would be
+// let the two drift ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a migration left on disk but excluded from the embed would be
 // asserted here and never applied.
+// IT CLOSES THE `Up` SECTION AT THE `Down` MARKER, because an `Up` section that runs
+// to end-of-file also swallows the `Down` body, and for the seed migration that body
+// is a `DELETE FROM subscription.campaigns WHERE code = 'launch-2026-10'`. A caller
+// asking for the `Up` SQL and then executing it ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â `TestIntegrationSeedInsertIsIdempotent`
+// does exactly that ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â would insert the row and immediately delete it again, then count
+// zero and fail for a reason that has nothing to do with idempotency. `Down` is the last
+// section of a goose migration, so leaving its close marker empty is harmless there.
 func migrationSection(t *testing.T, nameFragment string, section string) (string, bool) {
 	t.Helper()
 
@@ -330,6 +373,10 @@ func migrationSection(t *testing.T, nameFragment string, section string) (string
 	}
 
 	openMarker := "-- +goose " + section
+	closeMarker := ""
+	if section == "Up" {
+		closeMarker = "-- +goose Down"
+	}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.Contains(entry.Name(), nameFragment) {
 			continue
@@ -338,7 +385,7 @@ func migrationSection(t *testing.T, nameFragment string, section string) (string
 		if readErr != nil {
 			t.Fatalf("read %s: %v", entry.Name(), readErr)
 		}
-		return betweenMarkers(string(body), openMarker, ""), true
+		return betweenMarkers(string(body), openMarker, closeMarker), true
 	}
 	t.Errorf("no embedded migration matches %q; the 026 registry migrations must be present", nameFragment)
 	return "", false
@@ -399,11 +446,11 @@ func migrationVersions(t *testing.T) (schemaVersion, seedVersion int64) {
 	return schemaVersion, seedVersion
 }
 
-// stripSQLComments removes `--` line comments and `/* … */` blocks so a safety check
+// stripSQLComments removes `--` line comments and `/* ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ */` blocks so a safety check
 // reads EXECUTABLE SQL rather than prose.
 //
-// The migrations in this repository comment extensively — and their Down sections
-// explain their own safety in the comment above the statement — so a check that matched
+// The migrations in this repository comment extensively ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and their Down sections
+// explain their own safety in the comment above the statement ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â so a check that matched
 // raw text would either fail on the documentation of the property it is asserting or,
 // worse, be weakened by an exception carved out for "just the comment".
 //

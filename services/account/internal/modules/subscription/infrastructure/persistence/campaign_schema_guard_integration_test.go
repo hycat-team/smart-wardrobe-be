@@ -169,7 +169,7 @@ func assertColumns(t *testing.T, dbConn *gorm.DB, schema, table string, want []s
 		 WHERE table_schema = ? AND table_name = ?`, schema, table).Scan(&got).Error; err != nil {
 		t.Fatalf("query columns of %s.%s: %v", schema, table, err)
 	}
-	assertSameNames(t, "columns of "+schema+"."+table, got, want)
+	assertSameNames(t, "FR-091", "columns of "+schema+"."+table, got, want)
 }
 
 // assertIndexes compares the index names on one table, ignoring the indexes
@@ -204,12 +204,17 @@ func assertIndexes(t *testing.T, dbConn *gorm.DB, schema, table string, want []s
 			got = append(got, row.Name)
 		}
 	}
-	assertSameNames(t, "explicit indexes on "+schema+"."+table, got, want)
+	assertSameNames(t, "FR-091", "explicit indexes on "+schema+"."+table, got, want)
 }
 
 // assertSameNames compares two name lists and reports the difference in both
 // directions, so a failure says what arrived and what went.
-func assertSameNames(t *testing.T, label string, got, want []string) {
+//
+// `requirement` names the rule being asserted — FR-091 here, FR-010 for the registry's
+// declared column list — because the two callers ask visibly different questions of the
+// same helper and a failure message that says only which names differ leaves the reader
+// guessing which contract was broken.
+func assertSameNames(t *testing.T, requirement, label string, got, want []string) {
 	t.Helper()
 
 	sort.Strings(got)
@@ -220,6 +225,6 @@ func assertSameNames(t *testing.T, label string, got, want []string) {
 	if strings.Join(got, ",") == strings.Join(sorted, ",") {
 		return
 	}
-	t.Errorf("FR-091: the %s changed. 026 must add the registry and nothing else.\n  got:  %v\n  want: %v",
-		label, got, sorted)
+	t.Errorf("%s: the %s changed.\n  got:  %v\n  want: %v",
+		requirement, label, got, sorted)
 }

@@ -59,6 +59,28 @@ một khẳng định khác vừa là sai.
   **đối chiếu tĩnh** (migration + `baseInstant()` + `startsLaterThan` + opener của fixture), không
   phải kết quả chạy.
 
+- **⚠️ Vòng hội tụ lần 2 tìm ra một lỗi thứ hai trong D-01 — và đã sửa.** Phase 11 phát hiện
+  `migrationSection(t, name, "Up")` truyền **marker đóng rỗng** cho `betweenMarkers`, nên phần
+  `Up` chạy tới **cuối tệp** và nuốt luôn thân phần `Down`. Với migration seed, thân `Down` chính là
+  `DELETE FROM subscription.campaigns WHERE code = 'launch-2026-10'`, và
+  `TestIntegrationSeedInsertIsIdempotent` **thực thi** chuỗi SQL mà nó nhận được. Nên khi có CSDL,
+  kiểm thử đó sẽ chèn hàng, xoá ngay hàng đó bằng chính phần `Down` lẫn vào, đếm được **0** rồi
+  **FAIL** — một kiểm thử *không thể xanh trên bất kỳ CSDL nào*, do một helper trông đúng.
+
+  Đây là lớp hỏng giống hệt phần trên: không phải "chưa bật được" mà là "bật lên sẽ hỏng". Nó
+  không lọt vào D-01 ở lần ghi đầu vì lúc đó chưa ai đọc kỹ helper.
+
+  **Đã gỡ**: `migrationSection` nay đóng phần `Up` tại `-- +goose Down`. `Down` là phần cuối
+  nên để marker đóng rỗng ở đó vẫn vô hại. Phần `Down` giữ nguyên, nên
+  `TestIntegrationRegistryDownSectionsDoNotTouchTheClaimLedger` và
+  `TestIntegrationSeedDownIsScopedToTheSeededRow` không đổi hành vi. Khoá lại bằng
+  `TestTheUpSectionStopsAtTheDownMarker` — kiểm thử **tĩnh**, chạy được không cần CSDL, nên không
+  thể trượt cùng lý do với D-01. Nó còn khẳng định phần `Up` **vẫn còn** `INSERT`, để phần kiểm
+  tra `DELETE` không trở nên rỗng.
+
+  Đã kiểm chứng bằng phản chứng: đặt lại marker đóng rỗng thì kiểm thử **FAIL** đúng thông báo;
+  hoàn nguyên thì xanh.
+
 - **Vì sao ngoài phạm vi 026**: đây là **hạ tầng kiểm thử dùng chung**, không phải logic chiến
   dịch. 026 không sửa entity, không sửa migration, không sửa mã harness nào; nó chỉ là feature
   đầu tiên phải dựng lại đường cấp gói trên CSDL thật. Sửa `openWebhookTestDB` hay viết một
@@ -144,8 +166,10 @@ một khẳng định khác vừa là sai.
   `campaign_query_claims_uc.go:193` cũng đọc `ListOpen`).
 
   Mã `campaign_sleeping` chỉ đạt được khi sổ còn **một** chiến dịch khác *chưa đóng* và *chưa
-  thức* — thiết lập mà quickstart không dựng. Đây là hệ quả trực tiếp của quyết định đặt cửa sổ ở
-  bộ đánh giá thuần (A-1), **không phải hồi quy và không phải lỗi mã**.
+  thức* — thiết lập mà quickstart không dựng. Đây là hệ quả trực tiếp của quyết định đặt **cửa sổ ở
+  bộ đánh giá thuần** chứ không ở SQL, **không phải hồi quy và không phải lỗi mã**. Nguồn của quyết
+  định: `spec.md` Câu 6 (phần "Phân công"), `research.md` R9, và hợp đồng ghi bằng văn xuôi ở
+  `campaign_repo.go:73`.
 
 - **Đã gỡ thế nào**: orchestrator đã hiệu chỉnh `spec.md` §11.2–11.3 và `quickstart.md` V1–V2:
   phần đảm bảo được giữ nguyên là **0 dòng cấp**; mã quan sát được được nêu đúng là
@@ -154,5 +178,5 @@ một khẳng định khác vừa là sai.
   khác). Tập 12 mã `reason` của 025 **không đổi**.
 
 - **Không sửa mã, và không thêm kiểm thử khẳng định ngược lại.** Đổi `ListOpen` để giữ chiến
-  dịch đã đóng sẽ phá lại chính quyết định A-1 mà C-9 đã phê duyệt (xem `spec.md` §A-1 và phần
+  dịch đã đóng sẽ phá lại chính quyết định mà `spec.md` Câu 6 và `research.md` R9 đã chốt (xem
   `campaign_repo.go:73`), nên đó sẽ là một quyết định thiết kế mới, không phải một sửa lỗi.
