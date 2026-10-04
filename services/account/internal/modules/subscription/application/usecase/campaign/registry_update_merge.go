@@ -18,6 +18,11 @@ import (
 // and a field whose new value EQUALS the stored one is not a change at all.
 // Both halves matter. The first is what makes a `PATCH` a `PATCH` (contract §4.1);
 // the second is FR-055's no-op exception and US3 acceptance scenario 4.
+//
+// THE ONE FIELD WITH A THIRD STATE IS `endsAt` (026 T061), and it is why two of the
+// structs here hold a pointer to a pointer. "Absent" and "explicitly cleared" are
+// different requests, and on a `*time.Time` they are the same nil pointer — which
+// would make the request that reopens a finished campaign report itself as a no-op.
 
 // campaignChanges records WHICH FIELDS an edit moved, and it is the answer to the
 // two questions the update path asks.
@@ -31,7 +36,16 @@ type campaignChanges struct {
 	quota    *int
 	reserve  *int
 	startsAt *time.Time
-	endsAt   *time.Time
+	// endsAt carries THREE states for the same reason `campaignUpdate.endsAt` does
+	// (026 T061): nil means the field was left alone, a NON-NIL pointer to a nil
+	// `*time.Time` means it was CLEARED, and a non-nil pointer to an instant means it
+	// was set.
+	//
+	// It HAS TO, rather than being a `*time.Time` like every other field. "Cleared" and
+	// "unchanged" are both a nil `*time.Time` here, and a change list that cannot tell
+	// them apart would report a no-op for the request that reopens a finished campaign
+	// — which is US4's whole promise.
+	endsAt **time.Time
 }
 
 // touchesBudget reports whether any of the three columns FR-020 freezes moved.
@@ -85,6 +99,10 @@ func (c campaignChanges) names() []string {
 // for why an audit payload must not repeat unchanged values. Times are UTC RFC3339
 // for the reason `endsAtForAudit` gives, and the window end renders as `""` rather
 // than being omitted, so a reader never has to distinguish "absent" from "empty".
+//
+// A CLEARED `endsAt` is the case that makes that last rule matter: `before` carries the
+// instant the campaign was going to stop at and `after` carries `""`, which is the only
+// honest way to say "it no longer stops" rather than "we do not know when it stops".
 func (c campaignChanges) auditSide(campaign *entities.Campaign) map[string]any {
 	side := map[string]any{"version": campaign.Version}
 	if c.planSlug != nil {
@@ -148,13 +166,25 @@ func mergeCampaignUpdate(
 		candidate.StartsAt = *edit.startsAt
 		changes.startsAt = edit.startsAt
 	}
-	// `EndsAt` is compared as instants for the same reason, with the pointer taken
-	// apart first: `stored.EndsAt` nil and an edit instant both being non-nil
-	// pointers would make `*a == *b` compare instants, and nil-against-nil has to be
-	// read as "unchanged" rather than dereferenced.
-	if edit.endsAt != nil && (stored.EndsAt == nil || !edit.endsAt.Equal(*stored.EndsAt)) {
-		candidate.EndsAt = edit.endsAt
-		changes.endsAt = edit.endsAt
+	if edit.endsAt != nil {
+		if requested := *edit.endsAt; requested == nil {
+			// AN EXPLICIT `null`: clear the end date, making the campaign open-ended
+			// again (contract §4.1). Clearing a campaign that is ALREADY open-ended is
+			// not a change, and FR-055's no-op exception requires that it stay one —
+			// otherwise a screen that always submits the whole row would manufacture a
+			// version bump and an audit line for an edit that moved nothing.
+			if stored.EndsAt != nil {
+				candidate.EndsAt = nil
+				changes.endsAt = edit.endsAt
+			}
+		} else if stored.EndsAt == nil || !requested.Equal(*stored.EndsAt) {
+			// Compared as INSTANTS, like every other field: a client sending the same
+			// moment in another offset has not moved the campaign, and calling that a
+			// change is the defect FR-055's no-op rule exists to prevent.
+			candidate.EndsAt = requested
+			set := requested
+			changes.endsAt = &set
+		}
 	}
 
 	return &candidate, changes

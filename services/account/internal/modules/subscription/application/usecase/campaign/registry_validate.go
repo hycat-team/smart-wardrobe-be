@@ -7,6 +7,7 @@ import (
 
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 )
 
 // 026 T030 — the request-shape and request-meaning rules of the campaign registry's
@@ -215,12 +216,43 @@ func validateCampaignWindow(req *sub_dto.CampaignCreateReq, out *campaignWrite) 
 	// before, because a campaign whose window closes the instant it opens grants
 	// nobody — the same meaningless state a zero quota describes, and the reason the
 	// CHECK says `>` and not `>=`.
-	if !endsAt.After(out.startsAt) {
-		return subscriptionerrors.ErrCampaignInvalidField(fieldEndsAt,
-			"phải sau thời điểm bắt đầu")
+	if err := requireWindowAfterStart(out.startsAt, &endsAt); err != nil {
+		return err
 	}
 	out.endsAt = &endsAt
 	return nil
+}
+
+// requireWindowAfterStart is FR-013's comparison, in ONE place.
+//
+// IT IS SHARED BY BOTH ENTRY POINTS rather than written twice, and that is the point:
+// create checks the window the REQUEST describes, update checks the window the
+// request MERGES onto the stored row, and the two must produce the same 422 with the
+// same field name and the same Vietnamese text. A second copy of a five-line rule is
+// how "the field name in the message" starts disagreeing between two endpoints.
+func requireWindowAfterStart(startsAt time.Time, endsAt *time.Time) error {
+	if endsAt == nil || endsAt.After(startsAt) {
+		return nil
+	}
+	return subscriptionerrors.ErrCampaignInvalidField(fieldEndsAt,
+		"phải sau thời điểm bắt đầu")
+}
+
+// validateMergedCampaignWindow re-decides FR-013 on the row an edit would leave
+// behind (026 T061, contract §4.1).
+//
+// IT MUST RUN ON THE MERGED ROW, and that is the whole reason it exists separately
+// from `validateCampaignUpdate`. A field the request did not send contributes its
+// STORED value, so the request alone cannot answer the question: moving only
+// `startsAt` past a stored `endsAt` describes a window that never existed and must be
+// refused with the same 422 create would give. Deciding it in the validator would mean
+// reading the row before the transaction, and reading it twice is how the two reads
+// disagree.
+//
+// `nil` `EndsAt` is an open-ended campaign, which the CHECK also accepts — so clearing
+// the end date is never refused for its own sake, only for landing before the start.
+func validateMergedCampaignWindow(merged *entities.Campaign) error {
+	return requireWindowAfterStart(merged.StartsAt, merged.EndsAt)
 }
 
 // parseCampaignInstant reads one RFC3339 timestamp that MUST carry a zone (FR-013).
@@ -257,13 +289,24 @@ func parseCampaignInstant(raw, field string) (time.Time, error) {
 // correct: `ends_at > starts_at` is a comparison between two instants where either
 // may come from the existing row, so it needs the row. What is checked here is
 // everything decidable from the request alone, which is exactly the half that must
-// happen BEFORE a transaction is opened.
+// happen BEFORE a transaction is opened. The other half — the comparison on the MERGED
+// window — is `validateMergedCampaignWindow` (026 T061).
 type campaignUpdate struct {
 	planSlug *string
 	quota    *int
 	reserve  *int
 	startsAt *time.Time
-	endsAt   *time.Time
+	// endsAt is the ONE field with THREE states (026 T061, contract §4.1), and the
+	// pointer-to-pointer is what carries all of them:
+	//
+	//	nil            the key was ABSENT — keep the stored `ends_at`
+	//	&nil           the key was an explicit `null` — CLEAR the end date
+	//	&instant       the key carried a timestamp — set the window end to it
+	//
+	// The middle state is what makes the type worth the extra indirection: it is the
+	// request that makes a finished promotion open-ended again, and on a `*time.Time`
+	// it would be indistinguishable from the first state.
+	endsAt **time.Time
 }
 
 // validateCampaignUpdate applies FR-054's table to an edit, for the fields the client
@@ -280,9 +323,12 @@ type campaignUpdate struct {
 //   - whether the budget has already been granted (422, FR-020). Also a read, and it
 //     must be the read of the SAME transaction that writes, or a grant committed in
 //     between would slip past;
-//   - whether anything changes at all (FR-055's no-op). Needs the stored values.
+//   - whether anything changes at all (FR-055's no-op). Needs the stored values;
+//   - whether the MERGED window is legal (422, FR-013). Both instants of that
+//     comparison may come from the stored row, so the request cannot answer it — see
+//     `validateMergedCampaignWindow`.
 //
-// Those three live in `Update`, and each of them is a decision about the WORLD rather
+// Those four live in `Update`, and each of them is a decision about the WORLD rather
 // than about the shape of a request — which is the line this file has followed since
 // T030.
 func validateCampaignUpdate(req *sub_dto.CampaignUpdateReq) (campaignUpdate, error) {
@@ -326,12 +372,21 @@ func validateCampaignUpdate(req *sub_dto.CampaignUpdateReq) (campaignUpdate, err
 		}
 		out.startsAt = &startsAt
 	}
-	if req.EndsAt != nil {
-		endsAt, err := parseCampaignInstant(*req.EndsAt, fieldEndsAt)
-		if err != nil {
-			return out, err
+	// `endsAt` HAS THREE STATES AND IS ASKED ABOUT IN THAT ORDER (026 T061). The DTO
+	// recorded whether the key was sent, because `encoding/json` cannot; `cleared` is
+	// tested FIRST because a cleared request carries no string and would otherwise be
+	// read as an absent one — which is precisely the request that would silently keep
+	// a campaign open-ended forever.
+	if cleared, raw := req.EndsAtUpdate(); cleared || raw != nil {
+		var requested *time.Time
+		if raw != nil {
+			endsAt, err := parseCampaignInstant(*raw, fieldEndsAt)
+			if err != nil {
+				return out, err
+			}
+			requested = &endsAt
 		}
-		out.endsAt = &endsAt
+		out.endsAt = &requested
 	}
 
 	// `version` IS NOT CHECKED HERE, for the same reason `validateCampaignClose` does

@@ -59,7 +59,7 @@ func openCloseTestDB(t *testing.T, prefix string) *gorm.DB {
 
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping campaign close integration test")
+		t.Skip("TEST_DATABASE_URL not set; skipping campaign registry integration test")
 	}
 	dbConn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

@@ -98,10 +98,11 @@ func TestCampaignRegistryHasNoDeleteOrReopenOperation(t *testing.T) {
 // it also pins the ROUTE SET so that the absence cannot be satisfied by deleting the
 // assertions along with the routes.
 //
-// The expected list is the whole contract §2 surface: four reads, create, edit, close.
-// The audit endpoint (T067) is NOT in it and NOT expected — asserting a closed set is
-// what makes this test fail when a route is added on purpose, which is the moment a
-// human should read it.
+// The expected list is the whole contract §2 surface: four reads, create, edit, close,
+// and — since 026 T067 — the per-campaign audit read. Asserting a CLOSED set is what
+// makes this test fail when a route is added on purpose, which is the moment a human
+// should read it; so the audit route was added here deliberately rather than discovered
+// by the next failing run.
 func TestCampaignRoutesContainNoDeleteAndNoReopen(t *testing.T) {
 	registered := campaignGroupRoutes(t)
 
@@ -110,6 +111,7 @@ func TestCampaignRoutesContainNoDeleteAndNoReopen(t *testing.T) {
 		`GET "/:code"`:                     true,
 		`GET "/:code/claims"`:              true,
 		`GET "/:code/eligibility/:userId"`: true,
+		`GET "/:code/audit"`:               true,
 		`POST ""`:                          true,
 		`POST "/:code/close"`:              true,
 		`PATCH "/:code"`:                   true,

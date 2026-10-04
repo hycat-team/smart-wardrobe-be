@@ -74,6 +74,33 @@ type ICampaignQueryUseCase interface {
 	// them tells a customer the giveaways ran out when the campaign still has
 	// room and their grant is on its way.
 	GetAccountEligibility(ctx context.Context, campaignCode string, userID uuid.UUID) (*sub_dto.CampaignAccountEligibilityRes, error)
+
+	// ListCampaignAudit returns one page of ONE campaign's audit trail — who changed it,
+	// when, and what moved (026 T067, FR-063, contract §6).
+	//
+	// IT LIVES ON THIS INTERFACE rather than beside `CampaignRegistryUseCase` for two
+	// reasons. It is a READ, so putting it on the writer would mean the write path could
+	// answer it — and FR-069's guarantee is that the look-up side holds no unit of work
+	// and no writer. And the CAMPAIGN'S EXISTENCE has to be answered from the registry,
+	// which is what this use case already reads; a new type for one method would mean a
+	// second reader of `subscription.campaigns` for no gain.
+	//
+	// THE 404 IS DECIDED HERE, BEFORE THE TRAIL IS ASKED FOR, and that ordering is the
+	// contract rather than an implementation detail. The audit trail lives in the `admin`
+	// module, which does not own `subscription.campaigns` and must not read it
+	// (constitution §II), so an unknown code answers it with an EMPTY PAGE — and an
+	// operator who mistyped a code would read "this campaign has never been changed" as a
+	// fact about the audit mechanism rather than as a fact about their typing (FR-072
+	// makes the same argument for the other three endpoints).
+	//
+	// Read-only in the strong sense, like everything else here: it neither spends a slot,
+	// nor grants a plan, nor sends an email, and the trail it reads was written
+	// asynchronously by a consumer some time after each operation succeeded (FR-060).
+	ListCampaignAudit(
+		ctx context.Context,
+		campaignCode string,
+		page, limit int,
+	) ([]*sub_dto.CampaignAuditLogRes, int64, error)
 }
 
 // campaignPaginationMaxLimit is the shared ceiling for the two paginated reads.

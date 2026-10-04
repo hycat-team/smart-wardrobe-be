@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	admincontract "smart-wardrobe-be/services/account/contract/admin"
 	identitycontract "smart-wardrobe-be/services/account/contract/identity"
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
@@ -55,7 +56,19 @@ type CampaignQueryUseCase struct {
 	planRepo     repositories.ISubscriptionPlanRepository
 	subRepo      repositories.IUserSubscriptionRepository
 	accounts     identitycontract.IUserBriefContract
-	log          logger.Interface
+	// auditLookup reads ONE campaign's audit trail from the `admin` module (026 T067,
+	// FR-063).
+	//
+	// IT IS A CONTRACT AND NOT A REPOSITORY, which is the boundary the constitution
+	// draws and the reason this method can exist at all: `shared.admin_audit_logs`
+	// belongs to the `admin` module, so reaching it from `subscription` goes through
+	// `contract/admin` — the same route 024's `AdminGrantLookup` and 025's
+	// `CampaignAccountLister` take.
+	//
+	// IT READS AND CANNOT WRITE, so adding it here weakens no part of FR-069's
+	// read-only guarantee: the look-up still holds no unit of work and no writer.
+	auditLookup admincontract.ICampaignAuditLookup
+	log         logger.Interface
 	// now is the clock, for the same reason it is a field on every other campaign
 	// type: one read per call, pin-able by a test, never `time.Now()` (R6,
 	// constitution §VIII).
@@ -84,6 +97,11 @@ func NewCampaignQueryUseCase(
 	planRepo repositories.ISubscriptionPlanRepository,
 	subRepo repositories.IUserSubscriptionRepository,
 	accounts identitycontract.IUserBriefContract,
+	// auditLookup is the narrow `admin` contract behind `GET /campaigns/{code}/audit`
+	// (026 T067). It is a constructor parameter rather than a field left optional so that
+	// a wiring mistake is a build failure instead of a nil interface discovered on the
+	// first request to the trail.
+	auditLookup admincontract.ICampaignAuditLookup,
 	log logger.Interface,
 ) uc_interfaces.ICampaignQueryUseCase {
 	return &CampaignQueryUseCase{
@@ -94,6 +112,7 @@ func NewCampaignQueryUseCase(
 		planRepo:     planRepo,
 		subRepo:      subRepo,
 		accounts:     accounts,
+		auditLookup:  auditLookup,
 		log:          log,
 		now:          func() time.Time { return timeutils.GetNow(cfg.Database.TimeZone) },
 	}

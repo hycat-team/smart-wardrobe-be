@@ -106,6 +106,11 @@ func campaignEngine(
 		campaigns.GET("/:code", limiter.Handle(), shared_pres.WrapHandler(h.GetCampaign))
 		campaigns.GET("/:code/claims", limiter.Handle(), shared_pres.WrapHandler(h.ListClaims))
 		campaigns.GET("/:code/eligibility/:userId", limiter.Handle(), shared_pres.WrapHandler(h.GetAccountEligibility))
+		// 026 T067: the audit read. Registered HERE rather than left out so the 403 and
+		// 429 assertions below run against the route that really exists, with the same
+		// group middleware as its four siblings — a test engine that omitted it would
+		// answer 404 for every case and pass nothing.
+		campaigns.GET("/:code/audit", limiter.Handle(), shared_pres.WrapHandler(h.GetCampaignAudit))
 	}
 	return engine
 }
@@ -156,6 +161,31 @@ type stubCampaignQuery struct {
 	// lastFilter is the filter the handler built, so a test can assert that `from`
 	// and `to` arrived as INSTANTS rather than as strings.
 	lastFilter repositories.CampaignClaimsFilter
+	// audit answers ListCampaignAudit per campaign code, and auditTotal the total behind
+	// the page. A code with no entry answers an EMPTY TRAIL, which is what the real
+	// `admin` contract does — it cannot know which campaigns exist (contract §6.4).
+	audit      map[string][]*sub_dto.CampaignAuditLogRes
+	auditTotal int64
+	// auditErr fails the trail read, so the test can prove the failure is surfaced rather
+	// than turned into an empty page.
+	auditErr error
+	// auditCalls counts the trail reads, which is how the 404-ordering assertion works:
+	// a use case that asked the trail first would leave this at 1 for an unknown code.
+	auditCalls int
+}
+
+func (s *stubCampaignQuery) ListCampaignAudit(
+	_ context.Context, campaignCode string, page, limit int,
+) ([]*sub_dto.CampaignAuditLogRes, int64, error) {
+	s.calls++
+	s.auditCalls++
+	if s.auditErr != nil {
+		return nil, 0, s.auditErr
+	}
+	if campaignCode != "launch-2026-10" {
+		return nil, 0, subscriptionerrors.ErrCampaignNotFound(campaignCode)
+	}
+	return s.audit[campaignCode], s.auditTotal, nil
 }
 
 func (s *stubCampaignQuery) ListCampaigns(
