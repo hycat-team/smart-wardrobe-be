@@ -20,8 +20,10 @@ kết quả kiểm chứng, không phải suy luận.
 `configs/config.yaml:245` và `configs/config.production.yaml:238`, được biên dịch vào image. Mọi thay
 đổi chiến dịch = commit + tag + deploy. Cấu hình vẫn được nạp tĩnh, **không** chạm CSDL
 (`loadConfig` trong `loader.go`), nên bảng không thể được nạp lúc khởi động — và không cần: sổ được
-đọc lúc chạy ở ba chỗ (`campaign_uc.go:123`, `campaign_query_uc.go:110,305`, `sweep_uc.go:140,154,
-356,450`).
+đọc lúc chạy ở ba chỗ (`campaign_uc.go:139`, `campaign_query_claims_uc.go:193`, `sweep_uc.go:152`).
+> *(Các neo dòng bản đầu — `campaign_uc.go:123`, `campaign_query_uc.go:110,305`, `sweep_uc.go:140,154,
+> 356,450` — đã cũ ngay khi tài liệu này được viết, vì nó mô tả trạng thái **trước** khi 026 viết
+> mã. Đã cập nhật theo mã thật.)*
 
 **Vì sao không giữ hai nguồn**: `quota`/`reserve` quyết định trần cứng; hai nguồn với hai giá trị
 khác nhau sẽ làm mọi phép đếm sai theo cả hai bản. Luật hoà giải giữa hai nguồn chính là chỗ bất biến
@@ -144,10 +146,16 @@ nhất. Tie-break `code DESC` làm kết quả **tất định** khi hai chiến
 > phải "chiến dịch nào còn thức"; `isAwake` mới là nơi trả lời câu hỏi thứ hai — và nó thuần túy để
 > kiểm thử được, đó là lý do nó không bị đẩy xuống SQL.
 
-**BẰNG CHỨNG**: `selectCampaign` (`admission_uc.go:191-215`) đã tách hai instant: cửa sổ so
+**BẰNG CHỨNG**: `selectCampaign` (`admission_uc.go:249-275`) đã tách hai instant: cửa sổ so
 `registered_at`, "còn thức" so `now`. Giữ nguyên hai vế đó nhưng nguồn danh sách đổi thành repository.
-`isAwake` là **một** định nghĩa dùng cho cả điều kiện 2 và bộ chọn (`admission_uc.go:166-174`), nên
-truy vấn "còn thức" và bộ lọc `registered_at` không thể lệch nhau.
+`isAwake` là **một** định nghĩa dùng cho cả điều kiện 2 và bộ chọn (`admission_uc.go:208-219`), nên
+**định nghĩa "còn thức"** và bộ lọc `registered_at` không thể lệch nhau.
+
+> Đoạn bản đầu nói *"truy vấn 'còn thức' … không thể lệch nhau"* — câu đó viết theo bản soạn cũ, khi
+> SQL còn mang hai vế cửa sổ và **đã** là nơi quyết định thức. Sau hiệu chỉnh, SQL chỉ mang
+> `closed_at IS NULL`, nên **không còn** một "truy vấn còn thức" ở tầng CSDL để so. Cái không thể lệch
+> bây giờ là `isAwake` trong Go, và nó là bản **một** định nghĩa cho cả hai vế — đó mới là điều cần
+> giữ, vì nó là lý do các điều kiện 1–7 vẫn kiểm thử được không cần CSDL.
 
 **Chỉ mục**: `ix_campaigns_starts_at (starts_at DESC)` phục vụ `ORDER BY`. Bảng vài hàng.
 
@@ -163,8 +171,14 @@ vấn, nên các điều kiện 1–7 vẫn kiểm thử không cần CSDL. Đâ
 
 **Lý do**: một cache tạo vấn đề **vô hiệu hoá xuyên bản sao** — chiến dịch vừa đóng vẫn được cấp bởi
 một bản sao còn giữ bản cũ, đúng thứ mục tiêu "đóng sớm" chặn. Đổi lại, một truy vấn có chỉ mục trên
-bảng vài hàng là rẻ. Hiện tại bộ đọc là bộ nhớ cấu hình (`cfg.Campaigns`), nhưng tần suất đăng ký
-thấp và giao dịch tạo tài khoản đã nặng hơn nhiều.
+bảng vài hàng là rẻ. Tần suất đăng ký thấp và giao dịch tạo tài khoản đã nặng hơn nhiều.
+
+> Đoạn bản đầu viết *"Hiện tại bộ đọc là bộ nhớ cấu hình (`cfg.Campaigns`)"* — câu đó **hết hiệu lực
+> sau chính 026**, và đã bị rút. Cả ba đường đọc nay đi qua repository: đường cấp gói
+> (`campaign_uc.go:139`), đường quét bù (`sweep_uc.go:152`) và đường tra cứu
+> (`campaign_query_claims_uc.go:193`); `cfg.Campaigns` **không còn tồn tại** (`config.go:129` khẳng
+> định điều đó). Lập luận "không cache" giữ nguyên và nay **mạnh hơn**: nó đang bảo vệ một sổ đọc
+> từ CSDL chứ không phải một sổ nằm trong RAM.
 
 **Nếu sau này cần**: TTL ngắn + khoá phiên bản tăng khi có thao tác quản trị; ghi vào `deferred.md`,
 không làm trong 026.
@@ -201,7 +215,7 @@ thức bắt buộc sửa proto — thay đổi hợp đồng xuyên dịch vụ
 
 ## R9 — Quét bù đọc sổ mới mỗi lần chạy, nhịp vẫn ở cấu hình
 
-**Quyết định**: `sweep_uc.go` thay `uc.cfg.Campaigns` (`sweep_uc.go:140,154,356-357,449-452`) bằng một
+**Quyết định**: `sweep_uc.go` thay `uc.cfg.Campaigns` (`sweep_uc.go:139`, `:152`, `:386-415`, `:436-441`) bằng một
 truy vấn repository `ListOpen()` (chỉ `closed_at IS NULL`). Nhịp quét (`cfg.CampaignSweep`) **ở lại
 cấu hình** — nó là núm của cơ chế, không phải dữ liệu chiến dịch, và giữ nó ở cấu hình giữ được tính
 không-chạm-CSDL khi nạp.
