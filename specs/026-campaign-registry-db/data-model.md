@@ -232,7 +232,7 @@ DROP TABLE IF EXISTS subscription.campaigns;
 
 ## 4. Chọn Chiến Dịch (FR-040, FR-041, FR-045)
 
-### 4.1 Truy vấn "còn thức" (R6)
+### 4.1 Truy vấn "còn mở" (R6)
 
 ```sql
 SELECT * FROM subscription.campaigns
@@ -246,8 +246,13 @@ theo `registered_at` và chọn `starts_at` lớn nhất — giữ nguyên `data
 > **Hiệu chỉnh (sau `/speckit-analyze` vòng 3, khi triển khai).** Bản đầu của mục này đặt **cả hai vế
 > cửa sổ theo `now`** vào SQL. Biểu thức đó **loại bỏ** chiến dịch đã hết hạn khỏi tập hàng, nên một
 > tài khoản gặp chiến dịch đã kết thúc sẽ thấy tập rỗng và nhận `campaign_not_configured` thay vì
-> **`campaign_sleeping`**. Điều đó trái `spec.md` Câu 4 và FR-031, trái `quickstart.md` V2 bước 5, và
-> trái hành vi của 025 mà FR-042/FR-043 yêu cầu giữ nguyên.
+> **`campaign_sleeping`**. Điều đó trái `spec.md` Câu 4 và FR-031, và trái hành vi của 025 mà
+> FR-042/FR-043 yêu cầu giữ nguyên.
+>
+> *(Lập luận bản đầu của hiệu chỉnh này dẫn thêm tới `quickstart.md` V2 bước 5. Mốc dẫn đó **đã bị
+> chính `quickstart.md` bác** ở vòng hội tụ lần 2: mã quan sát được trên đường thông điệp với sổ
+> chỉ-có-chiến-dịch-đã-đóng là `campaign_not_configured`. Phần đảm bảo của V2 bây giờ là **0 dòng
+> cấp**. Xem `deferred.md` D-04. Dòng dẫn đã bỏ vì nó trích một yêu cầu không còn tồn tại.)*
 >
 > Vì vậy **SQL chỉ lọc `closed_at IS NULL`**, và vế "còn thức theo `now`" thuộc về **`isAwake` trong bộ
 > đánh giá thuần** — đúng như `data-model.md` §4.3 và `research.md` R9 đã nói. Tập ứng viên **kết quả
@@ -282,7 +287,13 @@ cấp đã tuần tự theo khoá tư vấn nên thứ tự khoá là cố đị
 ### 4.3 "Còn thức" có một định nghĩa
 
 `isAwake(campaign, now)` = `closed_at IS NULL AND starts_at <= now AND (ends_at IS NULL OR now <
-ends_at)`. Dùng cho cả điều kiện 2 và tập ứng viên, và khớp với `WHERE` của truy vấn 4.1.
+ends_at)`. Dùng cho cả điều kiện 2 và tập ứng viên.
+
+> Nó **không** "khớp với `WHERE` của truy vấn §4.1", và câu đó đã bị rút. Truy vấn §4.1 chỉ có
+> **một** vế `closed_at IS NULL`; `isAwake` có **ba**. Mối quan hệ đúng là: §4.1 lọc vế mà **không** mã
+> ứng dụng nào dựng lại được (một chiến dịch đã động đánh dấu thì không bao giờ là ứng viên), còn hai
+> vế cửa sổ thuộc về `isAwake`. Bảng phân công ở §4.1 và `spec.md` Câu 6 nêu đúng cách chia đó; tên
+> cũ "còn thức" của §4.1 là sót lại từ bản soạn trước hiệu chỉnh.
 
 ---
 
