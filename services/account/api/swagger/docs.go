@@ -161,6 +161,80 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Ghi một dòng vào sổ đăng ký chiến dịch và ghi nhật ký kiểm toán trong cùng một giao dịch. Trả 409 khi mã đã tồn tại, 400 khi yêu cầu hỏng hình dạng (mã sai định dạng hoặc thời gian không phải RFC3339 có múi giờ) và 422 khi yêu cầu đúng hình dạng nhưng sai nghĩa (quota dưới 1, reserve âm, endsAt không sau startsAt, planSlug rỗng).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Campaign"
+                ],
+                "summary": "Mở một chiến dịch mới",
+                "parameters": [
+                    {
+                        "description": "Thông tin chiến dịch cần mở",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignCreateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/admin/campaigns/{code}": {
@@ -195,6 +269,170 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Sửa planSlug/quota/reserve khi chiến dịch chưa cấp gói cho ai, và sửa startsAt/endsAt bất kể đã cấp hay chưa. Trả 404 khi mã không tồn tại (trước cả khi so phiên bản), 422 khi chiến dịch đã cấp mà thân có đổi planSlug/quota/reserve, 412 khi phiên bản lệch, và 200 no-op (không ghi, không tăng phiên bản, không ghi nhật ký) khi không trường nào đổi.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Campaign"
+                ],
+                "summary": "Sửa một chiến dịch đang tồn tại",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mã chiến dịch",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Phiên bản mong đợi và các trường cần sửa",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/campaigns/{code}/audit": {
+            "get": {
+                "description": "Trả về nhật ký ai/lúc nào/đổi gì cho đúng một chiến dịch, có phân trang. Mọi bản ghi có targetType là campaign và targetId là null; mã chiến dịch nằm trong payload.campaignCode. Trả 404 khi mã không tồn tại, và nhật ký rỗng không phải câu trả lời cho một mã lạ.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Campaign"
+                ],
+                "summary": "Tra cứu nhật ký kiểm toán của một chiến dịch",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mã chiến dịch",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số bản ghi/trang",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignAuditLogRes"
                                         }
                                     }
                                 }
@@ -292,6 +530,95 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/campaigns/{code}/close": {
+            "post": {
+                "description": "Ghi closed_at và tăng phiên bản trong cùng giao dịch với dòng nhật ký kiểm toán campaign.close. Thao tác là một chiều: không có API mở lại. Trả 404 khi mã không tồn tại, 422 khi lý do đóng rỗng, và 412 khi phiên bản lệch với một chiến dịch chưa đóng. Gọi lại trên chiến dịch đã đóng trả 200 idempotent và không ghi thêm bản ghi kiểm toán.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Campaign"
+                ],
+                "summary": "Đóng cưỡng bức một chiến dịch",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mã chiến dịch",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Phiên bản mong đợi và lý do đóng",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignCloseReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/presentation.APIResponse"
                         }
@@ -2502,6 +2829,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignAuditLogRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.CampaignAuditLogRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/dto.PaginationMetadata"
+                }
+            }
+        },
         "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_CampaignClaimRes": {
             "type": "object",
             "properties": {
@@ -3442,6 +3783,42 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_account_dto_subscription.CampaignAuditLogRes": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "Action is ` + "`" + `campaign.create` + "`" + `, ` + "`" + `campaign.update` + "`" + ` or ` + "`" + `campaign.close` + "`" + `. They are\nactions ON the campaign rather than on the subscription because a campaign\noperation moves nobody's entitlement (FR-033), and an operator answering \"who\ngave away Premium\" filters on ` + "`" + `subscription.grant` + "`" + `.",
+                    "type": "string"
+                },
+                "actorUserId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "CreatedAt is AFTER the operator's operation succeeded, because the trail is\nwritten asynchronously from the outbox (FR-060).",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "Payload carries ` + "`" + `campaignCode` + "`" + ` plus whatever the operation changed: the created\nvalues, ` + "`" + `before` + "`" + `/` + "`" + `after` + "`" + ` for an edit, the closure ` + "`" + `reason` + "`" + `. It is a document\nbecause the three operations genuinely carry different keys, and a struct of\nthree optional sub-objects would add nesting to every reader for no gain.",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "requestIp": {
+                    "description": "RequestIP is omitted when the caller sent none — the one field here where\nabsence means \"not provided\" rather than \"null\".",
+                    "type": "string"
+                },
+                "targetId": {
+                    "description": "TargetID is ALWAYS null here, and it is emitted rather than omitted — see below.\n\nIT CARRIES NO ` + "`" + `omitempty` + "`" + ` BECAUSE THE SHARED DTO CANNOT CARRY FR-063.\n` + "`" + `dto/admin.AdminAuditLogDTO` + "`" + ` declares ` + "`" + `json:\"targetId,omitempty\"` + "`" + `, so a nil pointer\nis OMITTED rather than emitted as ` + "`" + `null` + "`" + ` — and EVERY campaign row has a null\n` + "`" + `target_id` + "`" + `, because the audit trail's existing filter takes a UUID while a\ncampaign is keyed by a text code (FR-063, research.md R8). Reusing it would make\nthe invariant invisible on the one endpoint that exists to show it, and dropping\n` + "`" + `omitempty` + "`" + ` from the shared DTO would break the audit endpoint already in\nproduction. So ` + "`" + `TargetID` + "`" + ` HERE CARRIES NO ` + "`" + `omitempty` + "`" + `, and that single difference\nis what makes FR-063 observable — and assertable.",
+                    "type": "string"
+                },
+                "targetType": {
+                    "description": "TargetType is ` + "`" + `campaign` + "`" + ` for every row on this endpoint.",
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_services_account_dto_subscription.CampaignClaimRes": {
             "type": "object",
             "properties": {
@@ -3475,9 +3852,69 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_account_dto_subscription.CampaignCloseReq": {
+            "type": "object",
+            "required": [
+                "reason",
+                "version"
+            ],
+            "properties": {
+                "reason": {
+                    "description": "Reason is the operator's explanation, stored in ` + "`" + `payload.reason` + "`" + ` of the audit\nrecord (contract §6.3). Trimmed by the validator before use, so a box holding\nthree spaces is a 422 rather than an audit row that reads as blank.",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version is the version the client read. ` + "`" + `0` + "`" + ` is not a valid version (the column\ndefaults to 1 and only ever increments), so ` + "`" + `binding:\"required\"` + "`" + ` refusing the\nzero value is exactly the \"thiếu trường bắt buộc → 400\" rule and nothing more.",
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.CampaignCreateReq": {
+            "type": "object",
+            "required": [
+                "code",
+                "planSlug",
+                "quota",
+                "startsAt"
+            ],
+            "properties": {
+                "code": {
+                    "description": "Code identifies the campaign and is immutable afterwards (FR-024).\n\nRestricted to ` + "`" + `^[a-z0-9][a-z0-9-]{2,63}$` + "`" + `, matching ` + "`" + `chk_campaigns_code_format` + "`" + `\n(FR-011). A malformed code is a 400 — a broken shape, not a wrong meaning\n(FR-054) — and the alphabet is restricted because the code reaches an audit\npayload and possibly a queue or file name.",
+                    "type": "string"
+                },
+                "endsAt": {
+                    "description": "EndsAt is the instant it closes, RFC3339 with a zone, or absent/null for an\nopen-ended campaign. When present it must be strictly AFTER StartsAt (FR-013).\n\nA pointer, and that is what makes ` + "`" + `\"endsAt\": null` + "`" + ` differ from ` + "`" + `\"endsAt\": \"\"` + "`" + `:\nthe first is an open-ended campaign, the second is a malformed timestamp.",
+                    "type": "string"
+                },
+                "planSlug": {
+                    "description": "PlanSlug is the plan granted to an eligible account. Required (FR-014).\n\nWhether the plan EXISTS and is ACTIVE is checked at RUN time, not here and not\nat startup (FR-003, FR-014): a wrong slug must not be able to crash a service,\nand it makes that one campaign grant nothing rather than failing a write.",
+                    "type": "string"
+                },
+                "quota": {
+                    "description": "Quota is the main budget. ` + "`" + `\u003e= 1` + "`" + ` (FR-012); zero is 422, not 400, because the\nfield was sent.",
+                    "type": "integer"
+                },
+                "reserve": {
+                    "description": "Reserve is the compensation CEILING, not a target. Optional, ` + "`" + `\u003e= 0` + "`" + `, default 0.",
+                    "type": "integer"
+                },
+                "startsAt": {
+                    "description": "StartsAt is the instant the campaign opens, RFC3339 WITH an explicit zone.",
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_services_account_dto_subscription.CampaignSummaryRes": {
             "type": "object",
             "properties": {
+                "budgetLocked": {
+                    "description": "BudgetLocked is true once this campaign has granted at least once, and it is\nDERIVED from the two counts above rather than stored (026 T050, FR-020).\n\nIT IS WHAT A SCREEN DISABLES THE BUDGET FIELDS ON. The moment one claim\nexists, ` + "`" + `planSlug` + "`" + `, ` + "`" + `quota` + "`" + ` and ` + "`" + `reserve` + "`" + ` are immutable — at the application\nlayer AND in ` + "`" + `trg_campaigns_immutable_budget` + "`" + ` (FR-020/FR-021) — so a form\nthat still lets an operator type into them is a form that offers an edit\nguaranteed to end in a 422.\n\nDERIVED RATHER THAN STORED, and that is the whole argument: a stored flag\nwould need synchronising along a second path when the first claim commits,\nand two paths are exactly how a budget number ends up wrong. Computed from\nthe counts beside it, it cannot disagree with them.\n\nON A WRITE RESPONSE IT READS ` + "`" + `false` + "`" + `, because the registry writer holds no\nledger repository and passes zero counts — the same limitation ` + "`" + `ClosedAt` + "`" + `\ndoes not have, and the next ` + "`" + `GET` + "`" + ` corrects it. The alternative (giving the\nwriter a claim repository for one boolean) would make the write path a\nsecond reader of the ledger, which is what 025 R7 warns against.",
+                    "type": "boolean"
+                },
+                "closedAt": {
+                    "description": "ClosedAt is the instant an OPERATOR force-closed the campaign (026 T039,\nFR-031); nil means it was never force-closed.\n\nIT IS ADDITIVE, AND THAT IS ALL IT IS. 025's response shape is unchanged —\nno field was renamed, retyped or removed — because this campaign mechanism\nhas customers reading it (FR-050). A client that does not know the field\nignores it; a client that does know it can tell \"the campaign ended by\nitself\" (` + "`" + `endsAt` + "`" + ` passed) from \"somebody stopped it\" (` + "`" + `closedAt` + "`" + ` set), which\nis the difference between a finished promotion and an aborted one.\n\nIt is a POINTER for the same reason ` + "`" + `EndsAt` + "`" + ` is, and the two are NOT\nredundant: ` + "`" + `EndsAt` + "`" + ` nil means open-ended and ` + "`" + `EndsAt` + "`" + ` set means the campaign\nended on schedule, while ` + "`" + `ClosedAt` + "`" + ` set means an operator cut it short. A\ncampaign can have both — closing one does not touch ` + "`" + `ends_at` + "`" + ` (contract §5.2)\n— and a campaign with ` + "`" + `ClosedAt` + "`" + ` nil is not thereby still open.",
+                    "type": "string"
+                },
                 "code": {
                     "description": "Code identifies the campaign and is the same value the grant path writes\ninto ` + "`" + `campaign_claims.campaign_code` + "`" + `, so an operator can join this response\nagainst the ledger themselves.",
                     "type": "string"
@@ -3546,9 +3983,45 @@ const docTemplate = `{
                     "description": "Status is the derived lifecycle state: ` + "`" + `not_started` + "`" + `, ` + "`" + `running` + "`" + `,\n` + "`" + `compensation` + "`" + `, ` + "`" + `exhausted` + "`" + ` or ` + "`" + `expired` + "`" + `. Derived at query time and never\nstored (data-model.md §5) — a stored status would need synchronising with\nthe ledger along a second path, and two paths are where duplicate grants\ncome from.",
                     "type": "string"
                 },
+                "version": {
+                    "description": "Version is the optimistic-concurrency token (026 T050, FR-055).\n\nIT IS ON THE RESPONSE BECAUSE THE CLIENT CANNOT COMPUTE IT. It is read from\nthe row that was actually written — never echoed from the request — so a\nstale client learns the truth on the next read instead of sending a version\nthe row no longer has and being refused with 412 for a reason it cannot see.",
+                    "type": "integer"
+                },
                 "watermarkAt": {
                     "description": "WatermarkAt is the ` + "`" + `registered_at` + "`" + ` of the claim that filled the main budget,\nor nil when that has not happened. It is the instant every later priority\ncomparison uses (FR-030).",
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.CampaignUpdateReq": {
+            "type": "object",
+            "required": [
+                "version"
+            ],
+            "properties": {
+                "endsAt": {
+                    "description": "EndsAt is when it closes, RFC3339 with a zone. Optional and editable\nregardless of grants (FR-023).\n\n` + "`" + `null` + "`" + ` CLEARS the end date and makes the campaign open-ended again; the key\nbeing absent leaves it alone. The two are different requests, which is why\nthis type decodes itself — see the header and ` + "`" + `EndsAtUpdate` + "`" + ` below.",
+                    "type": "string"
+                },
+                "planSlug": {
+                    "description": "PlanSlug is the plan this campaign grants. Optional. Changeable only while\n` + "`" + `budgetLocked` + "`" + ` is false (FR-020); a blank value is 422, not 400.",
+                    "type": "string"
+                },
+                "quota": {
+                    "description": "Quota is the main budget, ` + "`" + `\u003e= 1` + "`" + ` (FR-012). Optional. Changeable only while\n` + "`" + `budgetLocked` + "`" + ` is false.",
+                    "type": "integer"
+                },
+                "reserve": {
+                    "description": "Reserve is the compensation ceiling, ` + "`" + `\u003e= 0` + "`" + `. Optional, and it defaults to\nNOTHING rather than to 0: an omitted ` + "`" + `reserve` + "`" + ` leaves the stored ceiling\nalone, which is the opposite of the create rule and is right here (an\nomitted field means unchanged).",
+                    "type": "integer"
+                },
+                "startsAt": {
+                    "description": "StartsAt is when the campaign opens, RFC3339 with a zone. Optional, and\neditable whether or not the campaign has granted (FR-023).",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version is the version the client read, and it is REQUIRED (FR-055). ` + "`" + `0` + "`" + ` is\nnot a version any row can hold — the column defaults to 1 and only ever\nincrements — so ` + "`" + `binding:\"required\"` + "`" + ` refusing the zero value is exactly the\n\"thiếu trường bắt buộc → 400\" row of FR-054 and nothing more.",
+                    "type": "integer"
                 }
             }
         },
