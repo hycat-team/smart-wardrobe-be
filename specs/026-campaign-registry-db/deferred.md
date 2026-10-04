@@ -12,6 +12,8 @@ một khẳng định khác vừa là sai.
   D-01 vẫn mở nhưng nhỏ hơn nhiều, và nó đã tự báo thêm hai lỗi mà chỉ chạy mới lộ ra.**
 - **D-02 đã gỡ** — hợp đồng đã được sửa trong lần chống, xem mục D-02 bên dưới.
 - **D-03 là flake hiếm** khi `make test-integration` chạy đồng thời hai gói trên cùng một CSDL.
+- **D-05 có liên quan hiến pháp** về hạn mức email của bên thứ ba, và là khoản nợ **của 025**, không
+  phải của 026. Đọc D-05 **trước khi chạy bất kỳ kịch bản nhiều tài khoản nào ở chế độ production**.
 
 ---
 
@@ -245,3 +247,49 @@ này DB dev **vĩnh viễn** có: `verify-026` ở trạng thái `closed`, và h
 - **Không sửa mã, và không thêm kiểm thử khẳng định ngược lại.** Đổi `ListOpen` để giữ chiến
   dịch đã đóng sẽ phá lại chính quyết định mà `spec.md` Câu 6 và `research.md` R9 đã chốt (xem
   `campaign_repo.go:73`), nên đó sẽ là một quyết định thiết kế mới, không phải một sửa lỗi.
+
+---
+
+## D-05 — Production **mặc định gửi email thật**, và template production không cảnh báo
+
+Phát hiện khi chạy V1+V2 và phải tự hỏi: `EMAIL_ENABLED` có mặc định `true` ở production không. Câu trả
+lời là **có**, và không tầng nào trong chuỗi cấu hình production tắt nó.
+
+| Tầng | Giá trị | Nguồn |
+|---|---|---|
+| Loader default | **`true`** | `shared/config/loader.go:63` — `v.SetDefault("email.enabled", true)` |
+| `configs/config.yaml` | `enabled: true` (ghi tường minh cho dev) | dòng 137 |
+| `configs/config.production.yaml` | **KHÔNG có key `enabled`** trong section `email` | section bắt đầu dòng 130 |
+| `.env.production` | **KHÔNG** set `EMAIL_ENABLED` | đã kiểm tra |
+| `.env.production.example` | **KHÔNG** có `EMAIL_ENABLED` | đã kiểm tra |
+| `.env.production` | **CÓ `EMAIL_SMTP_KEY` thật** (Brevo) | đã kiểm tra |
+
+- **Vì sao mặc định là `true` là CỐ Ý, không phải lỗi**: `config.go:464-467` ghi rõ *"A missing key
+  therefore means 'send'; only an explicit `enabled: false` turns sending off"*. Lý do đã được nêu ở
+  `loader.go:55-62`: nếu mặc định là `false`, mọi deployment nâng cấp từ config viết trước khi có key
+  này sẽ **âm thầm ngừng gửi email**. Đó là thất bại im lặng, nên thiếu key phải nghĩa là "vẫn gửi".
+
+- **Khoảng trống cần lưu ý**: hiến pháp §"Outbound email volume during verification" yêu cầu bulk
+  fixtures **không được** chạm relay SMTP thật, và hạn mức *"does not refill"*. Nhưng cảnh báo duy nhất
+  nằm ở `configs/config.yaml` — file **dev** (`enabled: true` kèm dòng *"Set it to false before a bulk
+  verification run"*). Ở phía production **không có** key này, và `.env.production.example` **không
+  nhắc** `EMAIL_ENABLED`. Hệ quả: chạy một kịch bản nhiều tài khoản ở chế độ production mà không biết
+  chuyện này sẽ **gửi một email thật cho mỗi tài khoản**, tới địa chỉ thật, và tiêu hết hạn mức.
+
+- **Vì sao ngoài phạm vi 026**: cơ chế `EMAIL_ENABLED` đến từ **025 T113**. Đã kiểm tra diff 12 commit
+  của 026: `configs/config.yaml` và `configs/config.production.yaml` chỉ bị sửa ở phần
+  `campaigns`/`campaign_sweep`, **không đụng gì tới `email`**. Việc sửa template production là việc
+  của feature hạ tầng hoặc của 025, không phải của 026.
+
+- **Gỡ bằng cách nào** (rẻ, và nên làm sớm):
+  1. Thêm `enabled: true` **tường minh** cùng comment cảnh báo vào section `email` của
+     `configs/config.production.yaml`, để trạng thái được ghi ra thay vì kế thừa ngầm.
+  2. Thêm dòng `EMAIL_ENABLED=true` vào `.env.production.example` kèm chú thích một dòng, để người
+     vận hành thấy switch mà không phải đọc source.
+  3. Cân nhắc một kiểm thử tĩnh khẳng định **mọi** file `.env*` đều có `EMAIL_ENABLED` được nhắc,
+     theo đúng hình thức `TestNoEnvironmentVariableCarriesCampaignData` đã làm cho FR-080.
+
+- **Liên quan 026 thế nào**: lần chạy V1+V2 ngày 04/10/2026 đã **tắt** email đúng hiến pháp (0 email rời
+  khỏi máy) và đã **revert** `.env` sau đó. Nhưng sự cần thiết phải biết trước mặc định này chính là
+  dấu hiệu khoảng trống đang tồn tại — người chạy kịch bản không có cách nào phát hiện nó nếu không
+  đọc source.
