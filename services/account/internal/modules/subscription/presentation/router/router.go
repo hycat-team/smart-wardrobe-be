@@ -185,6 +185,20 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		// administrator's budget" two numbers, and the first one to be spent would be
 		// whichever the client happened to call.
 		adminCampaigns.POST("", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignRegistryHandler.Create))
+		// 026 T043 (FR-030/FR-031/FR-034): the force-close endpoint.
+		//
+		// IT JOINS THIS GROUP RATHER THAN GETTING A NEW ONE, for the reason the
+		// comment above spells out: the Gin trap is a STATIC segment registered BESIDE
+		// a parameter at the same level, and this route adds a `:code` parameter
+		// under `POST`. The sibling `POST ""` and `POST "/restore"` in the
+		// `adminGrants` group above are the precedent that this shape is safe.
+		//
+		// THE SAME `RolesAuthorize` AND THE SAME LIMITER, both inherited from the group
+		// (FR-053). A close is the most consequential write the campaign registry has
+		// — it is one-way and cannot be undone — so charging it the same
+		// administrator budget as the other writes is what stops a retry loop from
+		// spending it twice.
+		adminCampaigns.POST("/:code/close", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignRegistryHandler.Close))
 	}
 }
 

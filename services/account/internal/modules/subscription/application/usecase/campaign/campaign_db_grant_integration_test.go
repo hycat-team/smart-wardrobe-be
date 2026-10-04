@@ -165,6 +165,12 @@ type dbGrantFixture struct {
 	campaign repositories.ICampaignRepository
 	claims   repositories.ICampaignClaimRepository
 	subs     repositories.IUserSubscriptionRepository
+	// log is the grant path's captured output, exposed so a test can assert on the
+	// SKIP REASON (026 T049). The reason code is part of the contract — quickstart V2
+	// requires `campaign_sleeping` for an account that meets every condition of a
+	// closed campaign — and the log line is where FR-061 puts it, so reading it from
+	// here asserts on the requirement rather than on a test-only echo.
+	log *recordingLogger
 }
 
 // newDBGrantFixture wires the REAL registry writer and the REAL grant path over one
@@ -188,6 +194,7 @@ func newDBGrantFixture(t *testing.T, dbConn *gorm.DB) *dbGrantFixture {
 	events := newFakeEventRepo()
 	publisher := &fakePublisher{}
 	uow := shareddb.NewGormUnitOfWork(dbConn)
+	log := &recordingLogger{}
 
 	grantUC := NewCampaignUseCase(
 		testConfig(),
@@ -200,7 +207,7 @@ func newDBGrantFixture(t *testing.T, dbConn *gorm.DB) *dbGrantFixture {
 		&fakeNotifContract{},
 		nil,
 		uow,
-		&recordingLogger{},
+		log,
 	).(*CampaignUseCase)
 	// Pin the clock inside the campaign's window. A test that used the real clock would
 	// pass or fail depending on the day the suite ran, and this file's subject is
@@ -222,6 +229,7 @@ func newDBGrantFixture(t *testing.T, dbConn *gorm.DB) *dbGrantFixture {
 		campaign: campaignRepo,
 		claims:   claimRepo,
 		subs:     subRepo,
+		log:      log,
 	}
 }
 

@@ -281,28 +281,45 @@ func (uc *CampaignQueryUseCase) summarise(
 // from. Recomputing it on every read costs two indexed counts an operator is
 // already waiting on, and it cannot be stale.
 //
-// THE FIVE STATES, AND WHY EACH IS DISTINGUISHABLE. `running` and `compensation`
+// THE SIX STATES, AND WHY EACH IS DISTINGUISHABLE. `running` and `compensation`
 // are separate because `compensation` is the one in which the reserve is still
 // usable — the budget that exists for the accounts the main budget turned away
 // (FR-031). `exhausted` and `expired` are separate because they need different
 // people to act: one is "we gave everything away", the other is "we closed it",
 // and an operator who cannot tell them apart either keeps sending a closed
-// campaign or reopens a finished one.
+// campaign or reopens a finished one. `closed` is a sixth state on top of those
+// five, and it is the only one an operator caused rather than the clock or the
+// budget causing.
+//
+// `closed` IS CHECKED FIRST, BEFORE EVERYTHING, and the order is the requirement
+// rather than an implementation detail (FR-032, data-model.md §5). A closed
+// campaign is asleep no matter what the clock says and no matter how much budget
+// is left, so the machine answers `closed` and stops. Two orders would each break
+// something an operator would be misled by:
+//
+//   - checking `expired` first would report a campaign the operator closed hours
+//     ago as one that "ran out of time", which invites reopening it — and there is
+//     no reopen (FR-034);
+//   - checking the budget states first would report `running` for a closed
+//     campaign whose budget is untouched, which is the state that reads as
+//     "still handing out plans" and is precisely the promise FR-031 withdraws.
 func deriveCampaignStatus(
 	campaign *entities.Campaign,
 	grantedMain, grantedTotal int64,
 	now time.Time,
 ) string {
-	// `expired` is checked FIRST, ahead of the budget states.
+	// `closed` FIRST. It needs no counts and no clock, only the one column the
+	// operator's decision wrote — which is why it is also the state a caller can
+	// compute without reading the ledger at all.
+	if campaign.ClosedAt != nil {
+		return sub_dto.CampaignStatusClosed
+	}
+	// `expired` is checked next, ahead of the budget states.
 	//
 	// Not because time outranks money, but because a campaign past `ends_at` has
 	// stopped for a reason no grant can change, and reporting it as
 	// `compensation` — which reads as "still granting" — would send an operator
 	// to watch a budget that can never be spent again.
-	//
-	// 026 adds a sixth state ABOVE this one: `closed_at IS NOT NULL` wins over
-	// everything, because a campaign an operator closed must read as closed whether
-	// or not the clock happens to agree. FR-032/FR-046, and T040 wires it.
 	if campaign.EndsAt != nil && !now.Before(*campaign.EndsAt) {
 		return sub_dto.CampaignStatusExpired
 	}

@@ -79,6 +79,22 @@ type CampaignSummaryRes struct {
 	// EndsAt is nil for an open-ended campaign (FR-009) — and nil is a DIFFERENT
 	// answer from a zero time, so it is a pointer.
 	EndsAt *time.Time `json:"endsAt"`
+	// ClosedAt is the instant an OPERATOR force-closed the campaign (026 T039,
+	// FR-031); nil means it was never force-closed.
+	//
+	// IT IS ADDITIVE, AND THAT IS ALL IT IS. 025's response shape is unchanged —
+	// no field was renamed, retyped or removed — because this campaign mechanism
+	// has customers reading it (FR-050). A client that does not know the field
+	// ignores it; a client that does know it can tell "the campaign ended by
+	// itself" (`endsAt` passed) from "somebody stopped it" (`closedAt` set), which
+	// is the difference between a finished promotion and an aborted one.
+	//
+	// It is a POINTER for the same reason `EndsAt` is, and the two are NOT
+	// redundant: `EndsAt` nil means open-ended and `EndsAt` set means the campaign
+	// ended on schedule, while `ClosedAt` set means an operator cut it short. A
+	// campaign can have both — closing one does not touch `ends_at` (contract §5.2)
+	// — and a campaign with `ClosedAt` nil is not thereby still open.
+	ClosedAt *time.Time `json:"closedAt"`
 	// WatermarkAt is the `registered_at` of the claim that filled the main budget,
 	// or nil when that has not happened. It is the instant every later priority
 	// comparison uses (FR-030).
@@ -158,6 +174,32 @@ type CampaignCreateReq struct {
 	// A pointer, and that is what makes `"endsAt": null` differ from `"endsAt": ""`:
 	// the first is an open-ended campaign, the second is a malformed timestamp.
 	EndsAt *string `json:"endsAt"`
+}
+
+// CampaignCloseReq force-closes one campaign (026 T042, FR-030, contract
+// `campaign-registry-api.md` §5).
+//
+// TWO REQUIRED FIELDS, AND THEY ANSWER DIFFERENT QUESTIONS. `version` is the
+// client's If-Match: "close the campaign I was looking at, not the one somebody
+// edited while the confirmation box was open" (FR-055). `reason` is why a human
+// ended the promotion early, and it is the whole reason the operation is audited
+// — a closure with no reason leaves an operator six weeks later unable to tell a
+// deliberate stop from a mistake (spec.md Câu 4).
+//
+// WHY `reason` IS A POINTER AND NOT A STRING. FR-054 puts "thiếu `reason`" on the
+// 400 row and "`reason` rỗng" on the 422 row, and on a plain `string` those two
+// arrive as the same zero value — which is the same reasoning that made
+// `planSlug` a pointer on `CampaignCreateReq`, and it is the reason the two codes
+// can be told apart at all.
+type CampaignCloseReq struct {
+	// Version is the version the client read. `0` is not a valid version (the column
+	// defaults to 1 and only ever increments), so `binding:"required"` refusing the
+	// zero value is exactly the "thiếu trường bắt buộc → 400" rule and nothing more.
+	Version int `json:"version" binding:"required"`
+	// Reason is the operator's explanation, stored in `payload.reason` of the audit
+	// record (contract §6.3). Trimmed by the validator before use, so a box holding
+	// three spaces is a 422 rather than an audit row that reads as blank.
+	Reason *string `json:"reason" binding:"required"`
 }
 
 // CampaignClaimRes is one granted account in
@@ -295,8 +337,8 @@ const (
 
 // Campaign status constants (contracts/campaign-query-api.md §3.2).
 //
-// Five values, derived at query time from the configuration plus the claim counts
-// (data-model.md §5).
+// Six values as of 026, derived at query time from the registry row plus the claim
+// counts (data-model.md §5).
 const (
 	// CampaignStatusNotStarted: `now` is before `starts_at`.
 	CampaignStatusNotStarted = "not_started"
@@ -314,6 +356,23 @@ const (
 	// CampaignStatusExpired: `now` is past `ends_at`, so the campaign goes to
 	// sleep on its own (FR-013).
 	CampaignStatusExpired = "expired"
+	// CampaignStatusClosed: an OPERATOR force-closed the campaign, so `closed_at` is
+	// set (026 T039, FR-031/FR-032).
+	//
+	// IT IS THE SIXTH VALUE, ADDED TO THE ENUM RATHER THAN A SUBSTITUTE FOR ONE, and
+	// it takes precedence over every other status. The five 025 states are all
+	// DERIVED facts — the clock ran out or the budget filled — and this one records a
+	// HUMAN decision. Collapsing it into `expired` would have been cheaper and would
+	// have lost the only thing an operator needs: a campaign the clock ended is
+	// finished, while a campaign somebody closed was interrupted, and the two call
+	// for different reactions. FR-050's "the response shape does not change" is about
+	// JSON keys and types, not about the number of values the `status` field may
+	// carry, and spec.md Câu 4 settled that reading explicitly.
+	//
+	// `reason` IS UNAFFECTED: a closed campaign makes condition 2 report
+	// `campaign_sleeping`, which is one of the twelve codes already in production.
+	// No new reason code was added, and none may be (FR-050).
+	CampaignStatusClosed = "closed"
 )
 
 // CampaignClaimSourceMain and CampaignClaimSourceReserve are the two values of

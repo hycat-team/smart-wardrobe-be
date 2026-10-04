@@ -105,6 +105,15 @@ func TestRouterRegistersEveryCampaignRouteWithoutPanicking(t *testing.T) {
 	if _, ok := got["POST /admin/campaigns"]; !ok {
 		t.Errorf("expected POST /admin/campaigns to be registered; the router has:\n%s", routeList(engine))
 	}
+
+	// 026 T043: the close route is the first campaign POST to carry a `:code`
+	// PARAMETER, so it is the first registration that could hit R11 from this side —
+	// a static segment registered beside a parameter panics while the tree is built,
+	// which is above, and a route that quietly landed elsewhere would 404 a
+	// one-way operation an operator believes they performed.
+	if _, ok := got["POST /admin/campaigns/:code/close"]; !ok {
+		t.Errorf("expected POST /admin/campaigns/:code/close to be registered; the router has:\n%s", routeList(engine))
+	}
 }
 
 // TestCampaignRoutesAreNotNestedUnderAdminSubscriptions is the R11 assertion proper.

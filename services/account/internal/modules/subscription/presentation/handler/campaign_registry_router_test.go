@@ -38,11 +38,12 @@ import (
 // the repository they actually write through. What is proved HERE is the HTTP surface:
 // the path, the status codes, the role check, the limiter and the response envelope.
 
-// registryStub answers `Create` from a script, and records what reached it.
+// registryStub answers `Create` and `Close` from a script, and records what reached
+// them.
 //
-// It implements the WHOLE interface so that adding a method in a later phase (T041,
-// T052) breaks this file loudly instead of leaving a stub that silently stops
-// covering the new route.
+// It implements the WHOLE interface so that adding a method in a later phase (T052)
+// breaks this file loudly instead of leaving a stub that silently stops covering the
+// new route.
 type registryStub struct {
 	calls int
 	// lastReq is what the handler built, so a test can assert on the REQUEST the
@@ -58,6 +59,22 @@ type registryStub struct {
 	// err is returned verbatim, so a test can script 409, 422 or 500 without the stub
 	// knowing FR-054's table.
 	err error
+
+	// ---- the close side (026 T048) ----
+	//
+	// SEPARATE FIELDS RATHER THAN SHARED ONES, because the two operations have
+	// different inputs: `Create` carries the code in its body, `Close` in the path. One
+	// shared `err` and one shared `lastReq` would force a close test to set the create
+	// result to reach its own, and the assertions would then be about which field the
+	// test happened to remember.
+	closeCalls int
+	// lastCloseCode is the `:code` the handler read out of the URL. It is asserted
+	// because the body has no `code` field at all (FR-024), so a handler that passed
+	// the wrong segment would still reach the use case with a plausible string.
+	lastCloseCode string
+	lastCloseReq  *sub_dto.CampaignCloseReq
+	closeResult   *sub_dto.CampaignSummaryRes
+	closeErr      error
 }
 
 func (s *registryStub) Create(
@@ -78,6 +95,28 @@ func (s *registryStub) Create(
 		return &sub_dto.CampaignSummaryRes{Code: req.Code}, nil
 	}
 	return s.result, nil
+}
+
+func (s *registryStub) Close(
+	_ context.Context,
+	actorAdminID uuid.UUID,
+	campaignCode string,
+	req *sub_dto.CampaignCloseReq,
+	requestIP *string,
+) (*sub_dto.CampaignSummaryRes, error) {
+	s.closeCalls++
+	s.lastActor = actorAdminID
+	s.lastIP = requestIP
+	s.lastCloseCode = campaignCode
+	copied := *req
+	s.lastCloseReq = &copied
+	if s.closeErr != nil {
+		return nil, s.closeErr
+	}
+	if s.closeResult == nil {
+		return &sub_dto.CampaignSummaryRes{Code: campaignCode, Status: sub_dto.CampaignStatusClosed}, nil
+	}
+	return s.closeResult, nil
 }
 
 // ---- engine ----
@@ -108,6 +147,12 @@ func registryEngine(
 	{
 		campaigns := group.Group("/campaigns")
 		campaigns.POST("", limiter.Handle(), shared_pres.WrapHandler(h.Create))
+		// 026 T048: the close route, registered on the same group with the same
+		// middleware, exactly as `router.go` registers it. Both live in this engine
+		// because the Gin tree is the subject: a static `POST ""` beside a `POST
+		// "/:code/close"` is the shape that panics at startup when it is wrong, and
+		// only registering both proves it does not.
+		campaigns.POST("/:code/close", limiter.Handle(), shared_pres.WrapHandler(h.Close))
 	}
 	return engine
 }
@@ -473,6 +518,289 @@ func TestCreateCampaignNeverAnswersWithACodeOutsideTheTable(t *testing.T) {
 	}
 }
 
+// ---- 026 T048: POST /campaigns/:code/close ----
+//
+// The seven codes below are contract §5.4's table. Two are produced by middleware that
+// never reaches the handler (403 and 429), and one — 400 — by the binder for the two
+// REQUIRED fields, which is why it can only be observed through the route.
+
+// closeBody is a well-formed close request as a client would send it.
+func closeBody(t *testing.T) *bytes.Reader {
+	t.Helper()
+	raw, err := json.Marshal(map[string]any{"version": 3, "reason": "Hết ngân sách khuyến mãi tháng 11"})
+	if err != nil {
+		t.Fatalf("marshal close body: %v", err)
+	}
+	return bytes.NewReader(raw)
+}
+
+// postClose sends one close request for the given code.
+func postClose(t *testing.T, engine *gin.Engine, code string, body *bytes.Reader) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, campaignPath+"/"+code+"/close", body)
+	req.Header.Set("Content-Type", "application/json")
+	engine.ServeHTTP(rec, req)
+	return rec
+}
+
+// TestCloseCampaignReturns200WithTheClosedSummary is the success path, including the
+// idempotent no-op (contract §5.3) which the handler cannot distinguish and must not
+// need to.
+//
+// 200 AND NOT 201: nothing was created. And `status: closed` is asserted because it is
+// the two things the operator asked for, in one response, without a refresh.
+func TestCloseCampaignReturns200WithTheClosedSummary(t *testing.T) {
+	closedAt := time.Date(2026, 11, 1, 9, 30, 0, 0, time.FixedZone("UTC+7", 7*60*60))
+	stub := &registryStub{closeResult: &sub_dto.CampaignSummaryRes{
+		Code:     "tet-2027",
+		PlanSlug: "premium-monthly",
+		Quota:    100,
+		Reserve:  10,
+		HardCap:  110,
+		Status:   sub_dto.CampaignStatusClosed,
+		StartsAt: time.Date(2027, 1, 20, 0, 0, 0, 0, time.FixedZone("UTC+7", 7*60*60)),
+		ClosedAt: &closedAt,
+	}}
+	engine := newRegistryEngine(t, stub)
+
+	rec := postClose(t, engine, "tet-2027", closeBody(t))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("contract §5: a successful close must return 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	var parsed struct {
+		Data sub_dto.CampaignSummaryRes `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &parsed); err != nil {
+		t.Fatalf("parse response %q: %v", rec.Body.String(), err)
+	}
+	if parsed.Data.Status != sub_dto.CampaignStatusClosed {
+		t.Errorf("status = %q, want %q", parsed.Data.Status, sub_dto.CampaignStatusClosed)
+	}
+	if parsed.Data.ClosedAt == nil {
+		t.Error("the 200 body must carry closedAt (FR-051)")
+	}
+}
+
+// TestCloseCampaignReachesTheUseCaseWithThePathCodeAndTheActor is FR-060's input half
+// for close, and it is the one assertion the create tests could not make.
+//
+// `code` is NOT in the body — it is immutable after creation (FR-024) — so the only
+// way it reaches the use case is through the URL segment. A handler that read it from
+// anywhere else, or from the wrong segment, would still compile and would still answer
+// 200 in every other test here.
+func TestCloseCampaignReachesTheUseCaseWithThePathCodeAndTheActor(t *testing.T) {
+	stub := &registryStub{}
+	engine := newRegistryEngine(t, stub)
+
+	rec := postClose(t, engine, "launch-2026-10", closeBody(t))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if stub.closeCalls != 1 {
+		t.Fatalf("expected the use case to be called once, got %d", stub.closeCalls)
+	}
+	if stub.lastCloseCode != "launch-2026-10" {
+		t.Errorf("the handler must pass the :code segment through, got %q", stub.lastCloseCode)
+	}
+	if stub.lastActor == uuid.Nil {
+		t.Error("FR-060: the handler must pass the authenticated administrator, not a zero id")
+	}
+	if stub.lastIP == nil || *stub.lastIP == "" {
+		t.Error("FR-060: the handler must pass the request address so a disputed closure can be traced")
+	}
+	// `version` MUST ARRIVE AS THE INTEGER THE CLIENT SENT — it is the If-Match of
+	// FR-055, and a handler that defaulted it to zero would turn every close into a 412.
+	if stub.lastCloseReq.Version != 3 {
+		t.Errorf("version = %d, want the 3 the client sent", stub.lastCloseReq.Version)
+	}
+	if stub.lastCloseReq.Reason == nil || *stub.lastCloseReq.Reason == "" {
+		t.Errorf("reason must arrive as the string the client sent, got %+v", stub.lastCloseReq.Reason)
+	}
+}
+
+// TestCloseCampaignRejectsBrokenShapesWith400 is the 400 row of contract §5.4: a
+// missing `version` or a missing `reason`. These are the binder's refusals, which is
+// why they can only be observed through the route — and the assertion that the use case
+// was NEVER reached is the stronger half: nothing about such a request was even read.
+func TestCloseCampaignRejectsBrokenShapesWith400(t *testing.T) {
+	cases := []struct {
+		name string
+		body map[string]any
+	}{
+		{"a missing version", map[string]any{"reason": "Hết ngân sách"}},
+		{"a missing reason", map[string]any{"version": 3}},
+		{"an empty body", map[string]any{}},
+		{"a version that is not a number", map[string]any{"version": "three", "reason": "Hết ngân sách"}},
+		{"a reason that is not a string", map[string]any{"version": 3, "reason": 42}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &registryStub{}
+			engine := newRegistryEngine(t, stub)
+
+			raw, err := json.Marshal(tc.body)
+			if err != nil {
+				t.Fatalf("marshal body: %v", err)
+			}
+			rec := postClose(t, engine, "tet-2027", bytes.NewReader(raw))
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("contract §5.4: expected 400, got %d (%s)", rec.Code, rec.Body.String())
+			}
+			if message := campaignErrorMessage(t, rec); message == "" {
+				t.Errorf("a 400 must carry a Vietnamese message, got %q", rec.Body.String())
+			}
+			if stub.closeCalls != 0 {
+				t.Errorf("a request the binder refuses must never reach the use case, got %d calls",
+					stub.closeCalls)
+			}
+		})
+	}
+}
+
+// TestCloseCampaignReturns404412And422 is FR-054's remaining rows for close, in the
+// order contract §5.4 lists them.
+//
+// Each is a DIFFERENT mistake with a different remedy — a mistyped code, a page that
+// has been open too long, and a confirmation box submitted empty — so returning the
+// wrong one would send the operator to do the wrong next thing. 412 in particular is
+// not fixable by editing the form: the page they were looking at is not the current
+// state.
+func TestCloseCampaignReturns404412And422(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want int
+		// mentions is a fragment the message must contain, where the message has to
+		// carry something actionable rather than a bare code.
+		mentions string
+	}{
+		{
+			name:     "an unknown code",
+			err:      subscriptionerrors.ErrCampaignNotFound("khong-ton-tai"),
+			want:     http.StatusNotFound,
+			mentions: "khong-ton-tai",
+		},
+		{
+			name:     "a stale version",
+			err:      subscriptionerrors.ErrCampaignVersionConflict("tet-2027"),
+			want:     http.StatusPreconditionFailed,
+			mentions: "tet-2027",
+		},
+		{
+			name:     "a blank reason",
+			err:      subscriptionerrors.ErrCampaignInvalidField("reason", "không được để trống"),
+			want:     http.StatusUnprocessableEntity,
+			mentions: "reason",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &registryStub{closeErr: tc.err}
+			engine := newRegistryEngine(t, stub)
+
+			rec := postClose(t, engine, "tet-2027", closeBody(t))
+
+			if rec.Code != tc.want {
+				t.Fatalf("expected %d, got %d (%s)", tc.want, rec.Code, rec.Body.String())
+			}
+			if message := campaignErrorMessage(t, rec); !strings.Contains(message, tc.mentions) {
+				t.Errorf("the message must carry %q, got %q", tc.mentions, message)
+			}
+			// The use case DID run here, unlike the 400 cases: it is the layer that
+			// knows the code does not exist, the version moved, or the reason is blank.
+			if stub.closeCalls != 1 {
+				t.Errorf("expected the use case to be reached once, got %d", stub.closeCalls)
+			}
+		})
+	}
+}
+
+// TestCloseCampaignIsRefusedForANormalAccount is FR-053 applied to close. A close is
+// the most consequential write in the registry — one-way, and not undoable (FR-034) —
+// so "an ordinary signed-in customer must not reach it" matters more here than anywhere
+// else in the group.
+func TestCloseCampaignIsRefusedForANormalAccount(t *testing.T) {
+	stub := &registryStub{}
+	engine := registryEngine(t, stub, authenticatedAs(roleslug.User), newAdminLimiter(alwaysAllowRateLimiter{}))
+
+	rec := postClose(t, engine, "tet-2027", closeBody(t))
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("FR-053: a normal account must be refused with 403, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if stub.closeCalls != 0 {
+		t.Errorf("FR-053: the close ran %d times for a refused caller; it must not run at all", stub.closeCalls)
+	}
+}
+
+// TestCloseCampaignReturns429OnceTheAdministratorBudgetIsSpent is FR-053's other half,
+// over the PRODUCTION limiter, so it also pins WHICH limiter is on the route: a second,
+// campaign-only limiter would answer identically here, and the requirement is that there
+// is not one (research.md R10).
+func TestCloseCampaignReturns429OnceTheAdministratorBudgetIsSpent(t *testing.T) {
+	stub := &registryStub{}
+	engine := registryEngine(t, stub, authenticatedAs(roleslug.Admin), newAdminLimiter(neverAllowRateLimiter{}))
+
+	rec := postClose(t, engine, "tet-2027", closeBody(t))
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("FR-053: an exhausted administrator budget must return 429, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if stub.closeCalls != 0 {
+		t.Errorf("FR-053: the close ran %d times behind an exhausted limit; it must not run at all",
+			stub.closeCalls)
+	}
+}
+
+// TestCloseCampaignNeverAnswersWithACodeOutsideTheTable is FR-054's closing rule for
+// close: "không mã nào ngoài bảng này được trả về từ ba endpoint ghi".
+//
+// A 500 from a database fault and a 409 from a duplicate both satisfy the code that
+// produced them while leaving the client unable to decide whether to change its input
+// or retry — and 409 has NO meaning here at all: it belongs to create.
+func TestCloseCampaignNeverAnswersWithACodeOutsideTheTable(t *testing.T) {
+	allowed := map[int]string{
+		http.StatusBadRequest:          "400 hỏng hình dạng",
+		http.StatusNotFound:            "404 mã không tồn tại",
+		http.StatusConflict:            "409 chỉ dành cho tạo",
+		http.StatusUnprocessableEntity: "422 sai nghĩa",
+		http.StatusPreconditionFailed:  "412 phiên bản lệch",
+		http.StatusUnauthorized:        "401 chưa xác thực",
+		http.StatusForbidden:           "403 không phải Admin",
+		http.StatusTooManyRequests:     "429 vượt giới hạn",
+		http.StatusInternalServerError: "500 lỗi hạ tầng",
+	}
+
+	for _, scripted := range []struct {
+		name string
+		err  error
+	}{
+		{"an unknown code", subscriptionerrors.ErrCampaignNotFound("khong-ton-tai")},
+		{"a stale version", subscriptionerrors.ErrCampaignVersionConflict("tet-2027")},
+		{"a blank reason", subscriptionerrors.ErrCampaignInvalidField("reason", "không được để trống")},
+		{"a database fault", subscriptionerrors.ErrCampaignRegistryWriteFailed("tet-2027", errors.New("connection reset"))},
+		{"a failed audit insert", subscriptionerrors.ErrCampaignRegistryAuditFailed("tet-2027", errors.New("outbox down"))},
+	} {
+		stub := &registryStub{closeErr: scripted.err}
+		engine := newRegistryEngine(t, stub)
+
+		rec := postClose(t, engine, "tet-2027", closeBody(t))
+
+		if _, ok := allowed[rec.Code]; !ok {
+			t.Errorf("FR-054: %s answered %d, which is not in the table (%s)", scripted.name, rec.Code, rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), "connection reset") || strings.Contains(rec.Body.String(), "outbox down") {
+			t.Errorf("%s leaked the underlying cause to the client: %s", scripted.name, rec.Body.String())
+		}
+	}
+}
+
 // ---- the constants the audit row is built from ----
 
 // TestCampaignAuditConstantsAreTheOnesThePayloadUses is FR-063's coupling, pinned.
@@ -487,5 +815,11 @@ func TestCampaignAuditConstantsAreTheOnesThePayloadUses(t *testing.T) {
 	}
 	if string(adminaudit.CampaignCreate) != "campaign.create" {
 		t.Errorf("FR-060: the create action must be %q, got %q", "campaign.create", adminaudit.CampaignCreate)
+	}
+	// And the close action, which the per-campaign audit screen filters on exactly the
+	// same way (FR-063, contract §6.3). A misspelling here would produce a record the
+	// screen cannot find, while every behavioural test kept passing.
+	if string(adminaudit.CampaignClose) != "campaign.close" {
+		t.Errorf("FR-060: the close action must be %q, got %q", "campaign.close", adminaudit.CampaignClose)
 	}
 }

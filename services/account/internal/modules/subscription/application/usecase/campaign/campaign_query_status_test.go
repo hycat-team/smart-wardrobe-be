@@ -311,6 +311,171 @@ func TestCampaignRemainingNeverGoesNegative(t *testing.T) {
 	}
 }
 
+// TestClosedOutranksEveryOtherStatus is T046 / FR-032 / SC-002, and it is the case a
+// single-value test of `closed` would miss.
+//
+// `closed` is not a sixth alternative to the five existing states; it is checked
+// BEFORE all of them, so it wins even when the clock and the budget would both have
+// produced a different answer. Every combination below is one where the old machine
+// had a perfectly good answer of its own — `expired`, `exhausted`, `compensation`,
+// `running`, `not_started` — and the one thing a force-close means is that the
+// operator's decision outranks all of them.
+//
+// WHY EACH WRONG ANSWER WOULD COST SOMEBODY SOMETHING. Reporting `running` for a
+// closed campaign tells an operator the promotion is still handing out plans, which is
+// the exact promise FR-031 withdraws. Reporting `expired` invites reopening it, and
+// there is no reopen (FR-034). Reporting `not_started` for a campaign that has not
+// opened is merely confusing — but it is the same confusion that would make an
+// operator wait for a launch that has been cancelled.
+func TestClosedOutranksEveryOtherStatus(t *testing.T) {
+	pastStart := baseInstant().Add(-24 * time.Hour)
+	futureStart := baseInstant().Add(time.Hour)
+	pastEnd := baseInstant().Add(-time.Hour)
+	futureEnd := baseInstant().Add(time.Hour)
+
+	cases := []struct {
+		name string
+		// the state the five-state machine would have reported WITHOUT the close.
+		otherwise string
+		build     func(t *testing.T) *queryHarness
+	}{
+		{
+			name:      "closed rather than running",
+			otherwise: sub_dto.CampaignStatusRunning,
+			build: func(t *testing.T) *queryHarness {
+				startsAt := pastStart
+				closed := closedCampaign(queryCode, "premium-monthly", queryQuota, queryReserve, &startsAt, &futureEnd)
+				h, _ := seededClosed(t, closed, 1, 0)
+				return h
+			},
+		},
+		{
+			name:      "closed rather than not_started",
+			otherwise: sub_dto.CampaignStatusNotStarted,
+			build: func(t *testing.T) *queryHarness {
+				startsAt := futureStart
+				closed := closedCampaign(queryCode, "premium-monthly", queryQuota, queryReserve, &startsAt, &futureEnd)
+				h, _ := seededClosed(t, closed, 0, 0)
+				return h
+			},
+		},
+		{
+			name:      "closed rather than compensation",
+			otherwise: sub_dto.CampaignStatusCompensation,
+			build: func(t *testing.T) *queryHarness {
+				startsAt := pastStart
+				closed := closedCampaign(queryCode, "premium-monthly", queryQuota, queryReserve, &startsAt, &futureEnd)
+				h, _ := seededClosed(t, closed, queryQuota, 0)
+				return h
+			},
+		},
+		{
+			name:      "closed rather than exhausted",
+			otherwise: sub_dto.CampaignStatusExhausted,
+			build: func(t *testing.T) *queryHarness {
+				startsAt := pastStart
+				closed := closedCampaign(queryCode, "premium-monthly", queryQuota, queryReserve, &startsAt, &futureEnd)
+				h, _ := seededClosed(t, closed, queryQuota, queryReserve)
+				return h
+			},
+		},
+		{
+			// The pair that matters most: `expired` is what a campaign past `ends_at`
+			// reports, and it reads as "it finished on its own". A closure reads as
+			// "somebody stopped it", which is a different event with a different
+			// explanation.
+			name:      "closed rather than expired",
+			otherwise: sub_dto.CampaignStatusExpired,
+			build: func(t *testing.T) *queryHarness {
+				startsAt := pastStart
+				closed := closedCampaign(queryCode, "premium-monthly", queryQuota, queryReserve, &startsAt, &pastEnd)
+				h, _ := seededClosed(t, closed, queryQuota, queryReserve)
+				return h
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			summary := summaryOf(t, tc.build(t))
+			if summary.Status != sub_dto.CampaignStatusClosed {
+				t.Fatalf("a force-closed campaign must report %q whatever the clock and the budget say, got %q",
+					sub_dto.CampaignStatusClosed, summary.Status)
+			}
+			if summary.Status == tc.otherwise {
+				t.Errorf("the close had no effect on the reported state")
+			}
+			// FR-051: `closedAt` rides along with the status, so a screen can show WHEN
+			// it was closed rather than only that it is.
+			if summary.ClosedAt == nil {
+				t.Errorf("a campaign reported as %q must carry closedAt", sub_dto.CampaignStatusClosed)
+			}
+		})
+	}
+}
+
+// TestACampaignThatWasNeverClosedStillReportsNoClosedAt is the negative control.
+//
+// Without it, "every closed campaign carries `closedAt`" would also be satisfied by a
+// mapper that sets the field unconditionally, and an operator would see a campaign
+// that is running with a closure instant on it.
+func TestACampaignThatWasNeverClosedStillReportsNoClosedAt(t *testing.T) {
+	startsAt := baseInstant().Add(-time.Hour)
+	h, _ := seededCampaign(t, queryQuota, queryReserve, &startsAt, nil, 1, 0)
+
+	summary := summaryOf(t, h)
+
+	if summary.Status != sub_dto.CampaignStatusRunning {
+		t.Errorf("expected %q for an open campaign with budget to spare, got %q",
+			sub_dto.CampaignStatusRunning, summary.Status)
+	}
+	if summary.ClosedAt != nil {
+		t.Errorf("FR-031: a campaign nobody closed must report closedAt = null, got %s", summary.ClosedAt)
+	}
+}
+
+// seededClosed builds the look-up harness over a campaign that has been force-closed,
+// with the given number of grants in each budget part.
+//
+// `closedCampaign` builds the row with its window still OPEN, so a test using it is
+// testing the closed column and nothing else — see that helper. The grants are seeded
+// exactly as `seededCampaign` does, including the watermark on the grant that filled
+// the main budget, so the five-state machine would reach a real state rather than the
+// anomaly one.
+func seededClosed(
+	t *testing.T,
+	campaign *entities.Campaign,
+	main, reserveGrants int,
+) (*queryHarness, *entities.Campaign) {
+	claims := newFakeClaimRepo()
+	for i := 0; i < main; i++ {
+		claims.seed(
+			queryCode,
+			uuid.New(),
+			baseInstant().Add(-time.Duration(main-i)*time.Minute),
+			entities.GrantBucketMain,
+			i == main-1 && main == campaign.Quota,
+		)
+	}
+	for i := 0; i < reserveGrants; i++ {
+		claims.seed(
+			queryCode,
+			uuid.New(),
+			baseInstant().Add(-time.Duration(reserveGrants-i)*time.Second),
+			entities.GrantBucketReserve,
+			false,
+		)
+	}
+	h := newTestQueryUC(
+		t,
+		[]*entities.Campaign{campaign},
+		claims,
+		newFakeSweepRunRepo(),
+		newFakeUserBriefContract(),
+	)
+	return h, campaign
+}
+
 // summaryOf reads the single configured campaign out of the harness.
 //
 // One assertion that the list has exactly one row, because every later assertion

@@ -125,6 +125,36 @@ func validateCampaignCreate(req *sub_dto.CampaignCreateReq) (campaignWrite, erro
 	return out, nil
 }
 
+// fieldReason names the closure reason as the API spells it, for the same reason
+// as the other field names above.
+const fieldReason = "reason"
+
+// validateCampaignClose applies FR-054's table to the close request.
+//
+// THE WHOLE OF IT IS THE REASON, because the version is not validated here and
+// that is deliberate. `version` is a NUMBER THE CLIENT READ BACK, not an input with
+// a shape to check: any integer is well-formed, and whether it is the CURRENT one
+// is a concurrency question answered by the conditional UPDATE, not by a validator.
+// A validator that compared it against anything here would either duplicate the
+// UPDATE's decision or need a read the transaction is going to make anyway.
+//
+// `reason` IS checked, and it is 422 rather than 400 because the binder has already
+// proved the field was SENT (`binding:"required"`): FR-054 puts "thiếu `reason`" on
+// the 400 row and "`reason` rỗng" on the 422 row, and the pointer on the DTO is the
+// only thing that can tell the two apart.
+//
+// TRIMMED BEFORE IT IS STORED, for the same reason `planSlug` is trimmed: three
+// spaces is a blank answer that would reach the audit trail looking like a reason
+// somebody gave, and the row an operator reads weeks later would say nothing while
+// appearing to say something.
+func validateCampaignClose(req *sub_dto.CampaignCloseReq) (string, error) {
+	reason := strings.TrimSpace(*req.Reason)
+	if reason == "" {
+		return "", subscriptionerrors.ErrCampaignInvalidField(fieldReason, "không được để trống")
+	}
+	return reason, nil
+}
+
 // validateCampaignBudget checks `quota` and `reserve` (FR-012).
 //
 // BOTH ARE 422, and neither is 400, and that is the whole argument: the binder has
