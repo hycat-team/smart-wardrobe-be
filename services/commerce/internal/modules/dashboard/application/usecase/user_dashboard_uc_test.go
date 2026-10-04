@@ -112,10 +112,12 @@ func (m *mockUserDashboardRepo) GetTotalAIRequestCount(ctx context.Context, from
 
 type mockWardrobeReader struct {
 	wardrobeContract.IWardrobeDashboardReader
-	stats            *wardrobeDTO.UserWardrobeSummaryStatsDTO
-	underutilized    []*wardrobeDTO.UnderutilizedItemInfoDTO
-	statsErr         error
-	underutilizedErr error
+	stats                *wardrobeDTO.UserWardrobeSummaryStatsDTO
+	underutilized        []*wardrobeDTO.UnderutilizedItemInfoDTO
+	statsErr             error
+	underutilizedErr     error
+	fashionItemCounts    map[uuid.UUID]int64
+	fashionItemCountsErr error
 }
 
 func (m *mockWardrobeReader) GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*wardrobeDTO.UserWardrobeSummaryStatsDTO, error) {
@@ -124,6 +126,10 @@ func (m *mockWardrobeReader) GetUserWardrobeSummaryStats(ctx context.Context, us
 
 func (m *mockWardrobeReader) GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*wardrobeDTO.UnderutilizedItemInfoDTO, error) {
 	return m.underutilized, m.underutilizedErr
+}
+
+func (m *mockWardrobeReader) GetUserWardrobeFashionItemCounts(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]int64, error) {
+	return m.fashionItemCounts, m.fashionItemCountsErr
 }
 
 type mockUserBrandReader struct {
@@ -138,14 +144,16 @@ func (m *mockUserBrandReader) GetUserExpiringBenefitsCount(ctx context.Context, 
 
 type mockFashionReaderForUser struct {
 	fashionContract.IFashionDashboardReader
+	mappings   []fashionDTO.DashboardFashionItemCategoryDTO
+	categories []fashionDTO.DashboardCategoryDTO
 }
 
 func (m *mockFashionReaderForUser) GetCategoriesByIDs(ctx context.Context, categoryIDs []uuid.UUID) ([]fashionDTO.DashboardCategoryDTO, error) {
-	return nil, nil
+	return m.categories, nil
 }
 
 func (m *mockFashionReaderForUser) GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]fashionDTO.DashboardFashionItemCategoryDTO, error) {
-	return nil, nil
+	return m.mappings, nil
 }
 
 func TestUserGetWardrobeInsights_CacheHit(t *testing.T) {
@@ -235,5 +243,67 @@ func TestUserGetWardrobeInsights_NoData(t *testing.T) {
 	}
 	if res.TotalItems != 0 || res.TotalWardrobeValueVND != 0 {
 		t.Error("expected all fields to be 0 when no data")
+	}
+}
+
+func TestGetWardrobeCategoryDistribution_CountsRowsWithMultiplicity(t *testing.T) {
+	userID := uuid.New()
+	fashionQuan := uuid.New()
+	fashionAo := uuid.New()
+	categoryQuan := uuid.New()
+	categoryAo := uuid.New()
+
+	wardrobeReader := &mockWardrobeReader{
+		fashionItemCounts: map[uuid.UUID]int64{
+			fashionQuan: 2,
+			fashionAo:   1,
+		},
+	}
+	fashionReader := &mockFashionReaderForUser{
+		mappings: []fashionDTO.DashboardFashionItemCategoryDTO{
+			{FashionItemID: fashionQuan, CategoryID: &categoryQuan},
+			{FashionItemID: fashionAo, CategoryID: &categoryAo},
+		},
+		categories: []fashionDTO.DashboardCategoryDTO{
+			{ID: categoryQuan, Name: "Quần"},
+			{ID: categoryAo, Name: "Áo"},
+		},
+	}
+
+	uc := NewUserDashboardUseCase(&mockUserDashboardRepo{}, wardrobeReader, &mockUserBrandReader{}, fashionReader)
+	res, err := uc.GetWardrobeCategoryDistribution(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.TotalItems != 3 {
+		t.Errorf("expected TotalItems=3, got %d", res.TotalItems)
+	}
+
+	itemCountByCategory := map[uuid.UUID]int{}
+	nameByCategory := map[uuid.UUID]string{}
+	for _, c := range res.Categories {
+		itemCountByCategory[c.CategoryID] = c.ItemCount
+		nameByCategory[c.CategoryID] = c.CategoryName
+	}
+	if itemCountByCategory[categoryQuan] != 2 {
+		t.Errorf("expected Quần itemCount=2 (duplicate fashion rows counted), got %d", itemCountByCategory[categoryQuan])
+	}
+	if itemCountByCategory[categoryAo] != 1 {
+		t.Errorf("expected Áo itemCount=1, got %d", itemCountByCategory[categoryAo])
+	}
+	if nameByCategory[categoryQuan] != "Quần" {
+		t.Errorf("expected category name Quần, got %q", nameByCategory[categoryQuan])
+	}
+}
+
+func TestGetWardrobeCategoryDistribution_EmptyWardrobe(t *testing.T) {
+	userID := uuid.New()
+	uc := NewUserDashboardUseCase(&mockUserDashboardRepo{}, &mockWardrobeReader{}, &mockUserBrandReader{}, &mockFashionReaderForUser{})
+	res, err := uc.GetWardrobeCategoryDistribution(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.TotalItems != 0 || len(res.Categories) != 0 {
+		t.Errorf("expected empty distribution, got total=%d categories=%d", res.TotalItems, len(res.Categories))
 	}
 }

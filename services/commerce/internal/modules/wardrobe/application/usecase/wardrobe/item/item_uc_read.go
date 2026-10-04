@@ -494,6 +494,6 @@ func (uc *WardrobeItemUseCase) GetOutfitItemFashionItemIDs(ctx context.Context, 
 	return uc.outfitRepo.GetFashionItemIDsByOutfitIDs(ctx, outfitIDs)
 }
 
-func (uc *WardrobeItemUseCase) GetUserWardrobeFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	return uc.wardrobeRepo.GetUserFashionItemIDs(ctx, userID)
+func (uc *WardrobeItemUseCase) GetUserWardrobeFashionItemCounts(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]int64, error) {
+	return uc.wardrobeRepo.GetUserFashionItemCounts(ctx, userID)
 }

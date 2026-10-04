@@ -39,28 +39,31 @@ func NewUserDashboardUseCase(
 }
 
 func (uc *UserDashboardUseCase) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) (*dto.WardrobeCategoryDistributionRes, error) {
-	fashionItemIDs, err := uc.wardrobeReader.GetUserWardrobeFashionItemIDs(ctx, userID)
+	fashionItemCounts, err := uc.wardrobeReader.GetUserWardrobeFashionItemCounts(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if len(fashionItemIDs) == 0 {
+	if len(fashionItemCounts) == 0 {
 		return &dto.WardrobeCategoryDistributionRes{TotalItems: 0, Categories: []dto.CategoryDistributionDTO{}}, nil
 	}
 
+	fashionItemIDs := make([]uuid.UUID, 0, len(fashionItemCounts))
+	for fashionItemID := range fashionItemCounts {
+		fashionItemIDs = append(fashionItemIDs, fashionItemID)
+	}
+
+	mappings, err := uc.fashionReader.GetCategoryIDsByFashionItemIDs(ctx, fashionItemIDs)
+	if err != nil {
+		return nil, err
+	}
 	itemCategoryMap := map[uuid.UUID]*uuid.UUID{}
 	categoryIDs := []uuid.UUID{}
 	seenCategory := map[uuid.UUID]bool{}
-	if len(fashionItemIDs) > 0 {
-		mappings, err := uc.fashionReader.GetCategoryIDsByFashionItemIDs(ctx, fashionItemIDs)
-		if err != nil {
-			return nil, err
-		}
-		for _, m := range mappings {
-			itemCategoryMap[m.FashionItemID] = m.CategoryID
-			if m.CategoryID != nil && !seenCategory[*m.CategoryID] {
-				seenCategory[*m.CategoryID] = true
-				categoryIDs = append(categoryIDs, *m.CategoryID)
-			}
+	for _, m := range mappings {
+		itemCategoryMap[m.FashionItemID] = m.CategoryID
+		if m.CategoryID != nil && !seenCategory[*m.CategoryID] {
+			seenCategory[*m.CategoryID] = true
+			categoryIDs = append(categoryIDs, *m.CategoryID)
 		}
 	}
 
@@ -76,10 +79,10 @@ func (uc *UserDashboardUseCase) GetWardrobeCategoryDistribution(ctx context.Cont
 	}
 
 	counts := map[uuid.UUID]int{}
-	for _, fashionItemID := range fashionItemIDs {
+	for fashionItemID, itemCount := range fashionItemCounts {
 		categoryID := itemCategoryMap[fashionItemID]
 		if categoryID != nil {
-			counts[*categoryID]++
+			counts[*categoryID] += int(itemCount)
 		}
 	}
 

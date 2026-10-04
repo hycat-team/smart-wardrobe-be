@@ -11,7 +11,6 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	shared_persist "smart-wardrobe-be/shared/infrastructure/repositories"
-	"smart-wardrobe-be/shared/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -164,23 +163,28 @@ func (r *WardrobeItemRepository) GetByFashionItemIDs(ctx context.Context, fashio
 	return items, nil
 }
 
-func (r *WardrobeItemRepository) GetUserFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	var ids []uuid.UUID
+// GetUserFashionItemCounts returns, per fashion_item_id, the number of non-deleted
+// wardrobe items owned by the user. Every status is counted and duplicate
+// references are preserved, so the result matches the wardrobe list default
+// (GET /me/wardrobe-items) rather than a de-duplicated fashion item set.
+func (r *WardrobeItemRepository) GetUserFashionItemCounts(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]int64, error) {
+	rows := []struct {
+		FashionItemID uuid.UUID
+		Count         int64
+	}{}
 	err := r.GetDB(ctx).Model(&entities.WardrobeItem{}).
-		Scopes(activeWardrobeFilter).
-		Where("user_id = ?", userID).
-		Pluck("fashion_item_id", &ids).Error
+		Select("fashion_item_id, COUNT(*) AS count").
+		Where("user_id = ? AND is_deleted = ? AND fashion_item_id IS NOT NULL", userID, false).
+		Group("fashion_item_id").
+		Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
-	ids = sliceutils.UniqueUUIDs(ids)
-	filtered := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		if id != uuid.Nil {
-			filtered = append(filtered, id)
-		}
+	counts := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		counts[row.FashionItemID] = row.Count
 	}
-	return filtered, nil
+	return counts, nil
 }
 
 func (r *WardrobeItemRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {

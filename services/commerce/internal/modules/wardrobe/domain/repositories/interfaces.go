@@ -24,7 +24,7 @@ type IWardrobeItemRepository interface {
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
 	GetByUserIDAndFashionItemIDs(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)
 	GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)
-	GetUserFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	GetUserFashionItemCounts(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]int64, error)
 	CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) (int64, error)
 	GetItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error)
 	GetItemsPaginated(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)

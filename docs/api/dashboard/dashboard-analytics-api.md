@@ -40,7 +40,7 @@ Xem thêm hằng số tại [constants.md](constants.md).
 - **Tác nhân (Actor):** Người dùng B2C (`roleslug.User`).
 - **Mô tả:** Thống kê số lượng và tỷ lệ phần trăm các món đồ trong tủ của người dùng, phân nhóm theo danh mục thời trang (Áo Sơ Mi, Quần Jean, Giày, v.v.). Scope tự động theo user từ JWT.
 - **Response struct:** `WardrobeCategoryDistributionRes`
-- **Nguồn dữ liệu:** Join 3 bảng `wardrobe_items` → `fashion_items` → `categories`, `WHERE user_id=? AND is_deleted=false`, `GROUP BY category_id`.
+- **Nguồn dữ liệu:** Đếm số **dòng** `wardrobe_items` (`WHERE user_id=? AND is_deleted=false`), nhóm theo `fashion_item_id`, rồi map `fashion_items.category_id` → `categories`. Đếm **mọi status** và **giữ nhân bản** (một `fashion_item_id` xuất hiện ở nhiều dòng — ví dụ item được clone — được tính nhiều lần), khớp với `GET /api/v1/me/wardrobe-items` khi không truyền `status`.
 
 | Field          | JSON           | Kiểu                      | Ý nghĩa                                   |
 | -------------- | -------------- | ------------------------- | ----------------------------------------- |
