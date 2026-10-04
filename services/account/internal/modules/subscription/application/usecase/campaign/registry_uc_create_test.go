@@ -45,6 +45,24 @@ type registryStub struct {
 	// `repositories.ErrCampaignCodeExists` for the 409 case and to a plain error for
 	// the infrastructure case.
 	createErr error
+	// rows is the in-memory registry the READ and CLOSE paths see. It was added with
+	// the close tests (026 T045), which need a campaign that already exists — a stub
+	// that only answered `Create` could express "open a campaign" and nothing else,
+	// and a second stub type implementing the same seven methods would be the copy
+	// this file's own header warns against.
+	//
+	// `Create` appends to BOTH slices: `created` is what the create tests read, and
+	// `rows` is what a later operation on the same campaign would find — exactly as
+	// the real table behaves, so a test cannot pass against a stub where the write
+	// and the read are disconnected.
+	rows map[string]*entities.Campaign
+	// closeErr is returned by `Close` for the infrastructure case: a database that
+	// refuses the statement, which must be reported as a 500 and not as a 412.
+	closeErr error
+	// closeVersions records every `expectedVersion` the use case handed to `Close`, so
+	// a test can assert that the version it read is the one compared (FR-055) rather
+	// than only that the call happened.
+	closeVersions []int
 }
 
 func (s *registryStub) Create(_ context.Context, campaign *entities.Campaign) error {
@@ -53,10 +71,34 @@ func (s *registryStub) Create(_ context.Context, campaign *entities.Campaign) er
 	}
 	copied := *campaign
 	s.created = append(s.created, &copied)
+	if s.rows == nil {
+		s.rows = map[string]*entities.Campaign{}
+	}
+	s.rows[campaign.Code] = &copied
 	return nil
 }
 
 func (s *registryStub) stored() []*entities.Campaign { return s.created }
+
+// seedRow puts a campaign into the stub as if it had been created earlier, which is
+// the state every close test starts from: a campaign that EXISTS and is open.
+func (s *registryStub) seedRow(campaign *entities.Campaign) {
+	if s.rows == nil {
+		s.rows = map[string]*entities.Campaign{}
+	}
+	copied := *campaign
+	s.rows[campaign.Code] = &copied
+}
+
+// row returns the stored campaign under a code, or nil.
+func (s *registryStub) row(campaignCode string) *entities.Campaign {
+	stored, ok := s.rows[campaignCode]
+	if !ok {
+		return nil
+	}
+	copied := *stored
+	return &copied
+}
 
 func (s *registryStub) ListAll(context.Context) ([]*entities.Campaign, error) {
 	return nil, nil
@@ -66,19 +108,43 @@ func (s *registryStub) ListOpen(context.Context) ([]*entities.Campaign, error) {
 	return nil, nil
 }
 
-func (s *registryStub) GetByCode(context.Context, string) (*entities.Campaign, error) {
-	return nil, nil
+// GetByCode answers from `rows`, and returns nil rather than an error for an absent
+// code — the same `nil, nil` the real repository uses, which is what lets the use
+// case tell 404 from 500.
+func (s *registryStub) GetByCode(_ context.Context, campaignCode string) (*entities.Campaign, error) {
+	return s.row(campaignCode), nil
 }
 
-func (s *registryStub) GetByCodeForShare(context.Context, string) (*entities.Campaign, error) {
-	return nil, nil
+func (s *registryStub) GetByCodeForShare(ctx context.Context, campaignCode string) (*entities.Campaign, error) {
+	return s.GetByCode(ctx, campaignCode)
 }
 
 func (s *registryStub) Update(context.Context, *entities.Campaign, int) (bool, error) {
 	return false, nil
 }
 
-func (s *registryStub) Close(context.Context, string, int) (bool, error) { return false, nil }
+// Close reproduces the repository's conditional statement: one row changes only when
+// the code exists AND carries the expected version, and zero rows otherwise.
+//
+// The version is bumped HERE rather than by the use case, because that is what the
+// statement does — a stub that let the caller write the increment would hide a use
+// case that forgot to pass the right version.
+func (s *registryStub) Close(_ context.Context, campaignCode string, expectedVersion int) (bool, error) {
+	s.closeVersions = append(s.closeVersions, expectedVersion)
+	if s.closeErr != nil {
+		return false, s.closeErr
+	}
+	stored, ok := s.rows[campaignCode]
+	if !ok || stored.Version != expectedVersion {
+		return false, nil
+	}
+	copied := *stored
+	closedAt := baseInstant()
+	copied.ClosedAt = &closedAt
+	copied.Version = stored.Version + 1
+	s.rows[campaignCode] = &copied
+	return true, nil
+}
 
 func (s *registryStub) ExistsClaims(context.Context, string) (bool, error) { return false, nil }
 

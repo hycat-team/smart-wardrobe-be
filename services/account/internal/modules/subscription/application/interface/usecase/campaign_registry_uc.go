@@ -59,17 +59,46 @@ type ICampaignRegistryUseCase interface {
 		req *sub_dto.CampaignCreateReq,
 		requestIP *string,
 	) (*sub_dto.CampaignSummaryRes, error)
+
+	// Close force-closes a campaign and is ONE-WAY (FR-030/FR-031/FR-034, contract
+	// `campaign-registry-api.md` §5).
+	//
+	// IT IS THE ONLY OPERATION HERE THAT TAKES THE CODE AS AN ARGUMENT rather than
+	// reading it out of the body, and that asymmetry is the contract's: `Create`
+	// names the campaign it creates, while every operation on an existing one names
+	// it in the path. It is also why `code` is not a field of `CampaignCloseReq` —
+	// a body that could contradict the URL is a body whose authority is ambiguous.
+	//
+	// IDEMPOTENT, AND THAT IS A CONTRACT RATHER THAN A CONVENIENCE (FR-034). A
+	// retried request, a double-click, and two administrators closing the same
+	// campaign at the same moment all arrive, and all three must succeed with 200
+	// and NO second audit row: a closure recorded twice would make "when was this
+	// stopped, and why" ambiguous, and FR-060 permits exactly one row per change.
+	//
+	// The idempotent answer is produced BEFORE the version is compared, so a client
+	// that retries with the version it held before the first attempt still succeeds.
+	// A code that does not exist is 404 and a version that moved is 412, in that
+	// order — see `Close`'s own header, which is where the four answers are ordered
+	// for a reason.
+	Close(
+		ctx context.Context,
+		actorAdminID uuid.UUID,
+		campaignCode string,
+		req *sub_dto.CampaignCloseReq,
+		requestIP *string,
+	) (*sub_dto.CampaignSummaryRes, error)
 }
 
-// THE REMAINING METHODS ARE `Update` AND `CLOSE`, AND THEY ARE NOT HERE YET.
+// `Update` IS NOT HERE YET, AND THAT IS ITS OWN STATEMENT.
 //
-// This interface is introduced by Phase 3 (US1) and completed by Phase 4 (US2,
-// `Update`/`Close` are T041/T052). Declaring methods no code implements would mean the
-// concrete use case could not satisfy its own interface, so the constructor could not
-// return it and Wire could not wire it — a build failure invented by an interface
-// that was honest about its own future.
+// This interface was introduced by Phase 3 (US1) with `Create` alone and completed
+// by Phase 4 (US2, `Close`). `Update` arrives with US3 (T052), and it will be
+// declared HERE, in this interface, when it is implemented.
 //
-// Each of them is added HERE, not to the implementation, when it is implemented: the
-// point of an interface in this codebase is that the presentation layer depends on
-// the SET OF OPERATIONS IT MAY PERFORM, so an operator interface that listed a close
-// nobody could invoke would be a promise the router does not keep.
+// Declaring a method no code implements would mean the concrete use case could not
+// satisfy its own interface, so the constructor could not return it and Wire could
+// not wire it — a build failure invented by an interface that was honest about its
+// own future. The point of an interface in this codebase is that the presentation
+// layer depends on the SET OF OPERATIONS IT MAY PERFORM, so an operator interface
+// that listed an edit nobody could invoke would be a promise the router does not
+// keep.

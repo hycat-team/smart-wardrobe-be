@@ -175,7 +175,10 @@ func (uc *CampaignUseCase) ProcessUserCreated(ctx context.Context, payload ident
 	// place and the helpers below take a plain `context.Context`.
 	var outcome quotaOutcome
 	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		decider := newQuotaDecider(uc.claimRepo)
+		// The registry comes in because FR-045's re-read happens inside THIS
+		// transaction, in the decider — conditions 1-7 ran outside it and the campaign
+		// they chose can be closed by an operator in the gap.
+		decider := newQuotaDecider(uc.claimRepo, uc.campaignRepo)
 		decided, derr := decider.decideAndClaim(txCtx, claimInput{
 			Campaign:     campaign,
 			Plan:         plan,

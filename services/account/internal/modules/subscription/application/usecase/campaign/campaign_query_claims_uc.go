@@ -245,7 +245,13 @@ func (uc *CampaignQueryUseCase) GetAccountEligibility(
 	if err != nil {
 		return nil, subscriptionerrors.ErrCampaignCountGrantsFailed(campaign.Code, string(entities.GrantBucketReserve))
 	}
-	outcome := newQuotaDecider(nil).chooseBucket(
+	// `nil` for the registry because this is the PURE half of the decider: the
+	// re-read under a share lock belongs to `decideAndClaim`, which runs inside the
+	// grant transaction, and a look-up opens no transaction (FR-069). Handing it a
+	// registry here would invite the look-up to take a row lock it has no reason to
+	// hold. The nil claim repository above it is the same statement — neither half of
+	// this call performs I/O.
+	outcome := newQuotaDecider(nil, nil).chooseBucket(
 		claimInput{
 			Campaign:     campaign,
 			Plan:         plan,

@@ -82,9 +82,9 @@ type CampaignGrantCounts struct {
 //
 // NOTHING ELSE IS SET. `PlanName`, `Degraded`, `DegradedReason` and `LastSweepAt` are
 // filled by the caller because each needs a table this mapper must not know about —
-// the plan catalogue, the sweep health table — and `closedAt`/`budgetLocked`/`version`
-// arrive with the next read-API phase (T039/T050). A mapper that went looking for them
-// would turn one pure conversion into a fan-out of four queries.
+// the plan catalogue, the sweep health table — and `budgetLocked`/`version` arrive
+// with the next read-API phase (T050). A mapper that went looking for them would
+// turn one pure conversion into a fan-out of four queries.
 func MapCampaignSummaryRes(
 	campaign *entities.Campaign,
 	counts CampaignGrantCounts,
@@ -115,8 +115,14 @@ func MapCampaignSummaryRes(
 		HardCap:               quota + reserve,
 		StartsAt:              campaign.StartsAt,
 		EndsAt:                campaign.EndsAt,
-		WatermarkAt:           watermarkAt,
-		Status:                status,
+		// FR-051's `closedAt`, copied straight from the row. T039 added the field to
+		// the response and this is the one place a registry row becomes a response,
+		// so copying it here is what keeps the read endpoints and the write endpoints
+		// showing the same closure instant — and nil here genuinely means "never
+		// force-closed", because `closed_at` is nullable for exactly that reason.
+		ClosedAt:    campaign.ClosedAt,
+		WatermarkAt: watermarkAt,
+		Status:      status,
 	}
 }
 

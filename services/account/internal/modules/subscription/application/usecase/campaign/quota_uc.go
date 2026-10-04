@@ -38,12 +38,20 @@ import (
 //
 // So both counts read `grant_bucket`, and the flag is read for exactly one thing:
 // finding the watermark row.
+//
+// IT ALSO HOLDS THE REGISTRY, and that is what FR-045 costs this file: the decider
+// is the only part of the mechanism allowed inside a locked transaction, so the
+// re-read of the campaign row under a SHARE lock belongs here and nowhere else.
 type quotaDecider struct {
 	claimRepo repositories.ICampaignClaimRepository
+	registry  repositories.ICampaignRepository
 }
 
-func newQuotaDecider(claimRepo repositories.ICampaignClaimRepository) *quotaDecider {
-	return &quotaDecider{claimRepo: claimRepo}
+func newQuotaDecider(
+	claimRepo repositories.ICampaignClaimRepository,
+	registry repositories.ICampaignRepository,
+) *quotaDecider {
+	return &quotaDecider{claimRepo: claimRepo, registry: registry}
 }
 
 // quotaOutcome is the decision conditions 8 and 9 produced.
@@ -91,6 +99,50 @@ func (q *quotaDecider) decideAndClaim(ctx context.Context, in claimInput) (quota
 	if err := q.claimRepo.LockClaimWindow(ctx, in.Campaign.Code); err != nil {
 		return quotaOutcome{}, subscriptionerrors.ErrCampaignLockClaimWindowFailed(in.Campaign.Code)
 	}
+
+	// FR-045: RE-READ THE CAMPAIGN UNDER A SHARE LOCK, INSIDE THIS TRANSACTION, and
+	// BEFORE ANY COUNT. Conditions 1-7 ran outside it, so a campaign an operator
+	// closed can have been chosen from rows that were open a moment ago; this is the
+	// single place that race is decided, and the answer comes from the row the close
+	// actually committed rather than from the copy this process picked.
+	//
+	// THE ORDER IS THE ADVISORY LOCK FIRST, THEN THE ROW. Every grant already
+	// serialises on the campaign's advisory lock, so the lock order is always
+	// "advisory → row share" and the close path — which takes only the row lock —
+	// cannot deadlock against it (research.md R12).
+	//
+	// `FOR SHARE` AND NOT `FOR UPDATE`, and the difference is the point: a close or a
+	// budget edit WAITS for this transaction, while other grants reading the same row
+	// do not. A burst of signups against a live campaign is therefore not serialised
+	// behind one another, which `FOR UPDATE` would do.
+	//
+	// THE RELOADED ROW REPLACES THE ONE THE EVALUATOR CHOSE. Not only `closed_at`:
+	// FR-045 also requires a grant to be skipped when the budget changed in a way that
+	// makes it invalid, and deciding that against the reloaded `quota`/`reserve` is
+	// what makes the rule one statement rather than two.
+	locked, err := q.registry.GetByCodeForShare(ctx, in.Campaign.Code)
+	if err != nil {
+		// A RETRYABLE-LOOKING infrastructure failure, reported as a failure and never
+		// as "no campaign configured": substituting an empty set here would turn a
+		// database problem into a silent skip on every signup (spec.md §10's rule for
+		// the read path, and it applies identically to this one).
+		return quotaOutcome{}, subscriptionerrors.ErrCampaignRegistryReadFailed()
+	}
+	if locked == nil {
+		// Unreachable: there is NO delete path (FR-005), so a code that existed a
+		// moment ago still exists. Reported as "no campaign configured" rather than
+		// crashing, because a skip is a decision and a nil dereference is a crash on
+		// the message path.
+		return quotaOutcome{Reason: SkipCampaignNotConfigured}, nil
+	}
+	if locked.ClosedAt != nil {
+		// FR-031/FR-034, at the only point where it can still be enforced. The reason
+		// is `campaign_sleeping` and NOT a new code: 025 already uses it for a
+		// campaign that is over, a closed campaign is over, and FR-050 keeps the
+		// `reason` set at exactly twelve codes (spec.md Câu 4, quickstart V2 step 5).
+		return quotaOutcome{Reason: SkipCampaignSleeping}, nil
+	}
+	in.Campaign = locked
 
 	// Two independent counts, one per part. Read on `grant_bucket` so each one
 	// scans only its own part of `ix_campaign_claims_campaign_bucket`.

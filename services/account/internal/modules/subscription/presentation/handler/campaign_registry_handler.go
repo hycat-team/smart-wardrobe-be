@@ -32,13 +32,18 @@ const (
 	// everything is fine. "Tạo chiến dịch thành công" placed next to a response whose
 	// `status` is `not_started` reads as a contradiction; this wording does not.
 	successAdminCreateCampaign = "Đã xử lý yêu cầu tạo chiến dịch."
+	// successAdminCloseCampaign is worded the same way for the same reason: the
+	// response beside it says `status: closed`, and a message claiming the campaign
+	// is now closed would be a claim about the FUTURE of a one-way operation whose
+	// whole meaning is that it cannot be taken back (FR-034).
+	successAdminCloseCampaign = "Đã xử lý yêu cầu đóng chiến dịch."
 )
 
 // CampaignRegistryHandler serves the three campaign write endpoints.
 //
-// The type is introduced by US1 with `Create` alone; `Update` (T053) and `Close` (T043)
-// add their methods here, and their routes in `router.go`, in the same order the
-// features depend on each other.
+// The type is introduced by US1 with `Create` alone; US2 adds `Close` (T043) and US3
+// adds `Update` (T053), each with its route in `router.go`, in the order the features
+// depend on each other.
 type CampaignRegistryHandler struct {
 	logger   logger.Interface
 	registry uc_interfaces.ICampaignRegistryUseCase
@@ -95,5 +100,60 @@ func (h *CampaignRegistryHandler) Create(c *gin.Context) error {
 	// answers 200 for everything else, so the distinction survives the refactor that
 	// would otherwise replace it.
 	shared_pres.Created(c, successAdminCreateCampaign, summary)
+	return nil
+}
+
+// Close
+// @Summary Đóng cưỡng bức một chiến dịch
+// @Description Ghi closed_at và tăng phiên bản trong cùng giao dịch với dòng nhật ký kiểm toán campaign.close. Thao tác là một chiều: không có API mở lại. Trả 404 khi mã không tồn tại, 422 khi lý do đóng rỗng, và 412 khi phiên bản lệch với một chiến dịch chưa đóng. Gọi lại trên chiến dịch đã đóng trả 200 idempotent và không ghi thêm bản ghi kiểm toán.
+// @Tags Admin Campaign
+// @Accept json
+// @Produce json
+// @Param code path string true "Mã chiến dịch"
+// @Param body body sub_dto.CampaignCloseReq true "Phiên bản mong đợi và lý do đóng"
+// @Success 200 {object} shared_pres.APIResponse{data=sub_dto.CampaignSummaryRes}
+// @Failure 400 {object} shared_pres.APIResponse
+// @Failure 403 {object} shared_pres.APIResponse
+// @Failure 404 {object} shared_pres.APIResponse
+// @Failure 412 {object} shared_pres.APIResponse
+// @Failure 422 {object} shared_pres.APIResponse
+// @Failure 429 {object} shared_pres.APIResponse
+// @Router /api/v1/admin/campaigns/{code}/close [post]
+func (h *CampaignRegistryHandler) Close(c *gin.Context) error {
+	// The SAME `campaignPathParams` the read routes bind, rather than a type of its
+	// own: `Code` is required identically on all of them, and a second declaration
+	// would be a second answer to "what does a missing code look like" (contract §4).
+	var params campaignPathParams
+	if err := validation.BindURI(c, &params); err != nil {
+		return err
+	}
+
+	var req sub_dto.CampaignCloseReq
+	if err := validation.BindJSON(c, &req); err != nil {
+		return err
+	}
+
+	// FR-060, for the same reason `Create` does it: the audit row has to name WHO
+	// closed the campaign, and an unidentified administrator would leave a closure
+	// nobody can be shown to have performed.
+	actorAdminID, err := contextutils.GetUserId(c)
+	if err != nil || actorAdminID == uuid.Nil {
+		return apperror.NewUnauthorized("Vui lòng đăng nhập để thực hiện thao tác quản lý chiến dịch.")
+	}
+
+	// FR-060: the request IP is recorded so a disputed closure can be traced to a
+	// connection and not only to an account. A closure is a one-way operation, so a
+	// dispute about it has no later correction to appeal to — the trail is all there is.
+	clientIP := c.ClientIP()
+
+	summary, err := h.registry.Close(c.Request.Context(), actorAdminID, params.Code, &req, &clientIP)
+	if err != nil {
+		return err
+	}
+
+	// 200, INCLUDING for the idempotent no-op on an already-closed campaign
+	// (contract §5.3). The handler cannot tell the two apart and does not need to:
+	// both are "the campaign is closed", which is the state the operator asked for.
+	shared_pres.Success(c, successAdminCloseCampaign, summary)
 	return nil
 }
