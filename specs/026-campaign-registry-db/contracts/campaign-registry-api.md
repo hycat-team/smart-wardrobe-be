@@ -153,6 +153,12 @@ Thân là `CampaignSummaryRes` đã cập nhật.
 | Phiên bản lệch | 412 |
 | Không phải Admin | 403 |
 | Vượt giới hạn tần suất | 429 |
+| JWT thiếu hoặc hỏng | 401 |
+| Lỗi hệ thống (CSDL, ghi thất bại) | 500 |
+
+`401` và `500` không nằm trong bảng ánh xạ ở `spec.md` FR-054 vì chúng do lớp trung gian và lớp lỗi
+tập trung phát ra chứ không do ba endpoint này phân loại; chúng vẫn là những mã client **có thể** nhận
+về, nên hợp đồng phải liệt kê.
 
 ---
 
@@ -192,6 +198,10 @@ Kiểm tra idempotent chạy **trước** kiểm tra phiên bản, nên gọi l�
 | Phiên bản lệch (chiến dịch **chưa** đóng) | 412 |
 | Không phải Admin | 403 |
 | Vượt giới hạn tần suất | 429 |
+| JWT thiếu hoặc hỏng | 401 |
+| Lỗi hệ thống (CSDL, ghi thất bại) | 500 |
+
+`401`/`500` do lớp trung gian và lớp lỗi tập trung phát ra — xem ghi chú ở §4.4.
 
 **Đóng là một chiều qua API (FR-034).** Không có endpoint mở lại. Muốn chạy lại → tạo mã mới.
 
@@ -247,7 +257,7 @@ Kiểm tra idempotent chạy **trước** kiểm tra phiên bản, nên gọi l�
 | Thời điểm | `createdAt`; người thực hiện | `actorUserId` |
 
 **Endpoint này dùng DTO trả lời riêng `CampaignAuditLogRes`** (đặt trong
-`services/account/dto/subscription/campaign_dto.go`), **không** tái dùng
+`services/account/dto/subscription/campaign_audit_dto.go`), **không** tái dùng
 `dto/admin.AdminAuditLogDTO`: DTO đó khai `targetId` với `json:"targetId,omitempty"`, nên con trỏ `nil`
 **bị bỏ khỏi JSON** thay vì phát ra `null`. `CampaignAuditLogRes` khai `TargetID *uuid.UUID` với
 `json:"targetId"` — **không** `omitempty` — để bất biến "mọi bản ghi chiến dịch có `targetId` là null"
@@ -271,6 +281,12 @@ dịch vụ).
 | Không tìm thấy `code` | 404 | "Không tìm thấy chiến dịch với mã đã nhận: `<code>`." |
 | Không phải Admin | 403 | Thông báo chuẩn của `RolesAuthorize` |
 | Vượt giới hạn tần suất | 429 | Thông báo chuẩn của rate-limit |
+| `page`/`limit` sai định dạng | 400 | Thông báo chuẩn của `validation.BindQuery` |
+| JWT thiếu hoặc hỏng | 401 | Thông báo chuẩn của lớp xác thực |
+| Lỗi hệ thống khi đọc nhật ký | 500 | Thông báo chuẩn của lớp lỗi tập trung |
+
+Lỗi đọc nhật ký **không** được biến thành một trang rỗng — phải là lỗi, vì trang rỗng là câu trả lời sai
+cho câu hỏi "chiến dịch này có thay đổi gì không".
 
 ---
 
