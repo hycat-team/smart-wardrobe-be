@@ -1,7 +1,7 @@
 # Deferred — 026 Sổ Đăng Ký Chiến Dịch Trong Cơ Sở Dữ Liệu
 
 Phát hiện trong lúc chốt feature 026. **Không mục nào là việc của 026**: hoặc thuộc hạ tầng
-kiểm thử dùng chung, hoặc thuộc một tài liệu mà lần chạy này không được phép sửa.
+kiểm thử dùng chung, hoặc thuộc phạm vi mà lần chạy này không được phép sửa.
 
 Không mục nào chặn việc đóng 026. Chúng được ghi ở đây chứ không để lại thành ô
 `- [ ]` trong `tasks.md`, vì một ô chưa tick khẳng định *"feature này chưa xong"* — điều vừa là
@@ -9,7 +9,8 @@ một khẳng định khác vừa là sai.
 
 - **D-01 làm suy yếu bằng chứng của 10 task đã tick.** Đọc D-01 trước khi tin bất kỳ task nào
   trong danh sách đó.
-- **D-02 thuộc chính 026** nhưng không sửa được trong lần chạy này (xem "Vì sao ngoài phạm vi").
+- **D-02 đã gỡ** — hợp đồng đã được sửa trong lần chống, xem mục D-02 bên dưới.
+- **D-03 là flake hiếm** khi `make test-integration` chạy đồng thời hai gói trên cùng một CSDL.
 
 ---
 
@@ -37,6 +38,27 @@ một khẳng định khác vừa là sai.
   bộ). Không có bước dựng nào làm ra một tài khoản qua cả ba cửa tạo tài khoản, nên V1–V7 chỉ
   chạy được bằng tay với một môi trường thật.
 
+- **⚠️ Vòng hội tụ phát hiện D-01 đã under-report — và đã sửa, nhưng phần "chưa bật được" vẫn còn.**
+  Bản D-01 đầu tiên chỉ nói các kiểm thử "chưa từng chạy". Vòng hội tụ phát hiện điều tệ hơn: các
+  kiểm thử đó **nếu chạy sẽ trượt vì một lý do sai**, chứ không phải trượt vì thiếu hạ tầng.
+  Cụ thể `baseInstant()` trả về **đúng** mốc `starts_at = 2026-10-02T00:00:00+07:00` của hàng
+  seed `launch-2026-10`, còn mọi fixture tạo chiến dịch ở `baseInstant()-24h` — tức **sớm hơn**.
+  FR-040 chọn hàng có `starts_at` **lớn nhất**, nên hàng seed sẽ thắng và các khẳng định ở
+  `campaign_db_grant_integration_test.go`, `campaign_db_close_integration_test.go`,
+  `campaign_db_close_granted_integration_test.go` và `campaign_db_time_integration_test.go`
+  sẽ kiểm tra **sai chiến dịch** mà vẫn xanh.
+
+  **[X] T081 đã sửa phần này**: `campaign_db_registry_isolation_test.go` xoá hàng seed trước mỗi
+  fixture và **khôi phục nguyên vẹn** ở `t.Cleanup`, đồng thời có tiền điều kiện
+  `requireRegistryIsolatedTo` gọi `ListAll` và `t.Fatalf` nếu thấy mã lạ hoặc thiếu mã của tệp;
+  thông báo lỗi in **tên tệp** lấy từ `runtime.Caller`. Dùng `ListAll` chứ không `ListOpen`
+  vì đó là câu hỏi chặt hơn — một chiến dịch **đã đóng** sót lại vẫn lọt qua `ListOpen`.
+
+  Nghĩa là D-01 **giảm** còn một rủi ro: tiền điều kiện cô lập của chính T081 cũng chỉ chạy *sau
+  khi* kết nối CSDL thành công, nên nó cũng chưa từng được thực thi. Bằng chứng cho T081 hiện là
+  **đối chiếu tĩnh** (migration + `baseInstant()` + `startsLaterThan` + opener của fixture), không
+  phải kết quả chạy.
+
 - **Vì sao ngoài phạm vi 026**: đây là **hạ tầng kiểm thử dùng chung**, không phải logic chiến
   dịch. 026 không sửa entity, không sửa migration, không sửa mã harness nào; nó chỉ là feature
   đầu tiên phải dựng lại đường cấp gói trên CSDL thật. Sửa `openWebhookTestDB` hay viết một
@@ -54,9 +76,9 @@ một khẳng định khác vừa là sai.
   chạy **không đổi một dòng**, vì chúng đã được viết đúng từ đầu; chỉ là không ai bật chúng.
 
 - **Ảnh hưởng tới task đã tick**: **`[X] T022`, `[X] T027`, `[X] T038`, `[X] T047`, `[X] T049`,
-  `[X] T057`, `[X] T059`, `[X] T063`, `[X] T072`, `[X] T078`.**
+  `[X] T057`, `[X] T059`, `[X] T063`, `[X] T072`, `[X] T078`, và `[X] T081`.**
 
-  Tất cả mười task đều đã tick, và tất cả đều **có mã** nhưng **chưa từng chạy** trong một lần
+  Tất cả mười task đầu đều đã tick, và tất cả đều **có mã** nhưng **chưa từng chạy** trong một lần
   `go test` thường — chúng đã báo `SKIP`. Đọc `[X]` của chúng là đọc "đã viết và biên dịch đúng",
   không phải "đã chạy và xanh". Điều chưa từng được kiểm chứng bằng CSDL thật gồm: hành vi thực
   của trigger `trg_campaigns_immutable_budget`, phép `SELECT … FOR SHARE` của FR-045, phép
@@ -71,37 +93,66 @@ một khẳng định khác vừa là sai.
 
 ---
 
-## D-02 — `contracts/campaign-registry-api.md` §6.3 vẫn chỉ đúng đường dẫn tệp cũ của `CampaignAuditLogRes`
+## D-02 — ĐÃ GỎ: đường dẫn tệp cũ của `CampaignAuditLogRes` trong hợp đồng
 
-- **Vấn đề**: `contracts/campaign-registry-api.md` §6.3 (đoạn bắt đầu bằng "**Endpoint này dùng
-  DTO trả lời riêng `CampaignAuditLogRes`**") vẫn ghi:
+- **Vấn đề (đã ghi trước đây)**: `contracts/campaign-registry-api.md` §6.3 ghi
+  `CampaignAuditLogRes` nằm ở `campaign_dto.go`, trong khi nó đã được tách sang
+  `campaign_audit_dto.go` ở bước chốt (để `campaign_dto.go` từ 578 dòng về dưới ngưỡng cảnh báo
+  500 dòng của `code-hygiene.md` §H1). Hợp đồng nói sai, `frontend-guide.md` mới viết dựa trên
+  đó — người đọc sẽ tìm nhầm tệp.
 
-  > (đặt trong `services/account/dto/subscription/campaign_dto.go`)
+- **Đã gỡ thế nào**: orchestrator đã sửa §6.3 sang `campaign_audit_dto.go` và bổ sung `401`/`500`
+  vào các bảng lỗi, ngay trước khi commit phase chốt. Mục này được giữ lại thay vì xoá để giữ
+  dấu vết: nếu `frontend-guide.md` và hợp đồng lệch nhau trong tương lai thì đây là chỗ đã từng
+  sai.
 
-  Trong lúc chốt 026, `CampaignAuditLogRes` được chuyển sang
-  `services/account/dto/subscription/campaign_audit_dto.go` cùng `campaign_registry_dto.go`, để
-  `campaign_dto.go` từ 578 dòng về dưới ngưỡng cảnh báo 500 dòng của `code-hygiene.md` §H1. Khả
-  năng chuyển DTO chính xác không đổi: cùng package, cùng thẻ `json`, cùng mapper, không đổi
-  hình dạng response.
+- **Phần T069 vẫn đúng**: `TargetID *uuid.UUID` khai `json:"targetId"` **không** `omitempty`, DTO
+  riêng chứ không tái dùng `dto/admin.AdminAuditLogDTO`, và mapper `MapCampaignAuditLogRes`
+  vẫn ở `application/mapper/campaign_mapper.go`.
 
-  Lỗi nằm ở **tài liệu**, không nằm ở mã. Nhưng hậu quả không nhỏ: đây là hợp đồng mà
-  `frontend-guide.md` mới viết dựa trên đó, và một người đọc hợp đồng sẽ tìm nhầm tệp.
+---
 
-- **Vì sao ngoài phạm vi lần chạy này**: đây **là việc của 026** — nó sửa hợp đồng của chính nó.
-  Nhưng `contracts/` nằm ngoài phạm vi ghi được của lần chạy này (orchestrator giữ quyền sửa
-  `spec.md` / `plan.md` / `contracts/` / `quickstart.md`), và sửa tài liệu hợp đồng mà không
-  được sửa đồng thời thì tệ hơn là không sửa. Vì vậy nó được **báo cáo**, không được âm thầm bỏ
-  qua.
+## D-03 — Hai gói kiểm thử CSDL chạy song song trên cùng một `TEST_DATABASE_URL`
 
-- **Gỡ bằng cách nào**: một sửa đổi một dòng trong
-  `specs/026-campaign-registry-db/contracts/campaign-registry-api.md` §6.3, đổi
-  `campaign_dto.go` thành `campaign_audit_dto.go` và thêm câu "tách khỏi `campaign_dto.go` ở
-  bước chốt để đáp ứng H1". Nên làm cùng lúc với bất kỳ thay đổi nào khác của 026.
+- **Vấn đề**: `make test-integration` chạy `go test ./internal/modules/subscription/...`, tức
+  **binary gói `usecase/campaign` và binary gói `infrastructure/persistence` chạy song song** trên
+  cùng một cơ sở dữ liệu. Trong lúc các fixture của T081 đang xoá hàng seed `launch-2026-10`,
+  `campaign_seed_integration_test.go` ở gói kia có thể đọc sổ và **không thấy hàng đó**, rồi
+  `t.Fatal` với thông báo sai.
 
-- **Ảnh hưởng tới task đã tick**: **`[X] T069`.**
+- **Mức độ**: **flake hiếm**, không phải bộ kiểm thử hỏng. Cửa sổ bằng thời lượng một fixture và
+  cần hai kiểm thử trùng nhau. Không xảy ra khi chạy tuần tự (`-p 1`).
 
-  T069 yêu cầu khai báo `CampaignAuditLogRes` trong `campaign_dto.go` và mapper của nó trong
-  `campaign_mapper.go`; chỗ đầu đã không còn đúng sau bước tách tệp. Phần còn lại của T069 —
-  `TargetID *uuid.UUID` khai `json:"targetId"` **không** `omitempty`, DTO riêng chứ không tái
-  dùng `dto/admin.AdminAuditLogDTO`, và mapper `MapCampaignAuditLogRes` vẫn đúng và vẫn ở
-  `application/mapper/campaign_mapper.go` — được giữ nguyên và vẫn đúng.
+- **Vì sao ngoài phạm vi 026**: cách đóng cửa sổ đúng là một khoá `pg_advisory_lock` ở mức
+  **session** mà **cả hai** gói cùng nắm. Nhưng khoá session-level phải giữ trên một
+  `*sql.Conn` đã ghim, còn các opener hiện trả connection từ pool — giữ khoá trên connection đó
+  sẽ **treo cả bộ kiểm thử CSDL về sau**. Sửa thêm opener của gói `persistence` cũng vượt ra
+  ngoài bốn task hội tụ. Ghi vào đây thay vì sửa nửa vời.
+
+- **Gỡ bằng cách nào**: một helper CSDL dùng chung ở `shared/tools` cấp
+  `pg_advisory_lock` theo session trên một `*sql.Conn` ghim, cùng một API cho cả hai gói. Đây là
+  việc của feature hạ tầng kiểm thử. Tạm thời có thể chạy `go test -p 1` khi cần kết quả sạch.
+
+---
+
+## D-04 — Hiệu chỉnh V2: mã `campaign_sleeping` không quan sát được trên đường thông điệp
+
+- **Vấn đề (đã gỡ ở tài liệu, KHÔNG đổi mã)**: `quickstart.md` V2 và `spec.md` §11.2–11.3 bản
+  soạn đầu yêu cầu `reason = campaign_sleeping` cho một chiến dịch đã đóng. Với sổ **chỉ có**
+  chiến dịch đã đóng, `ListOpen` lọc `closed_at IS NULL` nên tập ứng viên thức rỗng và **điều kiện 1**
+  trả `campaign_not_configured` — trên **cả hai** đường (thông điệp và tra cứu, vì
+  `campaign_query_claims_uc.go:193` cũng đọc `ListOpen`).
+
+  Mã `campaign_sleeping` chỉ đạt được khi sổ còn **một** chiến dịch khác *chưa đóng* và *chưa
+  thức* — thiết lập mà quickstart không dựng. Đây là hệ quả trực tiếp của quyết định đặt cửa sổ ở
+  bộ đánh giá thuần (A-1), **không phải hồi quy và không phải lỗi mã**.
+
+- **Đã gỡ thế nào**: orchestrator đã hiệu chỉnh `spec.md` §11.2–11.3 và `quickstart.md` V1–V2:
+  phần đảm bảo được giữ nguyên là **0 dòng cấp**; mã quan sát được được nêu đúng là
+  `campaign_not_configured`, kèm ghi chú trỏ tới nơi `campaign_sleeping` **vẫn** được chứng minh
+  (`TestEvaluatorExcludesForceClosedCampaigns`, và đường tra cứu theo mã khi sổ còn chiến dịch
+  khác). Tập 12 mã `reason` của 025 **không đổi**.
+
+- **Không sửa mã, và không thêm kiểm thử khẳng định ngược lại.** Đổi `ListOpen` để giữ chiến
+  dịch đã đóng sẽ phá lại chính quyết định A-1 mà C-9 đã phê duyệt (xem `spec.md` §A-1 và phần
+  `campaign_repo.go:73`), nên đó sẽ là một quyết định thiết kế mới, không phải một sửa lỗi.

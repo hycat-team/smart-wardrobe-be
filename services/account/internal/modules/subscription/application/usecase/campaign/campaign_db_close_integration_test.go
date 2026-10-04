@@ -70,6 +70,9 @@ func openCloseTestDB(t *testing.T, prefix string) *gorm.DB {
 	if err := shareddb.RunMigrations(context.Background(), dbConn, accountmigrations.EmbedFS, "goose_db_version", true, zap.NewNop()); err != nil {
 		t.Fatalf("run migrations: %v", err)
 	}
+	// Registered before the prefix cleanup below, so the seeded campaign is restored
+	// LAST (cleanups are last-in-first-out) — 026 T081.
+	isolateSeededCampaign(t, dbConn)
 	t.Cleanup(func() {
 		// Claims first: the ledger names the campaign as text and has no foreign key,
 		// so the order is tidiness rather than a constraint (FR-091).
@@ -94,6 +97,11 @@ func openRunningCampaign(t *testing.T, f *dbGrantFixture, suffix string) string 
 	}, nil); err != nil {
 		t.Fatalf("create the campaign: %v", err)
 	}
+	// THE PRECONDITION (026 T081): this suite owns its own prefix and nothing else.
+	// Without it the seeded `launch-2026-10` — which starts at exactly `baseInstant()`,
+	// later than this fixture's campaign — wins FR-040 and every claim below is made
+	// about the seed.
+	requireRegistryIsolatedTo(t, f.campaign, dbClosePrefix, code)
 	return code
 }
 
@@ -136,11 +144,29 @@ func closeCampaign(t *testing.T, f *dbGrantFixture, campaignCode string) *entiti
 //
 // TWO ASSERTIONS, AND THE SECOND IS THE ONE THAT PROTECTS A DEPLOYED CONTRACT. "No
 // claim" alone would also be satisfied by a campaign that failed for an unrelated
-// reason — a missing plan, a spent budget, a broken message. FR-050 keeps `reason` at
-// exactly twelve codes, so an account that qualifies for a campaign nobody closed must
-// report `campaign_sleeping`: 025 already used that code for a campaign past its end,
-// a closed campaign is over for the same reason, and a NEW code would have been a
-// breaking change on a contract customers read.
+// reason — a missing plan, a spent budget, a broken message. So the reason code is
+// asserted as well, which means the reason has to be the RIGHT one and not merely a
+// code from the published twelve (FR-050).
+//
+// WHICH CODE, AND WHY IT IS `campaign_not_configured` RATHER THAN `campaign_sleeping`.
+//
+// With the registry isolated (026 T081), this file's campaign is the only row in it, so
+// closing it leaves `ListOpen` EMPTY — and an empty open registry is condition 1's own
+// answer, `campaign_not_configured` (`admission_uc.go`). That is the settled behaviour
+// and it is not changed here: a closed campaign is not a candidate on ANY path
+// (FR-031/FR-070), so on the message path there is nothing left to be "asleep about".
+//
+// `campaign_sleeping` IS still the answer for a closed campaign, and it is asserted
+// where a closed campaign can still BE a candidate: the evaluator, in
+// `TestEvaluatorExcludesForceClosedCampaigns` (`admission_uc_test.go`), and the
+// operator's eligibility look-up, which is scoped to one code
+// (`campaign_query_eligibility_test.go`). Both use a registry whose closed row is
+// still listed, which is exactly the difference between the two questions.
+//
+// The earlier version of this test expected `campaign_sleeping` here and passed only
+// because the seeded `launch-2026-10` was still open behind the fixture's closed
+// campaign — the isolation defect T081 fixes. It asserted a reason the message path does
+// not produce for this state.
 func TestIntegrationAClosedCampaignGrantsANewAccountNothing(t *testing.T) {
 	dbConn := openCloseTestDB(t, dbClosePrefix)
 	ctx := context.Background()
@@ -194,13 +220,31 @@ func TestIntegrationAClosedCampaignGrantsANewAccountNothing(t *testing.T) {
 	}
 
 	// The reason code, and it is read from the log because FR-061 puts it there.
+	//
+	// `campaign_not_configured`, and the test's header says why: with this suite's own
+	// campaign closed and the registry isolated, `ListOpen` is empty, which is
+	// condition 1's answer. `campaign_sleeping` for a closed campaign is asserted at the
+	// evaluator and at the eligibility look-up, where a closed row is still listed.
 	reason, ok := f.log.skipReasonFor(userID)
 	if !ok {
 		t.Fatal("the skip must be logged with a reason code (FR-061)")
 	}
-	if reason != SkipCampaignSleeping {
-		t.Errorf("reason = %q, want %q — quickstart V2 step 5 observes exactly this code, and "+
-			"FR-050 forbids adding a new one", reason, SkipCampaignSleeping)
+	if reason != SkipCampaignNotConfigured {
+		t.Errorf("reason = %q, want %q — the closed campaign is no longer a candidate at all, so the "+
+			"registry is empty. FR-050 keeps the reason set at exactly twelve codes and this is one of them; "+
+			"see the test's header for why a closed campaign answers %q elsewhere",
+			reason, SkipCampaignNotConfigured, SkipCampaignSleeping)
+	}
+
+	// AND THE REGISTRY REALLY IS EMPTY OF CANDIDATES, read back through the very
+	// method the grant path draws from. Without it the reason above would be
+	// indistinguishable from "some other campaign was awake".
+	open, err := f.campaign.ListOpen(ctx)
+	if err != nil {
+		t.Fatalf("ListOpen after the close: %v", err)
+	}
+	if len(open) != 0 {
+		t.Errorf("expected no candidate after closing the only campaign, got %d", len(open))
 	}
 }
 

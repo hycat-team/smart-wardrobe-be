@@ -67,6 +67,12 @@ func TestIntegrationClosingACampaignThatGrantedLeavesGrantedAccountsUntouched(t 
 		t.Fatalf("create the campaign: %v", err)
 	}
 
+	// THE PRECONDITION (026 T081). The "the account holds a claim" precondition below
+	// is only a real one if the claim came from THIS campaign: the seeded
+	// `launch-2026-10` starts at exactly `baseInstant()` and would otherwise win
+	// FR-040, and the claim would name the seed rather than the fixture.
+	requireRegistryIsolatedTo(t, f.campaign, dbCloseGrantedPrefix, campaignCode)
+
 	registeredAt := baseInstant()
 	grantedUserID := newTestAccount(t, dbConn, registeredAt)
 	if err := f.grant.ProcessUserCreated(ctx, identitydto.UserCreatedEventPayload{
@@ -176,6 +182,13 @@ func TestIntegrationTheCloseReportsClosedWhileTheBudgetIsUntouched(t *testing.T)
 	}, nil); err != nil {
 		t.Fatalf("create the campaign: %v", err)
 	}
+
+	// THE PRECONDITION (026 T081), and here it guards an assertion that reads as a
+	// GRANT: with the seeded `launch-2026-10` still in the registry it would take the
+	// selection, and this test's "the grant survives the close" would be about the
+	// seed's grant rather than its own.
+	requireRegistryIsolatedTo(t, f.campaign, dbCloseGrantedPrefix, campaignCode)
+
 	registeredAt := baseInstant()
 	userID := newTestAccount(t, dbConn, registeredAt)
 	if err := f.grant.ProcessUserCreated(ctx, identitydto.UserCreatedEventPayload{

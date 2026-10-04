@@ -82,6 +82,26 @@ type fakeCampaignRepo struct {
 	openCalls    int
 	getCalls     int
 	shareCalls   int
+	// closeOnShareCode and budgetOnShare stage an OPERATOR'S CHANGE at the one
+	// instant a fake can make it land between two reads: the moment the LOCKED read
+	// is served.
+	//
+	// FR-045 (026 T082/T083) is exactly a statement about that gap. Conditions 1-7
+	// read the campaign outside the grant's transaction, and the decider re-reads the
+	// row under a share lock inside it; a close or a budget edit that lands between
+	// the two is invisible to the first read and decisive for the second. Without a
+	// way to place a change there, both halves of FR-045 are unreachable in a unit
+	// test: `campaign_db_close_integration_test.go` needs a second connection to
+	// block, and this fake has only one.
+	closeOnShareCode string
+	budgetOnShare    *budgetChangeOnShare
+}
+
+// budgetChangeOnShare is the budget an operator's edit installs at the locked read.
+type budgetChangeOnShare struct {
+	code    string
+	quota   int
+	reserve int
 }
 
 func newFakeCampaignRepo(campaigns ...*entities.Campaign) *fakeCampaignRepo {
@@ -167,7 +187,49 @@ func (f *fakeCampaignRepo) GetByCodeForShare(ctx context.Context, campaignCode s
 	if fail {
 		return nil, context.DeadlineExceeded
 	}
+	// THE CHANGE LANDS HERE, and it is the only place a test can put one. The
+	// production sequence is "evaluate from the rows we already read" (conditions 1-7)
+	// and then, inside the transaction, "re-read under a share lock" (FR-045); an edit
+	// committed between those two reads is what the re-read exists to catch. Applying
+	// it here reproduces exactly that ordering, because every call after this one in
+	// the grant path sees the NEW row.
+	f.applyShareChange(campaignCode)
 	return f.byCode(campaignCode), nil
+}
+
+// applyShareChange stages the closure or the budget edit the test armed for this code.
+//
+// THE ROW IS REPLACED, NOT MUTATED IN PLACE, and that is load-bearing rather than
+// stylistic. The pointer the evaluator chose came out of `ListOpen`, so mutating the
+// row behind it would change that "already read" copy too — and a test then observing a
+// skip could not tell a decision made from the re-read row from one made from a copy
+// that had been rewritten underneath it. Replacing the slice element leaves the
+// evaluator holding the values conditions 1-7 actually saw, which is the whole state
+// FR-045 is about. `Close` and `Update` replace for the same reason.
+func (f *fakeCampaignRepo) applyShareChange(campaignCode string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	stored := f.byCodeLocked(campaignCode)
+	if stored == nil {
+		return
+	}
+	copied := *stored
+	changed := false
+	if f.closeOnShareCode == campaignCode && copied.ClosedAt == nil {
+		closedAt := copied.StartsAt.Add(48 * time.Hour)
+		copied.ClosedAt = &closedAt
+		copied.Version++
+		changed = true
+	}
+	if change := f.budgetOnShare; change != nil && change.code == campaignCode {
+		copied.Quota = change.quota
+		copied.Reserve = change.reserve
+		changed = true
+	}
+	if !changed {
+		return
+	}
+	f.campaigns[f.indexOfLocked(campaignCode)] = &copied
 }
 
 func (f *fakeCampaignRepo) Create(ctx context.Context, campaign *entities.Campaign) error {

@@ -181,7 +181,8 @@ và worker quét bù vẫn lên lịch như 025.
 4. Đăng ký một tài khoản mới thứ hai.
 5. **Điều kiện đạt**:
    - Bước 2: tài khoản nhận gói.
-   - Bước 4: tài khoản **không** nhận gói; tra cứu trả `reason = campaign_sleeping`.
+   - Bước 4: tài khoản **không** nhận gói. **Xem hiệu chỉnh V2 bên dưới** về mã `reason` quan sát
+     được trên đường thông điệp.
    - Trong **suốt** quá trình **không** có commit/tag/deploy nào.
    - Từ bước 3, `GET /api/v1/admin/campaigns/verify-026` trả `status = "closed"`, `closedAt` khác null.
 
@@ -190,7 +191,19 @@ và worker quét bù vẫn lên lịch như 025.
 Trên một chiến dịch đã `closed_at IS NOT NULL`:
 1. Tạo một tài khoản mới.
 2. **Điều kiện đạt**: **0** dòng `campaign_claims` mới cho tài khoản đó; API tra cứu trả
-   `eligibility = "not_eligible"`, `reason = "campaign_sleeping"`.
+   `eligibility = "not_eligible"`.
+3. **Ghi chú về mã `reason`** — đọc trước khi chạy, nếu không sẽ dễ kết luận sai:
+   - Trên **đường thông điệp**, với sổ chỉ có chiến dịch đã đóng, mã quan sát được là
+     **`campaign_not_configured`**, **không** phải `campaign_sleeping`. Lý do: `ListOpen` lọc
+     `closed_at IS NULL`, nên tập ứng viên thức rỗng và **điều kiện 1** trả về trước khi tới kiểm tra
+     chiến dịch.
+   - Mã `campaign_sleeping` của 025 là mã của **tầng bộ đánh giá** cho một chiến dịch *có mặt* nhưng
+     không thức. Muốn quan sát nó trên CSDL thật thì sổ phải còn **một** chiến dịch khác chưa đóng và
+     chưa thức — thiết lập mà bản V1 này không dựng.
+   - Dù bất kỳ mã nào, **điều kiện đạt cốt lõi là 0 dòng cấp**. Nếu bạn cần `campaign_sleeping` thì hãy
+     kiểm tra bằng `TestEvaluatorExcludesForceClosedCampaigns` thay vì bằng quickstart.
+   - Lý do lịch sử: bản soạn đầu của V2 yêu cầu `campaign_sleeping`; yêu cầu đó không quan sát được và
+     đã được hiệu chỉnh ở `spec.md` §11.3.
 
 ```sql
 SELECT count(*) FROM subscription.campaign_claims

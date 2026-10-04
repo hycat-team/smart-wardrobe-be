@@ -956,15 +956,25 @@ tài khoản trở lên MUST đặt `email.enabled: false` (hoặc `EMAIL_ENABLE
 2. Đăng ký một tài khoản mới email. Kiểm tra trong vòng 5 phút tài khoản ở gói `premium-monthly`.
 3. Gọi API đóng `verify-026` kèm lý do.
 4. Đăng ký một tài khoản mới thứ hai.
-5. **Điều kiện đạt**: bước 2 nhận gói; bước 4 **không** nhận gói và lý do quan sát được là
-   `campaign_sleeping`; trong **suốt** quá trình **không** có commit/tag/deploy nào; `status` trả về
-   `closed` ở bước 3 trở đi.
+5. **Điều kiện đạt**: bước 2 nhận gói; bước 4 **không** nhận gói (mã `reason` quan sát được ở đường thông
+   điệp với sổ chỉ-có-chiến-dịch-đã-đóng là `campaign_not_configured`, xem hiệu chỉnh ở §11.3); trong
+   **suốt** quá trình **không** có commit/tag/deploy nào; `status` trả về `closed` ở bước 3 trở đi.
 
 ### 11.3 V2 — Chiến dịch đã đóng **không cấp gói cho tài khoản mới** (bắt buộc)
 
 Là phần bước 3–5 của V1, tách riêng để chạy độc lập: trên một chiến dịch đã `closed_at IS NOT NULL`,
-tạo một tài khoản mới và chứng minh **không** có dòng `campaign_claims` nào sinh ra cho tài khoản đó,
-và API tra cứu trả `eligibility` là không đủ điều kiện/đã ngừng, `reason = campaign_sleeping`.
+tạo một tài khoản mới và chứng minh **không** có dòng `campaign_claims` nào sinh ra cho tài khoản đó.
+
+> **Hiệu chỉnh so với bản soạn đầu (lộ ra ở vòng hội tụ, sửa tại đây).** Bản gốc yêu cầu
+> `reason = campaign_sleeping`. Mã đó **không quan sát được** trên đường thông điệp với sổ chỉ có
+> chiến dịch đã đóng: `ListOpen` lọc `closed_at IS NULL`, nên tập ứng viên thức rỗng và **điều kiện 1**
+> trả `campaign_not_configured` trước khi tới bất kỳ kiểm tra nào về chiến dịch. Đây là hệ quả trực tiếp
+> của quyết định đặt cửa sổ ở bộ đánh giá thuần (A-1), không phải hồi quy.
+>
+> Phần đảm bảo được giữ nguyên và là phần quan trọng: **0 dòng cấp**. Mã `campaign_sleeping` của 025 vẫn
+> còn đúng nghĩa và còn được chứng minh ở **tầng bộ đánh giá** cho một chiến dịch *có mặt* nhưng không
+> thức (`TestEvaluatorExcludesForceClosedCampaigns`), cũng như trên đường tra cứu theo mã khi sổ còn
+> chiến dịch khác chưa đóng. Không thay đổi tập 12 mã `reason`.
 
 ### 11.4 V3 — Bất biến ngân sách
 

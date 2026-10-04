@@ -82,6 +82,10 @@ func openGrantTestDB(t *testing.T) *gorm.DB {
 	if err := shareddb.RunMigrations(context.Background(), dbConn, accountmigrations.EmbedFS, "goose_db_version", true, zap.NewNop()); err != nil {
 		t.Fatalf("run migrations: %v", err)
 	}
+	// Before the cleanup below is registered, so the seed comes back LAST: cleanups run
+	// last-in-first-out, and a database left without `launch-2026-10` would fail
+	// another package's tests for every later run (026 T081).
+	isolateSeededCampaign(t, dbConn)
 	t.Cleanup(func() {
 		// Claims first: the ledger names the campaign as text and has no foreign key,
 		// so the order is tidiness rather than a constraint (FR-091).
@@ -281,6 +285,12 @@ func TestIntegrationOpeningACampaignLetsANewAccountReceiveThePlan(t *testing.T) 
 		t.Errorf("the stored row lost its values: quota=%d version=%d", stored.Quota, stored.Version)
 	}
 
+	// THE PRECONDITION (026 T081). The seeded `launch-2026-10` starts at exactly
+	// `baseInstant()` and this fixture's campaign starts a day earlier, so on an
+	// un-isolated database FR-040 would hand the grant to the seed — and the three
+	// assertions below would be about a campaign this test never opened.
+	requireRegistryIsolatedTo(t, f.campaign, dbCampaignPrefix, campaignCode)
+
 	// STEP 2 — a new account registers and the message arrives.
 	registeredAt := baseInstant()
 	userID := newTestAccount(t, dbConn, registeredAt)
@@ -363,6 +373,11 @@ func TestIntegrationACampaignNamingAMissingPlanGrantsNobodyWithPlanUnavailable(t
 	}, nil); err != nil {
 		t.Fatalf("a campaign naming a missing plan must still be writable: %v", err)
 	}
+
+	// THE PRECONDITION (026 T081), and here it is load-bearing twice over. With the
+	// seed present, `launch-2026-10` would win the selection and the assertion below
+	// would be satisfied by the seed's own plan lookup rather than by this fixture's.
+	requireRegistryIsolatedTo(t, f.campaign, dbCampaignPrefix, campaignCode)
 
 	registeredAt := baseInstant()
 	userID := newTestAccount(t, dbConn, registeredAt)
