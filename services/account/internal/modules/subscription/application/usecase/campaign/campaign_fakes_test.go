@@ -582,18 +582,31 @@ func (r recordedAudit) ActorID() uuid.UUID { return r.actor }
 // says "nobody" rather than "unknown".
 func (r recordedAudit) ActorIsZero() bool { return r.actor == uuid.Nil }
 
+// fakeAuditContract records the audit commands a use case issues.
+//
+// WHY `fail` RECORDS FIRST AND FAILS AFTERWARDS, rather than refusing to record. FR-061
+// — "a failed write MUST NOT leave an audit record" — is a statement about the
+// ROLLBACK, and a fake that simply refuses would satisfy every assertion about it
+// without the rollback doing any work: the record would never have existed. Recording
+// and then failing is the shape that actually exercises the guarantee, and it is a real
+// one: the outbox row is inserted inside the caller's transaction, so anything that
+// makes the TRANSACTION fail after that point — a later step in the same use case, or a
+// COMMIT that does not land — leaves the row to be rolled back with it. That is exactly
+// the situation 026's T036 rollback test and 024's grant atomicity rule care about.
 type fakeAuditContract struct {
 	mu      sync.Mutex
 	records []recordedAudit
-	fail    bool
+	// issued counts EVERY command `Record` was handed, including the ones a rollback
+	// then removed, and is therefore the only way a test can tell "the rollback undid the
+	// record" apart from "nothing was ever written".
+	issued int
+	fail   bool
 }
 
 func (f *fakeAuditContract) Record(ctx context.Context, input admindto.RecordAuditLogInput) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.fail {
-		return context.DeadlineExceeded
-	}
+	f.issued++
 	f.records = append(f.records, recordedAudit{
 		actor:      input.ActorUserID,
 		Action:     input.Action,
@@ -601,7 +614,17 @@ func (f *fakeAuditContract) Record(ctx context.Context, input admindto.RecordAud
 		TargetID:   input.TargetID,
 		Payload:    input.Payload,
 	})
+	if f.fail {
+		return context.DeadlineExceeded
+	}
 	return nil
+}
+
+// issuedCount is how many audit commands were handed to the fake, rolled back or not.
+func (f *fakeAuditContract) issuedCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.issued
 }
 
 func (f *fakeAuditContract) all() []recordedAudit {
@@ -610,6 +633,23 @@ func (f *fakeAuditContract) all() []recordedAudit {
 	out := make([]recordedAudit, len(f.records))
 	copy(out, f.records)
 	return out
+}
+
+// truncateTo drops every record recorded after the given count.
+//
+// 026 T036: it models the ROLLBACK of an outbox insert. `Record` appends the moment it
+// is called, because that is what publishing to the outbox looks like from inside the
+// transaction — and in production the row disappears with the transaction if it rolls
+// back. Without this, a use case that issued its audit command AFTER the transaction
+// would leave the record behind and pass every assertion in the grant tests, while
+// FR-061 ("a failed write leaves no audit record") was broken.
+func (f *fakeAuditContract) truncateTo(count int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if count < 0 || count > len(f.records) {
+		return
+	}
+	f.records = f.records[:count]
 }
 
 type sentEmail struct {

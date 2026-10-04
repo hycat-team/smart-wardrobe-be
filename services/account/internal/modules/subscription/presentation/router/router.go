@@ -24,7 +24,14 @@ type Router struct {
 	// must be provably incapable of spending anything (FR-069). A separate type
 	// makes that provable from its constructor's parameter list.
 	campaignAdminHandler *subscription_handler.CampaignAdminHandler
-	auth                 identity_contract.IAuthMiddleware
+	// 026 T035: the campaign WRITE face. A separate handler, and the reason is
+	// structural rather than stylistic: `CampaignAdminHandler`'s only collaborator is
+	// an interface with no write method anywhere behind it, which is how FR-069's
+	// read-only guarantee is kept (see the comment on that field). Adding a unit of
+	// work and a registry writer to the same type would delete that guarantee in one
+	// edit, so the two write to the same URL prefix from two different objects.
+	campaignRegistryHandler *subscription_handler.CampaignRegistryHandler
+	auth                    identity_contract.IAuthMiddleware
 	// 024 T100: the bulk-grant limiter. It lives on the route rather than in the
 	// handler so it also covers requests rejected before the handler runs, and so
 	// the two-tier rule reads in one place next to the route it protects.
@@ -38,6 +45,7 @@ func NewRouter(
 	ab *subscription_handler.AdminBillingHandler,
 	as *subscription_handler.AdminSubscriptionHandler,
 	cah *subscription_handler.CampaignAdminHandler,
+	crh *subscription_handler.CampaignRegistryHandler,
 	auth identity_contract.IAuthMiddleware,
 	adminGrantRateLimiter *shared_middleware.AdminGrantRateLimitMiddleware,
 ) *Router {
@@ -48,6 +56,7 @@ func NewRouter(
 		adminBillingHandler:      ab,
 		adminSubscriptionHandler: as,
 		campaignAdminHandler:     cah,
+		campaignRegistryHandler:  crh,
 		auth:                     auth,
 		adminGrantRateLimiter:    adminGrantRateLimiter,
 	}
@@ -159,6 +168,23 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		// limit would be a second answer waiting to be given (R10).
 		adminCampaigns.GET("/:code/claims", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.ListClaims))
 		adminCampaigns.GET("/:code/eligibility/:userId", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignAdminHandler.GetAccountEligibility))
+
+		// 026 T035 (FR-052/FR-053): the create endpoint — the moment 026 exists for.
+		//
+		// IT JOINS THIS GROUP RATHER THAN GETTING A NEW ONE, and that is safe for a
+		// reason the group comment above makes concrete: the Gin trap is a STATIC
+		// segment registered BESIDE a PARAMETER at the same level. `POST ""` is the
+		// same static path `GET ""` already uses, and no parameter segment was added at
+		// this level — so there is no new conflict to panic at startup. The three
+		// campaign write routes, by contrast, DO add parameters and are therefore
+		// added to this same group in the order US2/US3 bring them, never nested under
+		// `/admin/subscriptions` where `POST /:userId/cancel` lives.
+		//
+		// THE SAME `RolesAuthorize` AND THE SAME LIMITER, both inherited from the group
+		// and the two lines below (FR-053). A second limiter for writes would make "an
+		// administrator's budget" two numbers, and the first one to be spent would be
+		// whichever the client happened to call.
+		adminCampaigns.POST("", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.campaignRegistryHandler.Create))
 	}
 }
 

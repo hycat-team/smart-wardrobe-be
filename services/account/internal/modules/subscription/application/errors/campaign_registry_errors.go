@@ -136,3 +136,68 @@ func ErrCampaignAuditListFailed(campaignCode string) *apperror.Error {
 	e.Cause = fmt.Errorf("campaign %s: list audit trail", campaignCode)
 	return e
 }
+
+// ---- Nhóm lỗi HÌNH DẠNG (400) của ba endpoint ghi, thêm ở T030 ----
+//
+// Phase 1 (T003) khai bảy lỗi của sổ đăng ký, và bảy lỗi đó đều là 409/412/422/500:
+// chúng mô tả những gì đã đi qua bước kiểm hình dạng rồi mới hỏng. Ba lỗi dưới đây
+// là phần còn thiếu của bảng FR-054 — những lỗi phát ra TRƯỚC khi có thể nói gì về
+// ngữ nghĩa — và chúng được thêm ở T030, đúng chỗ validator cần tới chúng.
+//
+// Chúng nằm ở đây chứ không ở `errors.go` vì cùng một lý do như phần trên: đây là
+// nhóm lỗi của sổ đăng ký, và nhóm lỗi đó có một đặc điểm mà nhóm 025 không có —
+// nó trả lời NGƯỜI VẬN HÀNH đang gõ một biểu mẫu, nên phải nói ra ô nào sai.
+
+// ErrCampaignCodeInvalid báo rằng mã chiến dịch không khớp `^[a-z0-9][a-z0-9-]{2,63}$`
+// (FR-054 → 400, FR-011).
+//
+// Đây là lỗi "HỎNG HÌNH DẠNG": yêu cầu chưa mô tả được một mã chiến dịch, nên không
+// có nghĩa nào để kiểm. Nói sai loại sẽ mời người vận hành "kiểm tra lại ngữ nghĩa"
+// trong khi ngữ nghĩa chưa tồn tại.
+//
+// Nêu LUẬT trong thông điệp, vì người gõ mã chiến dịch ở đây là người đang chép từ
+// một dòng tin khác (kế hoạch ra mắt, email cũ) chứ không phải người nhớ regex: một
+// thông báo chỉ nói "mã không hợp lệ" khiến họ đoán, và đoán sai thường là thêm khoảng
+// trắng hoặc dấu gạch dưới — hai thứ luật này cấm.
+func ErrCampaignCodeInvalid() *apperror.Error {
+	e := apperror.NewBadRequest(
+		"Mã chiến dịch không hợp lệ. Mã phải dài 3-64 ký tự, chỉ gồm chữ thường, số và dấu gạch ngang, " +
+			"và bắt đầu bằng chữ thường hoặc số.")
+	e.Cause = fmt.Errorf("campaign registry: malformed campaign code")
+	return e
+}
+
+// ErrCampaignTimestampMalformed báo rằng một tham số thời gian không phải là thời điểm
+// RFC3339 CÓ MÚI GIỜ (FR-054 → 400, FR-013).
+//
+// Zone-less là lý do lỗi này tồn tại, không phải thừa. `2026-10-02 00:00:00` không
+// mô tả một thời điểm: nó sẽ được đọc theo múi giờ của MÁY CHỦ, lệch bảy giờ ở
+// production, và lưu lại một thời điểm không ai gõ. Chiến dịch ra mắt lúc 00:00 thì
+// lệch đúng bảy giờ đó là toàn bộ ý nghĩa của thao tác.
+//
+// Nêu LUẬT kèm VÍ DỤ đúng định dạng, vì lỗi này do người gõ sai định dạng chứ không
+// phải do sai ngữ nghĩa — và biểu mẫu của họ chỉ hiện một ví dụ.
+func ErrCampaignTimestampMalformed(field string) *apperror.Error {
+	e := apperror.NewBadRequest(fmt.Sprintf(
+		"Tham số thời gian không hợp lệ: %s phải là một thời điểm RFC3339 có múi giờ, ví dụ 2026-10-02T00:00:00+07:00.",
+		field))
+	e.Cause = fmt.Errorf("campaign registry: malformed %s timestamp", field)
+	return e
+}
+
+// ErrCampaignRegistryAuditFailed báo rằng không ghi được dòng kiểm toán cho một thao tác
+// ghi sổ đăng ký (FR-060 → 500).
+//
+// CHẠM TOÀN BỘ GIAO DỊCH, và đó là điểm: `IAuditLogContract.Record` ghi một dòng
+// OUTBOX trong cùng transaction với dòng chiến dịch, nên khi nó hỏng thì giao dịch
+// rollback và thao tác ghi thất bại. Tiếp tục sau khi nó hỏng sẽ tạo ra một chiến
+// dịch mà không ai quy trách nhiệm — đúng thứ FR-061 cấm.
+//
+// KHÔNG dùng lại `ErrCampaignRecordAuditFailed` của 025: thông điệp của lỗi đó nói
+// "lần cấp gói", và một chiến dịch được mở không cấp gói cho ai. Dùng lại nó sẽ khiến
+// người vận hành đi tìm một lượt cấp không tồn tại.
+func ErrCampaignRegistryAuditFailed(campaignCode string, cause error) *apperror.Error {
+	e := apperror.NewInternalError("Không thể ghi nhật ký kiểm toán cho thao tác trên chiến dịch.")
+	e.Cause = fmt.Errorf("campaign %s: record registry audit: %w", campaignCode, cause)
+	return e
+}

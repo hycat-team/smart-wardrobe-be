@@ -2,9 +2,33 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 )
+
+// ErrCampaignCodeExists is the DOMAIN answer to "this campaign code is taken" (FR-011).
+//
+// WHY IT IS DECLARED HERE AND NOT RECOGNISED IN THE USE CASE. The unique violation
+// arrives as a PostgreSQL driver error, and `*pgconn.PgError` is a driver type: the
+// application layer naming it would be a driver import above `domain`, which is the
+// one boundary no amount of convenience is worth breaking (constitution §IV). So the
+// driver stays in `infrastructure/persistence`, which translates it into this
+// sentinel, and the use case compares against this sentinel — a word from the domain
+// it already speaks.
+//
+// A PACKAGE-LEVEL `errors.New` SENTINEL, which is the sanctioned exception to the
+// "no bare `errors.New`" rule (code-hygiene H8): it is a fact about the data layer,
+// it has no HTTP status, and no `apperror` factory would be the right shape for it
+// because a repository must not return an application error.
+//
+// WHY THE USE CASE DOES NOT PRE-READ THE CODE. A `GetByCode` followed by an insert
+// has a window between the two statements, and that window is exactly the case
+// FR-054 assigns 409 to. Relying on the constraint removes the window and leaves one
+// mechanism instead of two — and it is the same mechanism `PRIMARY KEY` already is:
+// the third of 025's seven startup rules, the only one the database can enforce
+// absolutely.
+var ErrCampaignCodeExists = errors.New("campaign registry: code already exists")
 
 // ICampaignRepository is the campaign registry itself (026, FR-001/FR-005).
 //

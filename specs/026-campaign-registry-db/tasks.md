@@ -78,16 +78,16 @@ phải được triển khai **cùng nhau**. Gỡ YAML mà chưa seed thì produ
 
 **Independent Test**: Gọi `POST /api/v1/admin/campaigns` với `starts_at` trong quá khứ, đăng ký tài khoản mới, kiểm tra tài khoản nhận đúng gói. Không đổi tệp mã nguồn nào.
 
-- [ ] T029 [P] [US1] Thêm DTO request `CampaignCreateReq` (code, planSlug, quota, reserve, startsAt, endsAt) vào `services/account/dto/subscription/campaign_dto.go`
-- [ ] T030 [P] [US1] Viết `registry_validate.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/` theo bảng FR-054: `400` cho `code` sai định dạng và thời gian không phải RFC3339 có múi giờ; `422` cho `planSlug` rỗng, `quota < 1`, `reserve < 0`, `endsAt <= startsAt`
-- [ ] T031 [US1] Khai báo `ICampaignRegistryUseCase` (Create/Update/Close) trong `services/account/internal/modules/subscription/application/interface/usecase/campaign_registry_uc.go`
-- [ ] T032 [US1] Viết mapper `campaign_mapper.go` (entity → `CampaignSummaryRes`) trong `services/account/internal/modules/subscription/application/mapper/` — phụ thuộc T029
-- [ ] T033 [US1] Cài `registry_uc.go` — `Create`: kiểm hình dạng, insert, ghi audit `campaign.create` qua `IAuditLogContract` trong cùng transaction (`uow.Execute`), dùng **hằng** `adminaudit.Campaign`/`adminaudit.CampaignCreate` và `payload.campaignCode` — phụ thuộc T030, T031, T032
-- [ ] T034 [US1] Viết handler `campaign_registry_handler.go` — `Create` trong `services/account/internal/modules/subscription/presentation/handler/` (mỏng: bind, gọi use case, `shared_pres.Success`) — phụ thuộc T031
-- [ ] T035 [US1] Đăng ký route `POST /api/v1/admin/campaigns` và wire handler/use case vào `services/account/internal/modules/subscription/presentation/router/router.go`, `.../handler` provider, `services/account/internal/di/wire_gen.go` (`make wire`) — phụ thuộc T034
-- [ ] T036 [US1] Kiểm thử đơn vị `registry_uc.go` Create: hợp lệ ⇒ tạo + đúng **một** lệnh ghi audit; trùng mã ⇒ `409`; hình dạng sai ⇒ `400`/`422` đúng loại; lỗi ghi ⇒ rollback và **không** có dòng outbox audit (FR-061) trong `services/account/internal/modules/subscription/application/usecase/campaign/registry_uc_create_test.go` — phụ thuộc T033
-- [ ] T037 [US1] Kiểm thử hợp đồng `POST /campaigns` trả đủ mã `201`/`400`/`409`/`422`/`403`/`429` trong `services/account/internal/modules/subscription/presentation/handler/campaign_registry_router_test.go` — phụ thuộc T035
-- [ ] T038 [US1] Kiểm thử tích hợp quickstart V1 phần mở: tạo chiến dịch rồi mô phỏng thông điệp `identity.user.created` cho tài khoản mới ⇒ có lượt cấp, trong `services/account/internal/modules/subscription/application/usecase/campaign/campaign_db_grant_integration_test.go` — phụ thuộc T033
+- [x] T029 [P] [US1] Thêm DTO request `CampaignCreateReq` (code, planSlug, quota, reserve, startsAt, endsAt) vào `services/account/dto/subscription/campaign_dto.go`
+- [x] T030 [P] [US1] Viết `registry_validate.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/` theo bảng FR-054: `400` cho `code` sai định dạng và thời gian không phải RFC3339 có múi giờ; `422` cho `planSlug` rỗng, `quota < 1`, `reserve < 0`, `endsAt <= startsAt`
+- [x] T031 [US1] Khai báo `ICampaignRegistryUseCase` (Create/Update/Close) trong `services/account/internal/modules/subscription/application/interface/usecase/campaign_registry_uc.go`
+- [x] T032 [US1] Viết mapper `campaign_mapper.go` (entity → `CampaignSummaryRes`) trong `services/account/internal/modules/subscription/application/mapper/` — phụ thuộc T029
+- [x] T033 [US1] Cài `registry_uc.go` — `Create`: kiểm hình dạng, insert, ghi audit `campaign.create` qua `IAuditLogContract` trong cùng transaction (`uow.Execute`), dùng **hằng** `adminaudit.Campaign`/`adminaudit.CampaignCreate` và `payload.campaignCode` — phụ thuộc T030, T031, T032
+- [x] T034 [US1] Viết handler `campaign_registry_handler.go` — `Create` trong `services/account/internal/modules/subscription/presentation/handler/` (mỏng: bind, gọi use case, `shared_pres.Success`) — phụ thuộc T031
+- [x] T035 [US1] Đăng ký route `POST /api/v1/admin/campaigns` và wire handler/use case vào `services/account/internal/modules/subscription/presentation/router/router.go`, `.../handler` provider, `services/account/internal/di/wire_gen.go` (`make wire`) — phụ thuộc T034
+- [x] T036 [US1] Kiểm thử đơn vị `registry_uc.go` Create: hợp lệ ⇒ tạo + đúng **một** lệnh ghi audit; trùng mã ⇒ `409`; hình dạng sai ⇒ `400`/`422` đúng loại; lỗi ghi ⇒ rollback và **không** có dòng outbox audit (FR-061) trong `services/account/internal/modules/subscription/application/usecase/campaign/registry_uc_create_test.go` — phụ thuộc T033
+- [x] T037 [US1] Kiểm thử hợp đồng `POST /campaigns` trả đủ mã `201`/`400`/`409`/`422`/`403`/`429` trong `services/account/internal/modules/subscription/presentation/handler/campaign_registry_router_test.go` — phụ thuộc T035
+- [x] T038 [US1] Kiểm thử tích hợp quickstart V1 phần mở: tạo chiến dịch rồi mô phỏng thông điệp `identity.user.created` cho tài khoản mới ⇒ có lượt cấp, trong `services/account/internal/modules/subscription/application/usecase/campaign/campaign_db_grant_integration_test.go` — phụ thuộc T033
 
 **Checkpoint**: Tạo chiến dịch qua API và tài khoản mới nhận gói — MVP chạy được, kiểm chứng độc lập.
 

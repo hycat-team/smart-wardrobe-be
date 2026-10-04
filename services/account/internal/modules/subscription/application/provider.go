@@ -74,4 +74,15 @@ var ProviderSet = wire.NewSet(
 	// to the repositories directly would be free to grow its own eligibility
 	// check, and FR-080's whole protection is that it cannot.
 	campaign.NewCampaignSweepUseCase,
+
+	// 026 T035: the campaign registry WRITER. It is a third campaign use case, not a
+	// second method on either of the two above, for the reason
+	// `ICampaignRegistryUseCase` gives in full — the grant path, the look-up and the
+	// operator path have three different shapes of input, three different transactions
+	// and three different blast radii.
+	//
+	// Wired here so that a missing dependency is a DI error at startup rather than a nil
+	// use case discovered by the first person who tries to open a campaign on a launch
+	// night — which is precisely the moment the feature was built for.
+	campaign.NewCampaignRegistryUseCase,
 )
