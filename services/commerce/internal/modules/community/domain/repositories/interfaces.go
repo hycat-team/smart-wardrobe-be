@@ -21,6 +21,9 @@ type IPostRepository interface {
 	ListByAuthorPaginated(ctx context.Context, authorID uuid.UUID, viewerUserID *uuid.UUID, pagination shared_dto.PaginationQuery) (*PostListResult, error)
 	IncrementLikeCount(ctx context.Context, postID uuid.UUID, delta int) error
 	IncrementCommentCount(ctx context.Context, postID uuid.UUID, delta int) error
+	RecountCommentCount(ctx context.Context, postID uuid.UUID) error
+	UpdateEditableFields(ctx context.Context, postID uuid.UUID, title *string, content string, outfitID *uuid.UUID) error
+	ReconcileCounters(ctx context.Context) error
 	UpdateModerationStatus(ctx context.Context, postID uuid.UUID, status poststatus.PostStatus, moderatedBy *uuid.UUID, hiddenReason *hiddenreason.HiddenReason) error
 	SoftDeleteByOutfitID(ctx context.Context, outfitID uuid.UUID) (int64, error)
 	HideAllByAuthor(ctx context.Context, authorID uuid.UUID) (int64, error)
@@ -36,7 +39,7 @@ type IPostMediaRepository interface {
 
 type IPostLikeRepository interface {
 	Create(ctx context.Context, like *entities.PostLike) error
-	Delete(ctx context.Context, postID, userID uuid.UUID) error
+	Delete(ctx context.Context, postID, userID uuid.UUID) (int64, error)
 	Exists(ctx context.Context, postID, userID uuid.UUID) (bool, error)
 	GetLikedPostIDs(ctx context.Context, userID uuid.UUID, postIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 	GetByPostIDPaginated(ctx context.Context, postID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.PostLike, int64, error)

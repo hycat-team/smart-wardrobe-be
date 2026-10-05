@@ -40,6 +40,7 @@ type Workers struct {
 	CommunityOutfitCascade           *communityworker.OutfitCascadeWorker
 	CommunityUserStatus              *communityworker.UserStatusWorker
 	CommunityFollowStatsReconcile    *communityworker.FollowStatsReconcileWorker
+	CommunityPostStatsReconcile      *communityworker.PostStatsReconcileWorker
 	Outbox                           *sharedWorker.OutboxWorker
 }
 
@@ -67,6 +68,7 @@ func (w *Workers) All() []Worker {
 		w.CommunityOutfitCascade,
 		w.CommunityUserStatus,
 		w.CommunityFollowStatsReconcile,
+		w.CommunityPostStatsReconcile,
 		w.Outbox,
 	}
 }

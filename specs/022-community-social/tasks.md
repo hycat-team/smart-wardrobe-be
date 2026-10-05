@@ -267,3 +267,17 @@ Module mới: `services/commerce/internal/modules/community/`. Cross-service: `s
 - Tài liệu FE (`frontend-integration.md`) là deliverable bắt buộc (FR-046/SC-010).
 - **DI/wire**: sau mỗi thay đổi provider/DI/router (T002, T032, T033) chạy `make wire svc=commerce` để regenerate `wire_gen.go`, tránh lệch generated.
 - **Task không map FR** (chấp nhận): T001 = tiền đề compliance cho mọi FR; T079 = cập nhật tài liệu kiến trúc (không có FR tương ứng); T082 = ghi chú deferred ES (mở rộng tương lai của FR-017/FR-018); T083 = kiểm chứng SC-001.
+
+---
+
+## Hậu kiểm sau bàn giao — bugfix counter & moderation (2026-10-06)
+
+Sửa các lỗ hổng phát hiện khi đối chiếu FR-008, R12 và FR-036; không đổi endpoint/DTO nên không cần cập nhật `frontend-integration.md`.
+
+- **Admin ẩn/xóa/khôi phục comment không cập nhật `comment_count`**: thêm `IPostRepository.RecountCommentCount` (khóa row `FOR UPDATE` + COUNT trong cùng transaction); `AdminUseCase` nhận `IUnitOfWork`, `setCommentStatus`/`RestoreComment` recount sau khi đổi trạng thái. Idempotent, không lệch khi thao tác lặp.
+- **Unlike đồng thời trừ 2 lần**: `IPostLikeRepository.Delete` trả rows-affected; `TogglePostLike` chỉ decrement khi `affected == 1`.
+- **`UpdatePost` ghi đè counter**: thay `Save` toàn entity bằng `UpdateEditableFields` (chỉ `title`/`content`/`outfit_id`).
+- **Thiếu worker reconcile post counters (R12)**: thêm `IPostRepository.ReconcileCounters` (SQL drift-only) + `PostStatsReconcileWorker` (30 phút) + `ReconcilePostCounters` trong `IStatsSyncUseCase`; đăng ký provider/bootstrap và regenerate Wire.
+- **FR-036 (phát hiện thêm)**: `UpdateStatusByRoot` không hồi sinh reply tác giả tự xóa (restore chỉ tác động reply `moderated_by IS NOT NULL`); chặn admin ẩn/xóa nội dung tác giả đã tự xóa bằng `ErrCannotModerateAuthorDeleted` (comment + post).
+- **Kiểm chứng**: `make lint` xanh; `go test -race -count=3 ./internal/modules/community/...` xanh (services/commerce); `make wire svc=commerce` đã regenerate `wire_gen.go`.
+

@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/feedtype"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/mediatype"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/posttype"
+	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/repositories"
 	"smart-wardrobe-be/shared/config"
 
@@ -150,4 +151,87 @@ func TestBuildPostMediaPreservesOrder(t *testing.T) {
 	assert.Equal(t, int16(2), medias[0].SortOrder)
 	assert.Equal(t, mediatype.Video, medias[1].MediaType)
 	assert.NotEqual(t, uuid.Nil, medias[0].ID)
+}
+
+type fakeUpdatePostRepo struct {
+	repositories.IPostRepository
+	post          *entities.Post
+	editableCalls int
+	saveCalls     int
+}
+
+func (f *fakeUpdatePostRepo) GetByPublicID(context.Context, string) (*entities.Post, error) {
+	return f.post, nil
+}
+
+func (f *fakeUpdatePostRepo) UpdateEditableFields(context.Context, uuid.UUID, *string, string, *uuid.UUID) error {
+	f.editableCalls++
+	return nil
+}
+
+func (f *fakeUpdatePostRepo) Update(context.Context, *entities.Post) error {
+	f.saveCalls++
+	return nil
+}
+
+type fakeMediaRepo struct {
+	repositories.IPostMediaRepository
+	deleteCalls int
+}
+
+func (f *fakeMediaRepo) DeleteByPostID(context.Context, uuid.UUID) error {
+	f.deleteCalls++
+	return nil
+}
+
+type fakeLikeRepoPost struct {
+	repositories.IPostLikeRepository
+}
+
+func (f *fakeLikeRepoPost) Exists(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
+	return false, nil
+}
+
+type fakePostUoW struct{}
+
+func (fakePostUoW) Execute(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
+
+func TestUpdatePostDoesNotClobberCounters(t *testing.T) {
+	userID := uuid.New()
+	oldTitle := "old"
+	post := &entities.Post{
+		PostType:     posttype.Media,
+		Title:        &oldTitle,
+		Content:      "old content",
+		LikeCount:    7,
+		CommentCount: 3,
+	}
+	post.ID = uuid.New()
+	post.UserID = userID
+	post.PublicID = "post-public-id"
+
+	postRepo := &fakeUpdatePostRepo{post: post}
+	mediaRepo := &fakeMediaRepo{}
+	uc := &PostUseCase{
+		cfg:       testConfig(),
+		uow:       fakePostUoW{},
+		postRepo:  postRepo,
+		mediaRepo: mediaRepo,
+		likeRepo:  &fakeLikeRepoPost{},
+	}
+
+	newTitle := "new"
+	_, err := uc.UpdatePost(context.Background(), userID, post.PublicID, dto.UpdatePostReq{
+		Title:   &newTitle,
+		Content: "new content",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, postRepo.editableCalls)
+	assert.Equal(t, 0, postRepo.saveCalls)
+	assert.Equal(t, 1, mediaRepo.deleteCalls)
+	assert.Equal(t, 7, post.LikeCount)
+	assert.Equal(t, 3, post.CommentCount)
 }

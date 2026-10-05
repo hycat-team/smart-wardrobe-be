@@ -98,14 +98,22 @@ func (r *PostCommentRepository) AdminList(ctx context.Context, filter repositori
 }
 
 // UpdateStatusByRoot cascades a moderation status to every reply of a root
-// comment (FR-025 / US6 AC3).
+// comment (FR-025 / US6 AC3) while preserving author-deleted replies
+// (FR-036). A reply the author deleted themselves (`deleted` with no
+// `moderated_by`) keeps its state when the root is hidden/deleted and is NOT
+// brought back when the root is later restored, because FR-036 makes
+// author-deleted content non-restorable even by an admin.
 func (r *PostCommentRepository) UpdateStatusByRoot(ctx context.Context, rootID uuid.UUID, status poststatus.PostStatus, moderatedBy *uuid.UUID) (int64, error) {
-	res := r.GetDB(ctx).Model(&entities.PostComment{}).
-		Where("parent_comment_id = ?", rootID).
-		Updates(map[string]any{
-			"status":       status,
-			"moderated_by": moderatedBy,
-			"updated_at":   time.Now(),
-		})
+	db := r.GetDB(ctx).Model(&entities.PostComment{}).Where("parent_comment_id = ?", rootID)
+	if status == poststatus.Published {
+		db = db.Where("moderated_by IS NOT NULL")
+	} else {
+		db = db.Where("NOT (status = ? AND moderated_by IS NULL)", poststatus.Deleted)
+	}
+	res := db.Updates(map[string]any{
+		"status":       status,
+		"moderated_by": moderatedBy,
+		"updated_at":   time.Now(),
+	})
 	return res.RowsAffected, res.Error
 }

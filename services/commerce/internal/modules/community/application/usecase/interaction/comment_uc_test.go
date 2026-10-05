@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/constants/poststatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/domain/repositories"
+	"smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,11 +16,17 @@ import (
 
 type fakeCommentRepo struct {
 	repositories.IPostCommentRepository
-	byID map[uuid.UUID]*entities.PostComment
+	byID    map[uuid.UUID]*entities.PostComment
+	updated []*entities.PostComment
 }
 
 func (f *fakeCommentRepo) GetByID(_ context.Context, id uuid.UUID) (*entities.PostComment, error) {
 	return f.byID[id], nil
+}
+
+func (f *fakeCommentRepo) Update(_ context.Context, comment *entities.PostComment) error {
+	f.updated = append(f.updated, comment)
+	return nil
 }
 
 func TestResolveCommentParent(t *testing.T) {
@@ -67,5 +74,47 @@ func TestResolveCommentParent(t *testing.T) {
 		uc.commentRepo = &fakeCommentRepo{byID: map[uuid.UUID]*entities.PostComment{other.ID: other}}
 		_, _, err := uc.resolveCommentParent(context.Background(), postID, &other.ID)
 		require.Error(t, err)
+	})
+}
+
+func TestDeleteCommentDecrementsCounter(t *testing.T) {
+	userID := uuid.New()
+	post := &entities.Post{Status: poststatus.Published}
+	post.ID = uuid.New()
+	post.PublicID = "post-public-id"
+
+	comment := &entities.PostComment{PostID: post.ID, UserID: userID, Status: poststatus.Published}
+	comment.ID = uuid.New()
+
+	newUC := func() (*InteractionUseCase, *fakeCommentRepo, *fakePostRepoSpy) {
+		commentRepo := &fakeCommentRepo{byID: map[uuid.UUID]*entities.PostComment{comment.ID: comment}}
+		postRepo := &fakePostRepoSpy{post: post}
+		return &InteractionUseCase{
+			cfg:         &config.Config{},
+			uow:         fakeInteractionUoW{},
+			postRepo:    postRepo,
+			commentRepo: commentRepo,
+		}, commentRepo, postRepo
+	}
+
+	t.Run("owner delete soft-deletes and decrements once", func(t *testing.T) {
+		uc, commentRepo, postRepo := newUC()
+
+		err := uc.DeleteComment(context.Background(), userID, post.PublicID, comment.ID)
+
+		require.NoError(t, err)
+		require.Len(t, commentRepo.updated, 1)
+		assert.Equal(t, poststatus.Deleted, commentRepo.updated[0].Status)
+		assert.Equal(t, []int{-1}, postRepo.commentDeltas)
+	})
+
+	t.Run("non-owner delete does not touch the counter", func(t *testing.T) {
+		uc, commentRepo, postRepo := newUC()
+
+		err := uc.DeleteComment(context.Background(), uuid.New(), post.PublicID, comment.ID)
+
+		require.Error(t, err)
+		assert.Empty(t, commentRepo.updated)
+		assert.Empty(t, postRepo.commentDeltas)
 	})
 }

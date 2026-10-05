@@ -24,8 +24,13 @@ func (r *PostLikeRepository) Create(ctx context.Context, like *entities.PostLike
 	return getDB(ctx, r.db).Create(like).Error
 }
 
-func (r *PostLikeRepository) Delete(ctx context.Context, postID, userID uuid.UUID) error {
-	return getDB(ctx, r.db).Where("post_id = ? AND user_id = ?", postID, userID).Delete(&entities.PostLike{}).Error
+// Delete removes the like row and returns the number of affected rows so the
+// caller only decrements the post counter when a row was actually deleted.
+// Two concurrent unlikes both pass the exist check, but only one DELETE can
+// remove the row; the other reports zero and must not decrement again.
+func (r *PostLikeRepository) Delete(ctx context.Context, postID, userID uuid.UUID) (int64, error) {
+	res := getDB(ctx, r.db).Where("post_id = ? AND user_id = ?", postID, userID).Delete(&entities.PostLike{})
+	return res.RowsAffected, res.Error
 }
 
 func (r *PostLikeRepository) Exists(ctx context.Context, postID, userID uuid.UUID) (bool, error) {

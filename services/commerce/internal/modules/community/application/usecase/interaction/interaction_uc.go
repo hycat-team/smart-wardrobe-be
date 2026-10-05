@@ -74,8 +74,14 @@ func (uc *InteractionUseCase) TogglePostLike(ctx context.Context, userID uuid.UU
 			}
 			return uc.postRepo.IncrementLikeCount(txCtx, post.ID, 1)
 		}
-		if err := uc.likeRepo.Delete(txCtx, post.ID, userID); err != nil {
+		affected, err := uc.likeRepo.Delete(txCtx, post.ID, userID)
+		if err != nil {
 			return err
+		}
+		if affected == 0 {
+			// A concurrent unlike already removed the row and decremented the
+			// counter; this transaction must not decrement it a second time.
+			return nil
 		}
 		return uc.postRepo.IncrementLikeCount(txCtx, post.ID, -1)
 	})

@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type PostRepository struct {
@@ -194,6 +195,64 @@ func (r *PostRepository) IncrementLikeCount(ctx context.Context, postID uuid.UUI
 func (r *PostRepository) IncrementCommentCount(ctx context.Context, postID uuid.UUID, delta int) error {
 	return r.GetDB(ctx).Model(&entities.Post{}).Where("id = ?", postID).
 		UpdateColumn("comment_count", gorm.Expr("GREATEST(comment_count + ?, 0)", delta)).Error
+}
+
+// RecountCommentCount rebuilds comment_count from the comments table. It is
+// used by admin moderation, where several rows change state at once (a root
+// plus its replies) and relative deltas would have to be bookkept per
+// transition. The post row is locked first so a concurrent relative increment
+// (a user adding or deleting a comment) either commits before the count, or
+// waits for the lock and applies on top of the recounted value. Counting
+// without the lock would let one of the two writes overwrite the other.
+func (r *PostRepository) RecountCommentCount(ctx context.Context, postID uuid.UUID) error {
+	db := r.GetDB(ctx)
+	var lock entities.Post
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Select("id").Where("id = ?", postID).Take(&lock).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	return db.Exec(
+		"UPDATE posts SET comment_count = (SELECT COUNT(*) FROM post_comments WHERE post_id = ? AND status = ?) WHERE id = ?",
+		postID, poststatus.Published, postID,
+	).Error
+}
+
+// UpdateEditableFields writes only the author-editable columns. A whole-entity
+// Save would also write like_count/comment_count from the copy read before the
+// transaction, silently discarding a like or comment committed in between.
+func (r *PostRepository) UpdateEditableFields(ctx context.Context, postID uuid.UUID, title *string, content string, outfitID *uuid.UUID) error {
+	return r.GetDB(ctx).Model(&entities.Post{}).Where("id = ?", postID).Updates(map[string]any{
+		"title":     title,
+		"content":   content,
+		"outfit_id": outfitID,
+	}).Error
+}
+
+// ReconcileCounters rebuilds the denormalized counters from their source
+// tables (feature 022 R12). Only drifted rows are written, so a healthy
+// registry costs reads and no updates; updated_at is deliberately not touched
+// because it describes the post content, not its counters.
+const reconcilePostCountersSQL = `
+WITH like_counts AS (
+    SELECT post_id, COUNT(*) AS c FROM post_likes GROUP BY post_id
+), comment_counts AS (
+    SELECT post_id, COUNT(*) AS c FROM post_comments WHERE status = ? GROUP BY post_id
+)
+UPDATE posts p
+SET like_count = COALESCE(l.c, 0),
+    comment_count = COALESCE(cc.c, 0)
+FROM posts p2
+LEFT JOIN like_counts l ON l.post_id = p2.id
+LEFT JOIN comment_counts cc ON cc.post_id = p2.id
+WHERE p.id = p2.id
+  AND (p.like_count IS DISTINCT FROM COALESCE(l.c, 0)
+    OR p.comment_count IS DISTINCT FROM COALESCE(cc.c, 0))`
+
+func (r *PostRepository) ReconcileCounters(ctx context.Context) error {
+	return r.GetDB(ctx).Exec(reconcilePostCountersSQL, poststatus.Published).Error
 }
 
 func (r *PostRepository) UpdateModerationStatus(ctx context.Context, postID uuid.UUID, status poststatus.PostStatus, moderatedBy *uuid.UUID, hiddenReason *hiddenreason.HiddenReason) error {

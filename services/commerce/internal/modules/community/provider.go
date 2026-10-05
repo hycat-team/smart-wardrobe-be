@@ -44,4 +44,5 @@ var ProviderSet = wire.NewSet(
 	presentation_worker.NewOutfitCascadeWorker,
 	presentation_worker.NewUserStatusWorker,
 	presentation_worker.NewFollowStatsReconcileWorker,
+	presentation_worker.NewPostStatsReconcileWorker,
 )

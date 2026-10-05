@@ -18,6 +18,7 @@ import (
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/config"
+	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 	"smart-wardrobe-be/shared/pkg/logger"
 
 	"github.com/google/uuid"
@@ -32,6 +33,7 @@ const (
 type AdminUseCase struct {
 	cfg            *config.Config
 	logger         logger.Interface
+	uow            shared_repos.IUnitOfWork
 	postRepo       repositories.IPostRepository
 	commentRepo    repositories.IPostCommentRepository
 	userBrief      identitycontract.IUserBriefContract
@@ -41,6 +43,7 @@ type AdminUseCase struct {
 func NewAdminUseCase(
 	cfg *config.Config,
 	log logger.Interface,
+	uow shared_repos.IUnitOfWork,
 	postRepo repositories.IPostRepository,
 	commentRepo repositories.IPostCommentRepository,
 	userBrief identitycontract.IUserBriefContract,
@@ -49,6 +52,7 @@ func NewAdminUseCase(
 	return &AdminUseCase{
 		cfg:            cfg,
 		logger:         log,
+		uow:            uow,
 		postRepo:       postRepo,
 		commentRepo:    commentRepo,
 		userBrief:      userBrief,
@@ -129,6 +133,9 @@ func (uc *AdminUseCase) HidePost(ctx context.Context, adminID, postID uuid.UUID)
 	if post == nil {
 		return communityerrors.ErrPostNotFound()
 	}
+	if post.Status == poststatus.Deleted && post.ModeratedBy == nil {
+		return communityerrors.ErrCannotModerateAuthorDeleted()
+	}
 	reason := hiddenreason.Admin
 	if err := uc.postRepo.UpdateModerationStatus(ctx, postID, poststatus.Hidden, &adminID, &reason); err != nil {
 		return err
@@ -162,6 +169,9 @@ func (uc *AdminUseCase) DeletePost(ctx context.Context, adminID, postID uuid.UUI
 	}
 	if post == nil {
 		return communityerrors.ErrPostNotFound()
+	}
+	if post.Status == poststatus.Deleted && post.ModeratedBy == nil {
+		return communityerrors.ErrCannotModerateAuthorDeleted()
 	}
 	if err := uc.postRepo.UpdateModerationStatus(ctx, postID, poststatus.Deleted, &adminID, nil); err != nil {
 		return err
@@ -213,12 +223,17 @@ func (uc *AdminUseCase) RestoreComment(ctx context.Context, adminID, commentID u
 	if comment.Status == poststatus.Deleted && comment.ModeratedBy == nil {
 		return communityerrors.ErrCannotRestoreAuthorDeleted()
 	}
-	comment.Status = poststatus.Published
-	comment.ModeratedBy = nil
-	if err := uc.commentRepo.Update(ctx, comment); err != nil {
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		comment.Status = poststatus.Published
+		comment.ModeratedBy = nil
+		if err := uc.commentRepo.Update(txCtx, comment); err != nil {
+			return err
+		}
+		uc.cascadeCommentStatus(txCtx, comment, poststatus.Published, nil)
+		return uc.postRepo.RecountCommentCount(txCtx, comment.PostID)
+	}); err != nil {
 		return err
 	}
-	uc.cascadeCommentStatus(ctx, comment, poststatus.Published, nil)
 	uc.audit(ctx, adminID, "community_comment_restore", targetTypeComment, commentID)
 	return nil
 }
@@ -231,12 +246,20 @@ func (uc *AdminUseCase) setCommentStatus(ctx context.Context, adminID, commentID
 	if comment == nil {
 		return communityerrors.ErrCommentNotFound()
 	}
-	comment.Status = status
-	comment.ModeratedBy = &adminID
-	if err := uc.commentRepo.Update(ctx, comment); err != nil {
+	if comment.Status == poststatus.Deleted && comment.ModeratedBy == nil {
+		return communityerrors.ErrCannotModerateAuthorDeleted()
+	}
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		comment.Status = status
+		comment.ModeratedBy = &adminID
+		if err := uc.commentRepo.Update(txCtx, comment); err != nil {
+			return err
+		}
+		uc.cascadeCommentStatus(txCtx, comment, status, &adminID)
+		return uc.postRepo.RecountCommentCount(txCtx, comment.PostID)
+	}); err != nil {
 		return err
 	}
-	uc.cascadeCommentStatus(ctx, comment, status, &adminID)
 	uc.audit(ctx, adminID, action, targetTypeComment, commentID)
 	return nil
 }

@@ -105,6 +105,10 @@ func ErrCannotRestoreAuthorDeleted() *apperror.Error {
 	return apperror.NewBadRequest("Không thể khôi phục nội dung do người dùng đã tự xóa.")
 }
 
+func ErrCannotModerateAuthorDeleted() *apperror.Error {
+	return apperror.NewBadRequest("Không thể ẩn/xóa nội dung do người dùng đã tự xóa.")
+}
+
 func ErrRateLimited() *apperror.Error {
 	return apperror.NewTooManyRequest("Bạn thao tác quá nhanh. Vui lòng thử lại sau.")
 }

@@ -9,12 +9,17 @@ import (
 
 type StatsSyncUseCase struct {
 	statsRepo repositories.IUserFollowStatsRepository
+	postRepo  repositories.IPostRepository
 }
 
-func NewStatsSyncUseCase(statsRepo repositories.IUserFollowStatsRepository) uc_interfaces.IStatsSyncUseCase {
-	return &StatsSyncUseCase{statsRepo: statsRepo}
+func NewStatsSyncUseCase(statsRepo repositories.IUserFollowStatsRepository, postRepo repositories.IPostRepository) uc_interfaces.IStatsSyncUseCase {
+	return &StatsSyncUseCase{statsRepo: statsRepo, postRepo: postRepo}
 }
 
 func (uc *StatsSyncUseCase) ReconcileFollowStats(ctx context.Context) error {
 	return uc.statsRepo.Reconcile(ctx)
+}
+
+func (uc *StatsSyncUseCase) ReconcilePostCounters(ctx context.Context) error {
+	return uc.postRepo.ReconcileCounters(ctx)
 }

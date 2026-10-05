@@ -152,7 +152,7 @@ func (uc *PostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, publicI
 		if err := uc.mediaRepo.DeleteByPostID(txCtx, post.ID); err != nil {
 			return err
 		}
-		if err := uc.postRepo.Update(txCtx, post); err != nil {
+		if err := uc.postRepo.UpdateEditableFields(txCtx, post.ID, post.Title, post.Content, post.OutfitID); err != nil {
 			return err
 		}
 		if len(medias) > 0 {

@@ -223,7 +223,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	profileHandler := handler5.NewProfileHandler(iProfileUseCase, iPostUseCase)
 	iSearchUseCase := search3.NewSearchUseCase(cfg, iPostUseCase, iUserBriefContract, iUserFollowStatsRepository)
 	searchHandler := handler5.NewSearchHandler(iSearchUseCase)
-	iAdminUseCase := admin2.NewAdminUseCase(cfg, l, iPostRepository, iPostCommentRepository, iUserBriefContract, rabbitMQClient)
+	iAdminUseCase := admin2.NewAdminUseCase(cfg, l, iUnitOfWork, iPostRepository, iPostCommentRepository, iUserBriefContract, rabbitMQClient)
 	adminHandler := handler5.NewAdminHandler(iAdminUseCase)
 	router9 := router5.NewRouter(postHandler, interactionHandler, followHandler, profileHandler, searchHandler, adminHandler, authMiddleware)
 	engine := bootstrap.NewEngine(cfg, l, rateLimitMiddleware, handlerFunc, routerRouter, router6, router7, router8, router9, elasticsearchClient)
@@ -259,8 +259,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iCommunityEventUseCase := event.NewCommunityEventUseCase(iPostRepository)
 	outfitCascadeWorker := worker6.NewOutfitCascadeWorker(rabbitMQClient, iCommunityEventUseCase, l)
 	userStatusWorker := worker6.NewUserStatusWorker(rabbitMQClient, iCommunityEventUseCase, l)
-	iStatsSyncUseCase := statsync.NewStatsSyncUseCase(iUserFollowStatsRepository)
+	iStatsSyncUseCase := statsync.NewStatsSyncUseCase(iUserFollowStatsRepository, iPostRepository)
 	followStatsReconcileWorker := worker6.NewFollowStatsReconcileWorker(iStatsSyncUseCase, l)
+	postStatsReconcileWorker := worker6.NewPostStatsReconcileWorker(iStatsSyncUseCase, l)
 	outboxGaugeProbe := messaging.NewOutboxGaugeProbe(cfg, l)
 	outboxUseCase := usecase2.NewOutboxUseCase(outboxRepository, rabbitMQClient, outboxGaugeProbe, cfg, l)
 	outboxListener, err := db.NewOutboxListener(cfg, l)
@@ -288,6 +289,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		CommunityOutfitCascade:           outfitCascadeWorker,
 		CommunityUserStatus:              userStatusWorker,
 		CommunityFollowStatsReconcile:    followStatsReconcileWorker,
+		CommunityPostStatsReconcile:      postStatsReconcileWorker,
 		Outbox:                           outboxWorker,
 	}
 	startupValidator := provideValidator()
