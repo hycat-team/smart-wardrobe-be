@@ -25,11 +25,14 @@ concurrency:
     group: ci-${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
-# Per-job Go caches: actions/setup-go's single shared key is claimed by the
-# first job that finishes (protobuf, which downloads nothing), parking a ~0 MB
-# cache that every other job then restores and never overwrites — so every job
-# downloads modules and rebuilds from scratch. The scope suffix gives each job
-# its own entry; run_id/run_attempt make each save unique so re-runs update it.
+# Go caches are split so the (large) module cache is stored once instead of
+# once per job:
+#   - ~/go/pkg/mod is keyed only on the dependency hashes, restored by every
+#     job and saved only by `vet` on main.
+#   - ~/.cache/go-build is content-addressed and job-specific, so each job has
+#     its own key. `static`, `swagger-parity` and `build` only restore (their
+#     build cache duplicates `vet`/`test`, and saving them is what bloated the
+#     repo cache budget).
 
 jobs:
     static:
@@ -47,28 +50,24 @@ jobs:
                   go-version: "1.26.x"
                   cache: false
 
-            - name: Restore Go modules and build cache
+            - name: Restore Go module cache
               uses: actions/cache/restore@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+                  restore-keys: go-mod-${{ runner.os }}-
+
+            - name: Restore Go build cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Run static checks
               run: make fmt-check && make tidy-check && make generate-check
-
-            - name: Save Go modules and build cache
-              if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-              uses: actions/cache/save@v4
-              with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     vet:
         name: Go Vet
@@ -85,28 +84,39 @@ jobs:
                   go-version: "1.26.x"
                   cache: false
 
-            - name: Restore Go modules and build cache
+            - name: Restore Go module cache
               uses: actions/cache/restore@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+                  restore-keys: go-mod-${{ runner.os }}-
+
+            - name: Restore Go build cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Run go vet
               run: make vet
 
-            - name: Save Go modules and build cache
+            - name: Save Go build cache
               if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
               uses: actions/cache/save@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+            # Single writer for the shared module cache on main.
+            - name: Save Go module cache
+              if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+              uses: actions/cache/save@v4
+              with:
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
 
     test:
         name: Unit and Integration Tests
@@ -123,28 +133,31 @@ jobs:
                   go-version: "1.26.x"
                   cache: false
 
-            - name: Restore Go modules and build cache
+            - name: Restore Go module cache
               uses: actions/cache/restore@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+                  restore-keys: go-mod-${{ runner.os }}-
+
+            - name: Restore Go build cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Run tests
               run: make test TEST_FLAGS=-short
 
-            - name: Save Go modules and build cache
+            - name: Save Go build cache
               if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
               uses: actions/cache/save@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     build:
         name: Build Service Binaries
@@ -165,28 +178,24 @@ jobs:
                   go-version: "1.26.x"
                   cache: false
 
-            - name: Restore Go modules and build cache
+            - name: Restore Go module cache
               uses: actions/cache/restore@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+                  restore-keys: go-mod-${{ runner.os }}-
+
+            - name: Restore Go build cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Build ${{ matrix.service }}
               run: make build svc=${{ matrix.service }}
-
-            - name: Save Go modules and build cache
-              if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-              uses: actions/cache/save@v4
-              with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     buf:
         name: Protobuf Lint and Drift
@@ -222,16 +231,21 @@ jobs:
                   go-version: "1.26.x"
                   cache: false
 
-            - name: Restore Go modules and build cache
+            - name: Restore Go module cache
               uses: actions/cache/restore@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+                  restore-keys: go-mod-${{ runner.os }}-
+
+            - name: Restore Go build cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Generate per-service Swagger
               run: make swagger-all
@@ -295,18 +309,12 @@ jobs:
                   print(f"PASS: 8 HTTP modules covered (+notification worker-only exempted), {total_paths} paths total")
                   EOF
 
-            - name: Save Go modules and build cache
-              if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-              uses: actions/cache/save@v4
-              with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
-
     image-build:
         name: Build Service Images
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
         strategy:
             fail-fast: false
             matrix:
@@ -318,6 +326,13 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
 
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
             - name: Build ${{ matrix.service }} image (no push)
               uses: docker/build-push-action@v6
               with:
@@ -325,8 +340,8 @@ jobs:
                   file: services/${{ matrix.service }}/Dockerfile
                   push: false
                   platforms: linux/amd64
-                  cache-from: type=gha,scope=${{ matrix.service }}
-                  cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}:buildcache
+                  cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}:buildcache,mode=max,ignore-error=true
 
     test-race:
         name: Race Detector Tests
@@ -343,25 +358,28 @@ jobs:
                   go-version: "1.26.x"
                   cache: false
 
-            - name: Restore Go modules and build cache
+            - name: Restore Go module cache
               uses: actions/cache/restore@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/go/pkg/mod
+                  key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+                  restore-keys: go-mod-${{ runner.os }}-
+
+            - name: Restore Go build cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
-                      go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Run race detector tests
               run: make test-race TEST_FLAGS=-short
 
-            - name: Save Go modules and build cache
+            - name: Save Go build cache
               if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
               uses: actions/cache/save@v4
               with:
-                  path: |
-                      ~/go/pkg/mod
-                      ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
