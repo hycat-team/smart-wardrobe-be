@@ -315,7 +315,7 @@ jobs:
               shell: bash
               run: |
                   for i in $(seq 1 12); do
-                    body=$(curl --fail --silent --show-error "https://api.closy.hycat.online/api/v1/${{ matrix.service }}/health" || true)
+                    body=$(curl -4 --connect-timeout 5 --max-time 15 --fail --silent --show-error "https://api.closy.hycat.online/api/v1/${{ matrix.service }}/health" || true)
                     if printf '%s' "${body}" | grep -q '"service":"${{ matrix.service }}"'; then
                       exit 0
                     fi

@@ -320,7 +320,7 @@ jobs:
               run: |
                   host="api-v2.closy.hycat.online"
                   for i in $(seq 1 12); do
-                    body=$(curl --fail --silent --show-error --resolve "${host}:443:${{ secrets.AWS_HOST }}" "https://${host}/api/v1/${{ matrix.service }}/health" || true)
+                    body=$(curl -4 --connect-timeout 5 --max-time 15 --fail --silent --show-error --resolve "${host}:443:${{ secrets.AWS_HOST }}" "https://${host}/api/v1/${{ matrix.service }}/health" || true)
                     if printf '%s' "${body}" | grep -q '"service":"${{ matrix.service }}"'; then
                       exit 0
                     fi
