@@ -156,13 +156,6 @@ jobs:
             - build-tool
         runs-on: ubuntu-latest
         environment: aws-production
-        strategy:
-            fail-fast: false
-            # Sequential deploy: the 3 matrix jobs share one .env.deploy on the
-            # box (read-modify-write), so parallel writes can clobber each other.
-            max-parallel: 1
-            matrix:
-                service: ${{ fromJson(needs.plan.outputs.matrix) }}
         steps:
             - name: Checkout deployment files
               uses: actions/checkout@v4
@@ -176,14 +169,6 @@ jobs:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Resolve image digest
-              id: digest
-              shell: bash
-              run: |
-                  name="ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}"
-                  digest=$(docker buildx imagetools inspect "${name}:${{ github.sha }}" --format '{{.Manifest.Digest}}')
-                  echo "ref=${name}@${digest}" >> "${GITHUB_OUTPUT}"
 
             - name: Prepare SSH
               shell: bash
@@ -228,42 +213,67 @@ jobs:
                       --mode check
                   "
 
-            - name: Deploy pinned service image
+            - name: Unpack deployment files
               shell: bash
               run: |
-                  SERVICE='${{ matrix.service }}'
-                  UPPER=$(printf '%s' "${SERVICE}" | tr '[:lower:]' '[:upper:]')
-                  LOWER_OWNER=$(printf '%s' "${GHCR_BASENAME}" | tr '[:upper:]' '[:lower:]')
                   ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "
                     set -e
                     mkdir -p /opt/closy-aws
                     tar -xzf /tmp/closy-aws-deploy.tar.gz -C /opt/closy-aws
                     rm -f /tmp/closy-aws-deploy.tar.gz
-                    cd /opt/closy-aws
-                    test -f .env.aws || { echo 'missing /opt/closy-aws/.env.aws'; exit 1; }
-                    touch .env.deploy
-                    grep -v '^${UPPER}_IMAGE=' .env.deploy > .env.deploy.next || true
-                    printf '${UPPER}_IMAGE=%s\n' '${{ steps.digest.outputs.ref }}' >> .env.deploy.next
-                    mv .env.deploy.next .env.deploy
-                    chmod 600 .env.deploy
-                    # Backfill sibling pins so compose interpolation passes on the
-                    # very first deploy (when .env.deploy lacks the other 2 vars).
-                    # Placeholders are never pulled: pull/up below target only ${SERVICE}.
-                    for S in ACCOUNT COMMERCE AI; do
-                      if ! grep -q \"^\${S}_IMAGE=\" .env.deploy 2>/dev/null; then
-                        case \"\${S}\" in
-                          ACCOUNT) SVC_LOWER=account ;;
-                          COMMERCE) SVC_LOWER=commerce ;;
-                          AI) SVC_LOWER=ai ;;
-                        esac
-                        printf '%s_IMAGE=ghcr.io/${LOWER_OWNER}/%s:latest\n' \"\${S}\" \"\${SVC_LOWER}\" >> .env.deploy
-                      fi
-                    done
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml config >/dev/null
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml pull ${SERVICE}-http ${SERVICE}-worker
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d ${SERVICE}-http ${SERVICE}-worker
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps ${SERVICE}-http ${SERVICE}-worker
                   "
+
+            # One shell loop, sequential by design: the services share a single
+            # .env.deploy on the box (read-modify-write). Collecting failures and
+            # exiting non-zero at the end keeps one broken service from blocking
+            # the others (the old fail-fast:false matrix semantics).
+            - name: Deploy pinned service images
+              shell: bash
+              run: |
+                  set -uo pipefail
+                  failed=''
+                  for SERVICE in $(printf '%s' '${{ needs.plan.outputs.matrix }}' | jq -r '.[]'); do
+                    UPPER=$(printf '%s' "${SERVICE}" | tr '[:lower:]' '[:upper:]')
+                    LOWER_OWNER=$(printf '%s' "${GHCR_BASENAME}" | tr '[:upper:]' '[:lower:]')
+                    name="ghcr.io/${LOWER_OWNER}/${SERVICE}"
+                    if ! digest=$(docker buildx imagetools inspect "${name}:${{ github.sha }}" --format '{{.Manifest.Digest}}'); then
+                      failed="${failed} ${SERVICE}"
+                      continue
+                    fi
+                    if ! ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "
+                      set -e
+                      cd /opt/closy-aws
+                      test -f .env.aws || { echo 'missing /opt/closy-aws/.env.aws'; exit 1; }
+                      touch .env.deploy
+                      grep -v '^${UPPER}_IMAGE=' .env.deploy > .env.deploy.next || true
+                      printf '${UPPER}_IMAGE=%s\n' '${name}@${digest}' >> .env.deploy.next
+                      mv .env.deploy.next .env.deploy
+                      chmod 600 .env.deploy
+                      # Backfill sibling pins so compose interpolation passes on the
+                      # very first deploy (when .env.deploy lacks the other 2 vars).
+                      # Placeholders are never pulled: pull/up below target only ${SERVICE}.
+                      for S in ACCOUNT COMMERCE AI; do
+                        if ! grep -q \"^\${S}_IMAGE=\" .env.deploy 2>/dev/null; then
+                          case \"\${S}\" in
+                            ACCOUNT) SVC_LOWER=account ;;
+                            COMMERCE) SVC_LOWER=commerce ;;
+                            AI) SVC_LOWER=ai ;;
+                          esac
+                          printf '%s_IMAGE=ghcr.io/${LOWER_OWNER}/%s:latest\n' \"\${S}\" \"\${SVC_LOWER}\" >> .env.deploy
+                        fi
+                      done
+                      docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml config >/dev/null
+                      docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml pull ${SERVICE}-http ${SERVICE}-worker
+                      docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d ${SERVICE}-http ${SERVICE}-worker
+                      docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps ${SERVICE}-http ${SERVICE}-worker
+                    "; then
+                      failed="${failed} ${SERVICE}"
+                    fi
+                  done
+                  if [ -n "${failed}" ]; then
+                    echo "deploy failed for:${failed}"
+                    exit 1
+                  fi
 
     # Recreate Nginx once after ALL services deployed so the freshly uploaded
     # route map takes effect. --no-deps lets the recreate proceed even when a

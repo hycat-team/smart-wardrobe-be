@@ -249,6 +249,10 @@ func TestCampaignAccountListerCarriesTheAdministratorFlag(t *testing.T) {
 // widening the interface breaks the build HERE first, and the assertion that
 // commerce still compiles is what proves the adapter was left alone.
 func TestCommerceStillCompilesAfterTheContractWasNotWidened(t *testing.T) {
+	if testing.Short() {
+		t.Skip("cross-module compile is covered by the build matrix in CI")
+	}
+
 	repoRoot := filepath.Join("..", "..", "..", "..")
 	commerceDir := filepath.Join(repoRoot, "services", "commerce")
 

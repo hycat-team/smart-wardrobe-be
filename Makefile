@@ -58,6 +58,9 @@ NGINX_RENDER_DIR ?= /etc/nginx
 # Server-block set to render: services | services-redirect | rollback
 NGINX_MODE ?= services
 
+# Extra flags for `make test` / `make test-race` (CI passes TEST_FLAGS=-short).
+TEST_FLAGS ?=
+
 ifeq ($(OS),Windows_NT)
 GO_BIN_EXT := .exe
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
@@ -66,8 +69,8 @@ FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write
 # NOTE: do NOT pipe go test through a filter — the pipeline exit code becomes
 # the filter's (findstr/grep return 1 when every line is filtered, e.g. a module
 # with no test files) which both false-fails and masks real test failures.
-TEST_CMD := go test ./...
-RACE_TEST_CMD := go test -race ./...
+TEST_CMD := go test $(TEST_FLAGS) ./...
+RACE_TEST_CMD := go test -race $(TEST_FLAGS) ./...
 # Relative path to the built binary when the recipe CWD is services/<svc>.
 RUN_BIN = ..\..\$(subst /,\,$(BIN_DIR))\$(SVC)$(GO_BIN_EXT)
 else
@@ -75,8 +78,8 @@ GO_BIN_EXT :=
 MKDIR_BIN_CMD := mkdir -p "$(BIN_DIR)"
 CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
 FMT_CHECK_CMD := test -z "$$(gofmt -l .)"
-TEST_CMD := go test ./...
-RACE_TEST_CMD := go test -race ./...
+TEST_CMD := go test $(TEST_FLAGS) ./...
+RACE_TEST_CMD := go test -race $(TEST_FLAGS) ./...
 # Relative path to the built binary when the recipe CWD is services/<svc>.
 RUN_BIN = ../../$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
 endif

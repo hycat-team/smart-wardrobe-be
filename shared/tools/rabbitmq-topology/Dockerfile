@@ -15,6 +15,10 @@ COPY services/account/go.mod services/account/go.sum ./services/account/
 COPY services/commerce/go.mod services/commerce/go.sum ./services/commerce/
 COPY services/ai/go.mod services/ai/go.sum ./services/ai/
 RUN go work sync
+# Chỉ phụ thuộc go.mod/go.sum đã copy ở trên: sửa source không kéo lại layer này.
+RUN for m in shared contracts services/account services/commerce services/ai; do \
+        (cd "$m" && go mod download); \
+    done
 COPY shared/ ./shared/
 COPY contracts/ ./contracts/
 WORKDIR /src/shared
