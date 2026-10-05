@@ -198,12 +198,22 @@ jobs:
                   key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
                       go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-
+                      go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-build-account-
                       go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-vet-
                       go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-test-
                       go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-
 
             - name: Build ${{ matrix.service }}
               run: make build svc=${{ matrix.service }}
+
+            # The account build cache is the shared one: build flags differ from
+            # vet/test, so only another build can warm these entries.
+            - name: Save Go build cache
+              if: always() && matrix.service == 'account' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+              uses: actions/cache/save@v4
+              with:
+                  path: ~/.cache/go-build
+                  key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     buf:
         name: Protobuf Lint and Drift
