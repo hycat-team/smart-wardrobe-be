@@ -199,7 +199,7 @@
 - [X] T052 [P] [US10] Sửa `docs/api/dashboard-api-v2.md`: `DIRECT_PURCHASE` → `direct_purchase` (dòng 36, 31) và plan codes `FREE/PREMIUM_MONTHLY/PREMIUM_YEARLY` → khớp `free`/`premium-monthly` (dòng 13, 20)
 - [X] T053 [P] [US10] Sửa `docs/system-design/architecture.md` (dòng ~287-291): đổi khái niệm "B2C Roles" → "hạng theo gói subscription (PlanKind free/premium)"; làm rõ `roleslug` chỉ có admin/user
 - [X] T054 [P] [US10] Sửa `docs/api/brand-api.md` dòng 480: sửa danh sách role cũ bị gõ lặp "staff, staff, staff"; reference ma trận quyền `docs/system-design/brand-permission-matrix.md`
-- [X] T055 [P] [US10] Tạo `docs/decisions/out-of-scope-2026-08.md`: liệt kê 9 mục (RBAC toàn hệ thống giữ `users.role_slug`, campaign, support ticket, virtual trial, notification đa kênh + quản lý, swap/re-roll AI, AI OOTD generator, body-shape validation, garment decay) kèm lý do
+- [X] T055 [P] [US10] Tạo `docs/decisions/004-out-of-scope-2026-08.md`: liệt kê 9 mục (RBAC toàn hệ thống giữ `users.role_slug`, campaign, support ticket, virtual trial, notification đa kênh + quản lý, swap/re-roll AI, AI OOTD generator, body-shape validation, garment decay) kèm lý do
 - [X] T056 [P] [US10] Cập nhật `docs/product/roadmap.md` + `docs/README.md`: trỏ tới ADR out-of-scope và ma trận quyền
 
 

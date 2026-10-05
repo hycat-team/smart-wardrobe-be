@@ -1,8 +1,8 @@
-# ADR 002: Remove Community Posts & Resale features as core
+# ADR 002 - Remove Community Posts & Resale features as core
 
-- **Status**: Accepted
-- **Decision Date**: 2026-06-28
-- **Decision Maker**: Duck
+*   **Status**: Accepted
+*   **Decision Date**: 2026-06-28
+*   **Decision Maker**: Duck
 
 ## 1. Context
 

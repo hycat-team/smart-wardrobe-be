@@ -35,7 +35,7 @@ Một số capability trong tài liệu này hiện đã được triển khai m
 - `AI Fashion Chatbot` theo phiên
 
 > [!NOTE]
-> Các hạng mục nâng cao tạm hoãn hoặc nằm ngoài phạm vi MVP của giai đoạn hiện tại (như Dynamic Global RBAC, Support Ticket, 3D Virtual Trial, Swap/Re-roll AI, Scheduled OOTD...) được ghi nhận chính thức tại [ADR Out of Scope 2026-08](../decisions/out-of-scope-2026-08.md).
+> Các hạng mục nâng cao tạm hoãn hoặc nằm ngoài phạm vi MVP của giai đoạn hiện tại (như Dynamic Global RBAC, Support Ticket, 3D Virtual Trial, Swap/Re-roll AI, Scheduled OOTD...) được ghi nhận chính thức tại [ADR 004 — Out of Scope 2026-08](../decisions/004-out-of-scope-2026-08.md).
 
 Tuy nhiên, tài liệu này vẫn giữ nguyên toàn bộ các mô tả roadmap vì chúng còn bao hàm thiết kế mục tiêu hoàn chỉnh, không chỉ là trạng thái implementation hiện tại.
 

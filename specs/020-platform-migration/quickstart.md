@@ -4,14 +4,14 @@
 
 Hướng dẫn kiểm chứng end-to-end cho feature. Đây là **run/verify guide**, không phải mã triển khai.
 
-Tham chiếu: [spec.md](./spec.md) · [data-model.md](./data-model.md) · [contracts/](./contracts/inter-service-grpc.md) · ADR 021 (`docs/decisions/021-funded-platforms-and-repatriation.md`)
+Tham chiếu: [spec.md](./spec.md) · [data-model.md](./data-model.md) · [contracts/](./contracts/inter-service-grpc.md) · ADR 007 (`docs/decisions/007-funded-platforms-and-repatriation.md`)
 
 ## Prerequisites
 
 - Go 1.25+, Docker Desktop, GNU Make.
 - `buf` CLI (cài qua `make tool`) cho sinh mã gRPC.
 - Postgres + Redis + RabbitMQ local qua `deployments/docker-compose.yml`.
-- Tài khoản funded (Cloudflare Pro — funded nhưng **KHÔNG nằm trong đường API**, xem ADR 023; Supabase Pro, CloudAMQP Tiger, Redis Cloud Essentials) +
+- Tài khoản funded (Cloudflare Pro — funded nhưng **KHÔNG nằm trong đường API**, xem ADR 009; Supabase Pro, CloudAMQP Tiger, Redis Cloud Essentials) +
   trial GCP có billing cap cho scenario Cloud.
 - Biến môi trường copy từ `.env.example`.
 
@@ -74,7 +74,8 @@ implementation xuyên service fail ở compile-time. Trong CI, job build 3 binar
    `migrate_on_start=true`; Nginx route `api-v2` tới 3 service.
 3. **Deploy qua workflow** `deploy-vps-services.yml` (matrix 3 service → GHCR → compose, pin digest).
    - **Kỳ vọng**: deploy từng service độc lập thành công; image pin theo digest (SC-030).
-4. **Rollback khẩn cấp**: chạy `deploy-production.yml` (dispatch, build từ tag `monolith-legacy`) →
+4. **Rollback monolith (thủ công, ADR 012)**: workflow `deploy-production.yml` đã lưu trữ; nếu thật sự
+   cần, build image từ tag `monolith-legacy` (`make image-build-monolith-rollback`) → push GHCR →
    compose profile `rollback`; xác nhận `api.closy` phục vụ monolith.
 5. Trỏ DNS test về VPS; gọi ma trận host × route + SSE + auth + upload.
    - **Kỳ vọng**: `api-v2` **301 → `api.closy`**; DNS `api-v2` xoá sau grace period (SC-029).

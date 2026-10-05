@@ -195,7 +195,7 @@ Là một developer mới onboard, tôi muốn naming của exchange/queue/routi
 - **FR-024**: Hệ thống PHẢI cập nhật `docs/system-design/event-driven-design.md` để mô tả **đúng và đủ cơ chế RabbitMQ mà hệ thống thực sự dùng** sau refactor (không yêu cầu liệt kê đầy đủ từng queue/topic): loại exchange (`topic` + DLX), nguyên tắc routing (routing key theo `module.event.action` có/không hậu tố phân biệt), phân biệt point-to-point vs pub/sub ở mức cơ chế, transactional outbox, cơ chế retry/DLQ (phân loại `Permanent` vs `Retryable`, `x-delivery-limit`/TTL), channel tách publish/consume và `prefetch`/`concurrency`, và luồng `outbox → exchange → queue → consumer`. Verify bằng checklist 6 mục: (1) exchange type+DLS, (2) routing principle, (3) outbox, (4) DLQ/retry taxonomy, (5) channel/prefetch, (6) flow diagram — đủ 6 mục coi là pass.
 - **FR-025**: Hệ thống PHẢI cập nhật `docs/system-design/architecture.md §X Event-Driven Architecture` và `docs/system-design/design-pattern.md` (mục messaging/worker pattern): mô tả registry `topology.go`, tách kênh `publisherChannel`/`consumerChannel`, `Qos(prefetch, global=false)` per-queue, `concurrency` worker pool, `ClaimToPublish` bọc transaction, `RegisterTypedConsumer[T]`, và quy ước naming `module.event.action[.wardrobe|.brand]` + wildcard `.#`.
 - **FR-026**: Hệ thống PHẢI bổ sung/cập nhật `docs/development/` (ví dụ `docs/development/messaging-guide.md` hoặc mục trong `local-setup.md`): hướng dẫn dev cách thêm queue/topic mới (chỉ sửa registry + tạo worker, không sửa `shared`), cách phân loại lỗi `Permanent vs Retryable`, cách replay DLQ, cách tune `prefetch/concurrency` per-queue, và checklist review cho PR chạm messaging.
-- **FR-027**: Hệ thống PHẢI ghi ADR ngắn trong `docs/decisions/` (ví dụ `016-rabbitmq-refactor.md` theo `docs/decisions/template.md`) cho 3 quyết định đã chốt: giữ 1 exchange+DLX, downtime drain cho quorum, đổi routing có hậu tố - để team sau này hiểu trade-off.
+- **FR-027**: Hệ thống PHẢI ghi ADR ngắn trong `docs/decisions/` (ví dụ `005-rabbitmq-refactor.md` theo `docs/decisions/template.md`) cho 3 quyết định đã chốt: giữ 1 exchange+DLX, downtime drain cho quorum, đổi routing có hậu tố - để team sau này hiểu trade-off.
 
 ### Non-Functional Requirements
 
@@ -229,7 +229,7 @@ Là một developer mới onboard, tôi muốn naming của exchange/queue/routi
 - **SC-007**: Metrics/health expose đủ 6 chỉ số: `outbox_pending`, `queue_depth`, `dlq_depth`, `publish_total`, `consume_ack/nack`, `reconnect_total` (verify `curl /metrics` hoặc log structured).
 - **SC-008**: Toàn bộ 13 topic/queue hiện tại vẫn hoạt động sau refactor - `make test` + manual test 4 luồng chính (wardrobe batch upload → SSE, brand upload → SSE, subscription plan changed → aiexecutor grant, notification email → SMTP, audit log) đều pass.
 - **SC-009**: `make wire && make build && make lint` pass, không còn single `ch` share race (`go test -race` cho `messaging` package pass).
-- **SC-010**: Tài liệu cho team dev đã cập nhật và được review: `docs/system-design/event-driven-design.md` + `docs/system-design/architecture.md §X` + `docs/development/messaging-guide.md` (hoặc `design-pattern.md`) + ADR `docs/decisions/016-rabbitmq-refactor.md` đều mô tả đúng 6 cơ chế (exchange+DLS, routing principle, outbox, DLQ/retry taxonomy, channel/prefetch, flow) - không yêu cầu liệt kê đầy đủ từng queue/topic, chỉ cần đúng cơ chế - verify bằng checklist 6 mục trong FR-024 + review PR.
+- **SC-010**: Tài liệu cho team dev đã cập nhật và được review: `docs/system-design/event-driven-design.md` + `docs/system-design/architecture.md §X` + `docs/development/messaging-guide.md` (hoặc `design-pattern.md`) + ADR `docs/decisions/005-rabbitmq-refactor.md` đều mô tả đúng 6 cơ chế (exchange+DLS, routing principle, outbox, DLQ/retry taxonomy, channel/prefetch, flow) - không yêu cầu liệt kê đầy đủ từng queue/topic, chỉ cần đúng cơ chế - verify bằng checklist 6 mục trong FR-024 + review PR.
 
 ---
 
@@ -249,7 +249,7 @@ Là một developer mới onboard, tôi muốn naming của exchange/queue/routi
 
 - **Tách thành microservice vật lý**: Vẫn là modular monolith single deployable (`constitution.md §I`), chỉ refactor messaging trong monolith.
 - **Thay đổi API endpoint/DTO frontend**: Giữ nguyên 100% API và SSE contract (`014`), chỉ đổi routing key nội bộ (có dual binding).
-- **Campaign / Support Ticket / 3D/AR / Global RBAC**: Các out-of-scope đã liệt kê ở `docs/decisions/out-of-scope-2026-08.md` - không thêm queue cho các domain đó.
+- **Campaign / Support Ticket / 3D/AR / Global RBAC**: Các out-of-scope đã liệt kê ở `docs/decisions/004-out-of-scope-2026-08.md` - không thêm queue cho các domain đó.
 - **Thay đổi AI Pipeline / Cost Control**: Reservation-first, `FOR UPDATE` usage ledger (`constitution.md §VI`) giữ nguyên.
 - **Thay đổi Elasticsearch indexing logic**: Chỉ đổi cách message tới `elasticsearch_sync_queue`, không đổi logic index.
 - **Alerting tự động (PagerDuty/Slack)**: Chỉ expose metric, alerting là follow-up ops.

@@ -1,8 +1,8 @@
-# ADR 001: Pivot to B2B2C business model
+# ADR 001 - Pivot to B2B2C business model
 
-- **Status**: Accepted
-- **Decision Date**: 2026-06-28
-- **Decision Maker**: Duck
+*   **Status**: Accepted
+*   **Decision Date**: 2026-06-28
+*   **Decision Maker**: Duck
 
 ## 1. Context
 

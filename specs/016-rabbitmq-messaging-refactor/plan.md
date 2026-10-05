@@ -98,7 +98,7 @@ internal/
     ├── system-design/architecture.md §X       # Registry + channel tách + quorum note
     ├── system-design/design-pattern.md        # Worker/messaging pattern mới
     ├── development/messaging-guide.md         # NEW: thêm queue/retry/DLQ replay
-    └── decisions/016-rabbitmq-refactor.md     # ADR 3 quyết định đã chốt
+    └── decisions/005-rabbitmq-refactor.md     # ADR 3 quyết định đã chốt
 ```
 
 **Structure Decision**: Giữ modular monolith single project, mọi file nằm trong `internal/` + `configs/` + `deployments/` + `docs/` như hiện hữu. Không tạo project mới.

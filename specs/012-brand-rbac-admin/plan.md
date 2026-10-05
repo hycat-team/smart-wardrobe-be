@@ -148,7 +148,7 @@ database/migrations/
 
 docs/
 ├── system-design/brand-permission-matrix.md                    # MỚI
-├── decisions/out-of-scope-2026-08.md                           # MỚI
+├── decisions/004-out-of-scope-2026-08.md                           # MỚI
 ├── api/dashboard-api-v2.md                                     # SỬA
 ├── api/brand-api.md                                            # SỬA
 ├── api/constants/brand.md                                      # SỬA (reference ma trận)

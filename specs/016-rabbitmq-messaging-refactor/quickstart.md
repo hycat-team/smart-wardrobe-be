@@ -79,7 +79,7 @@ curl http://localhost:8080/metrics | grep -E "outbox_pending|queue_depth|dlq_dep
 ```bash
 grep -q "smart_wardrobe_exchange.dlx" docs/system-design/event-driven-design.md && echo "FR-024 PASS"
 grep -q "topology.go" docs/system-design/architecture.md && echo "FR-025 PASS"
-ls docs/development/messaging-guide.md docs/decisions/016-rabbitmq-refactor.md && echo "FR-026/027 PASS"
+ls docs/development/messaging-guide.md docs/decisions/005-rabbitmq-refactor.md && echo "FR-026/027 PASS"
 ```
 
 ## Expected Outcomes

@@ -29,4 +29,5 @@
 - [ ] Swagger per-service generate được; hợp 3 service đủ 9 section (CI parity).
 - [ ] Mỗi service khởi động với `migrate_on_start` + bảng version riêng, không chạy lại lịch sử.
 - [ ] Deploy độc lập từng service (không rebuild service khác); pin SHA/digest.
-- [ ] Rollback monolith-legacy build được từ tag; profile `rollback` khởi động được.
+- [x] Rollback monolith-legacy: **bỏ** theo ADR 012 (tag vẫn giữ làm tham chiếu;
+  profile `rollback` chỉ dùng thủ công, không còn workflow tự động).

@@ -15,7 +15,8 @@ xác nhận + bằng chứng thực thi. Repatriation phải hoàn tất trướ
 ## T-14 — Rehearsal rollback DNS
 
 - [ ] Rehearsal đổi DNS về VPS + rollback lại (ghi thời gian).
-- [ ] Image rollback `monolith-legacy` đã push GHCR + verify profile `rollback` (T097a).
+- [x] ~~Image rollback `monolith-legacy` đã push GHCR + verify profile `rollback` (T097a).~~
+  Bỏ — ADR 012: không còn rollback monolith tự động.
 - [ ] Deploy 3-service VPS qua workflow thử 1 lần (T097b).
 - [ ] Người xác nhận: ______________ Ngày: ______________
 

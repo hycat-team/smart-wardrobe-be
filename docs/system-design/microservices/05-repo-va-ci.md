@@ -27,5 +27,5 @@
   version pin theo SHA từng service, không all-or-nothing (SC-017).
 - Secrets tiêm qua env từ GitHub Actions secrets lúc deploy; rotate = redeploy
   service đó; KHÔNG commit/bake/log giá trị (SC-026).
-- Rollback monolith: image build **một lần** từ tag `monolith-legacy` (frozen),
-  profile `rollback` trong compose (FR-043).
+- Rollback monolith đã ngừng tự động hoá (ADR 012): tag `monolith-legacy` giữ làm
+  tham chiếu khẩn cấp (constitution §II); compose profile `rollback` chỉ dùng thủ công.

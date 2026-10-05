@@ -11,3 +11,6 @@ Tài liệu này lưu trữ danh sách các tài liệu thuộc mô hình cũ (C
 
 ## 3. Các tài liệu khác
 *   `short-description-old.md`: Mô tả tóm tắt định vị cũ của dự án SmartWardrobe/Closy.
+
+## 4. Workflow đã lưu trữ
+*   `deploy-production.yml`: Workflow rollback monolith khẩn cấp (build từ tag frozen `monolith-legacy`). Đã ngừng dùng theo [ADR 012](../decisions/012-retire-monolith-rollback.md); tag `monolith-legacy` vẫn được giữ theo constitution §II. Muốn dùng lại: chuyển file về `.github/workflows/`.

@@ -25,7 +25,7 @@ báo quorum lên một queue đang là classic sẽ bị từ chối:
 
 Khi đó **mọi service khai báo topology đó không khởi động được** (`failed to initialize
 account service: ... rabbitmq initialization failed after 3 attempts`). Cách duy nhất là
-drain → xoá → khai báo lại (ADR-016 chấp nhận downtime cho việc này).
+drain → xoá → khai báo lại (ADR-005 chấp nhận downtime cho việc này).
 
 Vì vậy CI chạy check trước mỗi deploy: `Check RabbitMQ queue topology` trong
 `deploy-vps-services.yml` và `deploy-aws.yml`. Đỏ ở bước đó là tín hiệu sớm, trước khi có

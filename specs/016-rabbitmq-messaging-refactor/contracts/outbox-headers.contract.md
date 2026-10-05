@@ -23,7 +23,7 @@
 > chỉ phát huy giá trị khi message đi qua ≥2 process với OpenTelemetry SDK và
 > tracing backend. Headers là additive — bổ sung `traceparent` sau không phá
 > gì. Điều kiện reconsider: lần đầu có message đi qua 2 process khác nhau.
-> Chi tiết: `docs/decisions/016-rabbitmq-refactor.md` §Decision 4.
+> Chi tiết: `docs/decisions/005-rabbitmq-refactor.md` §Decision 4.
 
 ## Publish Contract
 

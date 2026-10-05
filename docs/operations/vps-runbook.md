@@ -32,20 +32,21 @@ if (-not (Test-Path $keyscan)) { $keyscan = "$env:LOCALAPPDATA\Programs\Git\usr\
 if (-not (Test-Path $keyscan)) { $keyscan = "ssh-keyscan" }
 & $keyscan -p 22 "<VPS_HOST>" | Out-File -Encoding ascii docs/temp/vps_known_hosts
 Get-Content -Raw docs/temp/vps_known_hosts | gh secret set VPS_KNOWN_HOSTS -R $OWNER_REPO
-gh variable set PRODUCTION_HEALTH_URL -R $OWNER_REPO --body "https://api.closy.hycat.online/api/v1/health"
 ```
 4. Verify: `gh secret list -R "$OWNER_REPO"` đủ 7 secrets trên; environment
    `vps-production` đã có (tự tạo ở lần dispatch đầu nếu chưa tạo tay).
 
-## Bước 1 — Push tag rollback (BẮT BUỘC, làm 1 lần)
+## Bước 1 — Tag rollback `monolith-legacy` (đã có; chỉ tham chiếu)
 
-`deploy-production.yml` verify `refs/tags/monolith-legacy`; thiếu là rollback fail.
+Tag đóng băng commit monolith-green cuối cùng, chỉ dùng **tham chiếu khẩn cấp**
+(constitution §II) và **cấm di chuyển**. Kiểm tra tag còn trên origin:
 ```bash
-git tag -a monolith-legacy <BASELINE_SHA> -m "frozen monolith-green before 020"
-git push origin monolith-legacy
 git ls-remote --tags origin | grep monolith-legacy   # phải thấy
 ```
-Tag này đóng băng, cấm di chuyển.
+Workflow rollback tự động `deploy-production.yml` đã được lưu trữ (ADR 012); không
+còn đường rollback monolith tự động. Nếu buộc phải quay về monolith, làm thủ công:
+`make image-build-monolith-rollback` → push GHCR → đặt `NGINX_MODE=rollback` rồi
+`docker compose ... --profile rollback up -d backend`.
 
 ## Bước 2 — Chuẩn bị `/opt/closy` trên VPS
 
@@ -159,8 +160,11 @@ done
 curl -sSI https://api.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
 docker ps --filter name=backend --format '{{.Names}}'   # trống
 ```
-Rollback bất cứ lúc nào: `NGINX_MODE=rollback` + chạy `deploy-production.yml`
-(`-f confirm=rollback`, đổi mode **trước** khi chạy; workflow tự recreate nginx).
+Rollback monolith **thủ công** (workflow tự động đã lưu trữ — ADR 012): build image
+từ tag `monolith-legacy` (`make image-build-monolith-rollback`) → push GHCR → đặt
+`NGINX_MODE=rollback` rồi `docker compose ... --profile rollback up -d backend`.
+Cách khuyến nghị để quay về bản trước của 1 service: pin lại digest cũ trong
+`.env.deploy` và `up -d <svc>`.
 
 ## Bước 6 — Gate + vận hành
 
@@ -168,7 +172,7 @@ Rollback bất cứ lúc nào: `NGINX_MODE=rollback` + chạy `deploy-production
 - [ ] Backend dừng; guard isolation pass; 0 request qua Cloudflare; ghi mốc + checksum.
 - Đổi `NGINX_MODE` trong `.env.production` rồi recreate nginx (luôn kèm cả 2 env-file).
   `services` (ổn định) · `services-redirect` (grace sau khi tắt box ngoài, xong quay về
-  `services`) · `rollback` (khẩn cấp).
+  `services`) · `rollback` (thủ công, ADR 012 — không còn workflow tự động).
 - DNS `api.closy` giữ nguyên, không đổi. Log/health/monitor: `shared-reference.md` §4.
 
 ## Phụ lục — giới hạn đã biết

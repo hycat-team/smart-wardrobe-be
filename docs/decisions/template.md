@@ -1,16 +1,25 @@
-# Architecture Decision Record (ADR) Template
+# ADR NNN - [Tiêu đề quyết định]
 
-## Title: [ADR Number] - [Decision Name]
+> Đặt tên file theo `NNN-ten-kebab.md`; quy ước đầy đủ ở [README.md](README.md).
 
-*   **Status**: [Proposed / Accepted / Rejected / Deprecated]
+*   **Status**: [Proposed / Accepted / Superseded by ADR NNN / Deprecated / Rejected]
 *   **Decision Date**: [YYYY-MM-DD]
-*   **Decision Maker**: [Member Name]
+*   **Decision Maker**: [Tên người quyết định]
+*   **Supersedes**: [ADR NNN §... — bỏ dòng nếu không có]
+*   **Superseded by**: [ADR NNN §... — bỏ dòng nếu không có]
 
 ## 1. Context
-[Describe the real-world problem that needs to be solved, and the reasons why this decision must be made].
+
+[Mô tả vấn đề thực tế cần giải quyết và lý do phải ra quyết định].
 
 ## 2. Decision
-[Describe the chosen technical solution or product design].
+
+[Mô tả giải pháp kỹ thuật/sản phẩm đã chọn].
 
 ## 3. Consequences
-[Negative/positive impacts after implementing this decision].
+
+[Ảnh hưởng tích cực/tiêu cực sau khi áp dụng quyết định].
+
+## 4. Bổ sung (tuỳ chọn, [YYYY-MM-DD])
+
+[Đính chính hoặc bổ sung sau này — không sửa nội dung quyết định gốc].

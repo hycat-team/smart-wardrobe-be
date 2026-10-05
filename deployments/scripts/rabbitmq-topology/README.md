@@ -176,4 +176,4 @@ còn khớp trước khi rollback.
 - `shared/tools/rabbitmq-topology/` — tool Go (`check` / `migrate`)
 - `Makefile` — `rabbitmq-topology-check`, `rabbitmq-topology-migrate`, `image-build-tool`
 - `docs/development/messaging-guide.md` — thêm queue/topic, đổi queue type
-- `docs/decisions/016-rabbitmq-refactor.md` — quyết định chấp nhận downtime drain
+- `docs/decisions/005-rabbitmq-refactor.md` — quyết định chấp nhận downtime drain

@@ -5,7 +5,7 @@
 Tài liệu này chốt các quyết định kỹ thuật còn để mở trong `Technical Context` và trong quá trình
 lập plan. Mọi mục dùng định dạng Decision / Rationale / Alternatives.
 
-> **Ghi chú cập nhật 2026-09-15 (hiến pháp 3.0.0 + ADR 021 + ADR 023)**: multi-module + `go.work`
+> **Ghi chú cập nhật 2026-09-15 (hiến pháp 3.0.0 + ADR 007 + ADR 009)**: multi-module + `go.work`
 > thay thế single-module; monolith bị loại khỏi `main` (tag `monolith-legacy`); **ingress là VPS Nginx
 > hiện hữu — không Cloudflare/Worker trong đường API** (R14/R15 superseded bởi R22); DNS ở Vercel;
 > compute trial + teardown; Supabase 1 project **1 database dùng chung**; repatriation bắt buộc sau 3
@@ -262,7 +262,7 @@ rồi override bằng `os.LookupEnv` trong `loadConfig()`.
   HTTP + worker); giữ `deploy-production.yml` (VPS legacy song song, không disable cho tới khi
   repatriation xong); CI build kiểm tra 3 binary (FR-020).
 - Docs: `docs/operations/infrastructure/` + `docs/operations/` (ingress/nginx, teardown, repatriate) +
-  `docs/system-design/microservices/` + ADR `docs/decisions/021-funded-platforms-and-repatriation.md`;
+  `docs/system-design/microservices/` + ADR `docs/decisions/007-funded-platforms-and-repatriation.md`;
   cập nhật `README.md`, `local-setup.md`.
 
 **Rationale**: FR-013..FR-017/FR-020/FR-025/FR-027; giữ đường rollback bằng cách không xoá workflow VPS.

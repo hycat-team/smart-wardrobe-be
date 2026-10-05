@@ -17,7 +17,7 @@ tồn tại, không đọc khi vận hành).
 |---|---|---|
 | `services` | 3 service VPS | **dừng** |
 | `services-redirect` | 3 service + `api-v2`→301 | dừng (grace sau khi tắt box) |
-| `rollback` | monolith | chạy (khẩn cấp, `deploy-production.yml`) |
+| `rollback` | monolith | thủ công (ADR 012; không còn workflow tự động) |
 
 | Trục box ngoài | `api-v2.closy.hycat.online` |
 |---|---|
@@ -32,7 +32,8 @@ tồn tại, không đọc khi vận hành).
 
 - Image service (VPS + AWS) → **GHCR** `ghcr.io/<owner>/<svc>:<git-sha>` (+ alias tên
   release tag); `:latest` chỉ trong CI; image private KHÔNG public.
-- Image rollback `monolith-legacy` → **GHCR** (build 1 lần từ tag frozen — cấm dời tag).
+- Image rollback `monolith-legacy` (**không** build/push tự động từ ADR 012): chỉ
+  build thủ công từ tag frozen khi thật sự cần — cấm dời tag.
 
 ## Nguyên tắc
 

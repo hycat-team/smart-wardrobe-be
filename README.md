@@ -153,7 +153,7 @@ http://localhost:8103/swagger   # AI only
 ├── database/init/                 # infra init SQL (not migrations)
 ├── configs/                       # shared YAML (parameterised, no hardcoded hosts)
 ├── docs/                          # development / system-design / operations / project
-└── .github/workflows/             # ci.yml, deploy-platform.yml, deploy-vps-services.yml, deploy-production.yml (rollback)
+└── .github/workflows/             # ci.yml, deploy-vps-services.yml, deploy-aws.yml (monolith rollback workflow archived — ADR 012)
 ```
 
 Each module follows Clean Architecture (`domain/` ← `application/` ←

@@ -22,7 +22,7 @@ docs/
 ## Key Design References
 
 - **Brand Permission Matrix**: [brand-permission-matrix.md](system-design/brand-permission-matrix.md) — Ma trận phân quyền chi tiết cho Brand Portal (Owner vs Staff).
-- **Out of Scope ADR (2026-08)**: [out-of-scope-2026-08.md](decisions/out-of-scope-2026-08.md) — 9 hạng mục tính năng nằm ngoài phạm vi MVP.
+- **Out of Scope ADR (2026-08)**: [004-out-of-scope-2026-08.md](decisions/004-out-of-scope-2026-08.md) — 9 hạng mục tính năng nằm ngoài phạm vi MVP.
 
 ## New Model Positioning: B2B2C
 

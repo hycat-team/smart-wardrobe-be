@@ -4,14 +4,14 @@ Tài liệu này ghi nhận các hạng mục hạ tầng được đầu tư ki
 quay về VPS khi hết kinh phí. Đây là quyết định vòng đời dự án (project lifecycle), không phải
 quy định code — quy định code nằm ở hiến pháp (`.specify/memory/constitution.md`).
 
-Chi tiết kỹ thuật triển khai: xem ADR `docs/decisions/021-funded-platforms-and-repatriation.md`
+Chi tiết kỹ thuật triển khai: xem ADR `docs/decisions/007-funded-platforms-and-repatriation.md`
 và `specs/020-platform-migration/`.
 
 ## 1. Hạng mục được đầu tư (duy trì 3 tháng)
 
 | Hạng mục | Gói | Vai trò |
 |---|---|---|
-| Cloudflare | Pro Plan | Funded, **KHÔNG nằm trong đường API** (theo ADR 023); dùng cho mục đích khác nếu cần |
+| Cloudflare | Pro Plan | Funded, **KHÔNG nằm trong đường API** (theo ADR 009); dùng cho mục đích khác nếu cần |
 | Supabase | Pro Plan | Postgres + pgvector (1 project, **1 database dùng chung**, không tách schema staging/prod) |
 | CloudAMQP | Tough Tiger | RabbitMQ managed |
 | Redis Cloud | Essentials 250MB | Cache managed |

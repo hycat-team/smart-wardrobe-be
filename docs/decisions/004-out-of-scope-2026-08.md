@@ -1,6 +1,8 @@
-# Architectural Decision Record: Out of Scope Features (2026-08)
+# ADR 004 - Out of Scope Features (2026-08)
 
-**Date**: 2026-08-20 | **Status**: Accepted | **Context**: Spec 012 Brand RBAC & Admin Platform
+*   **Status**: Accepted
+*   **Decision Date**: 2026-08-20
+*   **Decision Maker**: Duck (spec 012 Brand RBAC & Admin Platform)
 
 Tài liệu này ghi nhận chính thức 9 hạng mục tính năng nằm ngoài phạm vi (Out of Scope) của hệ thống Backend Smart Wardrobe trong giai đoạn hiện tại (Q3/2026), kèm theo lý do kiến trúc và giải pháp thay thế.
 

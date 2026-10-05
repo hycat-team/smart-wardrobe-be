@@ -283,7 +283,7 @@ Biên: **VPS Nginx hiện hữu** terminate TLS cho `api.closy` (→ monolith `h
 | Teardown | `docs/operations/gcp-trial-teardown.md` | xóa resource trial + verify bill |
 | Repatriation | `docs/operations/repatriate-to-vps.md` | runbook về VPS 2 chiều đầy đủ (viết song song từ bây giờ) |
 | Services guides | `docs/system-design/microservices/00..06` | ranh giới, gRPC/event, adapter, JWT, repo/CI, lộ trình (mô hình C, không monolith) |
-| ADR | `docs/decisions/021-...` + `docs/decisions/023-...` | funded platforms + repatriation; **ingress VPS Nginx + Cloud Run IAM** (supersede phần Cloudflare của ADR 021) |
+| ADR | `docs/decisions/007-...` + `docs/decisions/009-...` | funded platforms + repatriation; **ingress VPS Nginx + Cloud Run IAM** (supersede phần Cloudflare của ADR 007) |
 
 ---
 

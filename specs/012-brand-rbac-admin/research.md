@@ -71,7 +71,7 @@ Nghiên cứu này tổng hợp các quyết định thiết kế và lựa ch�
 
 ## R8. Ghi out-of-scope vào docs
 
-- **Decision**: ADR mới `docs/decisions/out-of-scope-2026-08.md` liệt kê 9 mục (RBAC toàn hệ thống giữ `users.role_slug`, campaign, support ticket, virtual trial, notification đa kênh + quản lý, swap/re-roll AI, AI OOTD generator, body-shape validation, garment decay) kèm lý do; cập nhật `docs/product/roadmap.md` + `docs/README.md` trỏ tới ADR.
+- **Decision**: ADR mới `docs/decisions/004-out-of-scope-2026-08.md` liệt kê 9 mục (RBAC toàn hệ thống giữ `users.role_slug`, campaign, support ticket, virtual trial, notification đa kênh + quản lý, swap/re-roll AI, AI OOTD generator, body-shape validation, garment decay) kèm lý do; cập nhật `docs/product/roadmap.md` + `docs/README.md` trỏ tới ADR.
 - **Rationale**: Người dùng yêu cầu đưa out-scope vào docs; ADR là đúng quy ước `docs/decisions/`.
 - **Alternatives considered**: *Chỉ ghi ở roadmap*: bị loại vì roadmap mô tả tương lai, ADR ghi quyết định rõ ràng hơn.
 

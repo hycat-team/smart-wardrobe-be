@@ -68,11 +68,14 @@
 18. **Quan trắc Cloud Run**: log JSON có cấu trúc + metrics/alert Cloud Monitoring
     (health/latency/error cho 3 service); không yêu cầu OTEL tracing trong phạm vi 020
     (FR-057, SC-031).
+19. **Rollback monolith**: đường tự động (`deploy-production.yml`) đã lưu trữ theo
+    **ADR 012** (2026-10-05); tag `monolith-legacy` vẫn giữ làm tham chiếu khẩn cấp
+    (constitution §II); chỉ còn build thủ công khi thật sự cần.
 
 ## Trạng thái tài liệu (đọc trước khi code)
 
 - **Nguồn chân lý giai đoạn 020**: `specs/020-platform-migration/` (spec.md, plan.md, tasks.md,
-  data-model.md, contracts/, quickstart.md) + `.specify/memory/constitution.md` v3.0.0 + ADR 021/022/023.
+  data-model.md, contracts/, quickstart.md) + `.specify/memory/constitution.md` v3.0.0 + ADR 007/008/009.
 - **Baseline CŨ (không dùng cho 020)**: `docs/system-design/architecture.md`, `README.md`,
   `docs/development/local-setup.md` vẫn mô tả modular monolith (`cmd/server`, `internal/modules` ở root,
   `internal/shared`). Chúng sẽ được cập nhật ở **T109–T111**. Không lấy các file này làm baseline khi
@@ -416,6 +419,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 - **FR-042**: Mỗi service MUST có **Dockerfile riêng** (multi-stage, build context = repo root qua `go.work`) tạo image chỉ chứa binary + migration của chính service đó; image MUST cấu hình 100% qua biến môi trường (`PORT`, profile, healthcheck) và MUST NOT bind/hardcode host. Ba service MUST **build → push → deploy độc lập** (mỗi service một image/tag theo git SHA, CI matrix theo service; không rebuild hay phụ thuộc image/tag của service khác).
 - **FR-043**: Dự án MUST build được **image rollback monolith** từ tag `monolith-legacy` (Dockerfile riêng, ví dụ `deployments/monolith-legacy/Dockerfile`), push **một lần trước khi hết cửa sổ funded** và giữ trong registry; image này chỉ dùng cho nhánh rollback chuyển tiếp/repatriation (compose profile riêng) và MUST NOT nhận logic mới.
+  > **Superseded 2026-10-05 (ADR 012)**: đường rollback monolith tự động đã bỏ. Tag `monolith-legacy` vẫn được giữ theo constitution §II (tham chiếu khẩn cấp); image rollback chỉ build thủ công từ tag nếu thật sự cần.
 
 **Runtime topology trên Cloud Run (HTTP vs worker)**
 
@@ -472,6 +476,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - **FR-056**: Đường deploy lên VPS MUST được tự động hoá có gate:
   - **3 service**: workflow `deploy-vps-services.yml` (`workflow_dispatch` + approval environment) — matrix theo service, build từ `services/<svc>/Dockerfile`, push **GHCR**, `docker compose -f deployments/docker-compose.prod.yml up -d <svc>`, **pin image theo digest**; dùng cho repatriation và vận hành VPS sau đó.
   - **Monolith frozen**: `deploy-production.yml` MUST được chuyển thành `workflow_dispatch` build **từ tag `monolith-legacy`** → GHCR → compose profile `rollback`; chỉ dùng rollback khẩn cấp.
+    > **Superseded 2026-10-05 (ADR 012)**: workflow đã được lưu trữ vào `docs/archive/`; không còn đường rollback monolith tự động. Chỉ `deploy-vps-services.yml` là đường deploy VPS.
    - Sau khi `cmd/server` bị xoá khỏi `main`, CI/CD MUST NOT build/deploy monolith từ `main`.
 
 **Quan trắc Cloud Run (tối thiểu)**
@@ -522,6 +527,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - **SC-028**: Rate-limit cho kết quả 429 nhất quán giữa managed và self-host; với 2+ instance mô phỏng, rule login/OTP + API chung vẫn chính xác (Redis-backed); 0 ngưỡng bị reset khi instance scale.
 - **SC-029**: Sau repatriation, `api-v2` trả **301** về `api.closy` trong grace period **14–30 ngày**; DNS `api-v2` được xoá sau grace period; 0 client phải đổi cấu hình ngoài việc đi theo redirect.
 - **SC-030**: Workflow deploy VPS 3-service chạy thành công (matrix độc lập, pin digest); deploy/rollback image `monolith-legacy` từ tag chạy được; 0 lần CI build monolith từ `main`.
+  > **Superseded 2026-10-05 (ADR 012)**: phần "deploy/rollback image `monolith-legacy` từ tag" đã bỏ; SC còn lại là workflow 3-service (pin digest) + 0 lần CI build monolith từ `main`.
 - **SC-031**: 100% (3/3) service phát log JSON có cấu trúc thu thập được trên Cloud Logging; dashboard metrics + alert health/latency/error-rate hoạt động cho cả HTTP và worker (FR-057).
 
 ## Assumptions
@@ -542,5 +548,5 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - Chạy **song song**: monolith ở `api.closy`, 3 service ở `api-v2`. Cutover `api.closy` là **thao tác thủ công** có runbook (FR-041), timing do owner quyết định khi gate đo được đạt.
 - Cutover thủ công chỉ đổi Nginx/DNS + đồng bộ dữ liệu; MUST NOT sửa mã nguồn nghiệp vụ.
 - **VPS là single ingress** (đã có kinh phí, không phải constraint chi phí); Nginx hiện hữu được giữ, chỉ bổ sung server block cho `api-v2`.
-- **Token helper** chạy trên VPS dùng **service account key** (trade-off với WIF ghi ở ADR 023) để sinh ID token cho Cloud Run.
+- **Token helper** chạy trên VPS dùng **service account key** (trade-off với WIF ghi ở ADR 009) để sinh ID token cho Cloud Run.
 - Vòng đời kinh phí 3 tháng và funding clock không thuộc hiến pháp (hiến pháp chỉ chứa quy định code/system/architecture); xem `docs/project/funding-and-platform-lifecycle.md`.

@@ -1,13 +1,14 @@
-# ADR 023 - Ingress bằng VPS Nginx, Cloud Run IAM, bỏ Cloudflare khỏi đường API
+# ADR 009 - Ingress bằng VPS Nginx, Cloud Run IAM, bỏ Cloudflare khỏi đường API
 
 *   **Status**: Accepted
 *   **Decision Date**: 2026-09-15
 *   **Decision Maker**: Duck
-*   **Supersedes**: ADR 021 §2.1 (Cloudflare zone + Worker), §2.2 (cutover SaaS — hoãn), §2.6 (origin-auth `X-Gateway-Secret`), §2.7 (SSE qua Worker), §2.8 (route table single-source với Worker).
+*   **Supersedes**: ADR 007 §2.1 (Cloudflare zone + Worker), §2.2 (cutover SaaS — hoãn), §2.6 (origin-auth `X-Gateway-Secret`), §2.7 (SSE qua Worker), §2.8 (route table single-source với Worker).
+*   **Superseded by**: ADR 010 (Cloud Run compute)
 
 ## 1. Context
 
-Plan cũ (ADR 021) giả định `hycat.online` được NS-delegate sang Cloudflare và Cloudflare Worker đứng
+Plan cũ (ADR 007) giả định `hycat.online` được NS-delegate sang Cloudflare và Cloudflare Worker đứng
 trước API (`api-v2`). Thực tế:
 
 - DNS `hycat.online` **đang** do **Vercel** quản lý và **phải giữ nguyên**; không chuyển nameserver.
@@ -69,4 +70,4 @@ Cloudflare Pro vẫn là hạng mục funded (dùng cho mục đích khác nếu
 ## 5. Không thay đổi
 
 - Không đổi đường dẫn API `/api/v1/...`; không đổi luồng nghiệp vụ; không đổi compute/data/queue
-  (giữ theo ADR 021 §2.3–2.5) và repatriation/funding clock.
+  (giữ theo ADR 007 §2.3–2.5) và repatriation/funding clock.

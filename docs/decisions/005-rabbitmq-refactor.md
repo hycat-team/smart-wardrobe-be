@@ -1,4 +1,4 @@
-# ADR 016 - Refactor Hệ thống Messaging RabbitMQ Sạch, Bền và Mở rộng
+# ADR 005 - Refactor Hệ thống Messaging RabbitMQ Sạch, Bền và Mở rộng
 
 *   **Status**: Accepted
 *   **Decision Date**: 2026-08-27

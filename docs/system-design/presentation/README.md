@@ -144,5 +144,5 @@ Notes for anyone touching the build scripts:
 | AI pipeline | [../ai-pipeline.md](../ai-pipeline.md) |
 | AI cost control | [../ai-cost-control.md](../ai-cost-control.md) |
 | Event-driven design | [../event-driven-design.md](../event-driven-design.md) |
-| The B2B2C pivot (ADR 001) | [../../decisions/b2b2c-pivot.md](../../decisions/b2b2c-pivot.md) |
-| Removing resale (ADR 002) | [../../decisions/remove-community-resale.md](../../decisions/remove-community-resale.md) |
+| The B2B2C pivot (ADR 001) | [../../decisions/001-b2b2c-pivot.md](../../decisions/001-b2b2c-pivot.md) |
+| Removing resale (ADR 002) | [../../decisions/002-remove-community-resale.md](../../decisions/002-remove-community-resale.md) |

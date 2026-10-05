@@ -35,7 +35,7 @@ dùng chung infra (ngoại lệ duy nhất: đồng bộ dump/restore offline).
 |---|---|---|---|
 | `services` | 3 service compose local | **dừng** | ổn định (bất kể box ngoài) |
 | `services-redirect` | 3 service + `api-v2`→301 về api.closy | dừng | grace 14–30 ngày sau khi tắt box, xong quay về `services` + xóa DNS |
-| `rollback` | monolith (`backend`) | chạy | khẩn cấp (`deploy-production.yml`) |
+| `rollback` | monolith (`backend`) | thủ công | ADR 012 (workflow đã lưu trữ) |
 
 **Trục box ngoài:** tắt (chưa có DNS) · bật (`api-v2` → box AWS) · cắt (về VPS
 `services-redirect` → xóa DNS). Song song 2 trục thì mỗi bên ghi DB riêng
@@ -123,7 +123,7 @@ goose -dir services/<svc>/database/migrations \
 | `COMPOSE_PROJECT_NAME`, `BACKEND_IMAGE`, `BACKEND_HEALTH_PATH` | compose VPS (`BACKEND_IMAGE` legacy, compose hiện tại không đọc) |
 | `API_DOMAIN` | `api.closy.hycat.online` |
 | `API_V2_DOMAIN` | `api-v2.closy.hycat.online` (box ngoài / redirect grace) |
-| `NGINX_MODE` | `services` / `services-redirect` / `rollback` |
+| `NGINX_MODE` | `services` / `services-redirect` / `rollback` (thủ công, ADR 012) |
 | `NGINX_CLIENT_MAX_BODY_SIZE` | `20m` |
 | `NGROK_AUTHTOKEN`, `NGROK_DOMAIN`, `NGROK_TARGET` | chỉ local tunnel |
 
@@ -132,8 +132,7 @@ goose -dir services/<svc>/database/migrations \
 Workflow CHỈ đọc secret truy cập host + GHCR:
 `AWS_HOST`, `AWS_USER`, `AWS_SSH_PORT`, `AWS_SSH_KEY`, `AWS_KNOWN_HOSTS` (box AWS);
 `VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS` (VPS);
-`GHCR_USERNAME`, `GHCR_READ_TOKEN` (PAT `read:packages`, dùng chung). Variable
-`PRODUCTION_HEALTH_URL` (smoke rollback).
+`GHCR_USERNAME`, `GHCR_READ_TOKEN` (PAT `read:packages`, dùng chung).
 
 Toàn bộ `DB_*`, `REDIS_*`, `RABBITMQ_*`, `JWT_*`, `CLOUDINARY_*`, `EMAIL_*`,
 `PAYOS_*`, `SWAGGER_ACCESS_CODE`, AI provider keys **KHÔNG phải** GitHub secret —
@@ -187,7 +186,7 @@ curl -sSI https://api-v2.closy.hycat.online | grep -i cf-ray || echo "0 Cloudfla
 | `ci.yml` | PR/push `main` | fmt/tidy/generate-check, vet, test(-race), build matrix, buf lint + proto drift, parity swagger, image-build matrix |
 | `deploy-vps-services.yml` | dispatch hoặc push tag `vps-*` + approval | 3 chặng: build matrix → GHCR (pin digest, alias tên tag) → `compose up -d <svc>` → recreate nginx 1 lần → `smoke-all` curl `/api/v1/<svc>/health` đủ 3 service + grep tên service |
 | `deploy-aws.yml` | dispatch hoặc push tag `aws-*` + approval | 3 chặng tương tự (6 container http×3 + worker×3); `smoke-all` qua IP box, chưa cần DNS |
-| `deploy-production.yml` | dispatch + xác nhận `confirm=rollback` | **Chỉ rollback khẩn cấp**: build từ tag frozen `monolith-legacy` → GHCR → compose profile `rollback` |
+| `deploy-production.yml` | đã lưu trữ (ADR 012) | Rollback monolith khẩn cấp — chuyển vào `docs/archive/`; chỉ còn đường thủ công |
 
 Quy ước image: tag immutable `<svc>:<git-sha>` (+ alias tên release tag);
 `:latest` chỉ trong CI; image private KHÔNG public. Tag `monolith-legacy` đóng băng,

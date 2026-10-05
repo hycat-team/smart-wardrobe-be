@@ -1,9 +1,10 @@
-# ADR 021 - Nền tảng được tài trợ, kiến trúc Cloudflare + Cloud Run và lộ trình repatriation 3 tháng
+# ADR 007 - Nền tảng được tài trợ, kiến trúc Cloudflare + Cloud Run và lộ trình repatriation 3 tháng
 
-*   **Status**: Accepted (**đã supersede một phần** bởi **ADR 023**: bỏ Cloudflare/Worker và NS-delegate khỏi đường API; ingress là VPS Nginx; cutover giai đoạn đầu bị hoãn)
+*   **Status**: Accepted (**đã supersede một phần** bởi **ADR 009**: bỏ Cloudflare/Worker và NS-delegate khỏi đường API; ingress là VPS Nginx; cutover giai đoạn đầu bị hoãn)
 *   **Decision Date**: 2026-09-15
 *   **Decision Maker**: Duck (+ Muse Spark đối chiếu)
 *   **Supersedes**: Mọi giả định trial/LB/GCP-managed-DB trong `specs/020-platform-migration` trước ngày này.
+*   **Superseded by**: ADR 009 (Cloudflare/Worker/ingress), ADR 010 (Cloud Run compute)
 *   **Ghi chú quản trị**: nội dung vòng đời kinh phí/funding-clock thuộc
     `docs/project/funding-and-platform-lifecycle.md` (hiến pháp 3.0.0 chỉ chứa quy định
     code/system/architecture và đã bao gồm mô hình service topology).
@@ -27,7 +28,7 @@ Ràng buộc cứng:
 
 ## 2. Decision
 
-> **Lưu ý supersede (2026-09-15, ADR 023)**: các quyết định liên quan tới **Cloudflare/Worker và ingress**
+> **Lưu ý supersede (2026-09-15, ADR 009)**: các quyết định liên quan tới **Cloudflare/Worker và ingress**
 > dưới đây **không còn hiệu lực**: §2.1 (Cloudflare zone + Worker), §2.2 (cutover SaaS — hoãn sang phase
 > sau), §2.6 (origin-auth `X-Gateway-Secret`), §2.7 (SSE qua Worker), §2.8 (route table single-source với
 > Worker). Thay thế: **ingress = VPS Nginx hiện hữu**; auth = **Cloud Run IAM (ID token)**; DNS ở **Vercel**.
@@ -57,15 +58,15 @@ Ràng buộc cứng:
     `run.app` nếu vượt hạn mức). Do Cloudflare proxy có **idle timeout 100s** và có thể buffer SSE:
     bắt buộc heartbeat ~15s, origin trả `X-Accel-Buffering: no`, và hạ
     `ai_chat_chunk_deadline_seconds` từ **180s → 30s thống nhất mọi môi trường** (sửa config dùng
-    chung `configs/`, tránh phân nhánh config). Đây là thay đổi kế thừa từ ADR 020 §2.4; theo
-    ADR 020 ("mở ADR mới khi trigger kích hoạt"), ghi nhận tại đây thay vì sửa ADR 020.
+    chung `configs/`, tránh phân nhánh config). Đây là thay đổi kế thừa từ ADR 006 §2.4; theo
+    ADR 006 ("mở ADR mới khi trigger kích hoạt"), ghi nhận tại đây thay vì sửa ADR 006.
 8.  **Repatriation bắt buộc sau 3 tháng**: 3 service image chạy lại trên VPS bằng
     docker-compose multi-service + Nginx gateway (route table single-source với Worker, CI check
     parity); dữ liệu migrate ngược; DNS về VPS; tắt funded items trước ngày renew. Runbook
     repatriation viết **song song** với forward runbook. Teardown trial nằm trong bước này.
 9.  **Funding clock**: hard deadline + checkpoint T-30/T-14/T-7/T-1 (verify backup, drill
     restore, rehearsal DNS rollback) ghi trong plan 020.
-10. **Mốc chấm bài (điều chỉnh bởi ADR 023)**: chỉ **`api-v2...` bắt buộc chạy trên Cloud** trước
+10. **Mốc chấm bài (điều chỉnh bởi ADR 009)**: chỉ **`api-v2...` bắt buộc chạy trên Cloud** trước
     ngày chấm; **cutover `api.closy` KHÔNG còn mốc cứng** — do owner quyết định khi `api-v2` đủ ổn
     định, có runbook cutover/rollback (FR-041, SC-015). Ưu tiên US3/US5 là P1.
 

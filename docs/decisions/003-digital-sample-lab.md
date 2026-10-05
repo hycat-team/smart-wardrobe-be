@@ -1,8 +1,8 @@
-# ADR 003: Implement Digital Sample Lab feature for B2B
+# ADR 003 - Implement Digital Sample Lab feature for B2B
 
-- **Status**: Accepted
-- **Decision Date**: 2026-06-28
-- **Decision Maker**: Duck
+*   **Status**: Accepted
+*   **Decision Date**: 2026-06-28
+*   **Decision Maker**: Duck
 
 ## 1. Context
 

@@ -1,10 +1,9 @@
-# Architecture Decision Record (ADR) 024
-
-## Title: 024 - Drop Cloud Run, decouple VPS serving from the external box (AWS later)
+# ADR 010 - Drop Cloud Run, decouple VPS serving from the external box (AWS later)
 
 *   **Status**: Accepted
 *   **Decision Date**: 2026-09-19
 *   **Decision Maker**: repo owner
+*   **Superseded by**: ADR 012 (phần rollback monolith)
 
 ## 1. Context
 
@@ -13,7 +12,7 @@ secrets, `deploy-platform.yml` never ran, and the trial/billing assumptions behi
 FR-044..FR-048 are void. The previous plan coupled "what the VPS serves" with
 "whether the cloud exists" into shared Nginx modes (`parallel`/`parallel-v2`),
 which blocks the required rollout order: VPS monolith -> 3 services first, external
-box later. Supersedes ADR 023 (VPS Nginx ingress + Cloud Run IAM) for the compute
+box later. Supersedes ADR 009 (VPS Nginx ingress + Cloud Run IAM) for the compute
 part; the Nginx ingress mechanics stay.
 
 ## 2. Decision
@@ -35,7 +34,7 @@ part; the Nginx ingress mechanics stay.
 
 Positive: VPS migration (GĐ1) proceeds with zero cloud dependency; no dead
 Cloud Run/IAM code to confuse operators; AWS box can be switched on/off without
-touching the VPS; monolith rollback stays available.
+touching the VPS; monolith rollback stays available (superseded by ADR 012).
 Negative: two datastores diverge while both axes serve writes (manual reunify on
 cut); managed accounts (Supabase/Redis/AMQP) must be registered before GĐ2;
 Lightsail 2GB needs memory observation (caps are 512m per container).

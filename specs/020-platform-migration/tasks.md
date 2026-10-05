@@ -7,7 +7,7 @@ description: "Task list cho feature 020-platform-migration (mô hình C multi-mo
 **Input**: Design documents from `specs/020-platform-migration/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 **Constitution**: v3.0.0 (single service topology, compiler-enforced boundaries, portability)
-**ADR**: `docs/decisions/021-funded-platforms-and-repatriation.md`
+**ADR**: `docs/decisions/007-funded-platforms-and-repatriation.md`
 
 **Tests**: Có bao gồm test cho các hành vi cốt lõi (cờ cấu hình, fallback, adapter, parity) vì
 tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng yêu cầu "mọi thứ chắc chắn".
@@ -259,9 +259,9 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 **Independent Test**: quickstart VS5 + VS8.
 
 - [x] T097 [US4] `deployments/docker-compose.prod.yml` mới: 3 service + postgres+pgvector/redis/rabbitmq + nginx gateway + certbot; thêm **profile `rollback`** dùng image `monolith-legacy` (biến `MONOLITH_IMAGE`) để quay lại monolith tạm thời (FR-043) — viết lại: `account/commerce/ai` (image GHCR `${*_IMAGE}`, healthcheck `/api/v1/health`), nginx depends_on 3 service, bỏ ES (mặc định tắt)
-- [ ] T097a [US4] Build + push **image rollback `monolith-legacy`** vào **GHCR** (dùng token/CI sẵn có) từ tag frozen (`make image-build-monolith-rollback`) **trước khi hết cửa sổ funded**; verify profile `rollback` khởi động và phục vụ `api.closy` (SC-017, FR-051)
+- [ ] T097a [US4] Build + push **image rollback `monolith-legacy`** vào **GHCR** (dùng token/CI sẵn có) từ tag frozen (`make image-build-monolith-rollback`) **trước khi hết cửa sổ funded**; verify profile `rollback` khởi động và phục vụ `api.closy` (SC-017, FR-051) — **CANCELLED 2026-10-05 (ADR 012)**: bỏ đường rollback monolith tự động, chỉ còn build thủ công khi cần
 - [x] T097b [US4] `.github/workflows/deploy-vps-services.yml` mới: `workflow_dispatch` + approval environment; **matrix 3 service** build từ `services/<svc>/Dockerfile` → push **GHCR** → `docker compose -f deployments/docker-compose.prod.yml up -d <svc>`; **pin image theo digest**; dùng cho repatriation + vận hành VPS sau đó; smoke test `api.closy` (FR-056, SC-030)
-- [x] T097c [US4] Chuyển `.github/workflows/deploy-production.yml` thành `workflow_dispatch` build **từ tag `monolith-legacy`** (checkout ref=tag) → GHCR `monolith-legacy:<sha>` → deploy qua compose **profile `rollback`** (`MONOLITH_IMAGE`, pin digest); chỉ rollback khẩn cấp; MUST NOT build monolith từ `main` (FR-056, SC-030) — **chạy trước T034** — dùng `git archive monolith-legacy` + `deployments/monolith-legacy/Dockerfile`, xác nhận chuỗi `rollback`, GHCR pin digest, dừng 3 service khi rollback
+- [x] T097c [US4] Chuyển `.github/workflows/deploy-production.yml` thành `workflow_dispatch` build **từ tag `monolith-legacy`** (checkout ref=tag) → GHCR `monolith-legacy:<sha>` → deploy qua compose **profile `rollback`** (`MONOLITH_IMAGE`, pin digest); chỉ rollback khẩn cấp; MUST NOT build monolith từ `main` (FR-056, SC-030) — **chạy trước T034** — dùng `git archive monolith-legacy` + `deployments/monolith-legacy/Dockerfile`, xác nhận chuỗi `rollback`, GHCR pin digest, dừng 3 service khi rollback — **workflow đã lưu trữ 2026-10-05 (ADR 012)**
 - [x] T098 [US4] Nginx route map (repatriation) multi-host: **cả `api.closy` và `api-v2` → 3 service compose** (dùng chung route map, không còn monolith mặc định); `api-v2` **redirect 301 → `api.closy`** trong grace period rồi **xoá bản ghi DNS** (FR-055); monolith compose chỉ là **rollback tạm thời** nếu owner chọn; smoke test route
 - [x] T099 [US4] Nginx ingress auth khi self-host (không còn Cloud Run IAM) + **body-limit/timeout/security-header/logging-request-ID** (rate-limit đã nằm ở app — FR-054; ghi rõ residual risk "không WAF đầy đủ" trong runbook repatriation)
 - [ ] T100 [US4] ACME challenge local cho cả 2 host + certbot renew
@@ -284,10 +284,10 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [x] T109 [P] Update `README.md` (multi-module workspace, 3 service, funded platforms, ES optional, repatriation)
 - [x] T110 [P] Update `docs/development/local-setup.md` (compose 3 service local, managed environment) — module paths → `services/<svc>/internal/modules`, migration → `migrate-* svc=` per-service
 - [x] T111 [P] Update `docs/system-design/architecture.md` (mô hình C + ES optional + ingress Nginx + Cloud Run) — banner hết stale, §I paradigm 3 service, §II layout `services/`, sweep path `internal/` cũ
-- [x] T112 [P] Verify ADR links từ plan/spec: `docs/decisions/021-funded-platforms-and-repatriation.md` + `docs/decisions/023-vps-nginx-ingress-cloud-run-iam.md` (và ADR 022 email) — **đã thêm 023/022 vào plan.md ADR line** (spec đã có)
+- [x] T112 [P] Verify ADR links từ plan/spec: `docs/decisions/007-funded-platforms-and-repatriation.md` + `docs/decisions/009-vps-nginx-ingress-cloud-run-iam.md` (và ADR 008 email) — **đã thêm 023/022 vào plan.md ADR line** (spec đã có)
 - [x] T113 **Viết lại `.github/workflows/ci.yml` cho workspace**: cache `**/go.sum` + `go.work.sum`; job build **matrix 3 service** (`make build svc=`); `buf lint` + proto drift (`buf-gen` + git diff); **parity swagger** (python: 8 module HTTP + notification worker-only exempted, fail nếu thiếu, min 50 paths); job `image-build` matrix (no push); giữ workspace jobs; **không build monolith** (FR-020, FR-042)
-- [ ] T114 Chạy gate đầy đủ `make wire && make lint && make test-race`; kiểm tra portability (không vendor lock-in ngoài pgvector/routing) (FR-007); xác nhận build/push/deploy độc lập 3 service + image rollback monolith (SC-017)
-- [x] T116 [P] Cập nhật `docs/project/funding-and-platform-lifecycle.md`: Supabase **1 database dùng chung** (không tách schema staging/prod) + **teardown là một bước trong repatriation**; đồng bộ với spec/ADR 021 — **verified: doc đã ghi cả hai điểm, không cần sửa**
+- [ ] T114 Chạy gate đầy đủ `make wire && make lint && make test-race`; kiểm tra portability (không vendor lock-in ngoài pgvector/routing) (FR-007); xác nhận build/push/deploy độc lập 3 service + image rollback monolith (SC-017) — **phần image rollback monolith đã bỏ (ADR 012)**: chỉ xác nhận 3 service
+- [x] T116 [P] Cập nhật `docs/project/funding-and-platform-lifecycle.md`: Supabase **1 database dùng chung** (không tách schema staging/prod) + **teardown là một bước trong repatriation**; đồng bộ với spec/ADR 007 — **verified: doc đã ghi cả hai điểm, không cần sửa**
 
 ---
 
@@ -295,9 +295,9 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 **Purpose**: Runbook + drill cho việc đưa `api.closy` sang Cloud Run; **thực thi khi owner quyết định** `api-v2` đủ ổn định.
 
-- [ ] T117 Drill cutover + rollback trên môi trường Cloud (đổi Nginx `api.closy` → Cloud Run, xác minh, rồi rollback về monolith); đo thời gian; ghi lại bước lệch
+- [ ] T117 Drill cutover + rollback trên môi trường Cloud (đổi Nginx `api.closy` → Cloud Run, xác minh, rồi rollback về monolith); đo thời gian; ghi lại bước lệch — **phần rollback về monolith đã bỏ (ADR 012)**
 - [ ] T115 Verify quickstart VS1–VS10 end-to-end; ghi kết quả vào `specs/020-platform-migration/quickstart.md` (phụ lục kết quả) — **sau T117** (VS9 là cutover drill)
-- [ ] T118 (owner-triggered) Thực thi cutover `api.closy` → Cloud Run theo runbook khi owner quyết định; verify đầy đủ; giữ đường rollback về monolith; chỉ đổi Nginx/DNS + đồng bộ dữ liệu (không sửa mã nghiệp vụ)
+- [ ] T118 (owner-triggered) Thực thi cutover `api.closy` → Cloud Run theo runbook khi owner quyết định; verify đầy đủ; giữ đường rollback về monolith; chỉ đổi Nginx/DNS + đồng bộ dữ liệu (không sửa mã nghiệp vụ) — **phần rollback về monolith đã bỏ (ADR 012)**
 
 ---
 
@@ -307,7 +307,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 > Thứ tự dưới đây **thắng** thứ tự số phase khi mâu thuẫn. Task giữ nguyên ID; chỉ đổi vị trí thực thi.
 
-1. **Mở đường rollback**: `T097` (compose profile `rollback`) → `T097c` (workflow deploy monolith từ tag `monolith-legacy`) → `T034` (xoá `cmd/server`). T097 phải xong trước T097c vì T097c dùng profile do T097 định nghĩa; T097c phải xong trước T034 để giữ đường deploy/rollback monolith (FR-056).
+1. **Mở đường rollback**: `T097` (compose profile `rollback`) → `T097c` (workflow deploy monolith từ tag `monolith-legacy`) → `T034` (xoá `cmd/server`). T097 phải xong trước T097c vì T097c dùng profile do T097 định nghĩa; T097c phải xong trước T034 để giữ đường deploy/rollback monolith (FR-056). Đường rollback tự động sau đó đã bỏ — ADR 012 (2026-10-05).
 2. **Ranh giới service**: `T035–T038` (gRPC client, [P]) → `T039` (gRPC server) → `T040–T042` (Wire composition 3 service). `T121` (gỡ import implementation xuyên service ở `commerce/providers` + `ai/providers`) **chỉ sau T040–T042 và gắn với T034** (monolith `internal/di` đang tiêu thụ các package này; gỡ sớm phá build xanh).
 3. **Runtime topology**: `T040–T042` → `T034a` (tách bootstrap theo `APP_MODE`) → `T123` (bỏ hardcode `8080`) → `T034b` (worker singleton + advisory lock).
 4. **Quan trắc**: `T119` (log JSON) + `T120` (metrics/alert) phải xong **trước `T074`** (deploy) và **trước `T082`/`T117`** (gate đo được FR-041).

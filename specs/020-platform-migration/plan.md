@@ -3,7 +3,7 @@
 **Branch**: `020-platform-migration` | **Date**: 2026-09-15 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `specs/020-platform-migration/spec.md`
-**ADR**: `docs/decisions/021-funded-platforms-and-repatriation.md` + `docs/decisions/023-vps-nginx-ingress-cloud-run-iam.md` (và `docs/decisions/022-email-provider-brevo.md` cho email)
+**ADR**: `docs/decisions/007-funded-platforms-and-repatriation.md` + `docs/decisions/009-vps-nginx-ingress-cloud-run-iam.md` (và `docs/decisions/008-email-provider-brevo.md` cho email)
 **Constitution**: v3.0.0 (single service topology, multi-module workspace, portability)
 
 ## Summary
@@ -320,6 +320,7 @@ Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-al
   repatriation + vận hành VPS sau đó.
 - `deploy-production.yml` (T097c): chuyển thành `workflow_dispatch` build **từ tag `monolith-legacy`** →
   GHCR → compose profile `rollback`; chỉ rollback khẩn cấp; KHÔNG build từ `main`.
+  **Đã lưu trữ 2026-10-05 (ADR 012)** — không còn đường rollback monolith tự động.
 - **Thứ tự bắt buộc**: T097 (compose profile `rollback`) → T097c xong **trước T034** (xoá `cmd/server`)
   để còn đường deploy monolith.
 
@@ -359,7 +360,7 @@ xuyên service) nằm trong Phase 5, thực thi **sau T040–T042 và gắn vớ
   (Account giữ lịch sử); CloudAMQP/Redis wiring + verify giới hạn gói; runbook song song; drill bằng
   schema tạm; smoke test `api-v2` qua Nginx. Cutover `api.closy` **không** nằm trong phase này.
 - **Phase E — Docs & Runbook 2 chiều (P2, song song)**: `docs/operations/*` (lên Cloud, song song,
-  teardown, repatriation), ADR 021 + ADR 023, microservices guides, README/local-setup.
+  teardown, repatriation), ADR 007 + ADR 009, microservices guides, README/local-setup.
 - **Phase F — Repatriation gồm teardown trial (P2, theo funding clock)**: teardown trial + bill
   verify (một bước trong repatriation); compose VPS 3-service + Nginx; **build/push image
   monolith-legacy rollback lên GHCR trước khi teardown **Artifact Registry (AR)** (FR-043, FR-051) + verify profile

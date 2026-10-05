@@ -3,7 +3,7 @@
 > **Status:** Archived per ADR 002 — Community Social Feed removed from MVP core.
 > **Decision Date:** 2026-06-28
 > **Reason:** Community post feature, resale, and P2P transfer were removed to focus on Digital Wardrobe + AI Outfit Assistant + B2B services.
-> **See also:** `docs/decisions/remove-community-resale.md`, `docs/project/scope.md`, `docs/project/vision.md`
+> **See also:** `docs/decisions/002-remove-community-resale.md`, `docs/project/scope.md`, `docs/project/vision.md`
 
 ---
 
