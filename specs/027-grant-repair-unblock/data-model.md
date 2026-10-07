@@ -15,9 +15,10 @@ buộc mà mọi tính toán phải tôn trọng.
 | Cột | Kiểu | Vai trò với 027 |
 | --- | --- | --- |
 | `user_id` | uuid | Khoá tài khoản cho `pg_advisory_xact_lock` và cho mọi truy vấn theo tài khoản |
-| `effective_from` | timestamptz | **Sàn thứ tự dự phòng** khi `created_at` không đáng tin (FR-001, R-003) |
+| `effective_from` | timestamptz | **Sàn thứ tự dự phòng cuối** (mức 3), chỉ khi cả `occurred_at` lẫn `created_at` không dùng được (FR-004a, R-003) |
 | `effective_to` | timestamptz NULL | Ranh giới trên. NULL = đang hiệu lực không thời hạn |
-| `created_at` | timestamptz | **Sàn thứ tự ưu tiên**, chỉ khi không nằm trong tương lai (R-003). Cột `started_at` **không tồn tại** |
+| `created_at` | timestamptz | **Sàn thứ tự mức 2**, dùng khi ảnh chụp không đọc được `occurred_at` và giá trị này không nằm trong tương lai (R-003). Cột `started_at` **không tồn tại** |
+| `occurred_at` (trong `policy_snapshot`) | timestamptz | **Sàn thứ tự mức 1, ưu tiên** — thời gian nghiệp vụ của thay đổi đã tạo ra bản ghi (FR-001) |
 | `updated_at` | timestamptz | Không dùng làm sàn — đổi mỗi lần cắt bản ghi, không phản ánh thời điểm sự kiện |
 | `status` | text | `active` / `future` / `closed`. Mục 4 của kiểm tra toàn vẹn lọc theo cửa sổ hiệu lực và **giữ nguyên** việc không lọc theo trạng thái — mục đó chưa từng lọc trạng thái (FR-014) |
 | `policy_snapshot` | jsonb | Nguồn của `occurred_at` — đồng hồ thứ tự **ưu tiên** (FR-001), đọc qua `ExtractOccurredAt`. Khi không đọc được thì lùi về `created_at`, rồi `effective_from` |
