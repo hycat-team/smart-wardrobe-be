@@ -214,6 +214,8 @@ Trace `request_id` (Nginx `main_tid` ↔ app log) để nối request qua 2 lớ
 | Latency | log `duration_ms` / access log Nginx | p95 > 500ms trong 5m |
 | Error-rate | đếm 5xx trong log / access log | > 1% trong 5m |
 | Worker liveness | `docker compose ps` + outbox backlog trong log | worker down / backlog > 10000 |
+| AI grant + fallback | `GET /api/v1/ai/health` → `grant_rejected_by_reason`, `cost_fallback_by_reason` | xem §4.1 |
+| Panic trong gRPC handler | log `recovered from panic while serving a gRPC call` | bất kỳ lần nào — xem §4.1 |
 | Bill AWS | billing alarm \$20/40/60 + Lightsail transfer metrics | vượt ngưỡng (overage SG \$0.12/GB) |
 
 Khi alert: health down → `ps` + log → redeploy service đó (`-f services=<svc>`);
@@ -223,6 +225,66 @@ kiểm tra pooler/AMQP/Redis conn; bill vượt → kiểm tra transfer, conside
 
 Verify: log JSON đọc được qua compose; health check ngoài hoạt động cả 2 hostname;
 billing alarm AWS hoạt động.
+
+### 4.1. Cảnh báo AI: grant bị từ chối, fallback, và panic
+
+Ba tín hiệu dưới đây **không có ngưỡng sẵn**. Hệ thống không có metrics backend
+— không Prometheus client, không exporter, không ai scrape. Cảnh báo là **theo log
+và vô điều kiện**: mỗi lần xảy ra đều ghi một dòng, kể cả lần đầu. Muốn cảnh báo
+thì tự gắn alert theo log ở hệ thống giám sát của bạn.
+
+**Đừng tự thêm ngưỡng số.** Việc này là quyết định có chủ đích, không phải thiếu sót:
+một sự kiện bị từ chối là tín hiệu **toàn vẹn dữ liệu** chứ không phải tín hiệu tải,
+và số lượng của nó bị chặn trên bởi tần suất đổi gói thực tế. Một ngưỡng chưa ai
+hiệu chỉnh thì tệ hơn là không có — hoặc không bao giờ bắn, hoặc bắn liên tục, và
+người trực sẽ bỏ qua nó. Quy ước này được test ghim trong
+`services/ai/.../grant/grant_reject_metrics_test.go`; xoá nó sẽ làm đỏ build.
+
+**Đọc số đếm** (bộ đếm trong bộ nhớ tiến trình, mất sạch khi restart):
+
+```bash
+curl -s http://localhost:8103/api/v1/ai/health
+```
+
+```json
+{
+  "grant_rejected_by_reason": { "ai_cost_policy_not_found": 1, "stale_event": 0 },
+  "cost_fallback_by_reason": { "tier2_total": 3 }
+}
+```
+
+* `grant_rejected_by_reason` — đếm theo mã lý do từ chối ở luồng grant. Tăng bất
+  thường nghĩa là sự kiện đến nhưng bị từ chối: sự kiện hỏng, sự kiện đến sai thứ tự,
+  hoặc cấu hình chính sách sai.
+* `cost_fallback_by_reason` — đếm số lần phải suy giảm. `tier1_default_policy` tăng
+  nghĩa là **tài khoản không có grant**; `tier2_total` tăng nghĩa dịch vụ AI đang
+  chạy trên model miễn phí.
+
+Hai giới hạn khi dùng làm số liệu: chúng **process-local** nên không so sánh được
+giữa hai lần triển khai và không dùng cho thống kê dài hạn; và mã
+`duplicate_source_event` được ghi ở `INFO` vì là hệ quả tất yếu của giao hàng
+at-least-once — **loại mã này khỏi alert**, nếu không nó sẽ nhiễu đúng những lý do
+cần nhìn thấy.
+
+**Lọc log để gắn alert:**
+
+```bash
+# grant bị từ chối
+docker logs ai-closy-dev 2>&1 | grep '"reason":"ai_cost_policy_not_found"'
+# tài khoản không có grant, đang chạy tier-1
+docker logs ai-closy-dev 2>&1 | grep '"msg":"AI cost policy fallback tier 1 in use"'
+# panic đã được hứng — xem method và stack trong dòng này
+docker logs ai-closy-dev 2>&1 | grep '"msg":"recovered from panic while serving a gRPC call"'
+```
+
+Dòng panic có `method`, `panic` và `stack`. **Nếu thấy dòng này, đó là lỗi code, không
+phải sự cố hạ tầng** — tiến trình đã sống sót nhờ recovery interceptor, nên mọi người
+dùng khác không bị ảnh hưởng, nhưng dòng `stack` là điểm khởi đầu duy nhất để tìm
+nguyên nhân. Đây là lý do `stack` được ghi kèm: goroutine chết không phải goroutine
+nhận request, nên nếu không có nó thì gần như không truy vết được.
+
+Chi tiết đầy đủ về từng mã lý do: `specs/024-admin-premium-grant/quickstart.md` §
+"Cấu hình cảnh báo".
 
 ## 5. Elasticsearch (tắt mặc định, cả 2 trục)
 

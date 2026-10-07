@@ -19,6 +19,7 @@ Mỗi file ghi một quyết định kiến trúc/vận hành đã chốt, kèm 
 | [010](010-drop-cloud-run-decouple-axes.md) | 2026-09-19 | Drop Cloud Run, decouple VPS serving | Accepted | thay 009 phần compute; bị 012 thay phần rollback monolith |
 | [011](011-production-env-semantics.md) | 2026-09-20 | Ngữ nghĩa `SERVER_ENV`: `vps` cũng là production | Accepted | đính chính 006 §2.5 |
 | [012](012-retire-monolith-rollback.md) | 2026-10-05 | Retire the automated monolith rollback workflow | Accepted | thay 010 phần rollback monolith |
+| [013](013-deferred-lazy-grant-self-heal.md) | 2026-10-07 | Deferred: lazy grant self-heal when an account has no policy grant | Accepted | nợ kỹ thuật; điều kiện mở lại ở §2 |
 
 ## Quy ước
 

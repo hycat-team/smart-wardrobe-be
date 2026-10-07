@@ -307,7 +307,7 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 |  |  | `identity` (đọc user) | `IUserContract` |
 | **brand** | `brand` | `identity` (đọc user theo id/username/email) | `IUserContract` |
 | **subscription** | `subscription` | `identity` (auth middleware — router, không truy cập dữ liệu) | `IAuthMiddleware` |
-| **aiexecutor** | `aiexecutor` | `subscription` (đọc overview/quotas cho reservation policy) | `IUserSubscriptionContract` |
+| **aiexecutor** | `aiexecutor` | `admin` (audit log) | `IAuditLogContract` |
 | **identity** | `identity` | `notification` (gửi email/SMS) | `INotificationContract` |
 |  |  | `subscription` (đọc subscription overview) | `IUserSubscriptionContract` |
 | **dashboard** | `dashboard` | `aiexecutor` (AI usage/cost stats) | `IAICostDashboardReader` |
@@ -495,6 +495,6 @@ Hard caps, enforcement mode and per-operation limits are read LIVE from `ai_cost
 
 `ResolvePolicy` is a pure read of the Account-owned cache backed by AI. It never looks up the subscription and never writes. An account with **no** grant is the normal free case: the fallback resolver applies the free policy and the ledger records `grant_id IS NULL`, which is how degradation stays visible in reporting instead of disappearing.
 
-An administrative repair does not bypass this pipeline. `POST /api/v1/admin/subscription-grants/restore` re-publishes plan-change events; it never writes a grant row, and it skips free-plan accounts because those have no entitlement by design.
+An administrative repair does not bypass this pipeline. `POST /api/v1/admin/subscription-grants/restore` re-publishes plan-change events; it never writes a grant row. It treats free and paid accounts alike, because a free account's `free-default` grant is as real as a Premium one — it is what carries the free per-day attempt cap. Expired subscriptions are skipped, since renewal and downgrade own those.
 
 Technical notes on the DDL and ledger: `docs/development/technical-notes.md`.

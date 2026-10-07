@@ -10,9 +10,21 @@ multi-module Go workspace (`go.work`), thay thế modular monolith
 |---------|-----------|------------------|-----------|--------------|
 | Account | `services/account` | identity, subscription, admin, notification | Identity, Subscription, Admin | **không** |
 | Commerce Core | `services/commerce` | wardrobe, fashion, brand, dashboard | **không** | Identity, Subscription, Admin, AIOrchestrator (+ 3 reader) |
-| AI Engine | `services/ai` | aiexecutor | AIOrchestrator, AIDashboard | Identity, Subscription, Admin |
+| AI Engine | `services/ai` | aiexecutor | AIOrchestrator, AIDashboard | Account: audit log + auth middleware |
 
 Đồ thị gọi (DAG, không cycle): Commerce → Account, Commerce → AI, AI → Account.
+
+> **AI không đọc dữ liệu của Account.** Nó chỉ gọi ra ngoài hai thứ và cả hai đều không
+> đọc bảng nghiệp vụ: `IAuditLogContract` để ghi nhật ký kiểm toán, và `IAuthMiddleware`
+> để xác thực. Nó **không** có `IUserSubscriptionContract` hay `IUserQuotaContract`.
+>
+> Client subscription từng được dựng trong DI của AI rồi bị **gỡ có chủ đích**
+> (024 T178) vì nó không có consumer nào thật, và để nó nằm trong đồ thị phụ thuộc
+> chính là mở sẵn cửa cho đúng kiểu đọc chéo miền mà feature 024 sinh ra để đóng.
+> AI chỉ nhận mức quyền qua hàng đỗi `subscription.plan.changed`; khi tài khoản chưa
+> có grant, nó **suy giảm** theo chính sách mặc định thay vì tra cứu gói. Không
+> thêm lại contract này trừ khi có một feature mới và một quyết định kiến trúc tương
+> ứng.
 
 ## Module dùng chung
 

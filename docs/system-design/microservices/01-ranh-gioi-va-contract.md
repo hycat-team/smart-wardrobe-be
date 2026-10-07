@@ -9,7 +9,7 @@ Contract mà mọi caller nằm cùng service giữ in-process.
 |----------------------|-------|--------------|---------------------|--------------|
 | `IUserBriefContract` | identity | Account | Commerce, AI | `IdentityService` |
 | `IUserDashboardReader` | identity | Account | Commerce (dashboard) | `IdentityDashboardService` |
-| `IUserSubscriptionContract` | subscription | Account | Commerce, AI | `SubscriptionService` |
+| `IUserSubscriptionContract` | subscription | Account | Commerce | `SubscriptionService` |
 | `IUserQuotaContract` | subscription | Account | Commerce | `SubscriptionService` |
 | `ISubscriptionDashboardReader` | subscription | Account | Commerce (dashboard) | `SubscriptionDashboardService` |
 | `IAuditLogContract` | admin | Account | Commerce, AI | `AdminService` |
@@ -17,6 +17,14 @@ Contract mà mọi caller nằm cùng service giữ in-process.
 | `IAICostDashboardReader` | aiexecutor | AI | Commerce (dashboard) | `AIDashboardService` |
 
 **Nhận xét**: Commerce **không phơi** gRPC nào; Account không gọi ra ngoài.
+
+> **AI chỉ là caller của hai contract, và cả hai đều không đọc bảng nghiệp vụ**:
+> `IUserBriefContract` (đọc user) và `IAuditLogContract` (ghi log kiểm toán). Nó
+> **không** phải caller của `IUserSubscriptionContract` hay `IUserQuotaContract` —
+> client subscription đã bị gỡ có chủ đích ở 024 T178, lý do ở
+> `00-tong-quan-3-service.md`. Đừng sửa cột `IUserSubscriptionContract` thành
+> "Commerce, AI" như một sự đính chính hiển nhiên: đó là hành vi đã quyết định, không
+> phải tài liệu lỗi thời.
 
 ## Giữ in-process (mọi caller cùng service)
 

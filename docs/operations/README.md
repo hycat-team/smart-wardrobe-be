@@ -1,12 +1,13 @@
 # Runbook vận hành
 
-3 file, mỗi file đọc xuôi từ trên xuống, không nhảy qua lại:
+Các file dưới đây, mỗi file đọc xuôi từ trên xuống, không nhảy qua lại:
 
 | File | Dùng khi | Điểm vào |
 |---|---|---|
 | `vps-runbook.md` | VPS monolith → 3 service (GĐ1) | Bước 0 |
 | `aws-runbook.md` | Box ngoài AWS + managed (GĐ2): đăng ký → deploy → chu kỳ xóa/tạo → teardown $0 | Bước 0 |
-| `shared-reference.md` | Tra cứu chung cả 2 trục (KHÔNG phải runbook, không có thứ tự bước) | đọc khi runbook trỏ tới |
+| `grant-restore-runbook.md` | Tài khoản không có grant tính phí AI (bộ đếm `tier1_default_policy` tăng) | Bước 1 |
+| `shared-reference.md` | Tra cứu chung cả 2 trục + §4.1 cảnh báo AI (KHÔNG phải runbook, không có thứ tự bước) | đọc khi runbook trỏ tới |
 
 `infrastructure/archive/` — tài liệu thời Cloud Run đã lỗi thời (Cloud Run chưa từng
 tồn tại, không đọc khi vận hành).
