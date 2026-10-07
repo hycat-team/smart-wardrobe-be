@@ -160,11 +160,18 @@ Sai thứ tự nào cũng hỏng:
 | `retirePreviousGrants` tự tính lại cửa sổ | Mốc cắt lệch mốc bắt đầu 1 µs → chồng lấn hoặc khe hở |
 | Gán `grant.EffectiveFrom` **trước** khoá | Ghi đè giá trị đã tính dưới khoá bằng giá trị đo trước khoá |
 
-**`rejectStaleEvent` bị XOÁ khỏi đường đi.** Nó không còn xuất hiện trong 6 bước trên, và
-không được giữ lại ở vị trí cũ (`grant_uc.go:266`) — giữ cả hai nghĩa là chạy kiểm tra thứ
-tự hai lần với hai tiêu chí khác nhau, và `rejectStaleEvent` vẫn từ chối vĩnh viễn khi
-`ExtractOccurredAt` thất bại, tức là **giữ nguyên đúng lỗi đang sửa**. Phần cảnh báo và bộ
-đếm của nhánh từ chối được chuyển vào `resolveGrantWindow` (FR-002, FR-018).
+**`rejectStaleEvent` bị XOÁ khỏi đường tạo grant.** Nó không còn xuất hiện trong 6 bước trên,
+và không được giữ lại ở vị trí cũ.
+
+Lý do không phải là nó còn cái deadlock cũ — T010b đã cho nó dùng chung hàm dựng sàn cũ, nên
+nó không còn từ chối khi ảnh chụp không đọc được. Lý do là **nó chỉ biết từ chối, còn đường
+tạo grant phải dịch**. Giữ cả hai nghĩa là chạy kiểm tra thứ tự hai lần với hai kết cục khác
+nhau trên cùng một sự kiện: `rejectStaleEvent` từ chối một sự kiện mà `resolveGrantWindow` sẽ
+chấp nhận và dịch. Cái nào chạy trước sẽ quyết định, và thứ tự đó không được ghi ở đâu cả.
+
+`rejectStaleEvent` **vẫn** phục vụ nhánh hạ cấp không định giá được, nơi không có bản ghi mới
+và không có gì để dịch — ở đó từ chối là câu trả lời đúng. Phần cảnh báo và bộ đếm của nhánh
+từ chối đường tạo grant chuyển vào `resolveGrantWindow` (FR-002, FR-018).
 
 `grant` được dựng ở `grant_uc.go:207`, **ngoài** giao dịch. Điều đó vẫn đúng cho
 `buildGrant`: nó chỉ ghép dữ liệu tĩnh từ sự kiện và chính sách. Chỉ `EffectiveFrom` — trường

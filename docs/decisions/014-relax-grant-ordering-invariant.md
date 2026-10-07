@@ -96,10 +96,15 @@ sự cố giả mạo dữ liệu sẽ tập trung vào.
 thời điểm sửa bản ghi chứ không phản ánh thời điểm sự kiện được ghi. Dùng nó làm sàn sẽ
 dịch sai.
 
-Sự cố không nằm ở việc đọc cột nào, mà ở chỗ `rejectStaleEvent` **không đọc cột nào cả**:
+Sự cố không nằm ở việc đọc sai cột, mà ở chỗ `rejectStaleEvent` **không đọc cột nào cả**:
 nó gọi `ExtractOccurredAt` để lấy `occurred_at` từ `envelope` trong ảnh chụp chính sách, và
 khi đọc không được thì **từ chối vĩnh viễn** — không có đường lùi. Đó là lý do FR-001 phải
 lùi về `created_at`, và cũng là lý do quyết định này cần một cột dự phòng.
+
+Sau quyết định này, `rejectStaleEvent` **không còn đọc `occurred_at`** — nó dùng chung hàm
+dựng `sàn cũ` với `resolveGrantWindow`, và chỉ còn phục vụ nhánh hạ cấp không định giá được.
+Đường tạo bản ghi dùng `resolveGrantWindow`, nơi sự kiện đến muộn được **dịch** chứ không bị
+từ chối. `ExtractOccurredAt` vì thế không còn caller nào trong đường kiểm tra thứ tự.
 
 **Một điều dễ hiểu sai về phạm vi quyết định này.** `resolveGrantWindow` — hàm thực hiện
 dịch — **không phải hàm thuần**: nó đọc bản ghi mới nhất qua repository, và phải đọc **bên

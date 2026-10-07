@@ -20,7 +20,7 @@ buộc mà mọi tính toán phải tôn trọng.
 | `created_at` | timestamptz | **Sàn thứ tự ưu tiên**, chỉ khi không nằm trong tương lai (R-003). Cột `started_at` **không tồn tại** |
 | `updated_at` | timestamptz | Không dùng làm sàn — đổi mỗi lần cắt bản ghi, không phản ánh thời điểm sự kiện |
 | `status` | text | `active` / `future` / `closed`. Mục 4 của kiểm tra toàn vẹn lọc theo cửa sổ hiệu lực và **giữ nguyên** việc không lọc theo trạng thái — mục đó chưa từng lọc trạng thái (FR-014) |
-| `policy_snapshot` | jsonb | Nơi `occurred_at` hiện đang được đọc (qua `ExtractOccurredAt`); khi không đọc được thì lùi sang `created_at` |
+| `policy_snapshot` | jsonb | **Không** còn được đọc để sắp thứ tự. `created_at` là đồng hồ thứ tự (FR-001); `occurred_at` trong vỏ bọc chỉ còn là dữ liệu của ảnh chụp. `ExtractOccurredAt` giữ lại nhưng không còn caller trong đường thứ tự |
 | `source_event_id` | uuid | Chống áp dụng trùng; kiểm tra **lại** dưới khoá |
 
 ### Ràng buộc phải tôn trọng
