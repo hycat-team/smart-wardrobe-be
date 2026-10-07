@@ -75,3 +75,30 @@ bịa ra sai.
 - **Gỡ bằng cách nào**: Đặc tả riêng, có đánh giá hiến pháp riêng.
 - **Ảnh hưởng tới task đã tick**: không. Nói rõ để `[X]` ở AC-02 (không thêm đặc quyền)
   và FR-012 (từ chối không có tác dụng phụ) được đọc là vô điều kiện.
+
+### D-06 — Ràng buộc `CHECK` của bảng mức quyền nằm trong migration của dịch vụ Account
+
+- **Vấn đề**: Bảng `aiexecutor.ai_policy_grants` do
+  `services/account/database/migrations/20260622131631_add_ai_cost_policy.sql` tạo, với
+  ràng buộc `CHECK (effective_to IS NULL OR effective_to > effective_from)` viết **nội
+  tuyến, không đặt tên** — nên PostgreSQL tự sinh tên `user_ai_policy_grants_check` theo
+  tên bảng cũ. Sau đó bảng bị đổi tên thành `ai_policy_grants` và
+  `20260801000000_separate_module_schemas.sql` chuyển nó sang schema `aiexecutor` bằng
+  `ALTER TABLE ... SET SCHEMA`. **Cả hai thao tác đều giữ nguyên tên ràng buộc đã sinh tự
+  động.** Hệ quả: bảng thuộc schema của dịch vụ AI, nhưng DDL của nó nằm trong lịch sử
+  migration của dịch vụ Account, và `services/ai/database/migrations/` hiện **rỗng** (chỉ có
+  `.gitkeep`).
+- **Vì sao ngoài phạm vi**: FR-009 của 027 chỉ cần **đọc** mã lỗi Postgres, không cần thêm,
+  sửa hay nâng cấp ràng buộc. 027 **không** tạo migration nào, nên nó không làm nợ này nặng
+  thêm. Di chuyển DDL sang dịch vụ AI là một thay đổi lịch sử migration, ảnh hưởng
+  `DATABASE_MIGRATION_TABLE` và thứ tự chạy khi khởi động — vượt xa một đặc tả sửa lỗi hai
+  nhánh.
+- **Gỡ bằng cách nào**: Một đặc tả riêng về quyền sở hữu DDL theo schema, chuyển
+  `ai_policy_grants` (và các bảng `aiexecutor.*` còn lại) sang
+  `services/ai/database/migrations/`, kèm bước kiểm tra tương thích cho môi trường đang
+  chạy.
+- **Ảnh hưởng tới task đã tick**: **Có — gián tiếp.** T016 phải **tự thêm** ràng buộc bằng
+  `ALTER TABLE` trong cơ sở dữ liệu kiểm thử, vì `AutoMigrate` không tạo ra nó (thực thể
+  `AIPolicyGrant` không có thẻ `check:`). Đây không phải sự cố của ràng buộc, nhưng nếu ai đó
+  sửa lược đồ kiểm thử theo hướng "bỏ `ALTER TABLE` vì thừa" thì kiểm thử sẽ ngừng chứng
+  minh điều gì và US3 sẽ trông như đã kiểm chứng.

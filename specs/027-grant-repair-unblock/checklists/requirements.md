@@ -15,7 +15,7 @@
 và mã lỗi ở phần "Quan hệ với các yêu cầu đang tồn tại" và phần Bối cảnh. Đây là
 **cố ý** và không vi phạm: đặc tả sửa lỗi cho một cơ chế đã tồn tại không thể mô tả mà
 không nói nó sửa cái gì, và việc ghi tên file giúp người đọc kiểm chứng lại luận điểm.
-Các mục yêu cầu bắt buộc (FR-001..FR-013, AC-01..AC-03, SC-001..SC-007) đều viết ở
+Các mục yêu cầu bắt buộc (FR-001..FR-019, AC-01..AC-03, SC-001..SC-008) đều viết ở
 mức hành vi và ràng buộc, không chỉ định thuật toán hay cấu trúc dữ liệu.
 
 ## Requirement Completeness
@@ -68,11 +68,11 @@ nên chúng vẫn kiểm chứng được mà không cần biết cách hiện t
   không làm vỡ client đọc theo khoá. Kết luận này **có điều kiện**: Mục 4 của `plan.md` và
   K4 của `quickstart.md` yêu cầu xác nhận bằng chứng trước khi đóng. Nếu nhãn hoá ra là
   kiểu đóng, mục này mở lại và `frontend-guide.md` trở thành bắt buộc.
-- [x] CHK027 `deferred.md` — đã tạo, 5 mục. D-03 ghi rõ nó **làm suy yếu** FR-014/FR-015:
+- [x] CHK027 `deferred.md` — đã tạo, 6 mục (D-01..D-06). D-03 ghi rõ nó **làm suy yếu** FR-014/FR-015:
   nếu ai đó đổi bộ đọc để lọc theo trạng thái thì mục 4 của kiểm tra toàn vẹn và SC-005 hỏng
   theo.
 - [x] CHK028 Dòng mô tả sai phạm vi `stale_event` trong
-  `contracts/subscription-plan-changed-event.md` — đính chính trong Mục 6 của `plan.md`,
+  `specs/024-admin-premium-grant/contracts/subscription-plan-changed-event.md` — đính chính trong Mục 6 của `plan.md`,
   giao cho một mục của `tasks.md`.
 - [x] CHK029 `runbook.md` — đã tạo trong thư mục gốc spec. Chốt đường sửa là đường ghi
   hành chính `POST /admin/subscription-grants` với khoá sự kiện mới, và bắt buộc tắt

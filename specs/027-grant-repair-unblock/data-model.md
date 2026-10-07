@@ -19,7 +19,7 @@ buộc mà mọi tính toán phải tôn trọng.
 | `effective_to` | timestamptz NULL | Ranh giới trên. NULL = đang hiệu lực không thời hạn |
 | `created_at` | timestamptz | **Sàn thứ tự ưu tiên**, chỉ khi không nằm trong tương lai (R-003). Cột `started_at` **không tồn tại** |
 | `updated_at` | timestamptz | Không dùng làm sàn — đổi mỗi lần cắt bản ghi, không phản ánh thời điểm sự kiện |
-| `status` | text | `active` / `future` / `closed`. 027 loại bỏ việc lọc theo trạng thái khỏi kiểm tra mục 4 (FR-014) |
+| `status` | text | `active` / `future` / `closed`. Mục 4 của kiểm tra toàn vẹn lọc theo cửa sổ hiệu lực và **giữ nguyên** việc không lọc theo trạng thái — mục đó chưa từng lọc trạng thái (FR-014) |
 | `policy_snapshot` | jsonb | Nơi `occurred_at` hiện đang được đọc (qua `ExtractOccurredAt`); khi không đọc được thì lùi sang `created_at` |
 | `source_event_id` | uuid | Chống áp dụng trùng; kiểm tra **lại** dưới khoá |
 
@@ -69,16 +69,26 @@ PlanChangedEvent
 ### Quy tắc xác định sàn thứ tự
 
 ```text
-sàn(grant) = grant.created_at      nếu created_at ≤ now()     (bản ghi dịch vụ AI vừa ghi)
-          = grant.effective_from  nếu không                   (cột chịu CHECK, không giả mạo được tự do)
+sàn_cũ(grant) = grant.created_at      nếu created_at đọc được và ≤ now()
+              = grant.effective_from  nếu không                (cột chịu CHECK)
+
+sàn_mới = max(sàn_cũ, grant.effective_from)
 ```
+
+Hai sàn khác nhau vì chúng trả lời hai câu hỏi khác nhau. `sàn_cũ` hỏi "sự kiện này có mới
+hơn lần ghi bản ghi gần nhất không" và bảo vệ FR-033 của spec 024. `sàn_mới` hỏi "mốc bắt đầu
+mới có nằm sau mọi cửa sổ đã có không" và bảo vệ FR-004/FR-008.
+
+Dùng chung một sàn là lỗi: với bản ghi `tương lai`, `created_at` nằm ở quá khứ còn
+`effective_from` nằm ở tương lai, nên sàn lấy từ `created_at` sẽ để bản ghi mới bắt đầu
+**trước** bản ghi `tương lai`, và `TruncateGrantsBefore` không cắt được dòng đó.
 
 | Điều kiện | Kết quả | Căn cứ |
 | --- | --- | --- |
 | Không có bản ghi trước | Cửa sổ gốc, không dịch | Không có bản ghi trước thì không có sàn |
-| `OccurredAt` ≤ sàn | **Từ chối vĩnh viễn**, `stale_event` | FR-002 — bảo vệ FR-033 của spec 024 |
-| `OccurredAt` > sàn | `EffectiveFrom = OccurredAt` | FR-007 — đường đi bình thường, không tác dụng phụ |
-| Sàn + 1µs ≥ `EffectiveTo` | **Từ chối vĩnh viễn** | Cửa sổ rỗng sau khi dịch; không thể cấp quyền vô nghĩa |
+| `OccurredAt` ≤ sàn cũ | **Từ chối vĩnh viễn**, `stale_event` | FR-002 — bảo vệ FR-033 của spec 024 |
+| `OccurredAt` > sàn mới | Giữ nguyên cửa sổ gốc từ `EventGrantWindow` (không phải `OccurredAt` — nhánh `EXTENDED` dùng `EffectiveTo − DurationDays`) | FR-007 — đường đi bình thường, không tác dụng phụ |
+| Sàn mới + 1µs ≥ `EffectiveTo` | **Từ chối vĩnh viễn** | FR-017 — cửa sổ rỗng sau khi dịch |
 
 ### Vì sao một nguồn sự thật là bắt buộc
 
@@ -108,24 +118,30 @@ Tập trung vào nhánh tạo bản ghi mới (`EXTENDED`), là nhánh mà 027 s
                         không     │        có
                    ┌───────────────┘         └──────────────┐
                    ▼                                       ▼
-EffectiveFrom = OccurredAt          dựng sàn từ created_at
-           (không dịch — FR-007)               hoặc effective_from
-                   │                                       │
+       giữ nguyên cửa sổ gốc                dựng sàn cũ từ created_at
+       từ EventGrantWindow                  (lùi effective_from nếu không tin được)
+       (không dịch — FR-007)                              │
                    │                          ┌────────────┴────────────┐
-                   │                    OccurredAt ≤ sàn          OccurredAt > sàn
+                   │                    OccurredAt ≤ sàn cũ     OccurredAt > sàn cũ
                    │                          │                       │
                    │                          ▼                       ▼
-                   │                  TỪ CHỐI VĨNH VIỄN        EffectiveFrom = max(
-                   │                  stale_event                 OccurredAt, sàn+1µs)
+                   │                  TỪ CHỐI VĨNH VIỄN        sàn mới = max(sàn cũ,
+                   │                  stale_event                 prior.effective_from)
                    │                  (FR-002)                          │
                    │                                                      ▼
-                   │                                        sàn+1µs ≥ EffectiveTo?
-                   │                                       có            │ không
+                   │                                      cửa sổ gốc ≤ sàn mới?
+                   │                                       không          │ có
                    │                                        ▼            ▼
-                   │                                 TỪ CHỐI VĨNH VIỄN   EffectiveFrom =
-                   │                                 (cửa sổ rỗng)      sàn+1µs
-                   │                                       │                │
-                   └───────────────────────┬───────────────┴────────────────┘
+                   │                              giữ cửa sổ gốc    sàn mới + 1µs
+                   │                              (không dịch)              │
+                   │                                                          ▼
+                   │                                            sàn mới+1µs ≥ EffectiveTo?
+                   │                                              có          │ không
+                   │                                               ▼          ▼
+                   │                                       TỪ CHỐI VĨNH VIỄN  EffectiveFrom =
+                   │                                       (FR-017)           sàn mới+1µs
+                   │                                               │              │
+                   └───────────────────────┬───────────────────────┴──────────────┘
                                            ▼
                         TruncateGrantsBefore(userID, EffectiveFrom)   ← cùng một giá trị
                         + CreateGrant(effective_from = EffectiveFrom)

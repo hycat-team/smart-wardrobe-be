@@ -54,7 +54,7 @@ không dùng `%w`, khiến `errors.As` không bóc được. Nếu xảy ra, ph�
 
 **Câu hỏi**: FR-004/FR-005 yêu cầu tính lại thời điểm bắt đầu **bên trong** giao dịch. Nhưng
 `grant` được dựng ở `grant_uc.go:207`, **ngoài** giao dịch, và `retirePreviousGrants`
-(`grant_uc.go:238`) lại **tự tính lại** cửa sổ từ sự kiện ở `grant_uc.go:279`. Tính lại ở
+(`grant_uc.go:530`) lại **tự tính lại** cửa sổ từ sự kiện ở `grant_uc.go:543`. Tính lại ở
 đâu cho hai bên cùng nhìn một giá trị?
 
 **Phát hiện**: Đây là phát hiện cấu trúc quan trọng nhất của đặc tả này.
@@ -105,10 +105,10 @@ gian kỹ thuật không thành đường tấn công?
 **Phát hiện**: Bản ghi có bốn mốc thời gian: `effective_from` (giá trị nghiệp vụ),
 `effective_to`, `created_at` và `updated_at`. **Không có cột `started_at`** — bảng
 `aiexecutor.ai_policy_grants` trong `database/scripts/closy-db-schema.sql` không hề có cột
-đó, và thực thể `AIPolicyGrant` (`domain/entities/policy.go:53`) kế thừa `CreatedAt` từ
+đó, và thực thể `AIPolicyGrant` (`domain/entities/policy.go:52`) kế thừa `CreatedAt` từ
 `BaseEntity`.
 
-Điều đáng chú ý hơn: `rejectStaleEvent` (`grant_uc.go:237`) **không** so sánh với bất kỳ cột
+Điều đáng chú ý hơn: `rejectStaleEvent` (`grant_uc.go:365`) **không** so sánh với bất kỳ cột
 thời gian nào của bản ghi. Nó gọi `ExtractOccurredAt(current)`
 (`grant_entitlements.go`), đọc `occurred_at` **từ vỏ bọc `envelope` trong
 `policy_snapshot`**, và khi đọc không được thì **từ chối vĩnh viễn** — không có đường lùi nào
@@ -195,11 +195,11 @@ triển khai, không phải một thao tác độc lập.
 
 ## R-006 — Danh sách phát hiện ngoài phạm vi
 
-Bốn phát hiện được nêu ở mục "Ngoài phạm vi" của đặc tả được ghi vào
+Sáu phát hiện được ghi ở mục "Ngoài phạm vi" của đặc tả được ghi vào
 [deferred.md](deferred.md) theo [hiến pháp §7](../../.specify/memory/constitution.md):
 không có kiểm tra cơ học nào cản một mục ngoài phạm vi, nên nghĩa vụ của người viết là viết
 nó ra. Cùng quy ước đó, phát hiện ở CHK028 — dòng mô tả sai phạm vi `stale_event` trong
-`contracts/subscription-plan-changed-event.md` — được đính chính ngay trong đợt này vì nó
+`specs/024-admin-premium-grant/contracts/subscription-plan-changed-event.md` — được đính chính ngay trong đợt này vì nó
 mô tả sai chính hành vi mà 027 sửa; để một hợp đồng mô tả sai hành vi đang được sửa là loại
 nợ mà người đọc hợp đồng sẽ không phát hiện.
 

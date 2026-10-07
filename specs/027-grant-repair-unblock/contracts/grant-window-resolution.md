@@ -2,8 +2,10 @@
 
 **Ngày**: 2026-10-07 | **Kế hoạch**: [plan.md](plan.md) | **Đặc tả**: [spec.md](spec.md)
 
-Hợp đồng giữa tầng ứng dụng và tầng hạ tầng: một hàm thuần trả về cửa sổ mức quyền cuối
-cùng. Không có hợp đồng mạng nào ở đây — đây là hợp đồng **nội bộ giữa các hàm**, ghi ra
+Hợp đồng giữa tầng ứng dụng và tầng hạ tầng: một hàm trả về cửa sổ mức quyền cuối
+cùng. Hàm này **không thuần** — nó đọc bản ghi mới nhất qua repository — nên chỉ được gọi
+bên trong giao dịch, sau khi đã giữ khoá tài khoản. Chỉ phần dựng sàn cũ mới thuần. Không có
+hợp đồng mạng nào ở đây — đây là hợp đồng **nội bộ giữa các hàm**, ghi ra
 để `tasks.md` và kiểm thử có một chuẩn so sánh.
 
 ---
@@ -59,48 +61,79 @@ func (uc *GrantUseCase) resolveGrantWindow(
 ```text
 window := EventGrantWindow(event)
 
-prior := GetNewestGrantForOrdering(ctx, userID)
+prior := GetNewestGrantForOrdering(ctx, userID)     // ORDER BY effective_from DESC
 nếu prior == nil:
     trả về window                                  // không có sàn nào để dịch
 
-floor := prior.CreatedAt
-nếu floor là zero hoặc floor > now():
-    floor = prior.EffectiveFrom                   // cột chịu CHECK, R-003
+// ---- Sàn cũ: chỉ chống hồi sinh, KHÔNG dùng để dịch ----
+staleFloor := prior.CreatedAt
+nếu staleFloor là zero hoặc staleFloor > now():
+    staleFloor = prior.EffectiveFrom               // cột chịu CHECK, R-003
+    GHI LOG cảnh báo FR-018 (user_id, grant_id)
 
-nếu event.OccurredAt <= floor:
+nếu event.OccurredAt <= staleFloor:
     trả về lỗi từ chối vĩnh viễn, mã stale_event   // FR-002
 
-nếu window.EffectiveFrom <= floor:
-    shifted := floor + 1µs
+// ---- Sàn mới: tránh chồng lấn, mới là chỗ để dịch ----
+orderFloor := max(staleFloor, prior.EffectiveFrom)  // FR-004a
+
+nếu window.EffectiveFrom <= orderFloor:
+    shifted := orderFloor + 1µs                     // FR-006
     nếu window.EffectiveTo != nil && shifted >= *window.EffectiveTo:
-        trả về lỗi từ chối vĩnh viễn               // cửa sổ rỗng sau khi dịch
+        trả về lỗi từ chối vĩnh viễn               // FR-017, cửa sổ rỗng
     window.EffectiveFrom = shifted
 
 trả về window
 ```
 
+### Vì sao phải có hai sàn
+
+Đây là điểm dễ làm sai nhất, nên ghi rõ. Nếu chỉ có một sàn lấy từ `created_at`:
+
+| Kịch bản | `created_at` | `effective_from` | Sàn một | Kết quả |
+| --- | --- | --- | --- | --- |
+| Bản ghi thường | quá khứ | quá khứ | `created_at` | đúng |
+| Bản ghi `tương lai` | quá khứ | **30 ngày nữa** | `created_at` | **sai** |
+
+Ở hàng thứ hai, sàn là `created_at` (quá khứ), nên `sàn + 1µs` vẫn **nhỏ hơn** `effective_from`
+của bản ghi `tương lai`. Bản ghi mới bắt đầu **trước** nó, và `TruncateGrantsBefore` — vốn
+chỉ chạm vào dòng có `effective_from < cutoff` — **không** cắt được dòng `tương lai`. Kết quả:
+hai cửa sổ đang hiệu lực chồng lấn, phá FR-008, và bộ đọc không còn nói được cái nào áp dụng.
+
+Vì vậy sàn dịch phải là `max(staleFloor, prior.EffectiveFrom)`. Sàn cũ vẫn giữ vai trò chống
+hồi sinh — nó hỏi "sự kiện này có mới hơn lần ghi bản ghi gần nhất không" — và sàn mới hỏi
+"mốc bắt đầu mới có nằm sau mọi cửa sổ đã có không". Hai câu hỏi khác nhau, không thể dùng
+một đáp số cho cả hai.
+
 ### Bất biến đầu ra
 
 | # | Bất biến | Căn cứ |
 | --- | --- | --- |
-| G1 | `EffectiveFrom > floor` **luôn** | FR-004 |
-| G2 | `EffectiveFrom − EventGrantWindow(event).EffectiveFrom ≤ 1µs` | FR-006 |
-| G3 | Khi `EventGrantWindow(event).EffectiveFrom > floor`, đầu ra **bằng** cửa sổ gốc | FR-007 — không tác dụng phụ |
+| G1 | `EffectiveFrom > orderFloor ≥ prior.EffectiveFrom` **luôn** | FR-004, FR-004a |
+| G2 | `EffectiveFrom − orderFloor ≤ 1µs` khi có dịch | FR-006 |
+| G3 | Khi `EventGrantWindow(event).EffectiveFrom > orderFloor`, đầu ra **bằng** cửa sổ gốc | FR-007 — không tác dụng phụ |
 | G4 | `EffectiveTo == nil` hoặc `EffectiveTo > EffectiveFrom` | Không bao giờ vi phạm `CHECK` |
 | G5 | Không đọc bảng nào ngoài `aiexecutor.ai_policy_grants` | Hiến pháp §I, §II |
 | G6 | Không ghi gì | FR-012 — bỏ qua và từ chối đều không có tác dụng phụ |
+
+G2 đo **độ dư quanh sàn mới**, không phải tổng độ dịch so với mốc sự kiện — xem FR-006. Một
+sự kiện đến muộn 5 giây thì tổng dịch là 5 giây 1 µs và G2 vẫn đúng.
 
 ### Khi nào trả về lỗi
 
 | Tình huống | Phân loại | Mã lý do |
 | --- | --- | --- |
-| `OccurredAt ≤ floor` | `RejectionError` (vĩnh viễn, không requeue) | `stale_event` |
-| Dịch xong thì cửa sổ rỗng | `RejectionError` (vĩnh viễn) | `stale_event` |
+| `OccurredAt ≤ sàn cũ` | `RejectionError` (vĩnh viễn, không requeue) | `stale_event` |
+| Dịch xong thì cửa sổ rỗng (FR-017) | `RejectionError` (vĩnh viễn) | `stale_event` |
 | Lỗi cơ sở dữ liệu khi đọc `prior` | `RetryableError` (thử lại) | `transient_failure` |
 
 > Cả hai trường hợp từ chối dùng chung `stale_event`. FR-002 yêu cầu giữ đúng hành vi sẵn có
 > của nhánh này, nên thêm một mã mới ở đây sẽ phá yêu cầu đó. Trường hợp thứ hai là
 > *hệ quả* của việc sự kiện đến quá muộn, không phải một nguyên nhân mới.
+>
+> **Hai nhánh từ chối này giờ có FR riêng** (FR-002 và FR-017). Nhánh "cửa sổ rỗng" trước đây
+> chỉ tồn tại trong hợp đồng này mà không có yêu cầu nào ủng quyền, dù nó có tác dụng phụ với
+> khách hàng.
 
 ---
 
@@ -127,6 +160,12 @@ Sai thứ tự nào cũng hỏng:
 | `retirePreviousGrants` tự tính lại cửa sổ | Mốc cắt lệch mốc bắt đầu 1 µs → chồng lấn hoặc khe hở |
 | Gán `grant.EffectiveFrom` **trước** khoá | Ghi đè giá trị đã tính dưới khoá bằng giá trị đo trước khoá |
 
+**`rejectStaleEvent` bị XOÁ khỏi đường đi.** Nó không còn xuất hiện trong 6 bước trên, và
+không được giữ lại ở vị trí cũ (`grant_uc.go:266`) — giữ cả hai nghĩa là chạy kiểm tra thứ
+tự hai lần với hai tiêu chí khác nhau, và `rejectStaleEvent` vẫn từ chối vĩnh viễn khi
+`ExtractOccurredAt` thất bại, tức là **giữ nguyên đúng lỗi đang sửa**. Phần cảnh báo và bộ
+đếm của nhánh từ chối được chuyển vào `resolveGrantWindow` (FR-002, FR-018).
+
 `grant` được dựng ở `grant_uc.go:207`, **ngoài** giao dịch. Điều đó vẫn đúng cho
 `buildGrant`: nó chỉ ghép dữ liệu tĩnh từ sự kiện và chính sách. Chỉ `EffectiveFrom` — trường
 duy nhất phụ thuộc trạng thái — được gán lại bên trong giao dịch ở bước 4.
@@ -145,6 +184,29 @@ MỚI: retirePreviousGrants(ctx context.Context, event *PlanChangedEvent, cutoff
 | `DeletesPendingGrants(EventType)` | `DeleteFutureGrants` | Không |
 | `ClosesPriorGrants(EventType)` | `CloseActiveGrants(userID, event.EffectiveAt, event.OccurredAt)` | **Không** — nhánh thu hồi không tạo bản ghi mới, nên FR-004 không áp dụng |
 | còn lại (`EXTENDED`) | `TruncateGrantsBefore(userID, cutoff, event.OccurredAt)` | **Có** — `cutoff` là tham số, không tự tính lại |
+
+**Ba nơi gọi, không phải một.** Đây là điểm dễ sót:
+
+| Nơi gọi | Truyền gì | Vì sao |
+| --- | --- | --- |
+| `grant_uc.go:269` — đường tạo grant | `window.EffectiveFrom` từ `resolveGrantWindow` | Đường duy nhất có bước chốt cửa sổ dưới khoá |
+| `grant_uc.go:413` — đường thu hồi | `EventGrantWindow(event).EffectiveFrom` | Không tạo grant, không dịch cửa sổ |
+| `grant_uc.go:500` — hạ cấp không định giá được | `EventGrantWindow(event).EffectiveFrom` | Như trên |
+
+Bỏ sót nơi gọi thứ hai hoặc thứ ba thì **không biên dịch** — nhưng **truyền nhầm mốc** thì
+biên dịch vẫn qua và sai hành vi. Vì vậy cả ba phải được sửa có chủ đích, không phải để trình
+biên dịch bắt lỗi.
+
+### 4b. Kiểm tra thứ tự dùng chung
+
+`rejectStaleEvent` được gọi ở **hai** nơi: `grant_uc.go:266` (đường tạo grant — sẽ bị thay bằng
+`resolveGrantWindow`) và `grant_uc.go:497` (hạ cấp tới một gói không định giá được — **giữ
+lại**).
+
+Phần dựng sàn cũ phải là một hàm thuần dùng chung để cả hai đường đều lùi về `created_at`, theo
+FR-019. Nếu chỉ sửa đường tạo grant thì đường hạ cấp vẫn dừng vĩnh viễn trên chính dữ liệu
+hỏng mà 027 khai là đang sửa — một lần sửa nửa vời, tệ hơn là không sửa gì vì nó tạo cảm giác
+đã xong.
 
 ---
 

@@ -25,7 +25,7 @@ Phần sửa dữ liệu vận hành **không** nằm trong kế hoạch này �
 khai. Thao tác vận hành nằm ở [runbook.md](runbook.md).
 
 Phát hiện cấu trúc quan trọng nhất, từ R-002: FR-005 **không thể thực hiện bằng cách vá một
-chỗ**. `retirePreviousGrants` tự tính lại cửa sổ từ sự kiện (`grant_uc.go:279`), trong khi
+chỗ**. `retirePreviousGrants` tự tính lại cửa sổ từ sự kiện (`grant_uc.go:543`), trong khi
 `grant` được dựng ngoài giao dịch (`grant_uc.go:207`). Nếu tính lại ở một chỗ, mốc cắt và
 mốc bắt đầu lệch nhau 1 µs — đủ để tạo chồng lấn hoặc khe hở. Phải có một nguồn sự thật.
 
@@ -64,15 +64,15 @@ sẵn và dùng chính các truy vấn đã được gọi
 
 | Điều lệ | Áp dụng | Kết quả |
 | --- | --- | --- |
-| **§I** Dịch vụ triển khai độc lập | Bảng `ai_policy_grants` chỉ được dịch vụ AI ghi. FR-013 cấm sửa SQL trực tiếp, và đường sửa là đường hành chính có sự kiện. | **Đạt** |
-| **§II** Ranh giới mô-đun nghiêm ngặt | Sửa nằm trong `services/ai/.../aiexecutor`, không đọc bảng của dịch vụ khác. `resolveGrantWindow` là hàm thuần trong tầng ứng dụng, không cần truy cập repository khác. | **Đạt** |
+| **§I** Dịch vụ triển khai độc lập | Bảng `ai_policy_grants` chỉ được dịch vụ AI ghi. FR-013 cấm sửa SQL trực tiếp, và đường sửa là đường hành chính có sự kiện. **Lưu ý đã ghi ở `deferred.md` D-06**: DDL của bảng nằm trong lịch sử migration của dịch vụ Account, nên ưu tiên này đúng cho 027 — 027 không tạo migration nào, nên không cần triển khai lại dịch vụ khác để ship — nhưng nợ lịch sử đó vẫn tồn tại và 027 không sửa. | **Đạt** |
+| **§II** Ranh giới mô-đun nghiêm ngặt | Sửa nằm trong `services/ai/.../aiexecutor`, không đọc bảng của dịch vụ khác. `resolveGrantWindow` nằm trong tầng ứng dụng và chỉ dùng repository của chính mô-đun; nó **không** thuần vì đọc bản ghi mới nhất, nhưng phần dựng sàn cũ thì thuần. | **Đạt** |
 | **§III** Xử lý sự kiện bất đồng bộ | Không thêm hàng đợi, không đổi loại sự kiện. Việc phân loại `23514` thành từ chối vĩnh viễn **giữ** nguyên hành vi không tái phát. | **Đạt** |
 | **§IV** Kiến trúc sạch, phụ thuộc tầng một chiều | `grant_window.go` ở tầng ứng dụng, không phụ thuộc `pgx`. Hằng `23514` và kiểm tra `*pgconn.PgError` đặt ở tầng hạ tầng vì đó là nơi duy nhất biết về Postgres. | **Đạt** |
 | **§V** Chuẩn hoá giao dịch và xử lý lỗi | FR-005 giữ tính lại trong giao dịch sau khoá tài khoản, nên mọi quyết định đều dựa trên trạng thái dưới khoá. | **Đạt** |
 | **§VI** Đường ống AI, chi phí, dự phòng cục bộ | Không có đường dẫn chi phí nào đổi. Việc sửa ảnh chụp chính sách chính là điều kiện để giới hạn chi phí được áp dụng lại. | **Đạt** |
 | **§VII** Tuân thủ mẫu thiết kế | Quyết định nới lỏng bất biến thứ tự có hệ quả bảo mật được nâng thành [ADR 014](../../docs/decisions/014-relax-grant-ordering-invariant.md), không chỉ nằm trong đặc tả. | **Đạt** |
 | **§VIII** Không phụ thuộc nhà cung cấp | `SQLState` là mã do chính PostgreSQL định nghĩa, không phải thông điệp của phiên bản cụ thể. | **Đạt** |
-| **§7** Việc ngoài phạm vi vào `deferred.md` | Bốn phát hiện được ghi ở [deferred.md](deferred.md). | **Đạt** |
+| **§7** Việc ngoài phạm vi vào `deferred.md` | Sáu phát hiện được ghi ở [deferred.md](deferred.md). | **Đạt** |
 
 Kết luận: không có vi phạm. **Complexity Tracking không cần điền.**
 
@@ -131,8 +131,9 @@ services/ai/internal/modules/aiexecutor/
 database/scripts/
 └── 07-verify_policy_grants.sql   # Mục 4 đổi phạm vi theo FR-014..FR-016
 
-contracts/
-└── subscription-plan-changed-event.md  # Đính chính dòng mô tả stale_event (CHK028)
+specs/024-admin-premium-grant/contracts/
+└── subscription-plan-changed-event.md  # Đính chính dòng mô tả stale_event (CHK028);
+                                        # thêm hàng cho mã lý do mới (FR-011)
 
 docs/decisions/
 └── 014-relax-grant-ordering-invariant.md  # MỚI
@@ -158,12 +159,25 @@ thứ tự:
 1. gọi `EventGrantWindow` lấy cửa sổ gốc;
 2. đọc bản ghi mới nhất qua `GetNewestGrantForOrdering`, và **nếu không có** thì trả về cửa
    sổ gốc ngay — không có bản ghi trước thì không có sàn thứ tự;
-3. dựng sàn từ `created_at` nếu nó không nằm trong tương lai so với `now()`, nếu không thì
-   từ `effective_from` (R-003); từ chối vĩnh viễn nếu `event.OccurredAt` không mới hơn sàn
-   (FR-002); nếu còn lại thì nâng `EffectiveFrom` lên `sàn + 1 µs`, không vượt quá mức đó.
+3. dựng **sàn cũ**: `created_at` nếu nó đọc được và không nằm trong tương lai so với `now()`,
+   nếu không thì `effective_from` (R-003), kèm cảnh báo FR-018 ở nhánh lùi; từ chối vĩnh viễn
+   nếu `event.OccurredAt` không mới hơn sàn cũ (FR-002);
+4. dựng **sàn mới** `= max(sàn cũ, prior.EffectiveFrom)` (FR-004a); nếu cửa sổ gốc chưa vượt
+   sàn mới thì nâng `EffectiveFrom` lên `sàn mới + 1 µs`, và từ chối vĩnh viễn nếu dịch xong
+   thành cửa sổ rỗng (FR-017).
 
 Sau đó `grant.EffectiveFrom` được gán bằng `window.EffectiveFrom` và `retirePreviousGrants`
 **nhận** mốc cắt đó làm tham số.
+
+**Vì sao phải có hai sàn, không phải một.** Đây là phát hiện của vòng phân tích, và nó không
+phải chuyện trình bày. Với một bản ghi `tương lai`, `created_at` nằm ở **quá khứ** còn
+`effective_from` nằm ở **tương lai**. Nếu sàn lấy từ `created_at` một mình thì
+`sàn + 1 µs` vẫn nhỏ hơn `effective_from` của bản ghi đó, bản ghi mới bắt đầu **trước** nó,
+và `TruncateGrantsBefore` — vốn chỉ chạm dòng có `effective_from < cutoff` — **không** cắt
+được dòng `tương lai`. Kết quả là hai cửa sổ đang hiệu lực chồng lấn, tức FR-008 vỡ đúng ở
+trường hợp mà hàm `GetNewestGrantForOrdering` được viết ra để bảo vệ
+(`ai_policy_grant_writer.go:106-112` nói rõ nếu bỏ qua bản ghi `tương lai` thì một sự kiện
+đến muộn sẽ lọt vào phía sau nó).
 
 Tên gọi có chủ đích: `EventGrantWindow` là cái *sự kiện nói*; `resolveGrantWindow` là cái
 *trạng thái nói*. Rủi ro 2 nêu trên là lý do không được để cả hai tên chung gốc — đọc
@@ -172,9 +186,19 @@ người đọc không có cách nào biết mình đang dùng loại nào.
 
 ### Mục 2 — `retirePreviousGrants` đổi chữ ký
 
-Hiện tại (`grant_uc.go:238`) nó tự gọi `ComputeGrantWindow(event).EffectiveFrom`. Đổi thành
-nhận `cutoff time.Time`. Đây là thay đổi cấu trúc **bắt buộc**, không phải tuỳ chọn: nếu
-không, mốc cắt và mốc bắt đầu lệch nhau (R-002).
+Hiện tại (`grant_uc.go:530`) nó tự gọi `ComputeGrantWindow(event).EffectiveFrom` ở
+`grant_uc.go:543`. Đổi thành nhận `cutoff time.Time`. Đây là thay đổi cấu trúc **bắt buộc**,
+không phải tuỳ chọn: nếu không, mốc cắt và mốc bắt đầu lệch nhau (R-002).
+
+Hàm này được gọi ở **ba** nơi, không phải một: `grant_uc.go:269` (đường tạo grant — truyền mốc
+đã chốt dưới khoá), `grant_uc.go:413` (đường thu hồi) và `grant_uc.go:500` (hạ cấp không định
+giá được). Hai nơi sau không có bước chốt cửa sổ nên truyền `EventGrantWindow(event).EffectiveFrom`.
+
+`rejectStaleEvent` cũng được gọi ở **hai** nơi: `grant_uc.go:266` (đường tạo grant — bị thay
+bằng `resolveGrantWindow`) và `grant_uc.go:497` (nhánh hạ cấp không định giá được — **giữ
+lại**), theo FR-019. Vì vậy phần dựng **sàn cũ** phải là một hàm thuần **dùng chung**: nhánh
+497 không tạo bản ghi mới nên không cần dịch cửa sổ, nhưng nó dùng cùng hàm kiểm tra thứ tự và
+nếu không được sửa thì vẫn dừng vĩnh viễn trên chính dữ liệu hỏng mà 027 khai là đang sửa.
 
 Nhánh `CloseActiveGrants` (thu hồi) giữ nguyên — FR-004 nói về "bản ghi mức quyền mới", và
 nhánh đó không tạo bản ghi mới.
@@ -208,20 +232,21 @@ luận R-004 sai, CHK026 mở lại và `frontend-guide.md` trở thành bắt b
 Ba thay đổi, theo FR-014..FR-016:
 
 - **Lọc theo cửa sổ hiệu lực** (`effective_from <= now() AND (effective_to IS NULL OR
-  effective_to > now())`) và **bỏ hẳn** điều kiện lọc theo trạng thái, khớp đúng điều kiện
+  effective_to > now())`) và **giữ nguyên** việc không lọc theo trạng thái (mục 4 hiện chưa có điều kiện `status` nào để xoá), khớp đúng điều kiện
   bộ đọc dùng (`ai_policy_grant_writer.go:90-96`);
 - tách một truy vấn **thông tin** đếm bản ghi lịch sử có ảnh chụp không đọc được, không tính
   vào kết quả kiểm tra;
-- cập nhật phần mở đầu "sáu bất biến" vì phạm vi của mục 4 đã thay đổi, và dòng trỏ tới
+- cập nhật **mô tả phạm vi** của mục 4 trong phần mở đầu và các dòng `\echo` của nó, giữ nguyên tiêu đề "sáu bất biến" vì mục 4 vẫn là một trong sáu; và dòng trỏ tới
   `restore` ở mục 1 — sau sự cố 027, `restore` là một trong hai nguyên nhân, nên dòng gợi ý
   nó là "cách sửa" là sai.
 
 ### Mục 6 — Đính chính hợp đồng sự kiện
 
-`subscription-plan-changed-event.md` mô tả phạm vi của `stale_event` không khớp với
-`rejectStaleEvent` (`grant_uc.go:237`). Sau 027, hai nghĩa từ chối bằng tên đó đã tách bạch,
-nên mô tả sai sẽ khiến người đọc hợp đồng hiểu nhầm vĩnh viễn. Sửa ngay trong đợt này
-(CHK028).
+`specs/024-admin-premium-grant/contracts/subscription-plan-changed-event.md` mô tả phạm vi của
+`stale_event` không khớp với `rejectStaleEvent` (`grant_uc.go:365`). Sau 027, hai nghĩa từ chối
+bằng tên đó đã tách bạch, nên mô tả sai sẽ khiến người đọc hợp đồng hiểu nhầm vĩnh viễn. Sửa
+ngay trong đợt này (CHK028), và thêm hàng cho mã lý do mới vào bảng mã lý do tối thiểu của hợp
+đồng vì FR-011 bắt buộc nó xuất hiện trong bộ đếm công khai.
 
 ### Mục 7 — Ranh giới với phần sửa dữ liệu vận hành
 
@@ -237,17 +262,17 @@ trong đó là cổng chặn "hãy chắc chắn bản sửa đã lên". Việc 
 
 | Điều lệ | Thay đổi thiết kế có làm hỏng không | Kết quả |
 | --- | --- | --- |
-| **§I** | Không có truy vấn nào mới; không có đường ghi mới. Đường sửa dữ liệu vẫn là đường hành chính có sự kiện. | **Đạt** |
+| **§I** | Không có truy vấn nào mới; không có đường ghi mới; **không** tạo migration nào. Đường sửa dữ liệu vẫn là đường hành chính có sự kiện. Nợ DDL lịch sử ghi ở `deferred.md` D-06. | **Đạt** |
 | **§II** | `resolveGrantWindow` chỉ dùng `aiCostRepo`, cùng repository với phần đang sửa. Không đọc bảng của dịch vụ khác. | **Đạt** |
 | **§III** | Phân loại `23514` thành vĩnh viễn làm giảm thử lại vô hạn. Không thêm hàng đợi. | **Đạt** |
 | **§IV** | `pgconn` chỉ xuất hiện ở tầng hạ tầng. Tầng ứng dụng gọi hàm `isCheckViolation` trả `bool`, không biết Postgres tồn tại. `grant_window.go` vẫn là hàm thuần, không phụ thuộc gì. | **Đạt** |
-| **§V** | Tính lại nằm trong giao dịch, sau `LockGrantsForAccount` (`grant_uc.go:238`). Giao dịch và khoá không đổi. | **Đạt** |
+| **§V** | Tính lại nằm trong giao dịch, sau `LockGrantsForAccount` (`grant_uc.go:269`). Giao dịch và khoá không đổi. | **Đạt** |
 | **§VI** | Không có đường chi phí nào đổi. | **Đạt** |
 | **§VII** | ADR 014 đã tạo. | **Đạt** |
 | **§VIII** | Chỉ dùng `SQLState` và hằng số, không dùng thông điệp lỗi của phiên bản. | **Đạt** |
-| **§7** | `deferred.md` đã tạo với 4 mục. | **Đạt** |
+| **§7** | `deferred.md` đã tạo với 6 mục. | **Đạt** |
 
-Không có vi pham nào được biện minh, nên `Complexity Tracking` vẫn để trống — điều này
+Không có vi phạm nào được biện minh, nên `Complexity Tracking` vẫn để trống — điều này
 đúng với nguyên tắc trong hiến pháp: bảng đó dành cho việc phá vỡ có lý do, không dành cho
 việc ghi lại điều đã tuân thủ.
 

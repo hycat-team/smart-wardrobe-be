@@ -34,7 +34,16 @@ ký, còn quyền AI vẫn ở mức cũ, và không có đường phục hồi.
 điểm hiệu lực của bản ghi mới vào đúng ngày kỳ cước bắt đầu, rồi đóng bản ghi cũ bằng
 chính giá trị đó làm mốc cắt. Khi bản ghi cũ bắt đầu đúng vào ngày đó, mốc cắt trùng
 với điểm bắt đầu, và ràng buộc `effective_to` phải sau `effective_from` từ chối. Trên
-production, **28/28 tài khoản** có đúng đặc điểm đó.
+production, **10 tài khoản** dính đúng đặc điểm đó — và chính 10 tài khoản đó là những tài
+khoản **không** dính nguyên nhân 1, nên con số `10 được sửa` ở trên không mâu thuẫn: một
+tài khoản sửa được là tài khoản không dính nguyên nhân nào.
+
+> **Số liệu đã đối chiếu đến mức nào.** Các con số 28 / 10 sửa / 8 từ chối vì thứ tự / 10
+> vi phạm ràng buộc / 22 bản ghi ảnh chụp không đọc được lấy từ log dịch vụ AI và truy vấn
+> chỉ đọc trước khi viết đặc tả. Riêng câu "28/28 tài khoản có đặc điểm ở dòng trên" là
+> **sai** và đã bị gỡ: con số đúng là 10, và nó suy ra trực tiếp từ số thông điệp nhận được
+> mã `23514`. Một câu khẳng định toàn bộ số liệu "không còn giả định đáng ngờ" sẽ là sai,
+> vì chính câu đó đã sai một lần.
 
 Lỗi này vốn được đóng nhãn là lỗi tạm thời, nên thông điệp bị thử lại 5 lần — mỗi lần
 đều chắc chắn thất bại — rồi mới chết. Nhãn sai làm che mất việc đây là lỗi tất định.
@@ -214,16 +223,32 @@ nhân trong lượt chạy hôm nay.
   thấy rằng bộ đếm từ chối đang chạy trên đồng hồ yếu hơn bình thường.
 
 - **FR-004**: Thời điểm bắt đầu hiệu lực của bản ghi mức quyền mới MUST **lớn hơn nghiêm**
-  thời điểm bắt đầu hiệu lực của mọi bản ghi trước đó của cùng tài khoản.
+  thời điểm bắt đầu hiệu lực của mọi bản ghi trước đó của cùng tài khoản. Vì bản ghi được
+  chọn theo thứ tự `effective_from` giảm dần, điều này tương đương với việc lớn hơn nghiêm
+  `effective_from` của **bản ghi mới nhất**, kể cả khi bản ghi đó có trạng thái `tương lai`.
+
+- **FR-004a**: Hệ thống AI MUST phân biệt hai mốc sàn khác nhau và **không** dùng chung:
+  - **Sàn cũ (chống hồi sinh)**: `created_at` của bản ghi mới nhất khi giá trị đó đọc được và
+    không nằm trong tương lai so với đồng hồ ứng dụng; nếu không thì `effective_from` của
+    chính bản ghi đó. Chỉ sàn này dùng cho FR-002.
+  - **Sàn mới (tránh chồng lấn)**: mức lớn hơn của sàn cũ và `effective_from` của bản ghi mới
+    nhất. Sàn này dùng cho FR-004 và FR-006.
+
+  Việc tách hai sàn là bắt buộc: nếu chỉ dùng sàn cũ thì một bản ghi `tương lai` có
+  `created_at` ở quá khứ nhưng `effective_from` ở tương lai sẽ **không** bị dịch qua, và
+  bản ghi mới sẽ bắt đầu **trước** nó — chồng lấn, phá FR-008.
 
 - **FR-005**: Việc tính lại ở FR-004 MUST thực hiện **bên trong** giao dịch, sau khi đã
   giữ khoá theo tài khoản, và MUST dùng trạng thái mà không giao dịch nào khác có thể thay
   đổi trong lúc đang tính. Nếu không, hai giao dịch sẽ cùng ra một quyết định từ hai
   trạng thái khác nhau.
 
-- **FR-006**: Mức dịch tối đa của thời điểm bắt đầu hiệu lực do FR-004 gây ra MUST
-  **không vượt quá 1 microsecond**. Ràng buộc này bảo đảm thay đổi không làm lệch đáng
-  kể bất kỳ cửa sổ quyền nào.
+- **FR-006**: Mức dịch do FR-004 gây ra MUST là **mức nhỏ nhất cần thiết** và MUST **không
+  vượt quá 1 microsecond ngoài sàn mới**, tức `EffectiveFrom − sàn_mới ≤ 1µs`. Ràng buộc này
+  bảo đảm thay đổi không làm lệch đáng kể bất kỳ cửa sổ quyền nào **ngoài mức chênh lệch
+  sẵn có** giữa sự kiện và sàn. Nó KHÔNG phải giới hạn cho *tổng* độ dịch: một sự kiện đến
+  muộn hơn sàn 5 giây thì tổng dịch là 5 giây 1 µs, và điều đó là bắt buộc — nếu giới hạn
+  tổng dịch ở 1 µs thì FR-004 không thể thoả và FR-008 vỡ.
 
 - **FR-007**: FR-004 MUST là **không có tác dụng phụ** trong vận hành bình thường. Khi
   thời điểm hiệu lực của sự kiện đã lớn hơn mọi bản ghi trước đó, hệ thống MUST giữ nguyên
@@ -268,6 +293,32 @@ nhân trong lượt chạy hôm nay.
   tính vào kết quả kiểm tra. Mục đích là để dữ liệu đời trước vẫn hiện diện khi ai đó
   đọc báo cáo, thay vì biến mất chỉ vì nó không còn ảnh hưởng ai.
 
+- **FR-017**: Khi việc dịch theo FR-004 làm cửa sổ mới rỗng — tức `sàn_mới + 1µs` không nhỏ
+  hơn `effective_to` — hệ thống AI MUST **từ chối vĩnh viễn** thay vì ghi một bản ghi không
+  có khoảng thời gian. Đây là hệ quả trực tiếp của FR-006, nhưng nó **phải** nằm trong đặc
+  tả vì nó có tác dụng phụ với khách hàng: tài khoản sẽ không nhận được gói đã trả tiền, và
+  một quyết định như vậy không được ẩn trong một hợp đồng kỹ thuật.
+
+- **FR-018**: Hệ thống AI MUST ghi một dòng cảnh báo **mỗi lần** sàn cũ buộc phải lùi về
+  `effective_from` vì `created_at` không đọc được hoặc nằm trong tương lai. Dòng cảnh báo
+  MUST mang `user_id` và `grant_id`, để một nhân sự vận hành đọc log thấy số đồng hồ yếu
+  đang chạy trên đường lùi và biết có bao nhiêu bản ghi đang ở trạng thái đó.
+
+  FR-003 yêu cầu dấu vết khi phải dùng thời điểm tạo bản ghi thay cho thời điểm xảy ra
+  trong ảnh chụp chính sách. FR-018 là dấu vết đối ứng cho **nhánh còn lại**: khi
+  `created_at` cũng không đáng tin thì hệ thống dùng `effective_from`, và việc đó cũng phải
+  để lại dấu vết, vì nó là nhánh mà một sự cố giả mạo dữ liệu sẽ tập trung vào.
+
+- **FR-019**: Việc lùi đồng hồ ở FR-001 MUST áp dụng cho **mọi** nơi kiểm tra thứ tự sự kiện,
+  không chỉ đường tạo bản ghi mới. Cụ thể, nhánh thu hồi bản ghi vì hạ cấp tới một gói không
+  định giá được cũng đang kiểm tra thứ tự, và nó **cũng** phải lùi về `created_at` thay vì từ
+  chối vĩnh viễn khi ảnh chụp chính sách không đọc được.
+
+  Lý do phải nêu rõ: nhánh đó **không** tạo bản ghi mới, nên FR-004..FR-007 không áp dụng và nó
+  không cần dịch cửa sổ. Nhưng nó dùng **cùng** một hàm kiểm tra thứ tự, và nếu chỉ sửa một
+  nhánh thì nhánh còn lại giữ nguyên đúng cái khoá chết mà 027 khai là đang sửa — một lần sửa
+  nửa vời, tệ hơn là không sửa gì vì nó tạo cảm giác đã xong.
+
 ### Ràng buộc kiến trúc
 
 - **AC-01**: Dịch vụ AI MUST **không** đọc bảng của dịch vụ Account để suy ra gói cước
@@ -303,20 +354,23 @@ nhân trong lượt chạy hôm nay.
   tài khoản đó bị bỏ qua.
 - **SC-002**: 0 tài khoản nào có từ hai bản ghi mức quyền đang hiệu lực cùng lúc, trên mọi
   môi trường, sau bất kỳ lượt sửa nào.
-- **SC-003**: Mức dịch thời điểm bắt đầu hiệu lực tối đa quan sát được là **1 microsecond**;
-  trường hợp vận hành bình thường là **0**.
+- **SC-003**: Mức dịch thời điểm bắt đầu hiệu lực **vượt quá sàn thứ tự không quá 1
+  microsecond** — tức `EffectiveFrom − sàn ≤ 1µs`; trường hợp vận hành bình thường là **0**.
+  Lưu ý cách đọc: con số này đo **độ dư quanh sàn**, không phải tổng độ dịch so với thời điểm
+  hiệu lực của sự kiện. Một sự kiện đến muộn hơn sàn 5 giây thì tổng dịch là 5 giây 1 µs,
+  và điều đó là bắt buộc — xem FR-006.
 - **SC-004**: Một vi phạm ràng buộc dữ liệu được báo **đúng một lần** và đi thẳng vào hàng
   đỗi chết; số lần thử lại bằng 0.
 - **SC-005**: Sau khi chạy công cụ khôi phục trên production, kiểm tra toàn vẹn trả về **0**
   ở mục "tài khoản có gói nhưng không có bản ghi mức quyền" và **0** ở mục "ảnh chụp chính
   sách rỗng hoặc thiếu" — với mục thứ hai đã thu hẹp phạm vi theo FR-014.
-- **SC-008**: Con số bản ghi lịch sử có ảnh chụp chính sách không đọc được **vẫn được báo
-  cáo** sau khi mục kiểm tra về 0. Nếu dòng thông tin này biến mất khỏi báo cáo, thì việc
-  thu hẹp phạm vi đã xoá dữ liệu thay vì chỉ đo lại nó — và mức đó chưa được chấp nhận.
 - **SC-006**: 0 thông điệp nào bị đưa vào hàng đỗi chết mà không để lại một dấu vết truy
   vết được gồm tài khoản, mã lý do và thông điệp nguyên nhân.
 - **SC-007**: Một sự cố tạm thời thật sự vẫn được thử lại và cuối cùng thành công — việc
   phân loại lại không làm hỏng đường phục hồi đã có.
+- **SC-008**: Con số bản ghi lịch sử có ảnh chụp chính sách không đọc được **vẫn được báo
+  cáo** sau khi mục kiểm tra về 0. Nếu dòng thông tin này biến mất khỏi báo cáo, thì việc
+  thu hẹp phạm vi đã xoá dữ liệu thay vì chỉ đo lại nó — và mức đó chưa được chấp nhận.
 
 ## Assumptions
 
@@ -352,12 +406,15 @@ nhân trong lượt chạy hôm nay.
   khoản development không có bản ghi mức quyền nào; đường suy giảm hai tầng xử lý đúng và
   đây không phải điều kiện production.
 - **Thay đổi tập loại sự kiện, hợp đồng sự kiện, hoặc nội dung ảnh chụp chính sách.**
+- **Quyền sở hữu DDL của bảng mức quyền.** Ràng buộc `CHECK` của bảng do migration của dịch
+  vụ Account tạo, và `services/ai/database/migrations/` hiện rỗng. 027 không tạo migration
+  nào nên không làm nợ này nặng thêm; ghi ở `deferred.md` D-06.
 
 ## Câu hỏi cần làm rõ
 
 Không có. Các quyết định còn bỏ ngỏ đã được chốt trước khi đặc tả:
 
-- Mức dịch tối đa **1 microsecond** — đã chốt, và FR-006 ghi lại để ràng buộc.
+- Độ dư quanh sàn tối đa **1 microsecond** — đã chốt, và FR-006 ghi lại để ràng buộc.
 - Dùng **thời điểm tạo bản ghi** làm đồng hồ thay thế — đã chốt, FR-001.
 - Việc sửa thực hiện ở **phía dịch vụ AI** trong giao dịch — đã chốt, FR-004 và FR-005.
 - **Không** thêm cờ đặc quyền — đã chốt, AC-02.
