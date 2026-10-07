@@ -283,6 +283,29 @@ dùng khác không bị ảnh hưởng, nhưng dòng `stack` là điểm khởi 
 nguyên nhân. Đây là lý do `stack` được ghi kèm: goroutine chết không phải goroutine
 nhận request, nên nếu không có nó thì gần như không truy vết được.
 
+### Hai lỗi grant đã biết — sự kiện chết trong hàng đỗi chết
+
+Hai lỗi dưới đây làm một sự kiện `subscription.plan.changed` bị từ chối, và hậu quả
+giống nhau: **tài khoản không đổi entitlement, thông điệp nằm chết và không tự phục
+hồi.**
+
+```
+# Cảnh báo 1 — grant hiện hành không có envelope
+docker logs ai-closy-dev 2>&1 | grep 'không đọc được thời điểm xảy ra'
+
+# Cảnh báo 2 — đóng grant vi phạm CHECK constraint
+docker logs ai-closy-dev 2>&1 | grep 'user_ai_policy_grants_check'
+```
+
+`stale_event` trong `grant_rejected_by_reason` **không** luôn có nghĩa sự kiện đến
+muộn. Một grant không có `envelope` cũng tạo ra đúng mã đó, vì bước kiểm tra thứ tự
+buộc phải đọc `occurred_at` từ chính envelope đang hỏng. Hai nguyên nhân đó cần hai
+cách sửa khác nhau, nên đừng đọc mã lý do này như một kết luận.
+
+Cả hai đều là **lỗi tất định** — chạy lại không giúp ích. Xem
+`grant-restore-runbook.md` để biết vì sao công cụ sửa hiện không dùng được trên
+production, và phải làm gì trước khi chạy lại.
+
 Chi tiết đầy đủ về từng mã lý do: `specs/024-admin-premium-grant/quickstart.md` §
 "Cấu hình cảnh báo".
 
