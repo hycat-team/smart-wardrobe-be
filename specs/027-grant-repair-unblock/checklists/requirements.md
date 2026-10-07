@@ -56,16 +56,24 @@ nên chúng vẫn kiểm chứng được mà không cần biết cách hiện t
 
 ## Tài liệu cần tạo ở giai đoạn kế hoạch
 
-- [ ] CHK024 `plan.md` — chốt vị trí sửa và cơ chế tính lại thời điểm bắt đầu
-- [ ] CHK025 ADR 014 — quyết định nới lỏng chốt thứ tự bằng đồng hồ thay thế. Chốt này
-  có hệ quả bảo mật nên không được chỉ nằm trong `spec.md`.
-- [ ] CHK026 `frontend-guide.md` — FR-011 làm phản hồi sức khoẻ dịch vụ có thể xuất hiện
-  thêm một khoá mới trong `grant_rejected_by_reason`. Theo quy tắc hiến pháp, đây là thay
-  đổi hình dạng phản hồi và cần hướng dẫn, hoặc phải nêu rõ trong `tasks.md` là không
-  có thay đổi phía client. Quyết định này thuộc `plan.md`, không thuộc `spec.md`.
-- [ ] CHK027 `deferred.md` — mục "Ngoài phạm vi" đã liệt kê bốn phát hiện
-- [ ] CHK028 Đính chính dòng mô tả sai phạm vi `stale_event` trong
-  `contracts/subscription-plan-changed-event.md`
+- [x] CHK024 `plan.md` — đã tạo. Mục 1 chốt `resolveGrantWindow` và `EventGrantWindow`; Mục 2
+  chốt `retirePreviousGrants` đổi chữ ký. Phát hiện cấu trúc quan trọng nhất: FR-005 **không
+  thể** thực hiện bằng cách vá một chỗ, vì `retirePreviousGrants` và `buildGrant` mỗi cái
+  tự tính lại cửa sổ của riêng nó.
+- [x] CHK025 ADR 014 — đã tạo `docs/decisions/014-relax-grant-ordering-invariant.md`. Ghi
+  rõ đây là **sự nới lỏng thật**: bản ghi mới nhất không còn bảo đảm có thời điểm bắt đầu
+  lớn nhất tuyệt đối, chỉ lớn hơn nghiêm. Nêu cả hệ quả về lệch đồng hồ.
+- [x] CHK026 **Không** cần `frontend-guide.md`. R-004 kết luận nhãn của
+  `grant_rejected_by_reason` là `string` tự do, không phải kiểu liệt kê đóng, nên khóa mới
+  không làm vỡ client đọc theo khoá. Kết luận này **có điều kiện**: Mục 4 của `plan.md` và
+  K4 của `quickstart.md` yêu cầu xác nhận bằng chứng trước khi đóng. Nếu nhãn hoá ra là
+  kiểu đóng, mục này mở lại và `frontend-guide.md` trở thành bắt buộc.
+- [x] CHK027 `deferred.md` — đã tạo, 5 mục. D-03 ghi rõ nó **làm suy yếu** FR-014/FR-015:
+  nếu ai đó đổi bộ đọc để lọc theo trạng thái thì mục 4 của kiểm tra toàn vẹn và SC-005 hỏng
+  theo.
+- [x] CHK028 Dòng mô tả sai phạm vi `stale_event` trong
+  `contracts/subscription-plan-changed-event.md` — đính chính trong Mục 6 của `plan.md`,
+  giao cho một mục của `tasks.md`.
 - [x] CHK029 `runbook.md` — đã tạo trong thư mục gốc spec. Chốt đường sửa là đường ghi
   hành chính `POST /admin/subscription-grants` với khoá sự kiện mới, và bắt buộc tắt
   `EMAIL_ENABLED` trong suốt thao tác.
