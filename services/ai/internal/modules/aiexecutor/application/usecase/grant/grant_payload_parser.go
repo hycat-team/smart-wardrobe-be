@@ -288,12 +288,12 @@ func ParsePlanChangedPayload(log logger.Interface, payload aiexecutor_dto.PlanCh
 	// 024 T168: a renewal is the one change type whose window is COMPUTED from
 	// durationDays, so without it the rule FR-032 states is undefined.
 	//
-	// ComputeGrantWindow used to fall through to the ordinary branch when the value
+	// EventGrantWindow used to fall through to the ordinary branch when the value
 	// was absent or non-positive, which set the start to EffectiveAt and the status to
 	// Active. For a renewal that hands the entitlement over the moment the event
 	// arrives instead of at "new expiry minus duration" — opening the account early,
 	// which grants a period nobody paid for and does it silently. That is the exact
-	// outcome the comment inside ComputeGrantWindow says to avoid.
+	// outcome the comment inside EventGrantWindow says to avoid.
 	//
 	// Refused at the parser rather than patched downstream, so nothing is written and
 	// the existing `missing_required_field` reason applies: no new reason code, no

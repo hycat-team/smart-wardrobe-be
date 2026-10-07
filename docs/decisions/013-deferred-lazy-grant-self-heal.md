@@ -86,9 +86,27 @@ Nợ kỹ thuật được ghi lại ở đây để khi có tín hiệu thật 
 `cost_fallback_by_reason.tier1_default_policy` tăng liên tục trên dữ liệu **mới**)
 thì có một đường đã nghiên cứu sẵn thay vì phải phân tích lại từ đầu.
 
-**Điều kiện để mở lại:** bộ đếm trên tăng trên dữ liệu tạo sau ngày quyết định này.
-Đó là thứ phân biệt "dữ liệu đời trước" với "đường ghi đang hỏng", và nó là thứ quyết
-định có đáng làm hay không.
+**Một lượt chạy thật đã làm rõ điều §2 chưa nói đủ.** Ngày 2026-10-07, chạy
+`RestorePolicyGrants` trên production cho 28 tài khoản: **10 được sửa, 18 bị từ chối
+vĩnh viễn.** Nguyên nhân không phải dữ liệu đời trước như giả định ở đây, mà là hai
+lỗi trong chính đường sửa:
+
+1. `rejectStaleEvent` từ chối sự kiện khi grant hiện hành không có `envelope` —
+   đúng dữ liệu cần sửa là thứ nó không đọc được. Deadlock khởi tạo.
+2. `RestorePolicyGrants` ghim `EffectiveAt = subscription.started_at`, rồi đóng
+   grant cũ với cutoff bằng giá trị đó. Khi grant cũ bắt đầu đúng tại `started_at`
+   thì `effective_to == effective_from` và constraint
+   `user_ai_policy_grants_check` từ chối. Trên production, **28/28 tài khoản** rơi
+   vào trường hợp này.
+
+Hai lỗi này được theo dõi ở spec 027, không phải ở đây. Điều ADR này sửa là kết luận
+"chạy một lượt là xong": không đúng, và lượt đó còn làm mất vĩnh viễn khả năng chạy
+lại qua cùng endpoint, vì event key đã bị ghi.
+
+**Điều kiện để mở lại:** bộ đếm `cost_fallback_by_reason.tier1_default_policy` tăng
+trên dữ liệu **tạo sau** ngày quyết định này. Đó là thứ phân biệt "dữ liệu đời trước"
+với "đường ghi đang hỏng". Với lượt chạy đã nêu, con số này bằng 0 trên production —
+không phải vì mọi thứ ổn, mà vì lỗi nằm ở chỗ khác và im lặng hơn.
 
 ## 3. Consequences
 
@@ -111,6 +129,11 @@ thì có một đường đã nghiên cứu sẵn thay vì phải phân tích l�
 - Bán kính của lần chạy restore đầu tiên rộng hơn nhiều so với "sửa một tài khoản":
   nó đóng và tạo lại grant cho **mọi** tài khoản còn hạn, kể cả tài khoản đang có
   grant tốt, và snapshot được dựng lại từ cấu hình chính sách tại thời điểm chạy.
+- **Lượt chạy thật đã chứng minh công cụ này không sửa được phần lớn tài khoản, và
+  không chạy lại được.** 18/28 bị từ chối vĩnh viễn; lần chạy thứ hai báo
+  `already_restored` cho tất cả vì event key đã được ghi. Một lượt sửa thất bại để
+  lại trạng thái mà không có đường quay lại — đó là khiến runbook phải thêm hai mục
+  chẩn đoán chặn trước khi chạy.
 
 **Rủi ro được chấp nhận**
 

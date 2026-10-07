@@ -30,7 +30,7 @@ func TestRenewalStartsAtExpiryMinusDuration(t *testing.T) {
 	newExpiry := windowBase.AddDate(0, 0, 30)
 	event := renewalEvent(newExpiry, 30)
 
-	window := ComputeGrantWindow(event)
+	window := EventGrantWindow(event)
 	want := newExpiry.AddDate(0, 0, -30)
 	if !window.EffectiveFrom.Equal(want) {
 		t.Fatalf("expected the window to start at %v, got %v", want, window.EffectiveFrom)
@@ -46,7 +46,7 @@ func TestRenewalStartingInTheFutureIsPending(t *testing.T) {
 	newExpiry := windowBase.AddDate(0, 0, 60)
 	event := renewalEvent(newExpiry, 30)
 
-	window := ComputeGrantWindow(event)
+	window := EventGrantWindow(event)
 	want := newExpiry.AddDate(0, 0, -30)
 	if !window.EffectiveFrom.Equal(want) {
 		t.Fatalf("expected start %v, got %v", want, window.EffectiveFrom)
@@ -76,7 +76,7 @@ func TestActivationUsesTheEventTime(t *testing.T) {
 			EffectiveTo:  &expiry,
 			DurationDays: 30,
 		}
-		window := ComputeGrantWindow(event)
+		window := EventGrantWindow(event)
 		if !window.EffectiveFrom.Equal(windowBase) {
 			t.Fatalf("%s must start at the effective time, got %v", eventType, window.EffectiveFrom)
 		}
@@ -94,7 +94,7 @@ func TestOpenEndedPlanHasNoEnd(t *testing.T) {
 		OccurredAt:  windowBase,
 		EffectiveAt: windowBase,
 	}
-	window := ComputeGrantWindow(event)
+	window := EventGrantWindow(event)
 	if window.EffectiveTo != nil {
 		t.Fatalf("an open-ended plan must have a NULL end, got %v", window.EffectiveTo)
 	}
@@ -107,7 +107,7 @@ func TestRenewalWithoutDurationFallsBackToImmediate(t *testing.T) {
 	expiry := windowBase.AddDate(0, 0, 30)
 	event := renewalEvent(expiry, 0)
 
-	window := ComputeGrantWindow(event)
+	window := EventGrantWindow(event)
 	if !window.EffectiveFrom.Equal(event.EffectiveAt) {
 		t.Fatalf("expected the effective time %v, got %v", event.EffectiveAt, window.EffectiveFrom)
 	}

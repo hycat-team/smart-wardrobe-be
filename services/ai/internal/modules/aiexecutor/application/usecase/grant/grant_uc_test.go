@@ -426,16 +426,18 @@ func TestUnpriceableUpgradeKeepsTheCurrentGrant(t *testing.T) {
 
 // TestStaleEventIsRefused stops an out-of-order delivery from resurrecting a
 // revoked entitlement.
+//
+// 027: the ordering floor is a three-level clock. With the snapshot deliberately
+// left empty - the very shape that used to make this check refuse permanently - it
+// falls from the unreadable occurred_at to the prior row's OWN created_at, so the
+// stored record is stamped through BaseEntity.CreatedAt (level 2).
 func TestStaleEventIsRefused(t *testing.T) {
 	storedAt := windowBase.Add(time.Hour)
 	prior := &aiexecutor_entities.AIPolicyGrant{
-		AuditableEntity: aiexecutor_entities.AuditableEntity{BaseEntity: aiexecutor_entities.BaseEntity{ID: uuid.New()}},
+		AuditableEntity: aiexecutor_entities.AuditableEntity{
+			BaseEntity: aiexecutor_entities.BaseEntity{ID: uuid.New(), CreatedAt: storedAt},
+		},
 	}
-	snapshot, err := (&PolicySnapshot{Envelope: SnapshotEnvelope{OccurredAt: storedAt}}).Marshal()
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	prior.PolicySnapshot = snapshot
 
 	repo := &fakeGrantRepo{policy: strictPolicyWithAllOperations(), currentGrant: prior}
 	uc := newHandler(repo, &recordingUow{})
@@ -455,10 +457,10 @@ func TestStaleEventIsRefused(t *testing.T) {
 
 func TestNewerEventIsAccepted(t *testing.T) {
 	prior := &aiexecutor_entities.AIPolicyGrant{
-		AuditableEntity: aiexecutor_entities.AuditableEntity{BaseEntity: aiexecutor_entities.BaseEntity{ID: uuid.New()}},
+		AuditableEntity: aiexecutor_entities.AuditableEntity{
+			BaseEntity: aiexecutor_entities.BaseEntity{ID: uuid.New(), CreatedAt: windowBase.Add(-time.Hour)},
+		},
 	}
-	snapshot, _ := (&PolicySnapshot{Envelope: SnapshotEnvelope{OccurredAt: windowBase.Add(-time.Hour)}}).Marshal()
-	prior.PolicySnapshot = snapshot
 
 	repo := &fakeGrantRepo{policy: strictPolicyWithAllOperations(), currentGrant: prior}
 	uc := newHandler(repo, &recordingUow{})
