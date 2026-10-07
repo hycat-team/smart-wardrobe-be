@@ -540,7 +540,7 @@ func (uc *GrantUseCase) retirePreviousGrants(ctx context.Context, event *PlanCha
 		// new period begins, which is precisely the gap this rule exists to
 		// prevent: a customer who renews early keeps the days they already paid
 		// for only if the old period runs right up to the new one.
-		return uc.aiCostRepo.TruncateGrantsBefore(ctx, event.UserID, ComputeGrantWindow(event).EffectiveFrom, event.OccurredAt)
+		return uc.aiCostRepo.TruncateGrantsBefore(ctx, event.UserID, EventGrantWindow(event).EffectiveFrom, event.OccurredAt)
 	}
 	return uc.aiCostRepo.CloseActiveGrants(ctx, event.UserID, event.EffectiveAt, event.OccurredAt)
 }
@@ -573,7 +573,7 @@ func (uc *GrantUseCase) buildGrant(
 	if event == nil || event.ToPlanID == uuid.Nil {
 		return nil
 	}
-	window := ComputeGrantWindow(event)
+	window := EventGrantWindow(event)
 	return &aiexecutor_entities.AIPolicyGrant{
 		UserID:                     event.UserID,
 		PolicyID:                   event.AICostPolicy,

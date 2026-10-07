@@ -14,7 +14,18 @@ type GrantWindow struct {
 	Status        aipolicygrantstatus.AIPolicyGrantStatus
 }
 
-// ComputeGrantWindow derives the window for an incoming plan change.
+// EventGrantWindow derives the window the incoming plan change ANNOUNCES.
+//
+// It is pure: it takes only the event and NO context, it reads NO database, and
+// it can be tested without any infrastructure. Everything it returns is what the
+// event itself says — nothing is resolved against stored state.
+//
+// It is deliberately NOT resolveGrantWindow, added in phase 3 of 027. That
+// function resolves the window against the newest stored grant inside a
+// transaction, so it reads the database and is therefore NOT pure. The two
+// answers differ and must never be conflated: this one answers "what window did
+// the event declare", while resolveGrantWindow answers "where must the window
+// actually start given where the last one ends".
 //
 // This rule lived in projectAIPolicyGrant, inside the Account service, writing
 // to a table it did not own (constitution §I). It is moved here verbatim in
@@ -26,7 +37,7 @@ type GrantWindow struct {
 // the window has to start at "new expiry minus duration" rather than at "now".
 // Anchoring on "now" would leave a gap between the old period and the new one —
 // an account with no entitlement for the days it already paid for.
-func ComputeGrantWindow(event *PlanChangedEvent) GrantWindow {
+func EventGrantWindow(event *PlanChangedEvent) GrantWindow {
 	// A downgrade or an auto-renew toggle carries no window of its own; those
 	// change types never reach this function, and returning the effective time
 	// keeps the caller honest if one does.

@@ -9,7 +9,7 @@ import (
 // 024 T168 / FR-032: a renewal is the only change type whose window is computed from
 // durationDays, so a renewal without one has no defined window at all.
 //
-// It used to be accepted anyway. ComputeGrantWindow fell through to the ordinary
+// It used to be accepted anyway. EventGrantWindow fell through to the ordinary
 // branch for a missing or non-positive value, which set the start to EffectiveAt and
 // the status to Active — so the entitlement was handed over the moment the event
 // arrived rather than at "new expiry minus duration". That opens the account early:

@@ -32,8 +32,8 @@ Viết tắt: `GRANT/` = đường dẫn đó.
 **Mục đích**: Xác nhận điểm xuất phát. 027 không thêm gói phụ thuộc mới, không migration,
 không endpoint mới — nên phase này nhẹ, và đó là điều đúng.
 
-- [ ] T001 Xác nhận đang ở nhánh `027-grant-repair-unblock` và `.specify/feature.json` trỏ tới `specs/027-grant-repair-unblock`
-- [ ] T002 Ghi lại kết quả `go test -race -count=3` của gói `grant` **trước** khi sửa, làm mốc đối chiếu (`cd services/ai; go test ./internal/modules/aiexecutor/application/usecase/grant/ -race -count=3`)
+- [x] T001 Xác nhận đang ở nhánh `027-grant-repair-unblock` và `.specify/feature.json` trỏ tới `specs/027-grant-repair-unblock`
+- [x] T002 Ghi lại kết quả `go test -race -count=3` của gói `grant` **trước** khi sửa, làm mốc đối chiếu (`cd services/ai; go test ./internal/modules/aiexecutor/application/usecase/grant/ -race -count=3`)
 
 ---
 
@@ -46,8 +46,8 @@ sổ. `plan.md` Mục 1 nêu đây là Rủi ro 2: `ComputeGrantWindow` và `res
 cùng một tệp, khác nhau ở chỗ có đọc cơ sở dữ liệu hay không, thì không có cách nào biết
 đang dùng loại nào. Đổi tên **trước**, khi chỉ có một hàm — lúc đó không có gì để nhầm.
 
-- [ ] T003 Đổi tên `ComputeGrantWindow` thành `EventGrantWindow` trong `GRANT/grant_window.go:29` và cập nhật mọi nơi gọi (`GRANT/grant_uc.go`, `GRANT/grant_window_test.go`, `GRANT/grant_window_renewal_test.go`); chú thích phải nói rõ hàm này **không** đọc cơ sở dữ liệu và chỉ phản ánh ý sự kiện
-- [ ] T004 Thêm helper dựng bản ghi mức quyền có ảnh chụp chính sách **không đọc được** (`envelope` thiếu) vào tệp kiểm thử dùng chung `GRANT/grant_testhelpers_test.go`, vì US1, US2 và US3 đều cần kịch bản này và không nên viết lại ba lần
+- [x] T003 Đổi tên `ComputeGrantWindow` thành `EventGrantWindow` trong `GRANT/grant_window.go:29` và cập nhật mọi nơi gọi (`GRANT/grant_uc.go`, `GRANT/grant_window_test.go`, `GRANT/grant_window_renewal_test.go`); chú thích phải nói rõ hàm này **không** đọc cơ sở dữ liệu và chỉ phản ánh ý sự kiện
+- [x] T004 Thêm helper dựng bản ghi mức quyền có ảnh chụp chính sách **không đọc được** (`envelope` thiếu) vào tệp kiểm thử dùng chung `GRANT/grant_testhelpers_test.go`, vì US1, US2 và US3 đều cần kịch bản này và không nên viết lại ba lần
 
 **Checkpoint**: Nền tảng xong — bắt đầu user story được.
 
