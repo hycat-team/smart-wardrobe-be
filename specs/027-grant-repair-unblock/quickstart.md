@@ -52,14 +52,30 @@ Sự kiện `EXTENDED` phải cho **cùng** kết quả: mốc bắt đầu vẫ
 Nhớ ký hiệu: `sàn_cũ` chỉ chống hồi sinh, `sàn_mới = max(sàn_cũ, prior.effective_from)` mới
 là chỗ để dịch. Bảng dưới đây dùng `sàn_mới` làm mốc so sánh.
 
+`sàn_cũ` có **ba mức**, theo thứ tự ưu tiên: `occurred_at` đọc được từ ảnh chụp → `created_at`
+khi đọc được và không ở tương lai → `effective_from`. Hai mức lùi phát hai dòng cảnh báo
+**khác nhau** (FR-003 cho `created_at`, FR-018 cho `effective_from`).
+
 | Trường hợp | `sàn_mới` | Kết quả mong đợi |
 | --- | --- | --- |
 | Sự kiện mới hơn | bất kỳ | Không dịch — cửa sổ gốc giữ nguyên |
 | Sự kiện kém hơn 1 µs | `s + 100µs` | `EffectiveFrom == s + 101µs` |
 | Sự kiện mới hơn sàn nhưng kém mốc gốc | `s + 100µs`, mốc gốc `s + 50µs` | `EffectiveFrom == s + 100µs` |
 | Lệch trên 1 µs | `s + 5s` | `EffectiveFrom == s + 5s + 1µs` — tổng dịch 5 s, **vượt quanh sàn chỉ 1 µs** |
+| Ảnh chụp đọc được `occurred_at` | lấy từ `occurred_at` | Sàn là thời điểm **nghiệp vụ**; **không** có dòng cảnh báo nào |
+| Ảnh chụp không đọc được | lùi `created_at` | Lùi về `created_at`, **có** dòng cảnh báo FR-003 |
 | `created_at` ở tương lai | dùng `effective_from` cho sàn cũ | Lùi về `effective_from`, **có** dòng cảnh báo FR-018 |
 | `created_at` bằng 0 | dùng `effective_from` cho sàn cũ | Lùi về `effective_from`, **có** dòng cảnh báo FR-018 |
+
+**Hàng hồi quy cho lỗi từ chối nhầm** — lý do `occurred_at` đứng đầu ba mức:
+
+| Trường hợp | Kết quả mong đợi |
+| --- | --- |
+| Bản ghi mới nhất có `occurred_at = T1`, `created_at = T1+10s`; sự kiện mới có `OccurredAt = T1+5s` | **Được chấp nhận**, không bị từ chối `stale_event` |
+
+Sự kiện mới xảy ra sau sự kiện cũ (`T1+5s > T1`) nên nó hợp lệ. Nếu sàn lấy từ `created_at`
+(`T1+10s`) thì `T1+5s ≤ T1+10s` và nó bị từ chối oan. Đây là lỗi mà việc ưu tiên `occurred_at`
+loại bỏ, và là ca kiểm thử bắt buộc của T035.
 
 Hàng thứ tư là nơi dễ đọc sai nhất: tổng dịch là 5 giây, nhưng FR-006 đo **độ dư quanh
 sàn**, và độ dư đó là 1 µs. Nếu ai đó đọc FR-006 là "tổng dịch tối đa 1 µs" thì sẽ đi tìm

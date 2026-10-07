@@ -44,8 +44,16 @@ bản ghi mới nhất, rồi cắt bản ghi cũ tại chính mốc đó.
 
 | Sàn | Công thức | Trả lời câu hỏi nào |
 | --- | --- | --- |
-| **sàn cũ** | `created_at` của bản ghi mới nhất, nếu đọc được và không nằm trong tương lai; nếu không thì `effective_from` của chính bản ghi đó | "sự kiện này có **mới hơn** lần ghi bản ghi gần nhất không" — bảo vệ FR-033 của spec 024 |
+| **sàn cũ** | đồng hồ thứ tự của bản ghi mới nhất, ba mức: `occurred_at` đọc được từ ảnh chụp; nếu không, `created_at` khi đọc được và không ở tương lai; nếu không, `effective_from` | "sự kiện này có **mới hơn** thay đổi vừa áp dụng không" — bảo vệ FR-033 của spec 024 |
 | **sàn mới** | `max(sàn cũ, effective_from của bản ghi mới nhất)` | "mốc bắt đầu mới có nằm **sau mọi** cửa sổ đã có không" — bảo vệ FR-004/FR-008 |
+
+**Sàn cũ có ba mức, và mức ưu tiên là `occurred_at`.** Đây là chỗ dễ chọn sai nhất. `occurred_at`
+là thời gian **nghiệp vụ** của thay đổi đã tạo ra bản ghi; `created_at` là lúc **hàng được ghi**.
+Khi hàng đợi có độ trễ — bình thường với RabbitMQ và outbox — hai mốc lệch nhau, và lấy
+`created_at` làm mức ưu tiên sẽ **từ chối nhầm** một sự kiện hợp lệ xảy ra trong khoảng lệch:
+sự kiện 1 xảy ra `T1`, hàng ghi `T1+10s`; sự kiện 2 xảy ra `T1+5s` — mới hơn sự kiện 1 nhưng
+nhỏ hơn `T1+10s`, nên bị từ chối oan. Hai mức lùi (`created_at`, rồi `effective_from`) để lại
+hai dấu vết cảnh báo khác nhau (FR-003, FR-018) vì chúng là hai mức suy giảm khác nhau.
 
 Chỉ dùng `sàn cũ` là **sai**, và sai theo cách im lặng. Với một bản ghi `tương lai`,
 `created_at` nằm ở quá khứ còn `effective_from` nằm ở tương lai, nên `sàn cũ + 1 µs` vẫn
@@ -82,15 +90,23 @@ Năm điều kiện kèm theo, tất cả đều bắt buộc:
 Về mặt bảo mật, sàn cũ được dựng trên cột thời gian nào là một phần của quyết định này chứ
 không phải chi tiết triển khai:
 
-- dùng `created_at` **khi nó đọc được và không nằm trong tương lai** so với đồng hồ ứng dụng;
-- nếu `created_at` không đọc được hoặc nằm trong tương lai, lùi sang `effective_from`.
+- dùng `occurred_at` **khi đọc được từ ảnh chụp chính sách** — đây là mức ưu tiên;
+- nếu không, dùng `created_at` **khi nó đọc được và không nằm trong tương lai** so với đồng hồ
+  ứng dụng;
+- nếu không, lùi sang `effective_from`.
 
-`effective_from` là sàn thay thế vì nó chịu `CHECK` `effective_to > effective_from` và phải
+`occurred_at` được ưu tiên vì nó là thời gian nghiệp vụ, và vì dùng `created_at` thay nó sẽ từ
+chối nhầm sự kiện hợp lệ khi hàng đợi trễ. Nó **không** phải là một cột có thể giả mạo tùy ý
+theo cách nguy hiểm: nó nằm trong ảnh chụp chính sách, và một kẻ đẩy nó tới tương lai sẽ chỉ
+**chặn** sự kiện của chính tài khoản đó, không mở thêm quyền — cùng hướng với `created_at`.
+
+`effective_from` là sàn cuối vì nó chịu `CHECK` `effective_to > effective_from` và phải
 nằm trong khoảng thời gian khách hàng thực sự mua. `created_at` là cột kỹ thuật, không ràng
 buộc gì, nên đặt sàn quyền hạn vào nó là biến một giá trị kỹ thuật thành đồng hồ quyền hạn:
 ai đẩy được `created_at` tới tương lai thì chặn được mọi cấp quyền sau đó của tài khoản đó
-tới khi mốc đó trôi qua. Cả hai nhánh phải để lại dòng cảnh báo, vì nhánh lùi là nhánh mà một
-sự cố giả mạo dữ liệu sẽ tập trung vào.
+tới khi mốc đó trôi qua. Cả hai nhánh lùi phải để lại dòng cảnh báo **riêng** (FR-003 cho
+`created_at`, FR-018 cho `effective_from`), vì nhánh lùi là nhánh mà một sự cố giả mạo dữ liệu
+sẽ tập trung vào, và vì mức lùi cho biết đồng hồ đã yếu đi bao nhiêu bậc.
 
 `updated_at` bị loại trong sự cứu vãn: nó đổi mỗi lần một bản ghi bị cắt, nên nó phản ánh
 thời điểm sửa bản ghi chứ không phản ánh thời điểm sự kiện được ghi. Dùng nó làm sàn sẽ
@@ -101,10 +117,11 @@ nó gọi `ExtractOccurredAt` để lấy `occurred_at` từ `envelope` trong �
 khi đọc không được thì **từ chối vĩnh viễn** — không có đường lùi. Đó là lý do FR-001 phải
 lùi về `created_at`, và cũng là lý do quyết định này cần một cột dự phòng.
 
-Sau quyết định này, `rejectStaleEvent` **không còn đọc `occurred_at`** — nó dùng chung hàm
-dựng `sàn cũ` với `resolveGrantWindow`, và chỉ còn phục vụ nhánh hạ cấp không định giá được.
-Đường tạo bản ghi dùng `resolveGrantWindow`, nơi sự kiện đến muộn được **dịch** chứ không bị
-từ chối. `ExtractOccurredAt` vì thế không còn caller nào trong đường kiểm tra thứ tự.
+Sau quyết định này, cả `resolveGrantWindow` lẫn `rejectStaleEvent` đều dùng **cùng** một hàm
+dựng `sàn cũ` ba mức — nên cả hai đều đọc `occurred_at` khi có, và cả hai đều lùi đúng như
+nhau khi không. `rejectStaleEvent` chỉ còn phục vụ nhánh hạ cấp không định giá được, nơi không
+có bản ghi mới nên từ chối là câu trả lời đúng; đường tạo bản ghi dùng `resolveGrantWindow`,
+nơi sự kiện đến muộn được **dịch** chứ không bị từ chối.
 
 **Một điều dễ hiểu sai về phạm vi quyết định này.** `resolveGrantWindow` — hàm thực hiện
 dịch — **không phải hàm thuần**: nó đọc bản ghi mới nhất qua repository, và phải đọc **bên

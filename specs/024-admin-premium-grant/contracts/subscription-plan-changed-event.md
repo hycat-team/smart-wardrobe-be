@@ -119,7 +119,7 @@ Có thể vận hành an toàn vì: đường ghi đồng bộ vẫn còn (chưa
 |---|---|---|
 | `eventVersion` mới hơn mức hiểu | `PermanentError` | Hàng chết + cảnh báo |
 | `eventType` lạ | `PermanentError` | Hàng chết + cảnh báo |
-| `occurredAt` không mới hơn **đồng hồ thứ tự** của bản ghi mới nhất của tài khoản | `PermanentError` | Hàng chết + cảnh báo `stale_event` — chống tín hiệu đến sai thứ tự hồi sinh mức quyền tính phí đã bị thu hồi. Phạm vi so sánh là bản ghi **mới nhất** (kể cả đang chờ tới hoặc đã đóng), không chỉ bản ghi đang hiệu lực — xem FR-033. **Đính chính bởi spec 027:** đồng hồ thứ tự là **thời điểm tạo của chính bản ghi** (`created_at`), và khi `created_at` không dùng được thì lùi về `effective_from`. Bản ghi **không** đọc `occurred_at` từ ảnh chụp chính sách để sắp thứ tự — chính cột đó đã gây ra sự cố. Trên **đường tạo bản ghi mới**, một sự kiện đến muộn **không** còn bị từ chối vĩnh viễn: mốc bắt đầu của bản ghi mới được dịch lên ngay sau sàn thứ tự. Từ chối `stale_event` chỉ còn đúng ở nhánh hạ cấp tới một gói không định giá được |
+| `occurredAt` không mới hơn **đồng hồ thứ tự** của bản ghi mới nhất của tài khoản | `PermanentError` | Hàng chết + cảnh báo `stale_event` — chống tín hiệu đến sai thứ tự hồi sinh mức quyền tính phí đã bị thu hồi. Phạm vi so sánh là bản ghi **mới nhất** (kể cả đang chờ tới hoặc đã đóng), không chỉ bản ghi đang hiệu lực — xem FR-033. **Đính chính bởi spec 027:** đồng hồ thứ tự là `occurred_at` đọc từ ảnh chụp chính sách của bản ghi mới nhất; khi không đọc được thì lùi về **thời điểm tạo của chính bản ghi** (`created_at`), rồi `effective_from` nếu `created_at` cũng không dùng được. Trên **đường tạo bản ghi mới**, một sự kiện đến muộn **không** còn bị từ chối vĩnh viễn: mốc bắt đầu của bản ghi mới được dịch lên ngay sau sàn thứ tự. Từ chối `stale_event` chỉ còn đúng ở nhánh hạ cấp tới một gói không định giá được |
 | Thiếu `userId` / `eventType` / `toPlanCode` / `toTierRank` / `aiCostPolicyId` / `occurredAt` | `PermanentError` | Hàng chết + cảnh báo |
 | Thiếu `sourceEventId` (nội dung phiên bản 1) | `PermanentError` | Hàng chết + cảnh báo |
 | `aiCostPolicyId` không tồn tại trong bảng `aiexecutor.ai_cost_policies` | `PermanentError` | Hàng chết + cảnh báo `ai_cost_policy_not_found` — FR-036, không được âm thầm bỏ qua |
@@ -150,7 +150,7 @@ Mã lý do tối thiểu:
 | `missing_required_field` | Thiếu trường bắt buộc |
 | `missing_source_event_id` | Nội dung phiên bản 1 |
 | `ai_cost_policy_not_found` | `aiCostPolicyId` không tồn tại trong bảng chính sách phí của dịch vụ AI (024 T159 đổi tên từ `plan_not_in_catalog`) |
-| `stale_event` | Sự kiện không mới hơn đồng hồ thứ tự của bản ghi mới nhất — thời điểm tạo bản ghi (`created_at`), lùi về `effective_from` khi `created_at` không dùng được (FR-033; đính chính bởi spec 027) |
+| `stale_event` | Sự kiện không mới hơn đồng hồ thứ tự của bản ghi mới nhất — `occurred_at` từ ảnh chụp chính sách, lùi về `created_at`, rồi `effective_from` (FR-033; đính chính bởi spec 027) |
 | `policy_snapshot_unavailable` | Không dựng được ảnh chụp chính sách |
 | `duplicate_source_event` | Đã xử lý rồi (không phải lỗi) |
 | `policy_grant_constraint_violation` | Ghi bản ghi mức quyền vi phạm ràng buộc `CHECK` (SQLSTATE 23514); từ chối vĩnh viễn, **không** thử lại (spec 027, FR-009..FR-011) |

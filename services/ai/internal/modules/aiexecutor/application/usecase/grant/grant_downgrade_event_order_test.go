@@ -41,11 +41,12 @@ func downgradePayload() aiexecutor_dto.PlanChangedEventPayload {
 	return payload
 }
 
-// grantWrittenAt builds the account's newest grant as the ordering check now sees
-// it: 027 reads BaseEntity.CreatedAt, not occurred_at from the policy snapshot, so
-// that column is what makes the event stale or current. The snapshot is left empty
-// on purpose - it is the unreadable shape that used to lock this path up, and
-// rejectStaleEvent must no longer care whether it is readable (FR-001, FR-019).
+// grantWrittenAt builds the account's newest grant as the ordering check sees it
+// when the policy snapshot is unreadable. The three-level floor then prefers
+// created_at: 027 falls back to BaseEntity.CreatedAt rather than refusing, so that
+// column is what makes the event stale or current here. The snapshot is left empty
+// on purpose - it is the shape that used to lock this path up, and rejectStaleEvent
+// must no longer care whether it is readable (FR-001, FR-019).
 func grantWrittenAt(t *testing.T, createdAt time.Time) *aiexecutor_entities.AIPolicyGrant {
 	t.Helper()
 	return &aiexecutor_entities.AIPolicyGrant{

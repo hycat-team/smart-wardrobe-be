@@ -2,6 +2,7 @@ package grant
 
 import (
 	"testing"
+	"time"
 
 	aiexecutor_entities "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
 
@@ -59,12 +60,12 @@ func grantWithSnapshotMissingEnvelope(t *testing.T) *aiexecutor_entities.AIPolic
 	))
 }
 
-// grantWithReadableSnapshot is the control: the same kind of row carrying a
-// complete document, with an `envelope` (so ExtractOccurredAt succeeds) and all
-// four entitlements (so the entitlement reader does not degrade). A test that
-// must tell "broken snapshot" apart from "healthy snapshot" builds one of each
-// from this file.
-func grantWithReadableSnapshot(t *testing.T) *aiexecutor_entities.AIPolicyGrant {
+// snapshotWithOccurredAt builds a readable two-part snapshot whose envelope
+// carries the given occurred_at and all four entitlements. The ordering floor is
+// read from this envelope whenever it is present (level 1), so a test that needs a
+// specific occurred_at builds the prior row's snapshot from here rather than
+// letting it fall through to created_at.
+func snapshotWithOccurredAt(t *testing.T, occurredAt time.Time) aiexecutor_entities.JSONDocument {
 	t.Helper()
 
 	entitlements := make(map[string]OperationEntitlement, len(entitlementOperations))
@@ -77,13 +78,23 @@ func grantWithReadableSnapshot(t *testing.T) *aiexecutor_entities.AIPolicyGrant 
 	raw, err := (&PolicySnapshot{
 		Envelope: SnapshotEnvelope{
 			EventVersion: 2,
-			OccurredAt:   windowBase,
-			EffectiveAt:  windowBase,
+			OccurredAt:   occurredAt,
+			EffectiveAt:  occurredAt,
 		},
 		Entitlements: entitlements,
 	}).Marshal()
 	if err != nil {
 		t.Fatalf("marshal the readable snapshot: %v", err)
 	}
-	return grantWithSnapshot(t, raw)
+	return raw
+}
+
+// grantWithReadableSnapshot is the control: the same kind of row carrying a
+// complete document, with an `envelope` (so ExtractOccurredAt succeeds) and all
+// four entitlements (so the entitlement reader does not degrade). A test that
+// must tell "broken snapshot" apart from "healthy snapshot" builds one of each
+// from this file.
+func grantWithReadableSnapshot(t *testing.T) *aiexecutor_entities.AIPolicyGrant {
+	t.Helper()
+	return grantWithSnapshot(t, snapshotWithOccurredAt(t, windowBase))
 }

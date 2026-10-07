@@ -3,6 +3,7 @@ package grant
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,25 +24,53 @@ import (
 // reused rather than redeclared.
 // ---------------------------------------------------------------------------
 
-// fallbackWarning is one FR-018 line lifted out of the captured log.
+// fallbackWarning is one ordering-floor fallback line lifted out of the captured
+// log, tagged with the level that produced it.
 type fallbackWarning struct {
 	message string
 	fields  map[string]string
+	source  clockSource
 }
 
-// fallbackWarnings filters the captured lines down to FR-018's warning. The
-// rejection counter also logs through this sink, keyed by `reason`; FR-018's line
-// is the one carrying `grant_id`, and asserting on that field is what keeps the
-// two apart.
-func fallbackWarnings(log *recordingLogger) []fallbackWarning {
+// The two fallback warnings are told apart by message CONTENT. Both FR-003 and
+// FR-018 carry user_id and grant_id, so the fields alone cannot distinguish "the
+// snapshot had no occurred_at" from "created_at was unusable" - only the message
+// can, and the fragments below are the words that differ.
+const (
+	occurredAtFallbackFragment    = "occurred_at"
+	effectiveFromFallbackFragment = "effective_from"
+)
+
+// floorWarnings returns the captured lines that are ordering-floor fallbacks, each
+// tagged with the level that produced it. Unrelated warnings (the rejection
+// counter's, for example) carry neither fragment and are dropped.
+func floorWarnings(log *recordingLogger) []fallbackWarning {
 	var out []fallbackWarning
 	for i, message := range log.warnings {
+		var source clockSource
+		switch {
+		case strings.Contains(message, occurredAtFallbackFragment):
+			source = clockCreatedAt
+		case strings.Contains(message, effectiveFromFallbackFragment):
+			source = clockEffectiveFrom
+		default:
+			continue
+		}
 		fields := map[string]string{}
 		for _, f := range log.fields[i] {
 			fields[f.Key] = f.String
 		}
-		if _, ok := fields["grant_id"]; ok {
-			out = append(out, fallbackWarning{message: message, fields: fields})
+		out = append(out, fallbackWarning{message: message, fields: fields, source: source})
+	}
+	return out
+}
+
+// warningsForSource filters floorWarnings down to one fallback branch.
+func warningsForSource(log *recordingLogger, source clockSource) []fallbackWarning {
+	var out []fallbackWarning
+	for _, warning := range floorWarnings(log) {
+		if warning.source == source {
+			out = append(out, warning)
 		}
 	}
 	return out
@@ -51,8 +80,10 @@ func newResolutionUC(repo repositories.IAICostRepository, log *recordingLogger) 
 	return NewGrantUseCase(repo, &recordingUow{}, log, NewGrantMetrics(log)).(*GrantUseCase)
 }
 
-// priorGrantForTest builds the account's newest stored grant. 027 decides
-// ordering from CreatedAt (falling back to EffectiveFrom), so both are explicit.
+// priorGrantForTest builds the account's newest stored grant WITHOUT a readable
+// snapshot, so the three-level floor falls through level 1 to created_at or
+// effective_from. It is the production shape the repair is about: a row written
+// before the snapshot envelope existed.
 func priorGrantForTest(createdAt, effectiveFrom time.Time) *aiexecutor_entities.AIPolicyGrant {
 	return &aiexecutor_entities.AIPolicyGrant{
 		AuditableEntity: aiexecutor_entities.AuditableEntity{
@@ -61,6 +92,17 @@ func priorGrantForTest(createdAt, effectiveFrom time.Time) *aiexecutor_entities.
 		UserID:        uuid.MustParse(validUserID),
 		EffectiveFrom: effectiveFrom,
 	}
+}
+
+// priorGrantWithOccurredAt builds the healthy shape: a readable snapshot whose
+// envelope carries occurred_at, so the stale floor is taken from the BUSINESS time
+// (level 1) and nothing is logged. created_at and effective_from are set too, so a
+// test can prove which of the three levels the floor actually came from.
+func priorGrantWithOccurredAt(t *testing.T, occurredAt, createdAt, effectiveFrom time.Time) *aiexecutor_entities.AIPolicyGrant {
+	t.Helper()
+	prior := priorGrantForTest(createdAt, effectiveFrom)
+	prior.PolicySnapshot = snapshotWithOccurredAt(t, occurredAt)
+	return prior
 }
 
 // activeEvent builds a plain (non-renewal) change whose window starts at
@@ -111,14 +153,13 @@ func TestResolveGrantWindow(t *testing.T) {
 			t.Fatalf("expected the event window %v, got %v",
 				EventGrantWindow(event).EffectiveFrom, window.EffectiveFrom)
 		}
-		if got := fallbackWarnings(log); len(got) != 0 {
-			t.Fatalf("no floor fallback must be logged, got %v", got)
-		}
+		requireNoFloorWarnings(t, log)
 	})
 
-	t.Run("event newer than the new floor is not shifted", func(t *testing.T) {
-		// created_at s-1h; effective_from s-2h. order floor = s-1h, event starts at s.
-		prior := priorGrantForTest(s.Add(-time.Hour), s.Add(-2*time.Hour))
+	t.Run("event newer than the new floor is not shifted and logs nothing", func(t *testing.T) {
+		// occurred_at s-1h (level 1); effective_from s-3h. order floor = occurred_at
+		// s-1h, event starts at s.
+		prior := priorGrantWithOccurredAt(t, s.Add(-time.Hour), s.Add(-2*time.Hour), s.Add(-3*time.Hour))
 		event := activeEvent(s, s.Add(30*24*time.Hour), s)
 		log := &recordingLogger{}
 		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, log)
@@ -127,13 +168,44 @@ func TestResolveGrantWindow(t *testing.T) {
 		if !window.EffectiveFrom.Equal(s) {
 			t.Fatalf("expected no shift (FR-007), got %v", window.EffectiveFrom)
 		}
-		if got := fallbackWarnings(log); len(got) != 0 {
-			t.Fatalf("no floor fallback must be logged, got %v", got)
+		requireNoFloorWarnings(t, log)
+	})
+
+	t.Run("occurred_at in the snapshot is the floor and logs nothing (FR-001)", func(t *testing.T) {
+		// occurred_at is s+5s, created_at is s (usable), effective_from s-1h. A
+		// created_at floor would be s and would leave the window unshifted; the
+		// occurred_at floor is s+5s, so a window declared to start there must move one
+		// microsecond past it. Level 1 is not allowed to warn.
+		prior := priorGrantWithOccurredAt(t, s.Add(5*time.Second), s, s.Add(-time.Hour))
+		event := activeEvent(s.Add(5*time.Second), s.Add(time.Hour), s.Add(6*time.Second))
+		log := &recordingLogger{}
+		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, log)
+
+		window := resolveOnce(t, uc, event)
+		if want := s.Add(5*time.Second + time.Microsecond); !window.EffectiveFrom.Equal(want) {
+			t.Fatalf("expected the occurred_at floor %v, got %v", want, window.EffectiveFrom)
 		}
+		requireNoFloorWarnings(t, log)
+	})
+
+	t.Run("unreadable snapshot falls back to created_at and warns (FR-003)", func(t *testing.T) {
+		// No snapshot -> level 2. created_at s, effective_from s-1h. The event is
+		// newer than created_at (so it is not refused), but its declared start is one
+		// microsecond before the created_at floor, so it shifts to s+1us.
+		prior := priorGrantForTest(s, s.Add(-time.Hour))
+		event := activeEvent(s.Add(-time.Microsecond), s.Add(time.Hour), s.Add(time.Second))
+		log := &recordingLogger{}
+		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, log)
+
+		window := resolveOnce(t, uc, event)
+		if want := s.Add(time.Microsecond); !window.EffectiveFrom.Equal(want) {
+			t.Fatalf("expected the created_at floor %v, got %v", want, window.EffectiveFrom)
+		}
+		requireFloorWarning(t, log, prior, clockCreatedAt)
 	})
 
 	t.Run("event one microsecond below the floor shifts to floor+1us", func(t *testing.T) {
-		prior := priorGrantForTest(s, s.Add(-time.Hour))
+		prior := priorGrantWithOccurredAt(t, s, s.Add(-time.Hour), s.Add(-2*time.Hour))
 		event := activeEvent(s.Add(-time.Microsecond), s.Add(time.Hour), s.Add(time.Second))
 		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, &recordingLogger{})
 
@@ -144,8 +216,8 @@ func TestResolveGrantWindow(t *testing.T) {
 	})
 
 	t.Run("event past the stale floor but before the order floor shifts up to it", func(t *testing.T) {
-		// stale floor = created_at s; order floor = effective_from s+100us.
-		prior := priorGrantForTest(s, s.Add(100*time.Microsecond))
+		// stale floor = occurred_at s; order floor = effective_from s+100us.
+		prior := priorGrantWithOccurredAt(t, s, s.Add(-time.Hour), s.Add(100*time.Microsecond))
 		event := activeEvent(s.Add(50*time.Microsecond), s.Add(time.Hour), s.Add(time.Second))
 		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, &recordingLogger{})
 
@@ -158,7 +230,7 @@ func TestResolveGrantWindow(t *testing.T) {
 	t.Run("a skew larger than one microsecond only overshoots the floor by one microsecond", func(t *testing.T) {
 		// FR-006 measures slack around the floor, not the total shift: the floor is
 		// s+5s, the event starts at s, and the result is s+5s+1us.
-		prior := priorGrantForTest(s.Add(5*time.Second), s.Add(4*time.Second))
+		prior := priorGrantWithOccurredAt(t, s.Add(5*time.Second), s.Add(-time.Hour), s.Add(4*time.Second))
 		event := activeEvent(s, s.Add(time.Hour), s.Add(6*time.Second))
 		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, &recordingLogger{})
 
@@ -166,6 +238,29 @@ func TestResolveGrantWindow(t *testing.T) {
 		if want := s.Add(5*time.Second + time.Microsecond); !window.EffectiveFrom.Equal(want) {
 			t.Fatalf("expected %v, got %v", want, window.EffectiveFrom)
 		}
+	})
+
+	t.Run("delayed queue: an event between occurred_at and created_at is accepted (FR-001 regression)", func(t *testing.T) {
+		// The refusal that prioritising occurred_at removes. The stored change
+		// happened at T1 but the row was written at T1+10s; the new event happened at
+		// T1+5s. It is newer than T1, so it must be accepted. A created_at floor
+		// (T1+10s) would refuse it, because T1+5s <= T1+10s. This case is red on the
+		// old two-level code.
+		t1 := s
+		prior := priorGrantWithOccurredAt(t, t1, t1.Add(10*time.Second), t1.Add(-time.Hour))
+		event := activeEvent(t1.Add(5*time.Second), t1.Add(time.Hour), t1.Add(5*time.Second))
+		log := &recordingLogger{}
+		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, log)
+
+		window, err := uc.resolveGrantWindow(context.Background(), event)
+		if err != nil {
+			t.Fatalf("an event newer than occurred_at must be accepted, not refused: %v", err)
+		}
+		if !window.EffectiveFrom.Equal(t1.Add(5 * time.Second)) {
+			t.Fatalf("expected the event window start %v, got %v",
+				t1.Add(5*time.Second), window.EffectiveFrom)
+		}
+		requireNoFloorWarnings(t, log)
 	})
 
 	t.Run("created_at in the future falls back to effective_from and warns (FR-018)", func(t *testing.T) {
@@ -179,7 +274,7 @@ func TestResolveGrantWindow(t *testing.T) {
 		if !window.EffectiveFrom.Equal(s) {
 			t.Fatalf("expected the event window %v, got %v", s, window.EffectiveFrom)
 		}
-		requireFallbackWarning(t, log, prior)
+		requireFloorWarning(t, log, prior, clockEffectiveFrom)
 	})
 
 	t.Run("zero created_at falls back to effective_from and warns (FR-018)", func(t *testing.T) {
@@ -192,15 +287,13 @@ func TestResolveGrantWindow(t *testing.T) {
 		if !window.EffectiveFrom.Equal(s) {
 			t.Fatalf("expected the event window %v, got %v", s, window.EffectiveFrom)
 		}
-		requireFallbackWarning(t, log, prior)
+		requireFloorWarning(t, log, prior, clockEffectiveFrom)
 	})
 
 	t.Run("a future grant is shifted past by its effective_from, not its created_at (H2)", func(t *testing.T) {
-		// created_at is in the past, effective_from is 30 days out. A floor taken
-		// from created_at alone would let the new window start BEFORE this row and
-		// TruncateGrantsBefore would not cut it. The order floor must be the
-		// future effective_from.
-		prior := priorGrantForTest(s, s.AddDate(0, 0, 30))
+		// occurred_at and created_at are in the past, effective_from is 30 days out.
+		// The order floor must be the future effective_from.
+		prior := priorGrantWithOccurredAt(t, s, s, s.AddDate(0, 0, 30))
 		event := activeEvent(s.Add(time.Second), s.AddDate(0, 0, 60), s.Add(time.Second))
 		uc := newResolutionUC(&fakeGrantRepo{currentGrant: prior}, &recordingLogger{})
 
@@ -253,16 +346,30 @@ func TestResolveGrantWindow(t *testing.T) {
 	})
 }
 
-func requireFallbackWarning(t *testing.T, log *recordingLogger, prior *aiexecutor_entities.AIPolicyGrant) {
+// requireFloorWarning asserts the log carries exactly one ordering-floor fallback
+// line, from the expected level, with the identifiers an operator needs.
+func requireFloorWarning(t *testing.T, log *recordingLogger, prior *aiexecutor_entities.AIPolicyGrant, source clockSource) {
 	t.Helper()
-	warnings := fallbackWarnings(log)
+	warnings := floorWarnings(log)
 	if len(warnings) != 1 {
-		t.Fatalf("FR-018: expected exactly one fallback warning, got %d (%v)", len(warnings), log.warnings)
+		t.Fatalf("expected exactly one floor fallback warning, got %d (%v)", len(warnings), log.warnings)
+	}
+	if warnings[0].source != source {
+		t.Fatalf("expected the fallback from source %d, got %d (message %q)",
+			source, warnings[0].source, warnings[0].message)
 	}
 	if got := warnings[0].fields["user_id"]; got != validUserID {
-		t.Fatalf("FR-018: the warning must carry user_id %q, got %q", validUserID, got)
+		t.Fatalf("the warning must carry user_id %q, got %q", validUserID, got)
 	}
 	if got := warnings[0].fields["grant_id"]; got != prior.ID.String() {
-		t.Fatalf("FR-018: the warning must carry grant_id %q, got %q", prior.ID.String(), got)
+		t.Fatalf("the warning must carry grant_id %q, got %q", prior.ID.String(), got)
+	}
+}
+
+// requireNoFloorWarnings asserts no ordering-floor fallback was logged at all.
+func requireNoFloorWarnings(t *testing.T, log *recordingLogger) {
+	t.Helper()
+	if got := floorWarnings(log); len(got) != 0 {
+		t.Fatalf("no floor fallback must be logged, got %v", got)
 	}
 }

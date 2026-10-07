@@ -20,7 +20,7 @@ buộc mà mọi tính toán phải tôn trọng.
 | `created_at` | timestamptz | **Sàn thứ tự ưu tiên**, chỉ khi không nằm trong tương lai (R-003). Cột `started_at` **không tồn tại** |
 | `updated_at` | timestamptz | Không dùng làm sàn — đổi mỗi lần cắt bản ghi, không phản ánh thời điểm sự kiện |
 | `status` | text | `active` / `future` / `closed`. Mục 4 của kiểm tra toàn vẹn lọc theo cửa sổ hiệu lực và **giữ nguyên** việc không lọc theo trạng thái — mục đó chưa từng lọc trạng thái (FR-014) |
-| `policy_snapshot` | jsonb | **Không** còn được đọc để sắp thứ tự. `created_at` là đồng hồ thứ tự (FR-001); `occurred_at` trong vỏ bọc chỉ còn là dữ liệu của ảnh chụp. `ExtractOccurredAt` giữ lại nhưng không còn caller trong đường thứ tự |
+| `policy_snapshot` | jsonb | Nguồn của `occurred_at` — đồng hồ thứ tự **ưu tiên** (FR-001), đọc qua `ExtractOccurredAt`. Khi không đọc được thì lùi về `created_at`, rồi `effective_from` |
 | `source_event_id` | uuid | Chống áp dụng trùng; kiểm tra **lại** dưới khoá |
 
 ### Ràng buộc phải tôn trọng
@@ -69,15 +69,21 @@ PlanChangedEvent
 ### Quy tắc xác định sàn thứ tự
 
 ```text
-sàn_cũ(grant) = grant.created_at      nếu created_at đọc được và ≤ now()
-              = grant.effective_from  nếu không                (cột chịu CHECK)
+sàn_cũ(grant) = grant.occurred_at      nếu đọc được từ ảnh chụp chính sách   (mức 1, ưu tiên)
+              = grant.created_at       nếu created_at đọc được và ≤ now()    (mức 2, FR-003)
+              = grant.effective_from   nếu không                            (mức 3, FR-018)
 
 sàn_mới = max(sàn_cũ, grant.effective_from)
 ```
 
-Hai sàn khác nhau vì chúng trả lời hai câu hỏi khác nhau. `sàn_cũ` hỏi "sự kiện này có mới
-hơn lần ghi bản ghi gần nhất không" và bảo vệ FR-033 của spec 024. `sàn_mới` hỏi "mốc bắt đầu
-mới có nằm sau mọi cửa sổ đã có không" và bảo vệ FR-004/FR-008.
+Ba mức, không phải hai. Mức 1 là thời gian **nghiệp vụ** của thay đổi đã tạo ra bản ghi; mức 2
+là thời gian **ghi hàng**. Khi hàng đợi có độ trễ, hai mốc lệch nhau, và lấy mức 2 làm ưu tiên
+sẽ từ chối nhầm một sự kiện hợp lệ xảy ra trong khoảng lệch (FR-001). Mức 3 chỉ dùng khi cả
+ảnh chụp lẫn `created_at` đều không dùng được.
+
+Hai **sàn** (cũ và mới) khác nhau vì chúng trả lời hai câu hỏi khác nhau: `sàn_cũ` hỏi "sự
+kiện này có mới hơn thay đổi vừa áp dụng không" và bảo vệ FR-033 của spec 024; `sàn_mới` hỏi
+"mốc bắt đầu mới có nằm sau mọi cửa sổ đã có không" và bảo vệ FR-004/FR-008.
 
 Dùng chung một sàn là lỗi: với bản ghi `tương lai`, `created_at` nằm ở quá khứ còn
 `effective_from` nằm ở tương lai, nên sàn lấy từ `created_at` sẽ để bản ghi mới bắt đầu

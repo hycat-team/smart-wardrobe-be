@@ -416,13 +416,15 @@ const (
 // active entitlements to be written. The caller must hold the account lock, because
 // the answer it compares against has to be the one no other writer can change.
 //
-// 027 FR-001/FR-004a/FR-019: the ordering floor comes from the grant's OWN
-// created_at - falling back to effective_from when that column is zero or in the
-// future - and NOT from occurred_at in the policy snapshot. The snapshot envelope
-// is unreadable on rows written before it existed, and reading it made this check
-// refuse those rows permanently: the lock-up 027 exists to remove. It therefore no
-// longer calls ExtractOccurredAt at all. The shared `staleFloor` is the single
-// definition of the floor, so this path and the create path cannot drift apart.
+// 027 FR-001/FR-004a/FR-019: the ordering floor is a three-level clock. It prefers
+// occurred_at from the policy snapshot's envelope (the business time of the
+// change), falls back to the row's OWN created_at when the snapshot has no
+// readable occurred_at, and falls back to effective_from only when created_at is
+// zero or in the future. The unreadable-snapshot rows that used to be refused
+// permanently now fall through to created_at instead of locking up. The shared
+// `staleFloor` is the single definition of the floor, so this path and the create
+// path cannot drift apart, and it reports which level it used so the matching
+// FR-003 / FR-018 warning is recorded.
 //
 // This is now the only caller of the ordering check besides resolveGrantWindow. It
 // stays for the unpriceable-downgrade path, which retires a grant without creating
@@ -439,10 +441,8 @@ func (uc *GrantUseCase) rejectStaleEvent(ctx context.Context, event *PlanChanged
 	if current == nil {
 		return nil
 	}
-	floor, fellBack := staleFloor(current, time.Now())
-	if fellBack {
-		uc.warnStaleFloorFallback(current)
-	}
+	floor, source := staleFloor(current, time.Now())
+	uc.warnFloorFallback(current, source)
 	if !event.OccurredAt.After(floor) {
 		uc.metrics.RecordRejection(ReasonStaleEvent, event.UserID.String())
 		return uc.reject(ReasonStaleEvent, event.UserID.String(),

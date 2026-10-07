@@ -159,12 +159,21 @@ thứ tự:
 1. gọi `EventGrantWindow` lấy cửa sổ gốc;
 2. đọc bản ghi mới nhất qua `GetNewestGrantForOrdering`, và **nếu không có** thì trả về cửa
    sổ gốc ngay — không có bản ghi trước thì không có sàn thứ tự;
-3. dựng **sàn cũ**: `created_at` nếu nó đọc được và không nằm trong tương lai so với `now()`,
-   nếu không thì `effective_from` (R-003), kèm cảnh báo FR-018 ở nhánh lùi; từ chối vĩnh viễn
-   nếu `event.OccurredAt` không mới hơn sàn cũ (FR-002);
+3. dựng **sàn cũ** theo ba mức ưu tiên: `occurred_at` đọc được từ ảnh chụp chính sách; nếu
+   không, `created_at` khi nó đọc được và không nằm trong tương lai so với `now()` (kèm cảnh
+   báo FR-003); nếu không, `effective_from` (kèm cảnh báo FR-018); từ chối vĩnh viễn nếu
+   `event.OccurredAt` không mới hơn sàn cũ (FR-002);
 4. dựng **sàn mới** `= max(sàn cũ, prior.EffectiveFrom)` (FR-004a); nếu cửa sổ gốc chưa vượt
    sàn mới thì nâng `EffectiveFrom` lên `sàn mới + 1 µs`, và từ chối vĩnh viễn nếu dịch xong
    thành cửa sổ rỗng (FR-017).
+
+**Vì sao `occurred_at` đứng đầu ba mức, không phải `created_at`.** Đây là quyết định đã được
+người đọc chốt sau khi xem lại, và lý do là một lỗi từ chối nhầm. `occurred_at` là thời gian
+nghiệp vụ của thay đổi đã tạo ra bản ghi; `created_at` là lúc hàng được ghi. Khi hàng đợi trễ —
+bình thường với RabbitMQ và outbox — sự kiện 1 xảy ra `T1`, hàng ghi `T1+10s`; sự kiện 2 xảy ra
+`T1+5s`. Sự kiện 2 mới hơn và phải được chấp nhận, nhưng lấy `created_at` làm mức ưu tiên thì
+`T1+5s ≤ T1+10s` và nó bị từ chối. Ưu tiên `occurred_at` loại bỏ lỗi đó. Hai mức lùi để lại hai
+dấu vết **khác nhau** (FR-003, FR-018) vì chúng là hai mức suy giảm khác nhau.
 
 Sau đó `grant.EffectiveFrom` được gán bằng `window.EffectiveFrom` và `retirePreviousGrants`
 **nhận** mốc cắt đó làm tham số.

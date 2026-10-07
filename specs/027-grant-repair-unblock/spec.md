@@ -210,31 +210,30 @@ nhân trong lượt chạy hôm nay.
 
 ### Functional Requirements
 
-- **FR-001**: Hệ thống AI MUST so sánh thứ tự sự kiện bằng **thời điểm tạo của chính bản ghi
-  mức quyền mới nhất** (cột `created_at`), và MUST **không** từ chối sự kiện vĩnh viễn chỉ vì
-  ảnh chụp chính sách của bản ghi đó không đọc được `occurred_at`.
+- **FR-001**: Hệ thống AI MUST sắp thứ tự sự kiện theo **thời điểm xảy ra của sự kiện đã tạo
+  ra bản ghi mức quyền mới nhất**, đọc từ ảnh chụp chính sách của bản ghi đó. Khi ảnh chụp
+  không đọc được thời điểm đó, hệ thống MUST **không** từ chối sự kiện vĩnh viễn: nó MUST lùi
+  về **thời điểm tạo của chính bản ghi** (cột `created_at`).
 
-  Cách diễn đạt gốc của yêu cầu này — "khi không lấy được thời điểm xảy ra từ ảnh chụp thì
-  lùi về thời điểm tạo" — ngụ ý hệ thống vẫn đọc `occurred_at` khi có. Thiết kế đã chốt
-  **không** như vậy: `created_at` là đồng hồ duy nhất, không đọc `occurred_at` từ ảnh chụp.
-  Lý do là chính cột đó đã gây ra sự cố: 22/28 bản ghi không đọc được nó. Giữ `occurred_at`
-  làm đồng hồ ưu tiên nghĩa là giữ lại đúng sự phụ thuộc đã hỏng, chỉ đổi nhánh xử lý khi nó
-  hỏng. Xem `spec.md` dòng Input gốc: *"lấy created_at làm đồng hồ thay thế"*.
+  Vì sao ưu tiên `occurred_at` thay vì dùng `created_at` ngay từ đầu: `occurred_at` là thời
+  gian **nghiệp vụ** của thay đổi vừa áp dụng, còn `created_at` là lúc **hàng được ghi**. Khi
+  hàng đợi có độ trễ — bình thường với RabbitMQ và outbox — hai mốc này lệch nhau, và dùng
+  `created_at` sẽ **từ chối nhầm** một sự kiện hợp lệ xảy ra trong khoảng lệch đó. Ví dụ: sự
+  kiện 1 xảy ra lúc `T1`, hàng ghi lúc `T1+10s`; sự kiện 2 xảy ra lúc `T1+5s`. Sự kiện 2 mới
+  hơn sự kiện 1 và phải được chấp nhận, nhưng nếu lấy mốc `T1+10s` thì nó bị từ chối.
 
 - **FR-002**: Việc so sánh ở FR-001 MUST giữ nguyên tính chặn hồi sinh mức quyền đã bị
-  thu hồi. Một sự kiện có thời điểm xảy ra **không mới hơn** thời điểm tạo của bản ghi
-  mới nhất MUST bị từ chối, đúng như một sự kiện không mới hơn thời điểm xảy ra đã ghi.
+  thu hồi. Một sự kiện có thời điểm xảy ra **không mới hơn** đồng hồ thứ tự của bản ghi mới
+  nhất MUST bị từ chối, đúng như một sự kiện không mới hơn thời điểm xảy ra đã ghi.
 
-- **FR-003**: Hệ thống AI MUST ghi một dấu vết cảnh báo khi **đồng hồ thứ tự bị suy giảm** —
-  tức khi `created_at` không dùng được và hệ thống phải lùi về `effective_from` — để một nhân
-  sự vận hành đọc log thấy rằng bộ đếm từ chối đang chạy trên đồng hồ yếu hơn bình thường.
-  Chi tiết dấu vết ở FR-018; FR-003 và FR-018 nay là **cùng một yêu cầu**.
+- **FR-003**: Hệ thống AI MUST ghi một dấu vết cảnh báo **mỗi khi** phải dùng thời điểm tạo bản
+  ghi **thay cho** thời điểm xảy ra trong ảnh chụp chính sách, để một nhân sự vận hành đọc log
+  thấy rằng bộ đếm từ chối đang chạy trên đồng hồ yếu hơn bình thường. Dấu vết MUST mang
+  `user_id` và `grant_id`.
 
-  Cách diễn đạt gốc của FR-003 ("dùng thời điểm tạo **thay cho** thời điểm xảy ra trong ảnh
-  chụp") giả định một đồng hồ hai tầng mà thiết kế đã chốt không có. Nếu đọc theo nghĩa đen
-  đó, hệ thống sẽ phải cảnh báo **mỗi lần** — vì `created_at` luôn là đồng hồ — và cảnh báo
-  sẽ thành nhiễu vô nghĩa. Điều FR-003 thật sự muốn là: người vận hành biết khi nào đồng hồ
-  thứ tự yếu đi. Đó chính là nhánh lùi về `effective_from`.
+  Đây là nhánh lùi **thứ nhất** (ảnh chụp → `created_at`). Nhánh lùi **thứ hai** (`created_at`
+  → `effective_from`, khi `created_at` cũng không dùng được) có dấu vết riêng ở FR-018. Hai
+  nhánh là hai mức suy giảm khác nhau và MUST phân biệt được trong log.
 
 - **FR-004**: Thời điểm bắt đầu hiệu lực của bản ghi mức quyền mới MUST **lớn hơn nghiêm**
   thời điểm bắt đầu hiệu lực của mọi bản ghi trước đó của cùng tài khoản. Vì bản ghi được
@@ -242,9 +241,10 @@ nhân trong lượt chạy hôm nay.
   `effective_from` của **bản ghi mới nhất**, kể cả khi bản ghi đó có trạng thái `tương lai`.
 
 - **FR-004a**: Hệ thống AI MUST phân biệt hai mốc sàn khác nhau và **không** dùng chung:
-  - **Sàn cũ (chống hồi sinh)**: `created_at` của bản ghi mới nhất khi giá trị đó đọc được và
-    không nằm trong tương lai so với đồng hồ ứng dụng; nếu không thì `effective_from` của
-    chính bản ghi đó. Chỉ sàn này dùng cho FR-002.
+  - **Sàn cũ (chống hồi sinh)**: đồng hồ thứ tự của bản ghi mới nhất, chọn theo ba mức — (1)
+    `occurred_at` đọc được từ ảnh chụp chính sách; nếu không, (2) `created_at` khi giá trị đó
+    đọc được và không nằm trong tương lai so với đồng hồ ứng dụng; nếu không, (3)
+    `effective_from` của chính bản ghi đó. Chỉ sàn này dùng cho FR-002.
   - **Sàn mới (tránh chồng lấn)**: mức lớn hơn của sàn cũ và `effective_from` của bản ghi mới
     nhất. Sàn này dùng cho FR-004 và FR-006.
 

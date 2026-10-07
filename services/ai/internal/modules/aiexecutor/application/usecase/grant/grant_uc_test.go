@@ -427,10 +427,10 @@ func TestUnpriceableUpgradeKeepsTheCurrentGrant(t *testing.T) {
 // TestStaleEventIsRefused stops an out-of-order delivery from resurrecting a
 // revoked entitlement.
 //
-// 027: the ordering floor is the prior row's OWN created_at, not occurred_at from
-// the policy snapshot. So the stored record is stamped through BaseEntity.CreatedAt
-// and the snapshot is deliberately left empty - the very shape that used to make
-// this check refuse permanently.
+// 027: the ordering floor is a three-level clock. With the snapshot deliberately
+// left empty - the very shape that used to make this check refuse permanently - it
+// falls from the unreadable occurred_at to the prior row's OWN created_at, so the
+// stored record is stamped through BaseEntity.CreatedAt (level 2).
 func TestStaleEventIsRefused(t *testing.T) {
 	storedAt := windowBase.Add(time.Hour)
 	prior := &aiexecutor_entities.AIPolicyGrant{

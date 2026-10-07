@@ -9,7 +9,43 @@ import (
 	"go.uber.org/zap"
 )
 
-// staleFloor derives the ordering floor from one already-read grant.
+// clockSource names which column the stale floor was taken from. It is returned
+// alongside the floor so each caller records the trace that matches the level it
+// landed on: level 2 records FR-003, level 3 records FR-018, and level 1 records
+// nothing.
+type clockSource int
+
+const (
+	// clockOccurredAt: occurred_at read from the policy snapshot's envelope. This
+	// is the BUSINESS time of the change that produced the stored grant, so it is
+	// the preferred clock and needs no warning.
+	clockOccurredAt clockSource = iota
+	// clockCreatedAt: the row's own created_at, used when the snapshot carries no
+	// readable occurred_at. It is the time the row was WRITTEN, not the time the
+	// change happened, so using it degrades the clock (FR-003).
+	clockCreatedAt
+	// clockEffectiveFrom: the row's effective_from, the last resort when neither
+	// occurred_at nor created_at is usable. It carries the CHECK constraint and is
+	// the weakest clock, so it always warns (FR-018).
+	clockEffectiveFrom
+)
+
+// staleFloor derives the ordering floor from one already-read grant, in three
+// levels of decreasing trust (FR-001, FR-004a):
+//
+//  1. occurred_at, read from the policy snapshot's envelope via ExtractOccurredAt.
+//     This is the business time of the change and the preferred clock; using it
+//     logs nothing. The order matters when the queue is delayed: a later event can
+//     occur after an earlier one yet be written before the earlier row's
+//     created_at, so a created_at floor would refuse it wrongly (FR-001).
+//  2. created_at, when it is readable (non-zero) and not in the future relative to
+//     the application clock. It is the time the row was written, which lags the
+//     business time, so every use is recorded as FR-003.
+//  3. effective_from. It is the last resort because created_at is either zero or
+//     in the future - a clock skew or a hand-edited value could otherwise block
+//     every later grant for the account - so the floor falls back to a column that
+//     carries the CHECK constraint (ADR 014 §2, R-003). Every use is recorded as
+//     FR-018.
 //
 // It is PURE on purpose: it takes a grant and a clock, reads no database and takes
 // no context. That is what lets both ordering checks share it - the create path's
@@ -17,36 +53,45 @@ import (
 // neither can keep the old "refuse when the snapshot envelope is unreadable"
 // behaviour (FR-019).
 //
-// It reads created_at, not occurred_at from the policy snapshot:
-//   - created_at is the time the record was written, and it is what FR-001 names
-//     as the fallback clock. The snapshot envelope is unreadable on rows written
-//     before the envelope existed, and reading it was the production lock-up.
-//   - When created_at is zero OR in the future relative to the application clock,
-//     the column is not trustworthy - a clock skew or a hand-edited value could
-//     otherwise block every later grant for the account - so the floor falls back
-//     to effective_from, which carries the CHECK constraint (ADR 014 §2, R-003).
+// The returned clockSource tells the caller which warning to record, because the
+// two fallbacks are different degrees of degradation and an operator must be able
+// to count each separately.
 //
-// The bool reports whether the fallback happened. The caller MUST record FR-018
-// (user_id + grant_id) whenever it is true, because that branch is the weak clock
-// an operator needs to be able to count.
-//
-// This function answers ONLY "is this event newer than the last write". The second
-// floor - max(staleFloor, prior.EffectiveFrom) - lives in resolveGrantWindow,
-// because a `future` grant has created_at in the past and effective_from in the
-// future, and a floor taken from created_at alone cannot see it (FR-004a).
-func staleFloor(grant *aiexecutor_entities.AIPolicyGrant, now time.Time) (time.Time, bool) {
+// This function answers ONLY "is this event newer than the last change". The
+// second floor - max(staleFloor, prior.EffectiveFrom) - lives in
+// resolveGrantWindow, because a `future` grant has created_at in the past and
+// effective_from in the future, and a floor taken from created_at alone cannot see
+// it (FR-004a).
+func staleFloor(grant *aiexecutor_entities.AIPolicyGrant, now time.Time) (time.Time, clockSource) {
 	if grant == nil {
-		return time.Time{}, false
+		return time.Time{}, clockEffectiveFrom
 	}
-	floor := grant.CreatedAt
-	if floor.IsZero() || floor.After(now) {
-		return grant.EffectiveFrom, true
+	if occurredAt, ok := ExtractOccurredAt(grant); ok {
+		return occurredAt, clockOccurredAt
 	}
-	return floor, false
+	if !grant.CreatedAt.IsZero() && !grant.CreatedAt.After(now) {
+		return grant.CreatedAt, clockCreatedAt
+	}
+	return grant.EffectiveFrom, clockEffectiveFrom
+}
+
+// warnOccurredAtFallback records FR-003 when the ordering floor had to fall back
+// from the snapshot's occurred_at to the row's created_at.
+//
+// It carries user_id AND grant_id deliberately, the same way warnStaleFloorFallback
+// does: an operator reading the line can tell which account is running on the
+// weaker clock and can count how many grants are in that state. The message is
+// deliberately DIFFERENT from the FR-018 one, because an operator has to be able to
+// tell the two degrees of degradation apart.
+func (uc *GrantUseCase) warnOccurredAtFallback(grant *aiexecutor_entities.AIPolicyGrant) {
+	uc.logger.Warn("policy snapshot has no readable occurred_at; falling back to created_at for ordering",
+		zap.String("user_id", grant.UserID.String()),
+		zap.String("grant_id", grant.ID.String()),
+	)
 }
 
 // warnStaleFloorFallback records FR-018 once per time the stale floor had to fall
-// back to effective_from.
+// back to effective_from, because created_at was zero or in the future.
 //
 // It carries user_id AND grant_id deliberately: an operator reading the line can
 // tell which account is running on the weak clock, and can count how many grants
@@ -57,6 +102,18 @@ func (uc *GrantUseCase) warnStaleFloorFallback(grant *aiexecutor_entities.AIPoli
 		zap.String("user_id", grant.UserID.String()),
 		zap.String("grant_id", grant.ID.String()),
 	)
+}
+
+// warnFloorFallback records the warning that matches the chosen floor source.
+// clockOccurredAt is the healthy case and records nothing, which is the point of
+// returning the source rather than a bool.
+func (uc *GrantUseCase) warnFloorFallback(grant *aiexecutor_entities.AIPolicyGrant, source clockSource) {
+	switch source {
+	case clockCreatedAt:
+		uc.warnOccurredAtFallback(grant)
+	case clockEffectiveFrom:
+		uc.warnStaleFloorFallback(grant)
+	}
 }
 
 // resolveGrantWindow settles the window the new grant may actually occupy against
@@ -70,8 +127,10 @@ func (uc *GrantUseCase) warnStaleFloorFallback(grant *aiexecutor_entities.AIPoli
 // It has TWO floors, and the distinction is the whole point (FR-004a):
 //
 //   - the STALE floor (staleFloor) answers "is this event newer than the last
-//     write". FR-002 refuses on it. It is the only floor the unpriceable-downgrade
-//     path needs.
+//     change". It has THREE levels - occurred_at from the snapshot, then
+//     created_at, then effective_from - and FR-002 refuses on it. It is the only
+//     floor the unpriceable-downgrade path needs, and each fallback level records
+//     its own warning (FR-003, FR-018).
 //   - the ORDER floor is max(staleFloor, prior.EffectiveFrom). FR-004/FR-006 shift
 //     against it, so the new window can never start before a stored `future`
 //     window. A floor taken from created_at alone cannot see that row, because its
@@ -99,10 +158,8 @@ func (uc *GrantUseCase) resolveGrantWindow(ctx context.Context, event *PlanChang
 		return window, nil
 	}
 
-	stale, fellBack := staleFloor(prior, time.Now())
-	if fellBack {
-		uc.warnStaleFloorFallback(prior)
-	}
+	stale, source := staleFloor(prior, time.Now())
+	uc.warnFloorFallback(prior, source)
 	if !event.OccurredAt.After(stale) {
 		// FR-002: an event that is not strictly newer than the last write must not
 		// resurrect an entitlement that was already revoked. "Newer" is strict, so

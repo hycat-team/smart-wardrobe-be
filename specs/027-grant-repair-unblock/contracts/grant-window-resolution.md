@@ -66,10 +66,11 @@ nếu prior == nil:
     trả về window                                  // không có sàn nào để dịch
 
 // ---- Sàn cũ: chỉ chống hồi sinh, KHÔNG dùng để dịch ----
-staleFloor := prior.CreatedAt
-nếu staleFloor là zero hoặc staleFloor > now():
-    staleFloor = prior.EffectiveFrom               // cột chịu CHECK, R-003
-    GHI LOG cảnh báo FR-018 (user_id, grant_id)
+// Ba mức, theo thứ tự ưu tiên:
+//   (1) occurred_at đọc được từ ảnh chụp chính sách  -> dùng luôn, KHÔNG cảnh báo
+//   (2) created_at đọc được và không ở tương lai     -> dùng, GHI LOG FR-003
+//   (3) effective_from                               -> dùng, GHI LOG FR-018
+staleFloor, mức := chọnSànCũ(prior, now)
 
 nếu event.OccurredAt <= staleFloor:
     trả về lỗi từ chối vĩnh viễn, mã stale_event   // FR-002
@@ -85,6 +86,15 @@ nếu window.EffectiveFrom <= orderFloor:
 
 trả về window
 ```
+
+**Ba mức của sàn cũ, không phải hai.** Mức ưu tiên là `occurred_at` — thời gian **nghiệp vụ**
+của thay đổi đã tạo ra bản ghi. Chỉ khi ảnh chụp không đọc được nó thì mới lùi về `created_at`
+— thời gian **ghi hàng**. Hai mốc này khác nhau khi hàng đợi có độ trễ, và lấy `created_at`
+làm mức ưu tiên sẽ **từ chối nhầm** một sự kiện hợp lệ xảy ra trong khoảng lệch (FR-001).
+
+Mức 2 và mức 3 là hai mức suy giảm khác nhau và **phải phân biệt được trong log**: FR-003 cho
+mức 2, FR-018 cho mức 3. Gộp chúng thành một cảnh báo là mất thông tin về việc đồng hồ đã yếu
+đi bao nhiêu bậc.
 
 ### Vì sao phải có hai sàn
 
