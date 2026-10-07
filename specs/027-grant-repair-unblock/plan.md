@@ -200,6 +200,15 @@ lại**), theo FR-019. Vì vậy phần dựng **sàn cũ** phải là một hà
 497 không tạo bản ghi mới nên không cần dịch cửa sổ, nhưng nó dùng cùng hàm kiểm tra thứ tự và
 nếu không được sửa thì vẫn dừng vĩnh viễn trên chính dữ liệu hỏng mà 027 khai là đang sửa.
 
+**Cả nhánh `CloseActiveGrants` cũng phải dùng `cutoff` đã chốt, không chỉ nhánh `EXTENDED`.**
+Đây là chỗ bản kế hoạch đầu tiên viết sai và chỉ lộ ra khi triển khai. `CloseActiveGrants` đóng
+các dòng `active` có `effective_from <= cutoff`; nếu vẫn truyền `event.EffectiveAt` chưa dịch,
+một sự kiện đến muộn có `EffectiveAt` nhỏ hơn `effective_from` của bản ghi `active` mới nhất sẽ
+**không** đóng được nó, trong khi bản ghi mới đã bị dịch lên sau nó — hai cửa sổ `active` chồng
+lấn, phá FR-008. Chi tiết ở `contracts/grant-window-resolution.md` §4. Hai đường không tạo bản
+ghi mới (`applyRevocation`, `retireOnUnpriceableDowngrade`) truyền `EventGrantWindow(event).EffectiveFrom`,
+tình cờ bằng đúng `event.EffectiveAt`, nên hành vi của chúng không đổi.
+
 Nhánh `CloseActiveGrants` (thu hồi) giữ nguyên — FR-004 nói về "bản ghi mức quyền mới", và
 nhánh đó không tạo bản ghi mới.
 

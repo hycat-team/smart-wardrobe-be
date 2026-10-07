@@ -182,8 +182,33 @@ MỚI: retirePreviousGrants(ctx context.Context, event *PlanChangedEvent, cutoff
 | Nhánh | Hành vi | Có đổi không |
 | --- | --- | --- |
 | `DeletesPendingGrants(EventType)` | `DeleteFutureGrants` | Không |
-| `ClosesPriorGrants(EventType)` | `CloseActiveGrants(userID, event.EffectiveAt, event.OccurredAt)` | **Không** — nhánh thu hồi không tạo bản ghi mới, nên FR-004 không áp dụng |
+| `ClosesPriorGrants(EventType)` | `CloseActiveGrants(userID, cutoff, event.OccurredAt)` | **Có** — `cutoff` là tham số, xem dưới |
 | còn lại (`EXTENDED`) | `TruncateGrantsBefore(userID, cutoff, event.OccurredAt)` | **Có** — `cutoff` là tham số, không tự tính lại |
+
+**Cả hai nhánh đóng/cắt đều dùng `cutoff` đã chốt, không nhánh nào tự tính lại.** Đây là điểm
+mà bản hợp đồng đầu tiên của 027 viết sai, và nó chỉ lộ ra khi triển khai.
+
+Ban đầu tôi cho rằng nhánh `CloseActiveGrants` giữ nguyên `event.EffectiveAt` là an toàn, vì
+FR-004 nói về "bản ghi mới" và nhánh đó không tạo bản ghi mới. Điều đó đúng về *chủ thể* nhưng
+sai về *hệ quả*. `CloseActiveGrants` chạy
+
+```text
+UPDATE ... SET effective_to = cutoff, status = 'closed'
+WHERE user_id = ? AND status = 'active' AND effective_from <= cutoff
+```
+
+Với một sự kiện đến muộn, `event.EffectiveAt` có thể **nhỏ hơn** `effective_from` của bản ghi
+`active` mới nhất. Khi đó `effective_from <= cutoff` không thoả, bản ghi cũ **không** bị đóng,
+trong khi bản ghi mới đã bị dịch lên `orderFloor + 1µs` — tức nằm **sau** nó. Hai bản ghi
+`active` cùng lúc, phá FR-008 đúng bằng cơ chế mà `resolveGrantWindow` sinh ra để tránh.
+
+Truyền `cutoff` đã dịch cho cả hai nhánh sửa điều đó: `cutoff = orderFloor + 1µs` mà
+`orderFloor ≥ prior.effective_from`, nên `cutoff > prior.effective_from` và bản ghi cũ bị đóng
+tại đúng mốc bản ghi mới bắt đầu — cửa sổ chạm nhau, không chồng lấn.
+
+Với hai đường **không** tạo bản ghi mới (`applyRevocation` và `retireOnUnpriceableDowngrade`),
+`cutoff = EventGrantWindow(event).EffectiveFrom = event.EffectiveAt`, nên hành vi của chúng
+**không đổi** — giá trị truyền vào giống hệt giá trị chúng tự tính trước đây.
 
 **Ba nơi gọi, không phải một.** Đây là điểm dễ sót:
 

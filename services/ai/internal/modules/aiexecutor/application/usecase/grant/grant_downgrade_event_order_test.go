@@ -41,20 +41,17 @@ func downgradePayload() aiexecutor_dto.PlanChangedEventPayload {
 	return payload
 }
 
-// grantWithOccurredAt builds the account's newest grant as the ordering check
-// will see it: the stored timestamp lives in the snapshot envelope, because that
-// is what `ExtractOccurredAt` reads.
-func grantWithOccurredAt(t *testing.T, occurredAt time.Time) *aiexecutor_entities.AIPolicyGrant {
+// grantWrittenAt builds the account's newest grant as the ordering check now sees
+// it: 027 reads BaseEntity.CreatedAt, not occurred_at from the policy snapshot, so
+// that column is what makes the event stale or current. The snapshot is left empty
+// on purpose - it is the unreadable shape that used to lock this path up, and
+// rejectStaleEvent must no longer care whether it is readable (FR-001, FR-019).
+func grantWrittenAt(t *testing.T, createdAt time.Time) *aiexecutor_entities.AIPolicyGrant {
 	t.Helper()
-	snapshot, err := (&PolicySnapshot{Envelope: SnapshotEnvelope{OccurredAt: occurredAt}}).Marshal()
-	if err != nil {
-		t.Fatalf("marshal the stored snapshot: %v", err)
-	}
 	return &aiexecutor_entities.AIPolicyGrant{
 		AuditableEntity: aiexecutor_entities.AuditableEntity{
-			BaseEntity: aiexecutor_entities.BaseEntity{ID: uuid.New()},
+			BaseEntity: aiexecutor_entities.BaseEntity{ID: uuid.New(), CreatedAt: createdAt},
 		},
-		PolicySnapshot: snapshot,
 	}
 }
 
@@ -71,7 +68,7 @@ func TestStaleDowngradeWithUnpriceablePolicyClosesNothing(t *testing.T) {
 		policy: nil,
 		// One hour AFTER the event: the stored state already knows about a later
 		// change, so this delivery is stale.
-		currentGrant: grantWithOccurredAt(t, windowBase.Add(time.Hour)),
+		currentGrant: grantWrittenAt(t, windowBase.Add(time.Hour)),
 	}
 	uow := &recordingUow{}
 	uc := newHandler(repo, uow)
@@ -113,7 +110,7 @@ func TestCurrentDowngradeWithUnpriceablePolicyStillRetires(t *testing.T) {
 		policy: nil,
 		// One hour BEFORE the event: the delivered downgrade is the newest thing
 		// that happened to this account.
-		currentGrant: grantWithOccurredAt(t, windowBase.Add(-time.Hour)),
+		currentGrant: grantWrittenAt(t, windowBase.Add(-time.Hour)),
 	}
 	uow := &recordingUow{}
 	uc := newHandler(repo, uow)

@@ -3,6 +3,7 @@ package grant
 import (
 	"context"
 	"errors"
+	"time"
 
 	aiexecutor_dto "smart-wardrobe-be/services/ai/dto/aiexecutor"
 	uc_interfaces "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/interface/usecase"
@@ -263,10 +264,24 @@ func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecuto
 		//
 		// Deciding under the lock costs one read that was already being done, and it
 		// is the only place the answer is true.
-		if err := uc.rejectStaleEvent(txCtx, event); err != nil {
+		//
+		// 027 US1: resolveGrantWindow REPLACES rejectStaleEvent on this path. It runs
+		// here for the same reason - under the lock - and it returns the ONE start
+		// instant that both the new row and the truncation point use. Computing it
+		// twice is the documented way to leave a 1µs overlap or a 1µs gap (contract
+		// §3, ADR 014 §2.2). rejectStaleEvent is deliberately NOT kept alongside it:
+		// that would run the ordering test twice against two different clocks, and
+		// the old one still refuses permanently when the snapshot envelope is
+		// unreadable - the very lock-up 027 removes.
+		window, err := uc.resolveGrantWindow(txCtx, event)
+		if err != nil {
 			return err
 		}
-		if err := uc.retirePreviousGrants(txCtx, event); err != nil {
+		// Only EffectiveFrom depends on stored state, so it is the only field
+		// re-assigned here. buildGrant assembled the row OUTSIDE the transaction from
+		// static event and policy data, which is still correct.
+		grant.EffectiveFrom = window.EffectiveFrom
+		if err := uc.retirePreviousGrants(txCtx, event, window.EffectiveFrom); err != nil {
 			return err
 		}
 		return uc.aiCostRepo.CreateGrant(txCtx, grant)
@@ -352,8 +367,8 @@ const (
 	msgAICostPolicyNotFound = "Chính sách phí AI không tồn tại trong bảng chính sách phí của dịch vụ AI."
 )
 
-// rejectStaleEvent refuses an event that is not newer than what the account has
-// already been told.
+// rejectStaleEvent refuses an event that is not newer than the account's newest
+// stored grant.
 //
 // Without this, a renewal that arrives after a downgrade — a normal out-of-order
 // delivery — would resurrect a revoked Premium entitlement.
@@ -362,6 +377,18 @@ const (
 // different questions and answering the wrong one is what allowed two overlapping
 // active entitlements to be written. The caller must hold the account lock, because
 // the answer it compares against has to be the one no other writer can change.
+//
+// 027 FR-001/FR-004a/FR-019: the ordering floor comes from the grant's OWN
+// created_at - falling back to effective_from when that column is zero or in the
+// future - and NOT from occurred_at in the policy snapshot. The snapshot envelope
+// is unreadable on rows written before it existed, and reading it made this check
+// refuse those rows permanently: the lock-up 027 exists to remove. It therefore no
+// longer calls ExtractOccurredAt at all. The shared `staleFloor` is the single
+// definition of the floor, so this path and the create path cannot drift apart.
+//
+// This is now the only caller of the ordering check besides resolveGrantWindow. It
+// stays for the unpriceable-downgrade path, which retires a grant without creating
+// a row and so has no window to shift.
 func (uc *GrantUseCase) rejectStaleEvent(ctx context.Context, event *PlanChangedEvent) error {
 	current, err := uc.aiCostRepo.GetNewestGrantForOrdering(ctx, event.UserID)
 	if err != nil {
@@ -374,20 +401,11 @@ func (uc *GrantUseCase) rejectStaleEvent(ctx context.Context, event *PlanChanged
 	if current == nil {
 		return nil
 	}
-	storedOccurredAt, ok := ExtractOccurredAt(current)
-	if !ok {
-		// A grant with an unreadable envelope cannot be ordered against. Refuse:
-		// assuming it is stale would block legitimate renewals, and assuming it
-		// is fresh would allow exactly the resurrection this guards against.
-		uc.logger.Warn("current grant has no readable occurredAt; treating the event as stale",
-			zap.String("user_id", event.UserID.String()),
-			zap.String("grant_id", current.ID.String()),
-		)
-		uc.metrics.RecordRejection(ReasonStaleEvent, event.UserID.String())
-		return uc.reject(ReasonStaleEvent, event.UserID.String(),
-			"Bản ghi mức quyền hiện hành không đọc được thời điểm xảy ra, không thể xác định thứ tự sự kiện.")
+	floor, fellBack := staleFloor(current, time.Now())
+	if fellBack {
+		uc.warnStaleFloorFallback(current)
 	}
-	if !event.OccurredAt.After(storedOccurredAt) {
+	if !event.OccurredAt.After(floor) {
 		uc.metrics.RecordRejection(ReasonStaleEvent, event.UserID.String())
 		return uc.reject(ReasonStaleEvent, event.UserID.String(),
 			"Sự kiện đã cũ hơn hoặc bằng thời điểm của bản ghi mức quyền đang hiệu lực.")
@@ -410,7 +428,10 @@ func (uc *GrantUseCase) applyRevocation(ctx context.Context, event *PlanChangedE
 		if err := uc.aiCostRepo.LockGrantsForAccount(txCtx, event.UserID); err != nil {
 			return err
 		}
-		return uc.retirePreviousGrants(txCtx, event)
+		// 027 T010c: the revocation path never creates a row, so it has no resolved
+		// window to pass. It hands retirePreviousGrants the window the EVENT declares,
+		// exactly as before - the CloseActiveGrants branch ignores the cutoff anyway.
+		return uc.retirePreviousGrants(txCtx, event, EventGrantWindow(event).EffectiveFrom)
 	})
 	if err != nil {
 		uc.metrics.RecordRejection(ReasonTransientFailure, event.UserID.String())
@@ -480,8 +501,7 @@ func (uc *GrantUseCase) retireOnUnpriceableDowngrade(ctx context.Context, event 
 			return err
 		}
 		// 024 T210: the ordering check, in the same position it occupies on the
-		// priced path (grant_uc.go:266-271) - under the account lock, before
-		// anything is retired.
+		// priced create path - under the account lock, before anything is retired.
 		//
 		// Without it this path answered a different question than the path it
 		// shadows. A downgrade that arrived late would still take the Premium
@@ -497,14 +517,17 @@ func (uc *GrantUseCase) retireOnUnpriceableDowngrade(ctx context.Context, event 
 		if err := uc.rejectStaleEvent(txCtx, event); err != nil {
 			return err
 		}
-		return uc.retirePreviousGrants(txCtx, event)
+		// 027 T010c: no row is created here, so there is no resolved window to pass.
+		// The event's declared start is what the truncation point would have been,
+		// and the CloseActiveGrants branch ignores the cutoff for the downgrade type.
+		return uc.retirePreviousGrants(txCtx, event, EventGrantWindow(event).EffectiveFrom)
 	})
 	if err != nil {
 		// A refusal is a decision, not a failure, and it must keep its own
 		// classification. The stale refusal in particular must not be reclassified
 		// as transient and requeued: it can never become current, so requeueing it
 		// spends the delivery limit on an event whose answer is already known.
-		// Same shape as the priced path (grant_uc.go:277-283).
+		// Same shape as the priced create path.
 		var rejection *RejectionError
 		if errors.As(err, &rejection) {
 			return err
@@ -527,7 +550,25 @@ func (uc *GrantUseCase) retireOnUnpriceableDowngrade(ctx context.Context, event 
 // retirePreviousGrants closes active rows and drops pending ones, according to
 // the change type. A pending row is deleted rather than closed because a closed
 // row would still be returned by a status-agnostic query.
-func (uc *GrantUseCase) retirePreviousGrants(ctx context.Context, event *PlanChangedEvent) error {
+//
+// 027 T008: cutoff is an INPUT now, not something this function recomputes from
+// the event. The create path passes the window resolveGrantWindow settled under
+// the account lock, so the truncation point and the new row's start are the same
+// value to the microsecond (contract §3, ADR 014 §2.2). The two paths that create
+// no row - revocation and unpriceable downgrade - pass the event's own effective
+// time, which for those types is exactly what EventGrantWindow(event).EffectiveFrom
+// returns, so their behaviour is unchanged.
+//
+// BOTH branches cut at `cutoff`, and that is the point. The close branch used to
+// cut at event.EffectiveAt, which is the UNSHIFTED event time. When a
+// ClosesPriorGrants event arrives late with event.EffectiveAt earlier than the
+// existing active row's effective_from, resolveGrantWindow shifts the new row up
+// to orderFloor+1us but the old close cutoff stayed behind: CloseActiveGrants
+// filters `effective_from <= cutoff`, so it matched nothing and left the prior row
+// active alongside the new one - two overlapping active windows, which FR-008
+// forbids. Cutting at the resolved `cutoff` closes the prior row at exactly the
+// instant the new one starts, whether or not the window was shifted.
+func (uc *GrantUseCase) retirePreviousGrants(ctx context.Context, event *PlanChangedEvent, cutoff time.Time) error {
 	if DeletesPendingGrants(event.EventType) {
 		if err := uc.aiCostRepo.DeleteFutureGrants(ctx, event.UserID); err != nil {
 			return err
@@ -540,9 +581,13 @@ func (uc *GrantUseCase) retirePreviousGrants(ctx context.Context, event *PlanCha
 		// new period begins, which is precisely the gap this rule exists to
 		// prevent: a customer who renews early keeps the days they already paid
 		// for only if the old period runs right up to the new one.
-		return uc.aiCostRepo.TruncateGrantsBefore(ctx, event.UserID, EventGrantWindow(event).EffectiveFrom, event.OccurredAt)
+		return uc.aiCostRepo.TruncateGrantsBefore(ctx, event.UserID, cutoff, event.OccurredAt)
 	}
-	return uc.aiCostRepo.CloseActiveGrants(ctx, event.UserID, event.EffectiveAt, event.OccurredAt)
+	// Close at the same resolved instant the new row starts. The prior row is
+	// closed rather than deleted because its window has ended, not because it never
+	// existed - a closed row is still the newest record of what the account was
+	// told, which the ordering check relies on.
+	return uc.aiCostRepo.CloseActiveGrants(ctx, event.UserID, cutoff, event.OccurredAt)
 }
 
 // buildGrant assembles the grant row from a validated event.
