@@ -122,12 +122,27 @@ Ghi lại kết quả. Bước 6 sẽ so với nó.
 
 ### Bước 2 — Chắc chắn bản sửa đã lên
 
+> **Cổng cũ ở đây đã bị gỡ, và lý do đáng ghi lại.** Bản trước chạy
+> `$COMPOSE logs --tail=200 ai | grep -c 'recovered from panic'`. Lệnh đó **không đo phiên
+> bản**: dòng `recovered from panic` chỉ được ghi khi có panic thật và nó được recover, nên
+> một bản deploy khoẻ mạnh in ra `0` — y hệt một bản chưa deploy. Tệ hơn, dòng đó thuộc
+> interceptor của bản deploy **trước** 027 (`4990fd59`), nên nó cho cùng kết quả dù 027 có lên
+> hay không. Và `grep -c` trả exit code 1 khi tìm thấy 0 dòng, nên dưới `set -e` chính nó làm
+> script dừng lại và trông như deploy hỏng.
+
+Kiểm tra đúng là đối chiếu **ảnh đang chạy** với ảnh mà bản phát hành trỏ tới:
+
 ```bash
-$COMPOSE logs --tail=200 ai | grep -c 'recovered from panic'
+# Ảnh AI đang chạy, và ảnh mà .env.deploy ghim (do lần deploy này ghi)
+$COMPOSE ps ai
+grep -E '^AI_IMAGE=' .env.deploy
+
+# Container phải VỪA được tạo lại: STATUS ghi "Up vài phút", không phải "Up vài tuần"
 ```
 
-Và kiểm tra dịch vụ AI đang chạy đúng phiên bản mới — xem `docker compose ps` cùng tag image
-đang chạy. Nếu chưa deploy xong, **dừng lại**, không làm tiếp.
+Đạt khi: cột IMAGE của `$COMPOSE ps ai` bằng đúng giá trị `AI_IMAGE` trong `.env.deploy`, **và**
+STATUS cho thấy container vừa khởi động lại. Nếu STATUS ghi vài tuần thì deploy chưa recreate
+container — **dừng lại**, không làm tiếp.
 
 #### Chụp bộ đếm từ chối trước khi sửa
 
@@ -148,9 +163,9 @@ Hai điều phải nhớ khi đọc kết quả:
   sửa sẽ khởi động lại AI, nên số liệu của lượt ngày 2026-10-07 có thể đã mất. Đây là **mốc
   so sánh**, không phải bằng chứng lịch sử.
 - Các mã lý do đang có: `stale_event`, `policy_snapshot_unavailable`,
-  `ai_cost_policy_not_found`, `duplicate_source_event`, `transient_failure`. Mã
-  `policy_grant_constraint_violation` do **Phase 5 (User Story 3)** thêm vào — nếu bản deploy
-  mới chỉ gồm Phase 1–4 thì mã đó chưa xuất hiện, và điều đó là bình thường.
+  `ai_cost_policy_not_found`, `duplicate_source_event`, `transient_failure`,
+  `policy_grant_constraint_violation`. Cả sáu đều nằm trong bản deploy này — 027 phát hành
+  toàn bộ trong một tag, nên không còn chuyện "bản deploy chỉ gồm Phase 1–4".
 
 Sau khi sửa xong, chụp lại bộ đếm và đối chiếu với mốc này. Không được xuất hiện thêm lần từ
 chối nào cho các tài khoản vừa sửa: nếu có, xem lại mục "Nếu có gì đó hỏng".
@@ -179,6 +194,13 @@ Bản sao lưu ở trên dùng để khôi phục nếu bạn bỏ sót bước 
 Dán đúng danh sách UUID và **đúng mã gói** ở bảng phía trên. `planSlug` phải là gói mà
 tài khoản **đang** ở, không phải gói bạn muốn cho họ.
 
+> **Vì sao cấp lại đúng gói đang có lại sinh ra `EXTENDED`.** Dịch vụ Account chọn loại sự kiện
+> theo việc gói có **đổi** hay không: cùng gói → `EXTENDED`. Gói `free` không có thời hạn
+> (`duration_days = NULL`), nên payload mang `durationDays = 0`. Trước bản 027 này, parser dịch
+> vụ AI từ chối mọi `EXTENDED` có `durationDays <= 0`, nên **mọi** sự kiện sửa cho tài khoản
+> `free` bị chết trong hàng đợi — bảy trong tám tài khoản ở đây. Luật đó nay chỉ áp cho sự kiện
+> **có** ngày kết thúc (FR-020), nên hình dạng này là hợp lệ.
+
 ```bash
 cat > /tmp/grant-027.json <<'JSON'
 {
@@ -195,16 +217,23 @@ cat > /tmp/grant-027.json <<'JSON'
 }
 JSON
 
+# KHOÁ MỚI. Khoá cũ `027-grant-repair-2026-10-07` đã bị tiêu thụ ở lần chạy trước và sẽ
+# trả `duplicate_request` — nó bảo vệ chống chạy trùng, nên đổi hậu tố cho mỗi lần chạy lại.
 curl -s -X POST "https://api.closy.hycat.online/api/v1/admin/subscription-grants" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Idempotency-Key: 027-grant-repair-2026-10-07" \
+  -H "Idempotency-Key: 027-grant-repair-2026-10-07-b" \
   -H "Content-Type: application/json" \
   --data-binary @/tmp/grant-027.json | python3 -m json.tool
 ```
 
-Đọc `data.succeeded`, `data.failed`, `data.results[]`.
+### Cổng thật: đọc cơ sở dữ liệu, KHÔNG đọc `data.succeeded`
 
-- `succeeded` phải bằng **8**. Nếu có `status: "error"`, đọc `reason` trong `results[]`:
+> **`data.succeeded` KHÔNG chứng minh bản ghi mức quyền đã được ghi.** Endpoint trả về sau khi
+> cập nhật bản ghi subscription; consumer AI ghi bản ghi mức quyền **bất đồng bộ về sau** và có
+> thể từ chối. Trong lần chạy ngày 2026-10-07, `succeeded` báo thành công trong suốt thời gian
+> bảy sự kiện bị chết trong hàng đợi. Đây là FR-021 và SC-009.
+
+Đọc `data.results[]` chỉ để bắt lỗi **đồng bộ** (sai UUID, sai mã gói) — nếu có `status: "error"`:
   - `user_not_found` → sai UUID
   - `plan_not_found` / `plan_inactive` → sai mã gói
   - `target_is_admin` → danh sách có tài khoản admin thật; tài khoản demo `admin` ở đây
@@ -212,7 +241,9 @@ curl -s -X POST "https://api.closy.hycat.online/api/v1/admin/subscription-grants
   - `duplicate_request` → đã chạy với khoá này rồi, không cần chạy lại
   - `grant_failed` → xem log dịch vụ account
 
-Chỉ đi tiếp khi **không** có dòng nào `status: "error"`.
+Chỉ đi tiếp khi **không** có dòng nào `status: "error"`. Nhưng điều đó **vẫn chưa** nghĩa là
+đã sửa xong — nó chỉ nghĩa là dịch vụ Account không từ chối. Cổng thật là bước 6, và nó đọc
+bản ghi mức quyền.
 
 ### Bước 5 — Bật lại email ngay
 
@@ -230,20 +261,46 @@ với email tắt — **đó là sự cố đang âm thầm bỏ mọi email gia
 
 ### Bước 6 — Xác minh
 
-Consumer của dịch vụ AI xử lý bất đồng bộ. **Đợi 10–15 giây** rồi chạy lại truy vấn ở bước
-1. Kỳ vọng: **0 dòng**.
+**Đây là cổng duy nhất chứng minh việc sửa đã xảy ra.** Consumer của dịch vụ AI xử lý bất
+đồng bộ, nên **đợi 10–15 giây** trước khi đọc.
 
-Nếu vẫn còn dòng, kiểm tra:
+**6a — 8 tài khoản đều có bản ghi mức quyền đang hiệu lực, ảnh chụp đọc được:**
 
 ```bash
-$COMPOSE logs --tail=300 ai | grep -E 'stale_event|user_ai_policy_grants_check|policy_grant_constraint_violation|transient'
+$PSQL -c "
+SELECT g.user_id, g.status, g.effective_from, g.effective_to,
+       (g.policy_snapshot ? 'envelope')     AS has_env,
+       (g.policy_snapshot ? 'entitlements') AS has_ent
+FROM aiexecutor.ai_policy_grants g
+WHERE g.user_id IN (
+  'ad11ad11-ad11-ad11-ad11-ad11ad11ad11','736445e9-5046-4c63-9611-8baa3f2dc657',
+  '8523cbb9-7082-4177-99fd-3c6e26575df6','e8808dea-dd64-4f30-afa2-a4bcebf47a23',
+  '1aaa85cf-a219-4e75-aad3-36475025a2ef','01b168be-f497-443c-8383-226e952b6d8e',
+  'c24024c5-0905-4926-903d-9b8c7fb2cb27','ad11ad11-ad11-ad11-ad11-ad11ad11ad12')
+  AND g.status IN ('active','future')
+  AND g.effective_from <= now() AND (g.effective_to IS NULL OR g.effective_to > now())
+ORDER BY g.user_id;"
 ```
 
-`policy_grant_constraint_violation` là mã lý do do **Phase 5 (User Story 3)** thêm; trên bản
-deploy chỉ gồm Phase 1–4 thì nó không xuất hiện bao giờ, kể cả khi có vi phạm ràng buộc. Khi
-đó dấu hiệu vi phạm vẫn là `user_ai_policy_grants_check` trong log PostgreSQL.
+Kỳ vọng: **8 dòng**, mỗi tài khoản đúng một dòng, `has_env` và `has_ent` đều **true**. Thiếu
+dòng nào thì sự kiện của tài khoản đó chưa được áp — đọc 6b.
 
-Sau đó chạy toàn bộ kiểm tra toàn vẹn:
+**6b — không có sự kiện nào bị từ chối cho 8 tài khoản đó:**
+
+```bash
+$COMPOSE logs --tail=500 ai | grep -E 'rejected subscription.plan.changed|plan-changed event could not be applied'
+```
+
+Kỳ vọng: **không có dòng nào**. Nếu có, `reason` trong dòng đó chỉ ra nguyên nhân; các mã
+thường gặp: `stale_event`, `missing_required_field`, `policy_grant_constraint_violation`.
+
+> **`user_ai_policy_grants_check` không còn là tín hiệu ở log dịch vụ AI.** Trước 027, một vi
+> phạm ràng buộc đi qua đường `transient`, mà đường đó log nguyên lỗi driver nên tên ràng buộc
+> hiện ra. Sau 027, `23514` là từ chối vĩnh viễn và đi qua `reject`, mà `reject` **bỏ lỗi gốc**
+> (xem `deferred.md` D-07). Nên tín hiệu trong log AI nay là mã lý do
+> `policy_grant_constraint_violation`; còn tên ràng buộc chỉ còn thấy trong **log PostgreSQL**.
+
+**6c — kiểm tra toàn vẹn:**
 
 ```bash
 $COMPOSE exec -T postgres psql -U closy -d closy_db -q -f database/scripts/07-verify_policy_grants.sql

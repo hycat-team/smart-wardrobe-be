@@ -61,3 +61,36 @@ func TestRenewalWithPositiveDurationDaysIsAccepted(t *testing.T) {
 		t.Fatalf("a renewal with a valid durationDays must be accepted: %v", err)
 	}
 }
+
+// 027: an open-ended plan has no end date, so the change carries durationDays 0 and
+// there is nothing for the rule to compute. EventGrantWindow returns the
+// EffectiveAt-to-nil window before it reads the duration, so refusing here refuses an
+// event whose window was never in doubt.
+//
+// This is the shape that blocked the production grant repair: re-granting the SAME
+// open-ended plan - which is what the repair does, since the account is already on it -
+// publishes EXTENDED with no effectiveTo, and every one of those was dead-lettered as
+// missing_required_field. Seven of the eight accounts needing repair are on the free
+// plan, which is open-ended.
+func TestRenewalWithoutAnEndDateAcceptsZeroDurationDays(t *testing.T) {
+	payload := validPayload()
+	payload.EventType = string(subscriptioneventtype.EXTENDED)
+	payload.EffectiveTo = ""
+	payload.DurationDays = 0
+
+	event, err := ParsePlanChangedPayload(testLogger(), payload)
+	if err != nil {
+		t.Fatalf("an open-ended change has no window to compute and must be accepted: %v", err)
+	}
+	if event.EffectiveTo != nil {
+		t.Fatalf("effectiveTo must stay nil for an open-ended plan, got %v", event.EffectiveTo)
+	}
+
+	window := EventGrantWindow(event)
+	if !window.EffectiveFrom.Equal(event.EffectiveAt) {
+		t.Fatalf("expected the effective time %v, got %v", event.EffectiveAt, window.EffectiveFrom)
+	}
+	if window.EffectiveTo != nil {
+		t.Fatalf("expected an open-ended window, got %v", window.EffectiveTo)
+	}
+}

@@ -48,6 +48,29 @@ tài khoản sửa được là tài khoản không dính nguyên nhân nào.
 Lỗi này vốn được đóng nhãn là lỗi tạm thời, nên thông điệp bị thử lại 5 lần — mỗi lần
 đều chắc chắn thất bại — rồi mới chết. Nhãn sai làm che mất việc đây là lỗi tất định.
 
+**Nguyên nhân 3 — parser từ chối sự kiện cấp lại cùng gói không thời hạn.** Phát hiện ngày
+2026-10-07 khi chạy runbook trên production, sau khi đã deploy bản sửa cho nguyên nhân 1 và 2.
+
+Đường sửa cấp lại **đúng gói mà tài khoản đang có**. Dịch vụ Account, khi gói không đổi, phát
+sự kiện loại `EXTENDED` (`internal_subscription_apply_workflow.go`). Parser dịch vụ AI từ chối
+mọi `EXTENDED` có `durationDays <= 0`. Gói `free` có `duration_days = NULL` — không thời hạn —
+nên payload mang `durationDays = 0` và **mọi** sự kiện sửa cho tài khoản gói `free` bị từ chối
+vĩnh viễn với `missing_required_field`.
+
+Bảy trong tám tài khoản cần sửa đang ở gói `free`. Nên đường sửa mà runbook chọn **không thể
+chạy** với bảy phần tám công việc, và nó hỏng ở bước parse — trước cả khi chạm tới
+`resolveGrantWindow` của nguyên nhân 1.
+
+Điểm khiến lỗi này khó thấy: **phản hồi của admin nói thành công.** Endpoint cấp gói trả 200
+sau khi cập nhật bản ghi subscription; consumer AI chạy bất đồng bộ về sau và từ chối. Tài
+khoản và dịch vụ AI lệch nhau, im lặng — đúng loại hỏng mà 027 sinh ra để chữa.
+
+**Vì sao luật parser quá rộng.** `EventGrantWindow` trả cửa sổ `EffectiveAt → nil` và **dừng**
+khi `EffectiveTo == nil` (`grant_window.go:49-51`); nó không bao giờ đọc `durationDays` trong
+nhánh đó. Luật của 024 T168 chỉ cần thiết khi cửa sổ phải **tính** từ `durationDays`, tức khi
+sự kiện **có** ngày kết thúc. Áp nó vô điều kiện là từ chối đúng những sự kiện mà nó không có
+lý do gì để từ chối.
+
 ## Quan hệ với các yêu cầu đang tồn tại — đọc trước khi kế hoạch
 
 Đặc tả này **không** phủ định yêu cầu nào của spec 024, nhưng có một chỗ cần ghi thay đổi
@@ -333,6 +356,24 @@ nhân trong lượt chạy hôm nay.
   nhánh thì nhánh còn lại giữ nguyên đúng cái khoá chết mà 027 khai là đang sửa — một lần sửa
   nửa vời, tệ hơn là không sửa gì vì nó tạo cảm giác đã xong.
 
+- **FR-020**: Việc parser từ chối một sự kiện `EXTENDED` vì `durationDays` không dương MUST chỉ
+  áp dụng khi sự kiện **có** ngày kết thúc (`effectiveTo`). Một sự kiện `EXTENDED` không có
+  `effectiveTo` MUST được chấp nhận với `durationDays = 0`.
+
+  Lý do: `EventGrantWindow` trả cửa sổ `EffectiveAt → nil` và dừng trước khi đọc `durationDays`
+  khi `effectiveTo` là nil, nên không có gì để tính và không có gì để từ chối. Gói không thời
+  hạn báo `durationDays = 0` là đúng, không phải thiếu sót. Luật của 024 T168 vẫn giữ nguyên
+  hiệu lực cho trường hợp nó được viết ra: một lần gia hạn **có** ngày kết thúc.
+
+- **FR-021**: Phản hồi của endpoint cấp gói MUST NOT được dùng làm bằng chứng rằng bản ghi mức
+  quyền đã được ghi. Endpoint trả về sau khi cập nhật subscription; bản ghi mức quyền do
+  consumer AI ghi bất đồng bộ về sau, và nó có thể từ chối. Mọi cổng kiểm chứng của đường sửa
+  MUST đọc **trạng thái bản ghi mức quyền trong cơ sở dữ liệu**, không đọc mã phản hồi.
+
+  Đây là hệ quả trực tiếp của nguyên nhân 3: trong suốt thời gian bảy tài khoản bị từ chối,
+  `data.succeeded` vẫn báo thành công, nên cổng `succeeded == 8` của runbook **không thể** phát
+  hiện ra vấn đề.
+
 ### Ràng buộc kiến trúc
 
 - **AC-01**: Dịch vụ AI MUST **không** đọc bảng của dịch vụ Account để suy ra gói cước
@@ -385,6 +426,10 @@ nhân trong lượt chạy hôm nay.
 - **SC-008**: Con số bản ghi lịch sử có ảnh chụp chính sách không đọc được **vẫn được báo
   cáo** sau khi mục kiểm tra về 0. Nếu dòng thông tin này biến mất khỏi báo cáo, thì việc
   thu hẹp phạm vi đã xoá dữ liệu thay vì chỉ đo lại nó — và mức đó chưa được chấp nhận.
+- **SC-009**: Một sự kiện cấp lại **cùng gói** cho một tài khoản đang ở gói **không thời hạn**
+  (`durationDays = 0`, không `effectiveTo`) được chấp nhận, và **bản ghi mức quyền mới xuất
+  hiện trong cơ sở dữ liệu** với ảnh chụp đọc được. Tiêu chí này đo trạng thái dữ liệu, không
+  đo mã phản hồi — vì mã phản hồi đã báo thành công trong suốt thời gian sự kiện bị từ chối.
 
 ## Assumptions
 

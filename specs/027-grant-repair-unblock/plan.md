@@ -274,6 +274,37 @@ trong đó là cổng chặn "hãy chắc chắn bản sửa đã lên". Việc 
 `EXTENDED`, gọi `TruncateGrantsBefore` (`ai_policy_grant_writer.go:77`), và chỉ đặt được
 `effective_to = mốc cắt` đúng khi hành vi tính lại của Mục 1 đã có.
 
+### Mục 8 — Nguyên nhân thứ ba, phát hiện trên production
+
+Phát hiện khi chạy runbook ngày 2026-10-07, sau khi bản sửa cho Mục 1 và Mục 3 đã lên.
+
+Đường sửa cấp lại **đúng gói tài khoản đang có**. Với gói không đổi, dịch vụ Account phát
+`EXTENDED` (`internal_subscription_apply_workflow.go:146-152`), và `durationDays` lấy từ
+`plan.DurationDays` (`plan_changed_payload.go:82-84`). Gói `free` có `duration_days = NULL`
+(`database/init/03-seed.sql:28`), nên payload mang `durationDays = 0`. Parser dịch vụ AI từ chối
+vô điều kiện mọi `EXTENDED` có `durationDays <= 0`
+(`grant_payload_parser.go:301`), nên **mọi** sự kiện sửa cho tài khoản `free` bị từ chối vĩnh
+viễn. Bảy trong tám tài khoản cần sửa ở gói `free`.
+
+**Sửa:** thu hẹp luật cho trường hợp nó được viết ra — sự kiện **có** `effectiveTo`:
+
+```go
+if event.EventType == subscriptioneventtype.EXTENDED && event.EffectiveTo != nil && event.DurationDays <= 0 {
+```
+
+`EventGrantWindow` đã trả cửa sổ `EffectiveAt → nil` và dừng khi `EffectiveTo == nil`
+(`grant_window.go:49-51`) — `durationDays` không bao giờ được đọc trong nhánh đó. Luật vẫn giữ
+nguyên toàn bộ hiệu lực cho một lần gia hạn có ngày kết thúc, tức đúng ca 024 T168 nói tới.
+
+**Một lỗi trong harness kiểm thử đã che nguyên nhân này.** Helper `planChangedPayload` chỉ ghi
+`effectiveTo` khi tham số khác nil, nên "payload mở" mà nó dựng vẫn mang ngày kết thúc từ
+`validPayload()`. Không test nào từng chạy `EXTENDED` không có `effectiveTo`. Helper nay xoá
+trường khi tham số là nil.
+
+**Hệ quả lên cổng kiểm chứng:** `data.succeeded == 8` của runbook đo phía Account, không đo
+bản ghi mức quyền. Nó báo thành công trong suốt thời gian sự kiện bị từ chối. Cổng thật phải
+đọc cơ sở dữ liệu (FR-021, SC-009).
+
 ## Kiểm tra Hiến pháp sau thiết kế
 
 *Re-check sau Phase 1.*

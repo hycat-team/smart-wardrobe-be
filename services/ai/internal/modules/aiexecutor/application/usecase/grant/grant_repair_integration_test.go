@@ -366,3 +366,69 @@ func TestIntegrationRepairStartsAfterAllPrior(t *testing.T) {
 			activeCount, describeGrantRows(t, conn, userID))
 	}
 }
+
+// TestIntegrationRepairOfOpenEndedPlanIsNotRefused is the third cause of the blocked
+// repair, and the one the production run hit.
+//
+// The repair grants the plan the account is ALREADY on, because that is the plan whose
+// entitlement is missing. For an open-ended plan - `free` has duration_days NULL - the
+// account service publishes EXTENDED with no effectiveTo and durationDays 0. The parser
+// refused that combination unconditionally, so every repair event for the seven free
+// accounts was dead-lettered as missing_required_field, the account row was updated, and
+// no grant was ever written. The admin response said success the whole time.
+//
+// It goes through HandlePlanChanged, which parses the payload itself, so the assertion
+// is about the real entry point the consumer uses rather than about a hand-built event
+// that skips the rule.
+func TestIntegrationRepairOfOpenEndedPlanIsNotRefused(t *testing.T) {
+	conn := openGrantTestDB(t)
+	cleanupGrantTables(t, conn)
+	installGrantWindowCheck(t, conn)
+	uc := newGrantIntegrationUC(conn)
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	start := now.Add(-24 * time.Hour)
+	userID := uuid.New()
+	policy := seedGrantPolicy(t, conn, "premium")
+
+	prior := seedUnreadableActiveGrant(t, conn, userID, policy.ID, start, start)
+
+	// The production shape for a free account: same plan, open-ended, durationDays 0.
+	repair := planChangedPayload(userID, policy.ID, uuid.New(),
+		subscriptioneventtype.EXTENDED,
+		now, // occurredAt: newer than prior.created_at, so not stale
+		now, // effectiveAt
+		nil, // effectiveTo: an open-ended plan has no end date
+		0)   // durationDays: 0 for an open-ended plan
+
+	if err := uc.HandlePlanChanged(context.Background(), repair); err != nil {
+		t.Fatalf("an open-ended repair must not be refused as missing_required_field: %v", err)
+	}
+
+	var closed entities.AIPolicyGrant
+	if err := conn.Where("id = ?", prior.ID).First(&closed).Error; err != nil {
+		t.Fatalf("re-read the repaired grant: %v", err)
+	}
+	if closed.Status != aipolicygrantstatus.Closed {
+		t.Errorf("the broken grant must be closed, got status %q%s",
+			closed.Status, describeGrantRows(t, conn, userID))
+	}
+
+	sourceID := uuid.MustParse(repair.SourceEventID)
+	var created entities.AIPolicyGrant
+	if err := conn.Where("user_id = ? AND source_event_id = ?", userID, sourceID).First(&created).Error; err != nil {
+		t.Fatalf("the open-ended repair must write a new grant: %v%s", err, describeGrantRows(t, conn, userID))
+	}
+	if created.Status != aipolicygrantstatus.Active {
+		t.Errorf("the new grant must be active, got status %q", created.Status)
+	}
+	if created.EffectiveTo != nil {
+		t.Errorf("an open-ended plan must produce an open-ended window, got effective_to %v", created.EffectiveTo)
+	}
+	if _, ok := ExtractOccurredAt(&created); !ok {
+		t.Errorf("the new snapshot must carry a readable envelope the ordering check can use")
+	}
+	if n := countOverlappingGrantWindows(t, conn, userID); n != 0 {
+		t.Errorf("no two live windows may overlap, got %d%s", n, describeGrantRows(t, conn, userID))
+	}
+}

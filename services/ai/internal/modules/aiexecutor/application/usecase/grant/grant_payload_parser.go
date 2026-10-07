@@ -298,7 +298,18 @@ func ParsePlanChangedPayload(log logger.Interface, payload aiexecutor_dto.PlanCh
 	// Refused at the parser rather than patched downstream, so nothing is written and
 	// the existing `missing_required_field` reason applies: no new reason code, no
 	// change to the dead-letter contract.
-	if event.EventType == subscriptioneventtype.EXTENDED && event.DurationDays <= 0 {
+	//
+	// 027: the rule applies only when the event CARRIES an end date. It used to apply
+	// unconditionally, which refused a change to an open-ended plan - one with no
+	// expiry - where durationDays is legitimately 0 and, more to the point, is never
+	// read: EventGrantWindow returns the EffectiveAt-to-nil window before it ever
+	// looks at the duration. The unconditional form therefore refused exactly the
+	// events it had no reason to, and it is what blocked the grant repair: re-granting
+	// the same open-ended plan (the repair path) publishes EXTENDED with
+	// durationDays 0, and every one of those was dead-lettered. The guard is still
+	// load-bearing for a renewal that has an end date, which is the case T168 was
+	// written about; it is only scoped to where the computation actually happens.
+	if event.EventType == subscriptioneventtype.EXTENDED && event.EffectiveTo != nil && event.DurationDays <= 0 {
 		return nil, &ParseError{
 			Reason:  ReasonMissingRequiredField,
 			Message: "Sự kiện gia hạn phải có durationDays lớn hơn 0 để xác định kỳ quyền đã trả.",

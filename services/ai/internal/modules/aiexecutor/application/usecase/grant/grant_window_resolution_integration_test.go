@@ -99,6 +99,12 @@ func seedUnreadableActiveGrant(t *testing.T, conn *gorm.DB, userID, policyID uui
 
 // planChangedPayload builds a wire payload for a chosen event type and clock,
 // starting from validPayload() so every required field stays valid.
+//
+// A nil effectiveTo means OPEN-ENDED, and it must clear the field rather than leave
+// validPayload()'s value in place. The previous form only wrote the field when it was
+// non-nil, so every "open-ended" payload this helper built still carried an end date -
+// which is why no test ever exercised EXTENDED with no effectiveTo, and why the
+// production repair that depends on exactly that shape was not caught here.
 func planChangedPayload(
 	userID, policyID, planID uuid.UUID,
 	eventType subscriptioneventtype.Type,
@@ -114,6 +120,7 @@ func planChangedPayload(
 	payload.EventType = string(eventType)
 	payload.OccurredAt = occurredAt.Format(time.RFC3339Nano)
 	payload.EffectiveAt = effectiveAt.Format(time.RFC3339Nano)
+	payload.EffectiveTo = ""
 	if effectiveTo != nil {
 		payload.EffectiveTo = effectiveTo.Format(time.RFC3339Nano)
 	}

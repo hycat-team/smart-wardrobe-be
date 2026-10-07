@@ -36,6 +36,12 @@ func EventGrantWindow(event *PlanChangedEvent) GrantWindow
 Nhánh thứ tư là quan trọng: cấp quyền trước thời điểm bắt đầu là cấp quyền cho thời gian
 chưa mua. 027 **không** chạm vào bảng này.
 
+**`durationDays` không bao giờ được đọc khi `EffectiveTo == nil`** — hàng đầu tiên trả về trước
+khi tới nó. Đó là căn cứ cho FR-020: một sự kiện `EXTENDED` không có ngày kết thúc hợp lệ với
+`durationDays = 0`, và parser từ chối nó là từ chối một sự kiện mà cửa sổ chưa bao giờ bị
+nghi ngờ. Gói không thời hạn (`free`, `duration_days = NULL`) báo `durationDays = 0`, và đường
+sửa cấp lại đúng gói đang có nên nó luôn đi qua hình dạng này.
+
 ---
 
 ## 2. `resolveGrantWindow(ctx, event) (GrantWindow, error)`

@@ -49,13 +49,14 @@ func EventGrantWindow(event *PlanChangedEvent) GrantWindow {
 	if window.EffectiveTo == nil {
 		return window
 	}
-	// 024 T168: the parser now refuses a renewal whose durationDays is absent or
-	// non-positive, so this branch is a defensive default rather than the renewal
-	// rule. It still must NOT be reached by a real renewal event: falling through to
-	// the ordinary branch would set the start to EffectiveAt and the status to Active,
-	// opening the entitlement at the moment the event arrived instead of at "new expiry
-	// minus duration" — early access to a period that has not been paid for, which is
-	// what the note above says must not happen.
+	// 024 T168: the parser refuses a renewal whose durationDays is absent or
+	// non-positive WHEN THE EVENT CARRIES AN END DATE (027 narrowed it to that case),
+	// so this branch is a defensive default rather than the renewal rule. It still
+	// must NOT be reached by a real renewal event: falling through to the ordinary
+	// branch would set the start to EffectiveAt and the status to Active, opening the
+	// entitlement at the moment the event arrived instead of at "new expiry minus
+	// duration" — early access to a period that has not been paid for, which is what
+	// the note above says must not happen.
 	if event.EventType != subscriptioneventtype.EXTENDED || event.DurationDays <= 0 {
 		return window
 	}
