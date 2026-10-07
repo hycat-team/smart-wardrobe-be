@@ -305,6 +305,26 @@ trường khi tham số là nil.
 bản ghi mức quyền. Nó báo thành công trong suốt thời gian sự kiện bị từ chối. Cổng thật phải
 đọc cơ sở dữ liệu (FR-021, SC-009).
 
+### Mục 9 — Gói có thời hạn còn hiệu lực: chấp nhận, không sửa
+
+Phát hiện khi rà lại ca của tài khoản demo `user` (`premium-monthly`) ngày 2026-10-07.
+
+Với một gói **có** thời hạn còn hiệu lực, đường sửa cấp lại đúng gói **không** chữa được bản
+ghi hỏng, và cộng thêm 30 ngày. Chuỗi: `ResolveExpiryFor` cộng dồn hạn khi cùng gói còn hiệu
+lực (`subscription_behavior.go:397`) → `effectiveTo = hạn_cũ + 30d` → `EventGrantWindow` đặt
+`start = hạn_cũ` và trạng thái `future` (`grant_window.go:64-70`) → `TruncateGrantsBefore` giữ
+bản ghi hỏng trong cửa sổ tới `hạn_cũ`, mà bộ đọc lọc theo cửa sổ chứ không theo trạng thái.
+
+**Quyết định: chấp nhận (phương án C).** Thiệt hại chỉ rơi vào **tài khoản demo** — đặc tả ghi
+rõ `premium-monthly` duy nhất là demo `user`, không có khách trả tiền nào trong danh sách. Sửa
+nó cần hoặc đổi hành vi `ResolveExpiryFor` cho cấp hành chính (ảnh hưởng mọi đường admin
+grant), hoặc đổi ngữ nghĩa cửa sổ renewal phía AI (phá quy tắc "không khe hở") — cả hai vượt
+phạm vi FR-001..FR-021.
+
+Nếu hạn của tài khoản đó **đã hết**, `ResolveExpiryFor` đi nhánh fresh và nó được sửa như các
+tài khoản `free`. Ghi ở `deferred.md` D-08, và runbook nay yêu cầu đọc `still_valid` trước khi
+kết luận.
+
 ## Kiểm tra Hiến pháp sau thiết kế
 
 *Re-check sau Phase 1.*

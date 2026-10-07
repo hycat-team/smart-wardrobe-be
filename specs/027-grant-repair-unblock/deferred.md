@@ -131,3 +131,28 @@ bịa ra sai.
 - **Ảnh hưởng tới task đã tick**: **Có.** T018 khẳng định dấu vết thư chết có tài khoản, mã
   lý do và thông điệp; nếu SC-006 bị đọc chặt thành "phải có lỗi gốc", thì T018 chỉ đạt dấu
   vết ở mức thông điệp, không ở mức lỗi driver — `[X]` ở T018 nên được đọc kèm điều kiện này.
+### D-08 — Cấp lại một gói CÓ thời hạn đang còn hiệu lực không sửa được kỳ hiện tại
+
+- **Vấn đề**: Với một gói có thời hạn mà kỳ hiện tại chưa hết (tài khoản demo `user`,
+  `premium-monthly`), đường sửa cấp lại đúng gói không chữa được bản ghi hỏng, và còn cộng
+  thêm 30 ngày. Chuỗi: `ResolveExpiryFor` (`subscription_behavior.go:397`) cộng dồn
+  `duration_days` vào hạn cũ khi cấp lại cùng gói còn hiệu lực → sự kiện `EXTENDED` mang
+  `effectiveTo = hạn_cũ + 30d` → `EventGrantWindow` đặt `start = effectiveTo − durationDays =
+  hạn_cũ`, và vì `hạn_cũ > now` nên bản ghi mới là `future` (`grant_window.go:64-70`) →
+  `TruncateGrantsBefore(cutoff = hạn_cũ)` để bản ghi hỏng ở lại trong cửa sổ hiệu lực tới
+  `hạn_cũ`. Bộ đọc lọc theo cửa sổ chứ không theo trạng thái
+  (`ai_policy_grant_writer.go:90-96`), nên quyền AI của tài khoản vẫn suy giảm suốt phần còn
+  lại của kỳ.
+- **Vì sao ngoài phạm vi**: Đã chấp nhận có ý thức ngày 2026-10-07. Thiệt hại chỉ rơi vào
+  **tài khoản demo** — đặc tả ghi rõ `premium-monthly` duy nhất là demo `user`, không có khách
+  trả tiền nào trong danh sách. Sửa nó cần một trong hai thay đổi lớn hơn phạm vi 027: cho
+  cấp gói hành chính **không** cộng dồn hạn (đổi hành vi phía Account, ảnh hưởng mọi đường
+  admin grant), hoặc đổi ngữ nghĩa cửa sổ renewal ở phía AI để đóng bản ghi hỏng tại `now`
+  và tạo một bản ghi đọc được cho phần còn lại của kỳ (phá quy tắc "không khe hở" và cần đặc
+  tả riêng).
+- **Gỡ bằng cách nào**: Một đặc tả riêng. Đường sạch nhất là tách "cấp hành chính" khỏi "mua"
+  trong `ResolveExpiryFor`: cấp hành chính luôn tính kỳ mới từ `now`, không cộng dồn — vì
+  không ai đã trả tiền cho kỳ được cộng thêm.
+- **Ảnh hưởng tới task đã tick**: **Có.** T040 và SC-009 kỳ vọng cả 8 tài khoản được sửa; với
+  tài khoản demo `premium-monthly` còn hiệu lực thì chỉ 7 tài khoản đạt. `[X]` ở T040 nên được
+  đọc kèm điều kiện này.

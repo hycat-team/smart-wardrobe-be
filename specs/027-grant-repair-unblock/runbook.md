@@ -26,7 +26,9 @@ gây hại, không phải sửa.
 Lấy lại danh sách ngay trước khi thao tác — nó có thể đã thay đổi:
 
 ```sql
-SELECT s.user_id, u.username, s.current_plan_code AS plan_slug
+SELECT s.user_id, u.username, s.current_plan_code AS plan_slug,
+       s.expires_at,
+       (s.expires_at IS NULL OR s.expires_at > now()) AS still_valid
 FROM aiexecutor.ai_policy_grants g
 JOIN subscription.user_subscriptions s ON s.user_id = g.user_id
 LEFT JOIN identity.users u ON u.id = g.user_id
@@ -35,6 +37,10 @@ WHERE g.status IN ('active','future')
   AND NOT (g.policy_snapshot ? 'envelope' AND g.policy_snapshot ? 'entitlements')
 ORDER BY s.current_plan_code, u.created_at;
 ```
+
+**Đọc cột `still_valid` — nó quyết định kết quả, không phải cột gói.** Gói không thời hạn
+(`expires_at` NULL) luôn sửa được. Gói **có** thời hạn còn hiệu lực thì **không**, xem mục
+"Gói có thời hạn" bên dưới.
 
 Tại thời điểm viết runbook này (2026-10-07), truy vấn trả về:
 
@@ -59,7 +65,10 @@ Sáu tài khoản còn lại là người thật, tất cả đều ở gói `fr
 
 Cấp lại **cùng một mã gói** tạo ra sự kiện loại `EXTENDED`, và `EXTENDED` **không** đóng bản
 ghi cũ — nó **cắt** bản ghi cũ ở thời điểm bắt đầu của kỳ mới (`TruncateGrantsBefore`,
-`ai_policy_grant_writer.go:77`). Với 8 tài khoản ở đây thì:
+`ai_policy_grant_writer.go:77`). Điểm mấu chốt là **kỳ mới bắt đầu ở đâu**, và điều đó phụ
+thuộc vào gói có thời hạn hay không.
+
+### Gói không thời hạn (`free`) — 7 tài khoản
 
 - Bản ghi cũ: `effective_from` = ngày bắt đầu kỳ cước (lâu trước), `effective_to` = NULL →
   được cắt thành `effective_to = now`, trạng thái `đã đóng`.
@@ -68,6 +77,39 @@ ghi cũ — nó **cắt** bản ghi cũ ở thời điểm bắt đầu của k�
 Kết quả: không có hai bản ghi đang hiệu lực chồng lấn, ràng buộc `effective_to >
 effective_from` vẫn thoả, và bản ghi cũ rời khỏi cửa sổ hiệu lực nên kiểm tra toàn vẹn
 không còn đếm nó.
+
+### Gói có thời hạn còn hiệu lực (`premium-monthly` — tài khoản demo `user`) — **KHÔNG sửa được kỳ hiện tại**
+
+Đây là ca duy nhất đường sửa này không chữa được, và lý do không nằm ở 027. Ba bước:
+
+1. **Account cộng dồn hạn.** `ResolveExpiryFor` (`subscription_behavior.go:397`) cộng
+   `duration_days` vào hạn **cũ** khi cấp lại cùng gói đang còn hiệu lực. Admin grant đi qua
+   `ApplySubscriptionPlanWithEvent` (`admin_grant_batch_uc.go:429`), nên hạn mới = `hạn_cũ + 30d`.
+2. **Sự kiện mang hạn mới đó.** Code cố ý đọc lại row sau khi apply
+   (`admin_grant_batch_uc.go:442-444`), nên `effectiveTo = hạn_cũ + 30d`.
+3. **AI đặt kỳ mới ở `hạn_cũ`.** `EventGrantWindow` cho `EXTENDED` tính
+   `start = effectiveTo − durationDays = hạn_cũ` (`grant_window.go:64-70`), và vì `hạn_cũ > now`
+   nên bản ghi mới có trạng thái **`future`**. `TruncateGrantsBefore(cutoff = hạn_cũ)` để bản ghi
+   cũ ở lại trong cửa sổ hiệu lực tới `hạn_cũ`.
+
+Bộ đọc lọc theo **cửa sổ**, không theo trạng thái (`ai_policy_grant_writer.go:90-96`), nên
+trong suốt thời gian đó tài khoản vẫn dùng **bản ghi cũ với ảnh chụp hỏng** — quyền AI vẫn suy
+giảm. Bản ghi mới đọc được chỉ bắt đầu khi kỳ hiện tại kết thúc.
+
+**Hai hệ quả, cả hai đã được chấp nhận có ý thức:**
+
+- Tài khoản demo được **cộng thêm 30 ngày**. Chỉ ảnh hưởng tài khoản demo — không có khách trả
+  tiền nào trong danh sách.
+- Quyền AI của tài khoản demo **vẫn hỏng cho tới hết kỳ hiện tại**. Đây là nợ đã ghi ở
+  `deferred.md` D-08.
+
+**Nếu hạn đã hết** (`still_valid = false`) thì `ResolveExpiryFor` đi nhánh fresh
+(`hạn_mới = now + 30d`), `start = now`, bản ghi mới `active`, và tài khoản được sửa ngay như
+các tài khoản `free`. Nên hãy đọc `still_valid` trước khi kết luận.
+
+> **Chạy lại lần nữa lại cộng thêm 30 ngày.** Mỗi lần chạy với `Idempotency-Key` mới là một
+> lần cấp gói mới, và `ResolveExpiryFor` cộng dồn mỗi lần. Với tài khoản demo điều đó vô hại,
+> nhưng đừng chạy lại nhiều lần mà không có lý do.
 
 ## Vì sao phải tắt email
 
@@ -219,6 +261,8 @@ JSON
 
 # KHOÁ MỚI. Khoá cũ `027-grant-repair-2026-10-07` đã bị tiêu thụ ở lần chạy trước và sẽ
 # trả `duplicate_request` — nó bảo vệ chống chạy trùng, nên đổi hậu tố cho mỗi lần chạy lại.
+# Lưu ý: chạy lại cũng cộng thêm 30 ngày cho tài khoản demo `premium-monthly` — xem mục
+# "Gói có thời hạn còn hiệu lực".
 curl -s -X POST "https://api.closy.hycat.online/api/v1/admin/subscription-grants" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Idempotency-Key: 027-grant-repair-2026-10-07-b" \
@@ -282,8 +326,17 @@ WHERE g.user_id IN (
 ORDER BY g.user_id;"
 ```
 
-Kỳ vọng: **8 dòng**, mỗi tài khoản đúng một dòng, `has_env` và `has_ent` đều **true**. Thiếu
-dòng nào thì sự kiện của tài khoản đó chưa được áp — đọc 6b.
+Kỳ vọng:
+
+- **7 tài khoản `free`**: mỗi tài khoản đúng một dòng, `has_env` và `has_ent` đều **true**.
+- **Tài khoản demo `user` (`premium-monthly`)**: phụ thuộc `still_valid` ở bước 1.
+  - `still_valid = false` (hạn đã hết) → có dòng, như 7 tài khoản kia.
+  - `still_valid = true` → **không có dòng nào**, và **đó là kết quả đã biết, không phải sự
+    cố**. Bản ghi mới là `future` nên bị lọc `effective_from <= now()`, còn bản ghi cũ đã thành
+    `closed` nên bị lọc `status`. Quyền AI của tài khoản này vẫn hỏng cho tới hết kỳ hiện tại —
+    xem mục "Gói có thời hạn" và `deferred.md` D-08.
+
+Thiếu dòng ở một tài khoản **`free`** thì sự kiện của tài khoản đó chưa được áp — đọc 6b.
 
 **6b — không có sự kiện nào bị từ chối cho 8 tài khoản đó:**
 
