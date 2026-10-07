@@ -220,6 +220,11 @@ psql -U closy -d closy_db -q -f database/scripts/07-verify_policy_grants.sql
 | 4. Ảnh chụp chính sách rỗng hoặc thiếu | **khác 0** | **0** |
 | Truy vấn thông tin (mới) | khác 0 | khác 0 — **giữ nguyên** |
 
+**Giá trị đo được trên cơ sở dữ liệu dev thật** (chạy ngày 2026-10-07, chỉ đọc): mục 4 =
+**8**, truy vấn thông tin = **14**, tổng **22** — khớp chính xác số bản ghi mà sự cố để lại, và
+8 đúng bằng số đang hiệu lực. Đây là bằng chứng rằng FR-014 thu hẹp đúng phạm vi và FR-016
+giữ phần lịch sử hiển thị thay vì xoá nó.
+
 Hai dòng cuối là kiểm tra chống gian lận của chính bản sửa: nếu mục 4 về 0 **và** số thông
 tin cũng về 0, có nghĩa là dữ liệu đã bị xoá thay vì được đóng lại — đúng thứ FR-016 cấm.
 

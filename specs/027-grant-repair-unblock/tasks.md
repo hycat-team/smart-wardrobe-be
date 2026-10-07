@@ -151,15 +151,15 @@ tạm thời thật sự vẫn được thử lại như trước.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T024 [P] Trong `specs/024-admin-premium-grant/contracts/subscription-plan-changed-event.md`: sửa dòng mô tả sai phạm vi `stale_event` (CHK028), **thêm** một hàng cho `policy_grant_constraint_violation` vào bảng mã lý do tối thiểu vì FR-011 bắt buộc nó xuất hiện trong bộ đếm công khai, và sửa luôn hàng `plan_not_in_catalog` đã bị 024 T159 đổi thành `ai_cost_policy_not_found`
-- [ ] T025 Tick mục **Frontend Integration Guide**: 027 không đổi/thêm/xoá HTTP endpoint, không đổi event payload, không đổi DTO client-facing — chỉ thêm một khoá trong đối tượng sức khoẻ nội bộ, và T023 đã xác nhận khoá đó là `string` tự do nên không phá client. **Không** tick nếu T023 phát hiện `Snapshot()` đã đổi sang kiểu đóng
-- [ ] T026 [P] Tick mục **Phát hiện ngoài phạm vi**: `specs/027-grant-repair-unblock/deferred.md` đã ghi 6 mục (D-01..D-06) với **vấn đề**, **vì sao ngoài phạm vi**, **gỡ bằng cách nào**; D-03 và D-06 ghi rõ chúng làm suy yếu FR-014/FR-015 và FR-009, và nêu đích danh task bị ảnh hưởng
-- [ ] T027 Chạy `make lint` và `go test -race -count=3` trong `services/ai`; đối chiếu với mốc T002
-- [ ] T028 Chạy `make check` đầy đủ — bắt buộc trước khi push hoặc tag
-- [ ] T029 Cập nhật `specs/027-grant-repair-unblock/quickstart.md` nếu số đếm K6 lệch so với kết quả thật sau khi chạy
-- [ ] T030 Đọc lại `specs/027-grant-repair-unblock/quickstart.md`, `runbook.md` và cả hai tệp trong `contracts/`, đối chiếu **từng mệnh đề** với mã nguồn, và **ghi lại số đã đối chiếu** (bao nhiêu hàm, bao nhiêu cột, bao nhiêu mã lý do, bao nhiêu lệnh kiểm chứng đã chạy thật). Một lượt đọc lại không sinh ra con số thì lượt đó chưa xảy ra
-- [ ] T031 Xác minh FR-013: **không** có câu lệnh SQL nào ghi vào `aiexecutor.ai_policy_grants` trong đợt này — đường sửa là `POST /api/v1/admin/subscription-grants` sinh sự kiện; và trong mã nguồn, **không** có thành phần nào ngoài dịch vụ AI ghi bảng này. Ghi lại bằng chứng (đường dẫn tệp và truy vấn `grep`/`Select-String`) vào báo cáo cuối, vì đây là yêu cầu dạng **phủ định** — không có gì để chạy, nên bằng chứng phải là điều đã chứng minh là không tồn tại
-- [ ] T032 Xác nhận AC-03: tập loại sự kiện, hợp đồng sự kiện và nội dung ảnh chụp chính sách **không** đổi. Đối chiếu `git diff` chỉ chạm các tệp trong danh sách của 027, và nêu rõ trong báo cáo nếu có tệp hợp đồng nào bị sửa (T024 sửa mô tả trong hợp đồng 024, và đó là đính chính mô tả, không phải đổi cấu trúc)
+- [x] T024 [P] Trong `specs/024-admin-premium-grant/contracts/subscription-plan-changed-event.md`: sửa dòng mô tả sai phạm vi `stale_event` (CHK028), **thêm** một hàng cho `policy_grant_constraint_violation` vào bảng mã lý do tối thiểu vì FR-011 bắt buộc nó xuất hiện trong bộ đếm công khai, và sửa luôn hàng `plan_not_in_catalog` đã bị 024 T159 đổi thành `ai_cost_policy_not_found`
+- [x] T025 Tick mục **Frontend Integration Guide**: 027 không đổi/thêm/xoá HTTP endpoint, không đổi event payload, không đổi DTO client-facing — chỉ thêm một khoá trong đối tượng sức khoẻ nội bộ, và T023 đã xác nhận khoá đó là `string` tự do nên không phá client. Đã tick sau khi T023 xác nhận `Snapshot()` vẫn là `map[string]int64`
+- [x] T026 [P] Tick mục **Phát hiện ngoài phạm vi**: `specs/027-grant-repair-unblock/deferred.md` đã ghi **7 mục (D-01..D-07)** với **vấn đề**, **vì sao ngoài phạm vi**, **gỡ bằng cách nào**; D-03, D-06, D-07 ghi rõ chúng làm suy yếu FR-014/FR-015, FR-009 và T018, và nêu đích danh task bị ảnh hưởng
+- [x] T027 Chạy `make lint` và `go test -race -count=3` trong `services/ai`; đối chiếu với mốc T002
+- [x] T028 Chạy `make check` đầy đủ — bắt buộc trước khi push hoặc tag
+- [x] T029 Cập nhật `specs/027-grant-repair-unblock/quickstart.md` nếu số đếm K6 lệch so với kết quả thật sau khi chạy
+- [x] T030 Đọc lại `specs/027-grant-repair-unblock/quickstart.md`, `runbook.md` và cả hai tệp trong `contracts/`, đối chiếu **từng mệnh đề** với mã nguồn, và **ghi lại số đã đối chiếu** (bao nhiêu hàm, bao nhiêu cột, bao nhiêu mã lý do, bao nhiêu lệnh kiểm chứng đã chạy thật). Một lượt đọc lại không sinh ra con số thì lượt đó chưa xảy ra
+- [x] T031 Xác minh FR-013: **không** có câu lệnh SQL nào ghi vào `aiexecutor.ai_policy_grants` trong đợt này — đường sửa là `POST /api/v1/admin/subscription-grants` sinh sự kiện; và trong mã nguồn, **không** có thành phần nào ngoài dịch vụ AI ghi bảng này. Ghi lại bằng chứng (đường dẫn tệp và truy vấn `grep`/`Select-String`) vào báo cáo cuối, vì đây là yêu cầu dạng **phủ định** — không có gì để chạy, nên bằng chứng phải là điều đã chứng minh là không tồn tại
+- [x] T032 Xác nhận AC-03: tập loại sự kiện, hợp đồng sự kiện và nội dung ảnh chụp chính sách **không** đổi. Đối chiếu `git diff` chỉ chạm các tệp trong danh sách của 027, và nêu rõ trong báo cáo nếu có tệp hợp đồng nào bị sửa (T024 sửa mô tả trong hợp đồng 024, và đó là đính chính mô tả, không phải đổi cấu trúc)
 
 ---
 

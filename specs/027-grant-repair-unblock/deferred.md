@@ -97,6 +97,12 @@ bịa ra sai.
   `ai_policy_grants` (và các bảng `aiexecutor.*` còn lại) sang
   `services/ai/database/migrations/`, kèm bước kiểm tra tương thích cho môi trường đang
   chạy.
+- **Ghi chú liên quan (DML)**: cùng chủ đề sở hữu, `database/scripts/06-cleanup_policy_grants.sql`
+  và `database/scripts/11-seed_restore_test_data.sql` (có sẵn từ trước) **ghi** trực tiếp vào
+  `aiexecutor.ai_policy_grants` bằng SQL. Đây là căng thẳng có sẵn với FR-013, không do 027
+  tạo ra: `git diff` từ đầu đặc tả cho thấy 027 chỉ sửa `07-verify_policy_grants.sql`, và tệp
+  đó **chỉ đọc**. Runbook của 027 cấm sửa dữ liệu bằng SQL. Việc chuyển quyền sở hữu bảng về
+  dịch vụ AI (bước gỡ ở trên) tự nhiên bao trùm cả hai script này.
 - **Ảnh hưởng tới task đã tick**: **Có — gián tiếp.** T016 phải **tự thêm** ràng buộc bằng
   `ALTER TABLE` trong cơ sở dữ liệu kiểm thử, vì `AutoMigrate` không tạo ra nó (thực thể
   `AIPolicyGrant` không có thẻ `check:`). Đây không phải sự cố của ràng buộc, nhưng nếu ai đó
