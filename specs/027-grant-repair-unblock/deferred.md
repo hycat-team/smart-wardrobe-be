@@ -102,3 +102,26 @@ bịa ra sai.
   `AIPolicyGrant` không có thẻ `check:`). Đây không phải sự cố của ràng buộc, nhưng nếu ai đó
   sửa lược đồ kiểm thử theo hướng "bỏ `ALTER TABLE` vì thừa" thì kiểm thử sẽ ngừng chứng
   minh điều gì và US3 sẽ trông như đã kiểm chứng.
+
+### D-07 — Lỗi gốc không được gắn vào lỗi từ chối vĩnh viễn
+
+- **Vấn đề**: `GrantUseCase.reject(reason, userID, message)` (`GRANT/grant_uc.go`) trả
+  `sharedevent.PermanentError` chỉ mang `RejectionError{Reason, Message}`, **không** mang lỗi
+  gốc. Đường mới của 027 (vi phạm `CHECK` `23514`) vì vậy ghi được tài khoản và mã lý do vào
+  dòng cảnh báo, và mang một thông điệp tiếng Việt nêu nguyên nhân, nhưng **không** gắn
+  `*pgconn.PgError` (SQLSTATE và tên ràng buộc) vào dấu vết thư chết. Điều này đúng cho
+  **mọi** đường `reject` hiện có, không riêng đường mới.
+- **Vì sao ngoài phạm vi**: SC-006 đọc theo nghĩa "dấu vết có tài khoản, mã lý do và một
+  thông điệp nêu nguyên nhân" thì đường mới **đã** đạt (`RejectionError.Message`). Đọc theo
+  nghĩa chặt hơn — "phải có nguyên văn thông điệp driver" — thì đây là khoảng trống có **từ
+  trước** 027, nằm ở thiết kế chung của `reject()`. Sửa nó là đổi hành vi của mọi đường từ
+  chối, vượt phạm vi FR-009..FR-012. Ngoài ra FR-011 cấm ghi **quá một** dòng cảnh báo cho
+  mỗi lần từ chối, nên không thể "chỉ thêm một dòng log nữa" mà không phải quyết định điều
+  gì thay thế dòng hiện có.
+- **Gỡ bằng cách nào**: Cho `RejectionError` mang lỗi gốc qua `Unwrap` (giữ `PermanentError`
+  là marker), và ghi nó vào **cùng** dòng cảnh báo duy nhất mà `RecordRejection` phát ra —
+  tức mở rộng `RecordRejection` nhận thêm `error`, hoặc ghi lỗi gốc ở nơi bắt lỗi trước khi
+  bọc. Cần một đặc tả nhỏ, và cần đối chiếu với FR-011 để bảo đảm vẫn đúng một dòng.
+- **Ảnh hưởng tới task đã tick**: **Có.** T018 khẳng định dấu vết thư chết có tài khoản, mã
+  lý do và thông điệp; nếu SC-006 bị đọc chặt thành "phải có lỗi gốc", thì T018 chỉ đạt dấu
+  vết ở mức thông điệp, không ở mức lỗi driver — `[X]` ở T018 nên được đọc kèm điều kiện này.

@@ -1,11 +1,16 @@
 package grant
 
 import (
+	"context"
+	"errors"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 
+	sharedevent "smart-wardrobe-be/shared/application/event"
+
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -296,6 +301,177 @@ func TestRejectionCounterIsProcessLocalAndStartsEmpty(t *testing.T) {
 	metrics.RecordRejection(ReasonUnknownEventType, "user-1")
 	restarted := NewGrantMetrics(newCapturedLogger())
 	if len(restarted.Snapshot()) != 0 {
-		t.Errorf("sau khi khởi động lại tiến trình, bộ đếm phải bắt đầu từ 0, có = %v", restarted.Snapshot())
+		t.Errorf("sau khi khởi động lại tiến trình, bộ đếm phải bắt đầu từ 0, có %v", restarted.Snapshot())
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 027 US3 (T018): the new reason code, its counter and its requeue behaviour.
+// ---------------------------------------------------------------------------
+
+// warningsForReason lifts the WARN lines the metrics recorded for one reason.
+// The reason field is what separates a rejection warning from every other line
+// this sink may carry.
+func warningsForReason(log *capturedLogger, reason string) []observer.LoggedEntry {
+	var out []observer.LoggedEntry
+	for _, entry := range log.observed.FilterLevelExact(zapcore.WarnLevel).All() {
+		if entry.ContextMap()["reason"] == reason {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// checkViolationUC builds a use case whose write fails with a REAL-classified
+// CHECK violation, using a hand-built *pgconn.PgError. That is enough here
+// because this test is about the CLASSIFICATION DECISION (which marker, which
+// counter, which log line), not about whether GORM preserves the error - that
+// integration fact is pinned by TestIsCheckViolationThroughGorm in
+// grant_error_class_integration_test.go.
+func checkViolationUC(log *capturedLogger, metrics *GrantMetrics) *GrantUseCase {
+	repo := &fakeGrantRepo{
+		policy:    strictPolicyWithAllOperations(),
+		createErr: &pgconn.PgError{Code: pgCheckViolationCode, Message: "check constraint violated"},
+	}
+	return NewGrantUseCase(repo, &recordingUow{}, log, metrics).(*GrantUseCase)
+}
+
+// TestConstraintViolationReasonRecorded covers FR-011: the new reason appears in
+// the public counter, warns exactly once per occurrence on a line that carries
+// the account, and is subject to NO numeric threshold.
+func TestConstraintViolationReasonRecorded(t *testing.T) {
+	log := newCapturedLogger()
+	metrics := NewGrantMetrics(log)
+	uc := checkViolationUC(log, metrics)
+
+	payload := validPayload()
+	if err := uc.HandlePlanChanged(context.Background(), payload); err == nil {
+		t.Fatal("một vi phạm CHECK phải nổi lên thành lỗi")
+	}
+
+	// FR-011: the reason is in the counter that bootstrap/router.go exposes.
+	snapshot := metrics.Snapshot()
+	if snapshot[ReasonConstraintViolation] != 1 {
+		t.Fatalf("FR-011: %q phải xuất hiện trong bộ đếm công khai với giá trị 1, có %v",
+			ReasonConstraintViolation, snapshot)
+	}
+	// FR-009: it must NOT be counted under the old transient reason.
+	if snapshot[ReasonTransientFailure] != 0 {
+		t.Fatalf("FR-009: 23514 không được đếm chung với %q, có %v", ReasonTransientFailure, snapshot)
+	}
+
+	warns := warningsForReason(log, ReasonConstraintViolation)
+	if len(warns) != 1 {
+		t.Fatalf("FR-011: mỗi lần xảy ra phải ghi đúng MỘT dòng cảnh báo, có %d", len(warns))
+	}
+	fields := warns[0].ContextMap()
+	if fields["user_id"] != payload.UserID {
+		t.Errorf("FR-011: dòng cảnh báo phải mang user_id %q, có %v", payload.UserID, fields["user_id"])
+	}
+	// No threshold: the FIRST occurrence already warns, carrying total 1. A
+	// threshold would suppress exactly this earliest evidence.
+	if fields["rejected_total_for_reason"] != int64(1) {
+		t.Errorf("FR-011: lần xảy ra đầu tiên phải cảnh báo ngay với tổng 1, có %v",
+			fields["rejected_total_for_reason"])
+	}
+
+	// A second occurrence warns again - nothing is throttled, because no threshold
+	// exists to throttle it.
+	if err := uc.HandlePlanChanged(context.Background(), validPayload()); err == nil {
+		t.Fatal("một vi phạm CHECK phải nổi lên thành lỗi")
+	}
+	if got := len(warningsForReason(log, ReasonConstraintViolation)); got != 2 {
+		t.Fatalf("FR-011: không được có ngưỡng chặn cảnh báo; sau 2 lần phải có 2 dòng, có %d", got)
+	}
+}
+
+// TestConstraintViolationIsNotRequeued covers SC-004 and SC-006: the 23514
+// rejection is a PermanentError (so startConsumerLoop dead-letters it with zero
+// retries), the trace is complete, and a genuinely transient failure keeps the
+// old RetryableError path (FR-010).
+//
+// The marker types are asserted with the SAME errors.As switch that
+// startConsumerLoop (shared/infrastructure/messaging/rabbitmq.go) uses. That
+// switch is unexported and out of this module, so the honest thing this package
+// can prove is the contract it reads; the switch itself is covered by the shared
+// messaging tests.
+func TestConstraintViolationIsNotRequeued(t *testing.T) {
+	t.Run("a CHECK violation is permanent and traceable", func(t *testing.T) {
+		log := newCapturedLogger()
+		metrics := NewGrantMetrics(log)
+		uc := checkViolationUC(log, metrics)
+
+		payload := validPayload()
+		err := uc.HandlePlanChanged(context.Background(), payload)
+		if err == nil {
+			t.Fatal("một vi phạm CHECK phải nổi lên thành lỗi")
+		}
+
+		// SC-004: PermanentError, and NOT RetryableError - that is what routes it
+		// straight to the dead letter with zero retries.
+		var permanent sharedevent.PermanentError
+		if !errors.As(err, &permanent) {
+			t.Fatalf("SC-004: từ chối 23514 phải là PermanentError, thực tế = %#v", err)
+		}
+		var retryable sharedevent.RetryableError
+		if errors.As(err, &retryable) {
+			t.Fatal("SC-004: từ chối 23514 KHÔNG được requeue")
+		}
+
+		// The reason stays reachable through the wrapper - it is what the metric
+		// and the log carry.
+		var rejection *RejectionError
+		if !errors.As(err, &rejection) {
+			t.Fatal("SC-006: mã lý do phải truy xuất được qua PermanentError")
+		}
+		if rejection.Reason != ReasonConstraintViolation {
+			t.Errorf("mã lý do = %q, cần %q", rejection.Reason, ReasonConstraintViolation)
+		}
+
+		// SC-006: account + reason on the warning line, and a non-empty cause
+		// message travelling on the error itself, so the dead letter is traceable.
+		warns := warningsForReason(log, ReasonConstraintViolation)
+		if len(warns) != 1 {
+			t.Fatalf("SC-006: phải có đúng một dòng cảnh báo, có %d", len(warns))
+		}
+		if warns[0].ContextMap()["user_id"] != payload.UserID {
+			t.Errorf("SC-006: dòng cảnh báo thiếu user_id, có %v", warns[0].ContextMap()["user_id"])
+		}
+		if rejection.Message != msgConstraintViolation {
+			t.Errorf("SC-006: thông điệp nguyên nhân phải là chuỗi production dùng, có %q", rejection.Message)
+		}
+		if err.Error() == "" {
+			t.Error("SC-006: thư chết phải mang theo thông điệp nguyên nhân")
+		}
+	})
+
+	t.Run("a transient failure still requeues (FR-010)", func(t *testing.T) {
+		log := newCapturedLogger()
+		metrics := NewGrantMetrics(log)
+		repo := &fakeGrantRepo{
+			policy:    strictPolicyWithAllOperations(),
+			createErr: errors.New("deadlock detected"),
+		}
+		uc := NewGrantUseCase(repo, &recordingUow{}, log, metrics).(*GrantUseCase)
+
+		err := uc.HandlePlanChanged(context.Background(), validPayload())
+		if err == nil {
+			t.Fatal("một lỗi tạm thời phải nổi lên thành lỗi")
+		}
+
+		var retryable sharedevent.RetryableError
+		if !errors.As(err, &retryable) {
+			t.Fatalf("FR-010: lỗi tạm thời phải vẫn là RetryableError để requeue, thực tế = %#v", err)
+		}
+		var permanent sharedevent.PermanentError
+		if errors.As(err, &permanent) {
+			t.Fatal("FR-010: lỗi tạm thời không được biến thành PermanentError")
+		}
+		if got := metrics.Snapshot()[ReasonTransientFailure]; got != 1 {
+			t.Errorf("FR-010: lỗi tạm thời phải đếm vào %q, có %v", ReasonTransientFailure, metrics.Snapshot())
+		}
+		if got := metrics.Snapshot()[ReasonConstraintViolation]; got != 0 {
+			t.Errorf("FR-010: lỗi tạm thời không được đếm vào %q, có %d", ReasonConstraintViolation, got)
+		}
+	})
 }

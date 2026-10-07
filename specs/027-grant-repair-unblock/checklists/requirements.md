@@ -65,9 +65,10 @@ nên chúng vẫn kiểm chứng được mà không cần biết cách hiện t
   lớn nhất tuyệt đối, chỉ lớn hơn nghiêm. Nêu cả hệ quả về lệch đồng hồ.
 - [x] CHK026 **Không** cần `frontend-guide.md`. R-004 kết luận nhãn của
   `grant_rejected_by_reason` là `string` tự do, không phải kiểu liệt kê đóng, nên khóa mới
-  không làm vỡ client đọc theo khoá. Kết luận này **có điều kiện**: Mục 4 của `plan.md` và
-  K4 của `quickstart.md` yêu cầu xác nhận bằng chứng trước khi đóng. Nếu nhãn hoá ra là
-  kiểu đóng, mục này mở lại và `frontend-guide.md` trở thành bắt buộc.
+  không làm vỡ client đọc theo khoá. **Đã xác nhận sau triển khai (T023):** `GrantMetrics.Snapshot()`
+  vẫn trả `map[string]int64` và `grant_rejected_by_reason` vẫn được lắp trong
+  `services/ai/internal/bootstrap/router.go`, không hồi quy. Nếu `Snapshot()` đổi sang kiểu
+  đóng thì mục này mở lại và `frontend-guide.md` trở thành bắt buộc.
 - [x] CHK027 `deferred.md` — đã tạo, 6 mục (D-01..D-06). D-03 ghi rõ nó **làm suy yếu** FR-014/FR-015:
   nếu ai đó đổi bộ đọc để lọc theo trạng thái thì mục 4 của kiểm tra toàn vẹn và SC-005 hỏng
   theo.

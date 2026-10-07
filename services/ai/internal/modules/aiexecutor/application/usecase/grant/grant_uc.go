@@ -50,6 +50,19 @@ const (
 	ReasonPolicySnapshotUnavail = "policy_snapshot_unavailable"
 	ReasonDuplicateSourceEvent  = "duplicate_source_event"
 	ReasonTransientFailure      = "transient_failure"
+
+	// ReasonConstraintViolation: the database refused the write with a CHECK
+	// violation (SQLSTATE 23514). The transaction has rolled back and redelivery
+	// reproduces the same failure, so this is a permanent rejection, not a
+	// transient one (FR-009) - it is kept separate from ReasonTransientFailure so
+	// an operator sees a deterministic data fault instead of a retry counter that
+	// climbs forever.
+	//
+	// This string is a PUBLIC counter key: it appears in grant_rejected_by_reason
+	// on the AI service's health response (FR-011). A dashboard or alert built on
+	// it breaks if it is renamed, so do not change it casually and never fold it
+	// back into ReasonTransientFailure.
+	ReasonConstraintViolation = "policy_grant_constraint_violation"
 )
 
 // RejectionError is an event that was understood but not applied.
@@ -294,6 +307,21 @@ func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecuto
 		if errors.As(err, &rejection) {
 			return err
 		}
+		// 027 US3 (FR-009): a CHECK violation is a DECISION, not an incident. The
+		// transaction has already rolled back, the stored data is unchanged, and
+		// the same values will produce the same 23514 on every redelivery. So it
+		// is refused permanently with its own reason code instead of being
+		// requeued.
+		//
+		// This branch MUST stay BEFORE the transient one: the whole point is that
+		// this error stops spinning through the delivery limit and reaches the
+		// dead letter with a readable reason. Every OTHER error keeps the pre-027
+		// path untouched, which is what FR-010 requires - a real transient failure
+		// must still be retried exactly as before.
+		if isCheckViolation(err) {
+			uc.metrics.RecordRejection(ReasonConstraintViolation, event.UserID.String())
+			return uc.reject(ReasonConstraintViolation, event.UserID.String(), msgConstraintViolation)
+		}
 		uc.metrics.RecordRejection(ReasonTransientFailure, event.UserID.String())
 		return uc.transient(err, ctx, event, "write grant in transaction")
 	}
@@ -365,6 +393,16 @@ const (
 	// used to carry its own copy of this sentence, which is precisely how the two
 	// drift apart — and they had.
 	msgAICostPolicyNotFound = "Chính sách phí AI không tồn tại trong bảng chính sách phí của dịch vụ AI."
+
+	// msgConstraintViolation is the reason carried by a 23514 rejection. It must
+	// make two things clear to whoever reads the dead letter: this is a data
+	// constraint on the entitlement record, and retrying cannot fix it.
+	//
+	// It is a constant so the test asserts the SAME string production carries. A
+	// test with its own copy of the sentence is how the two drift apart - the
+	// mistake already made once with msgAICostPolicyNotFound above.
+	msgConstraintViolation = "Bản ghi mức quyền vi phạm ràng buộc dữ liệu của cơ sở dữ liệu; " +
+		"đây là vi phạm tất định và không thể khắc phục bằng cách thử lại."
 )
 
 // rejectStaleEvent refuses an event that is not newer than the account's newest
