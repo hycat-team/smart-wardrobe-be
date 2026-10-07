@@ -57,6 +57,14 @@ func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID 
 			return plan, nil
 		}
 		policy, op = fallback.Policy, fallback.Operation
+		// `grant = nil` here is CORRECT and must stay. The account has no grant
+		// row at all, so there is no purchased entitlement to read a snapshot from,
+		// and inventing one would be exactly the thing FR-029b forbids. It is also
+		// why `Read` below is given a nil grant on purpose rather than by accident:
+		// it returns SnapshotComplete false, and the `!limits.SnapshotComplete`
+		// branch below then fills the ceilings from the live operation row, which is
+		// the declared single fallback for "the snapshot carries nothing for this
+		// operation".
 		grant = nil
 	}
 

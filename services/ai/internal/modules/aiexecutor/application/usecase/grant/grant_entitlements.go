@@ -176,6 +176,7 @@ func (r *EntitlementReader) Read(
 	operation aioperation.AIOperation,
 ) *ResolvedLimits {
 	resolved := &ResolvedLimits{}
+
 	if policy != nil {
 		resolved.HardCostMicroVND = policy.HardCostMicroVND
 		resolved.EnforcementMode = string(policy.EnforcementMode)
@@ -192,6 +193,31 @@ func (r *EntitlementReader) Read(
 			resolved.FreeRoute = string(op.FreeRoute)
 			break
 		}
+	}
+
+	// The live half above is read FIRST on purpose, and the nil-grant guard sits
+	// after it for the same reason. Cost-control settings do not come from a grant,
+	// so a request that has none must still get its hard cap, its enforcement mode
+	// and its anti-abuse bounds — a caller that degraded because of a missing grant
+	// is exactly the caller that must not then run unbounded.
+	//
+	// A nil grant is a legitimate state, not a broken one: it is what the tier-1
+	// fallback passes on purpose (see plan.go). Treating it as a fault to log is what
+	// made this reader dereference it — `decodeEntitlements` correctly refuses a nil
+	// grant, and the log line reporting that refusal then read `grant.UserID` off the
+	// nil pointer, killing the process for every user.
+	//
+	// Returning here with SnapshotComplete false is the correct answer: there is no
+	// purchased entitlement to read, and the caller falls back to the live operation
+	// row, which is the single declared fallback for "the snapshot carries nothing
+	// for this operation" (FR-029b).
+	//
+	// No log line here on purpose. `FallbackMetrics.OnFallback` already reports this
+	// exact condition with the user id and a running count, once per request. A
+	// second line here would carry less context and double the volume of precisely
+	// the log an operator reads during an incident.
+	if grant == nil {
+		return resolved
 	}
 
 	entitlements, err := decodeEntitlements(grant)
@@ -233,6 +259,11 @@ func decodeEntitlements(grant *aiexecutor_entities.AIPolicyGrant) (map[string]Op
 	// was written by this service — so they share one internal factory rather than
 	// two inline errors. Two different texts used to be logged for the same class
 	// of fault, which made a grep of the logs look like two separate problems.
+	//
+	// The nil half of the first condition is unreachable from `Read`, which now
+	// returns before it gets here. It stays because this function's job is to turn
+	// whatever it is handed into an error rather than a panic, and a decoder that
+	// is only safe while its one caller happens to be careful is not a decoder.
 	if grant == nil || len(grant.PolicySnapshot) == 0 {
 		return nil, aierrors.ErrPolicySnapshotUnreadable()
 	}

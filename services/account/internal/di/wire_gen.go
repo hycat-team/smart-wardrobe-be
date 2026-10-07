@@ -166,7 +166,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iSubscriptionDashboardReader := contract4.NewSubscriptionDashboardReader(iAdminStatsUseCase)
 	subscriptionDashboardServer := grpc2.NewSubscriptionDashboardServer(iSubscriptionDashboardReader)
 	adminServer := grpc3.NewAdminServer(iAuditLogContract)
-	server := bootstrap.NewGRPCServer(identityServer, identityDashboardServer, subscriptionServer, subscriptionDashboardServer, adminServer)
+	server := bootstrap.NewGRPCServer(identityServer, identityDashboardServer, subscriptionServer, subscriptionDashboardServer, adminServer, l)
 	jobLocker, err := db.NewPostgresJobLocker(cfg, l)
 	if err != nil {
 		return nil, nil, err

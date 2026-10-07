@@ -321,11 +321,10 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 			if !ok {
 				commitCalled = true
 				if err := commitFn(true); err != nil {
-					// The raw error may contain provider or SQL detail; the SSE
-					// event carries only the generic message while c.Error keeps
-					// the full detail for the server log.
+					// c.Error keeps the FULL detail for the server log; the SSE event
+					// carries only sseErrorMessage(err).
 					_ = c.Error(err)
-					_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", streamutils.SanitizeSSEData(apperror.GenericInternalMessage))
+					_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", streamutils.SanitizeSSEData(sseErrorMessage(err)))
 					flusher.Flush()
 					return nil
 				}
@@ -343,4 +342,28 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 			flusher.Flush()
 		}
 	}
+}
+
+// sseErrorMessage is the client-facing text for a chat stream that failed after it
+// had already started.
+//
+// The call site used to hardcode GenericInternalMessage, which flattened every
+// cause into one sentence: a stream that ended with no reply at all, and a stream
+// whose upstream was genuinely down, produced identical text and the client could
+// tell nothing apart. The full detail went to the log either way, so nothing was
+// lost — but nothing was learnable either.
+//
+// `apperror.From` separates the two WITHOUT opening a leak. It returns the message
+// of an error that already carries one deliberately written for a human, and
+// returns GenericInternalMessage for anything unrecognised. So an unclassified
+// error holding SQL or provider text still goes out as the generic sentence, which
+// is the behaviour FR-005 phase 9 requires; what changes is that a classified
+// failure finally reaches the person who can act on it.
+//
+// Note what this does NOT do: it does not recover the detail of a 500 that crossed
+// a service boundary. `grpcx.ToGRPCError` replaces Internal-status messages with
+// GenericInternalMessage before they leave the AI service, deliberately, so those
+// arrive here already generic. That is not an oversight to fix here — see ADR 013.
+func sseErrorMessage(err error) string {
+	return apperror.From(err).Message
 }

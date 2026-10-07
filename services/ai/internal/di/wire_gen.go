@@ -105,7 +105,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	aiOrchestratorServer := grpc.NewAIOrchestratorServer(iaiOrchestrator)
 	iaiCostDashboardReader := contract.NewAICostDashboardReader(iaiCostUseCase)
 	aiDashboardServer := grpc.NewAIDashboardServer(iaiCostDashboardReader)
-	server := bootstrap.NewGRPCServer(aiOrchestratorServer, aiDashboardServer)
+	server := bootstrap.NewGRPCServer(aiOrchestratorServer, aiDashboardServer, l)
 	aiUsageReconciliationWorker := worker.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
 	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iUnitOfWork, l, grantMetrics)
 	planChangedWorker := worker.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)

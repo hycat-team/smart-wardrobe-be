@@ -194,3 +194,49 @@ func TestLivePolicyDataIsAlwaysAvailable(t *testing.T) {
 		t.Fatalf("periodDays must come from live configuration, got %d", limits.PeriodDays)
 	}
 }
+
+// TestNilGrantDoesNotPanic is the regression test for a SIGSEGV that took the
+// whole AI service down.
+//
+// The panic was: `Read(nil, policy, op)` → `decodeEntitlements` correctly refuses
+// a nil grant → the log line reporting that refusal dereferenced `grant.UserID`
+// to build its field. Because a nil grant is what the tier-1 fallback passes on
+// purpose, that one request killed the process for every user, not just its own.
+//
+// The nil grant is a NORMAL input, so it gets a test of its own rather than being
+// folded into an existing case: a test that only ever passes a real grant cannot
+// catch a defect that only happens without one.
+func TestNilGrantDoesNotPanic(t *testing.T) {
+	limits := newReader().Read(nil, livePolicy(int64Ptr(30000000000), intPtr(4)), aioperation.Outfit)
+
+	if limits == nil {
+		t.Fatal("a nil grant must still produce a resolved set of limits, not nil")
+	}
+	if limits.SnapshotComplete {
+		t.Fatal("there is no snapshot without a grant, so it cannot be complete")
+	}
+	if limits.MaxPaidAttemptsPerDay != nil {
+		t.Fatalf("no entitlement may be invented without a grant, got %d", *limits.MaxPaidAttemptsPerDay)
+	}
+}
+
+// The other half of the same contract: degrading on a missing grant must not cost
+// the caller its cost-control settings, or a tier-1 request would run with no hard
+// cap and no anti-abuse bound at all. Those are read live and are available
+// whether or not a grant exists.
+func TestNilGrantStillGetsTheLiveCostControlSettings(t *testing.T) {
+	limits := newReader().Read(nil, livePolicy(int64Ptr(30000000000), intPtr(4)), aioperation.Outfit)
+
+	if limits.HardCostMicroVND == nil || *limits.HardCostMicroVND != 30000000000 {
+		t.Fatalf("the hard cap must survive a missing grant, got %v", limits.HardCostMicroVND)
+	}
+	if limits.EnforcementMode != string(aienforcementmode.ObserveOnly) {
+		t.Fatalf("the enforcement mode must survive a missing grant, got %q", limits.EnforcementMode)
+	}
+	if limits.NormalRoute != string(airoute.Paid) || limits.FreeRoute != string(airoute.Free) {
+		t.Fatalf("routes must survive a missing grant, got %+v", limits)
+	}
+	if limits.MaxUnknownPaidRequestsPerDay != 2 || limits.UnknownHoldMinutes != 1440 {
+		t.Fatalf("anti-abuse settings must survive a missing grant, got %+v", limits)
+	}
+}

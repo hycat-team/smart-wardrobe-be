@@ -55,6 +55,22 @@ func (r *planRepoStub) ResolvePolicy(context.Context, uuid.UUID, aioperation.AIO
 	return r.grant, r.policy, r.op, nil
 }
 
+// GetPolicyByCode is what the tier-1 fallback resolver calls to find the
+// configured default policy. It returns the same staged policy the grant path
+// would have returned, with its operations attached — `resolveTier1` refuses a
+// policy whose operation row is missing or disabled, so a policy with an empty
+// Operations slice would silently push the test onto the tier-2 path and the
+// tier-1 behaviour under test would never run.
+func (r *planRepoStub) GetPolicyByCode(context.Context, string) (*aiexecutor_entities.AICostPolicy, error) {
+	if r.policy == nil {
+		return nil, nil
+	}
+	if len(r.policy.Operations) == 0 && r.op != nil {
+		r.policy.Operations = []*aiexecutor_entities.AICostPolicyOperation{r.op}
+	}
+	return r.policy, nil
+}
+
 // snapshotGrant builds a grant whose policy_snapshot carries the given operations.
 // Operations left out are simply absent, which is what an incomplete snapshot is.
 func snapshotGrant(t *testing.T, includeAll bool, inputTokens int) *aiexecutor_entities.AIPolicyGrant {
@@ -140,6 +156,10 @@ func newPlanUC(repo repositories.IAICostRepository) *OrchestratorUseCase {
 	cfg.AI.RecommendationTextPrimary.Model = "test-model"
 	cfg.AI.FreeTextPrimary.Provider = "test-free-provider"
 	cfg.AI.FreeTextPrimary.Model = "test-free-model"
+	// The tier-1 resolver refuses to look anything up without this code, and an
+	// empty one silently sends the request to tier 2 instead — which would make a
+	// tier-1 test pass while never exercising tier 1.
+	cfg.AI.DefaultCostPolicyCode = "free-default"
 	return &OrchestratorUseCase{
 		repo:         repo,
 		cfg:          cfg,
@@ -185,5 +205,48 @@ func TestTokenCeilingsFallBackToTheLiveRowWhenTheSnapshotIsIncomplete(t *testing
 	if plan.MaxInputTokens != liveTokens {
 		t.Errorf("with an incomplete snapshot the ceiling must come from the live row, got = %d, want = %d",
 			plan.MaxInputTokens, liveTokens)
+	}
+}
+
+// ---- The tier-1 fallback: no grant at all ----
+
+// Voe 3 — the tier-1 fallback passes a NIL grant into the entitlement reader, and
+// this is the path that killed the AI service.
+//
+// `ResolvePolicy` returns no grant for a brand-new account or for the window
+// between a plan change and the arrival of its event. `resolveExecutionPlan` then
+// degrades to the configured default policy and deliberately sets `grant = nil`.
+// The reader was handed that nil and dereferenced it while building a log field,
+// so one request took the whole process down — which is why the container in the
+// incident report had RestartCount=6 rather than one failed call.
+//
+// Both assertions below are load-bearing, and the first one is the regression
+// itself: if the reader dereferences the grant, this test panics and the package
+// fails. The second says the degradation is still CORRECT, not merely survivable —
+// a tier-1 request must come out of here bounded by the live policy, because an
+// account with no grant is precisely the account that must not run unbounded.
+func TestTier1FallbackWithNoGrantDoesNotPanicAndStillBoundsTheRequest(t *testing.T) {
+	const liveTokens = 4000
+	const liveOutputTokens = 999 // the value liveOp() puts in the fixture
+
+	repo := stagedRepo(nil, liveOp(uuid.New(), liveTokens))
+	uc := newPlanUC(repo)
+	uc.fallbackResolver = grant.NewGrantFallbackResolver(repo, uc.cfg, uc.logger, nil)
+
+	plan, err := uc.resolveExecutionPlan(context.Background(), uuid.New(), aioperation.Outfit, tokenMeta())
+	if err != nil {
+		t.Fatalf("a missing grant must degrade, not fail: %v", err)
+	}
+
+	if plan.MaxInputTokens != liveTokens {
+		t.Errorf("with no grant the ceiling must come from the live policy row, got = %d, want = %d",
+			plan.MaxInputTokens, liveTokens)
+	}
+	if plan.MaxOutputTokens != liveOutputTokens {
+		t.Errorf("the output ceiling must come from the live policy row too, got = %d, want = %d",
+			plan.MaxOutputTokens, liveOutputTokens)
+	}
+	if plan.Route != airoute.Paid {
+		t.Errorf("the default policy routes outfit to the paid model, got = %q", plan.Route)
 	}
 }
