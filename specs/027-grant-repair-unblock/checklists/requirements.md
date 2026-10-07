@@ -66,6 +66,25 @@ nên chúng vẫn kiểm chứng được mà không cần biết cách hiện t
 - [ ] CHK027 `deferred.md` — mục "Ngoài phạm vi" đã liệt kê bốn phát hiện
 - [ ] CHK028 Đính chính dòng mô tả sai phạm vi `stale_event` trong
   `contracts/subscription-plan-changed-event.md`
+- [x] CHK029 `runbook.md` — đã tạo trong thư mục gốc spec. Chốt đường sửa là đường ghi
+  hành chính `POST /admin/subscription-grants` với khoá sự kiện mới, và bắt buộc tắt
+  `EMAIL_ENABLED` trong suốt thao tác.
+
+## Ghi chú về làm rõ
+
+Hai câu hỏi đã hỏi trong phiên `2026-10-07`, cả hai đều lộ ra mâu thuẫn trong bản đặc tả
+viết trước đó và đều được sửa:
+
+- Câu hỏi về phạm vi mục 4 của kiểm tra toàn vẹn lộ ra rằng **SC-005 không thể đạt
+  được** như đang viết, vì công cụ khôi phục không bao giờ chạm vào bản ghi lịch sử đã
+  đóng mà mục đó đếm cả. Đã thêm FR-014..FR-016 và sửa SC-005.
+- Câu hỏi về cách sửa 8 tài khoản đã bị chặn lộ ra rằng **con số "18 tài khoản" trong
+  phần bối cảnh là sai** — đó là số tài khoản mà lượt khôi phục không sửa được, không phải
+  số tài khoản cần sửa. Mười trong số đó vốn đã có grant tốt. Đã sửa và ghi vào mục
+  Clarifications.
+
+Điểm dễ đọc sai nhất của đặc tả này, đã ghi ở Notes: mã lý do `stale_event` hiện mang
+**hai** nghĩa khác nhau, và FR-001 chỉ loại bỏ một nghĩa trong số đó.
 
 ## Notes
 

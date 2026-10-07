@@ -64,6 +64,33 @@ tường minh thay vì sửa ngầm.
   mã lý do `stale_event` chỉ còn mang nghĩa "sự kiện thật sự đến muộn" — nhánh "envelope
   không đọc được" không còn từ chối nữa. Đây là hệ quả đúng đắn, nhưng phải nói ra.
 
+## Clarifications
+
+### Session 2026-10-07
+
+- Q: Mục 4 của kiểm tra toàn vẹn đếm cả bản ghi `đã đóng`, mà công cụ khôi phục không
+  bao giờ chạm vào chúng — vậy SC-005 có đạt được không? → A: Sửa mục 4 lọc theo **cửa
+  sổ hiệu lực**, khớp đúng điều kiện mà bộ đọc dùng, **không** lọc theo trạng thái;
+  thêm một dòng thông tin đếm riêng bản ghi lịch sử hỏng.
+- Q: Sau khi sửa code, làm sao sửa được các tài khoản đã bị từ chối, khi khoá sự kiện
+  của công cụ khôi phục đã được ghi nên chạy lại không có tác dụng? → A: Dùng đường ghi
+  hành chính `POST /api/v1/admin/subscription-grants` với `Idempotency-Key` mới, và
+  **tắt gửi email trong suốt thao tác** bằng `EMAIL_ENABLED=false`.
+
+### Sai lệch đã phát hiện khi làm rõ — con số "18 tài khoản" là sai
+
+Con số 18 trong phần bối cảnh là **số tài khoản mà lượt khôi phục hôm nay không sửa
+được**, không phải số tài khoản cần sửa. Trong đó:
+
+- **8 tài khoản** bị từ chối vì không đọc được `envelope` — grant cũ **vẫn còn hỏng**,
+  đây mới là nhóm cần sửa.
+- **10 tài khoản** bị từ chối vì vi phạm ràng buộc — nhưng giao dịch bị lùi nguyên tử,
+  nên grant gốc của họ **vẫn tốt**. Thao tác "sửa" thất bại trên tài khoản không cần sửa.
+
+Thao tác cần làm cho **8 tài khoản**, trong đó 6 là tài khoản thật thuộc gói `free` và 2
+là tài khoản demo. Danh sách và cách thao tác nằm ở
+[runbook.md](runbook.md) của mục này.
+
 ## User Scenarios & Testing *(bắt buộc)*
 
 ### User Story 1 - Khách hàng đổi gói vẫn được đổi quyền AI (Priority: P1)
@@ -226,6 +253,21 @@ nhân trong lượt chạy hôm nay.
   phần nào nào ngoài dịch vụ AI. Việc sửa dữ liệu đã hỏng MUST đi qua đường sự kiện, không
   qua câu lệnh SQL.
 
+- **FR-014**: Kiểm tra toàn vẹn ở mục "ảnh chụp chính sách rỗng hoặc thiếu" MUST chỉ
+  tính những bản ghi mà bộ đọc thực sự có thể trả về. Điều kiện lọc MUST **giống hệt**
+  điều kiện mà bộ đọc dùng: **theo cửa sổ hiệu lực, và không lọc theo trạng thái.**
+
+- **FR-015**: Lý do của FR-014 là bất biến trong `CHECK` và bộ đọc cùng nói về thứ này:
+  một bản ghi có trạng thái `đã đóng` nhưng cửa sổ còn hiệu lực vẫn **được đọc**, nên
+  nó phải nằm trong phạm vi kiểm tra. Ngược lại, một bản ghi `đã đóng` đã hết hạn thì không
+  ảnh hưởng tài khoản nào và không thuộc phạm vi kiểm tra. Lọc theo trạng thái sẽ bỏ sót
+  trường hợp đầu.
+
+- **FR-016**: Kiểm tra toàn vẹn MUST vẫn **báo cáo** số bản ghi lịch sử có ảnh chụp chính
+  sách không đọc được, dưới dạng thông tin **không** chặn. Số này MUST **không** được
+  tính vào kết quả kiểm tra. Mục đích là để dữ liệu đời trước vẫn hiện diện khi ai đó
+  đọc báo cáo, thay vì biến mất chỉ vì nó không còn ảnh hưởng ai.
+
 ### Ràng buộc kiến trúc
 
 - **AC-01**: Dịch vụ AI MUST **không** đọc bảng của dịch vụ Account để suy ra gói cước
@@ -266,8 +308,11 @@ nhân trong lượt chạy hôm nay.
 - **SC-004**: Một vi phạm ràng buộc dữ liệu được báo **đúng một lần** và đi thẳng vào hàng
   đỗi chết; số lần thử lại bằng 0.
 - **SC-005**: Sau khi chạy công cụ khôi phục trên production, kiểm tra toàn vẹn trả về **0**
-  ở cả mục "tài khoản có gói nhưng không có bản ghi mức quyền" và mục "ảnh chụp chính sách
-  rỗng hoặc thiếu".
+  ở mục "tài khoản có gói nhưng không có bản ghi mức quyền" và **0** ở mục "ảnh chụp chính
+  sách rỗng hoặc thiếu" — với mục thứ hai đã thu hẹp phạm vi theo FR-014.
+- **SC-008**: Con số bản ghi lịch sử có ảnh chụp chính sách không đọc được **vẫn được báo
+  cáo** sau khi mục kiểm tra về 0. Nếu dòng thông tin này biến mất khỏi báo cáo, thì việc
+  thu hẹp phạm vi đã xoá dữ liệu thay vì chỉ đo lại nó — và mức đó chưa được chấp nhận.
 - **SC-006**: 0 thông điệp nào bị đưa vào hàng đỗi chết mà không để lại một dấu vết truy
   vết được gồm tài khoản, mã lý do và thông điệp nguyên nhân.
 - **SC-007**: Một sự cố tạm thời thật sự vẫn được thử lại và cuối cùng thành công — việc
