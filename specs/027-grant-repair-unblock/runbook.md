@@ -129,6 +129,32 @@ $COMPOSE logs --tail=200 ai | grep -c 'recovered from panic'
 Và kiểm tra dịch vụ AI đang chạy đúng phiên bản mới — xem `docker compose ps` cùng tag image
 đang chạy. Nếu chưa deploy xong, **dừng lại**, không làm tiếp.
 
+#### Chụp bộ đếm từ chối trước khi sửa
+
+Một sự kiện bị bỏ qua hầu như không để lại dấu vết: consumer vẫn khoẻ, hàng đợi vẫn rỗng, và
+quyền thì không tới. Thứ duy nhất nói ra điều đó là bộ đếm `grant_rejected_by_reason` mà dịch
+vụ AI phơi trong phản hồi sức khoẻ (`services/ai/internal/bootstrap/router.go`;
+`internal/modules/aiexecutor/application/usecase/grant/grant_reject_metrics.go`). Chụp lại
+trước khi sửa để làm mốc đối chiếu:
+
+```bash
+curl -s https://api.closy.hycat.online/api/v1/ai/health \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get("grant_rejected_by_reason", {}), indent=2, ensure_ascii=False))'
+```
+
+Hai điều phải nhớ khi đọc kết quả:
+
+- Bộ đếm là **theo tiến trình** và **về 0 khi dịch vụ AI khởi động lại**. Bản deploy mang bản
+  sửa sẽ khởi động lại AI, nên số liệu của lượt ngày 2026-10-07 có thể đã mất. Đây là **mốc
+  so sánh**, không phải bằng chứng lịch sử.
+- Các mã lý do đang có: `stale_event`, `policy_snapshot_unavailable`,
+  `ai_cost_policy_not_found`, `duplicate_source_event`, `transient_failure`. Mã
+  `policy_grant_constraint_violation` do **Phase 5 (User Story 3)** thêm vào — nếu bản deploy
+  mới chỉ gồm Phase 1–4 thì mã đó chưa xuất hiện, và điều đó là bình thường.
+
+Sau khi sửa xong, chụp lại bộ đếm và đối chiếu với mốc này. Không được xuất hiện thêm lần từ
+chối nào cho các tài khoản vừa sửa: nếu có, xem lại mục "Nếu có gì đó hỏng".
+
 ### Bước 3 — Tắt email và khởi động lại dịch vụ account
 
 Toàn bộ `.env.production` được nạp vào container qua `env_file`
@@ -210,8 +236,12 @@ Consumer của dịch vụ AI xử lý bất đồng bộ. **Đợi 10–15 giâ
 Nếu vẫn còn dòng, kiểm tra:
 
 ```bash
-$COMPOSE logs --tail=300 ai | grep -E 'stale_event|user_ai_policy_grants_check|transient'
+$COMPOSE logs --tail=300 ai | grep -E 'stale_event|user_ai_policy_grants_check|policy_grant_constraint_violation|transient'
 ```
+
+`policy_grant_constraint_violation` là mã lý do do **Phase 5 (User Story 3)** thêm; trên bản
+deploy chỉ gồm Phase 1–4 thì nó không xuất hiện bao giờ, kể cả khi có vi phạm ràng buộc. Khi
+đó dấu hiệu vi phạm vẫn là `user_ai_policy_grants_check` trong log PostgreSQL.
 
 Sau đó chạy toàn bộ kiểm tra toàn vẹn:
 
@@ -221,6 +251,10 @@ $COMPOSE exec -T postgres psql -U closy -d closy_db -q -f database/scripts/07-ve
 
 Mục 1 và mục 4 phải bằng **0**. Mục 4 chỉ bằng 0 sau khi đã áp dụng FR-014 của spec 027 —
 trước đó nó vẫn đếm cả bản ghi lịch sử đã đóng, và đó là hành vi cũ đã được sửa.
+
+Mục **4b** thì ngược lại: **khác 0 là đúng**. Nó là dòng thông tin, không chặn, đếm những bản
+ghi lịch sử có ảnh chụp hỏng mà cửa sổ đã hết hạn (FR-016). Nếu mục 4 về 0 **và** mục 4b cũng
+về 0, đó không phải thành công — đó là dấu hiệu dữ liệu lịch sử đã bị xoá thay vì được đóng lại.
 
 Kiểm tra thêm không có bản ghi đang hiệu lực chồng lấn:
 

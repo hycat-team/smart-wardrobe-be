@@ -106,16 +106,16 @@ thì User Story này vô nghĩa".
 
 ### Kiểm thử cho User Story 2
 
-- [ ] T011 [P] [US2] Kiểm thử tích hợp trong `GRANT/grant_repair_integration_test.go`, tên hàm `TestIntegrationRepairClosesOldAndCreatesReadable`, `TestIntegrationRepairDoesNotShiftNormalWindow`, `TestIntegrationRepairStartsAfterAllPrior`: AS1 bản ghi cũ được đóng và bản ghi mới có ảnh chụp đọc được, **không** phát sinh lỗi ràng buộc; AS2 sự kiện mới hơn thì mốc hiệu lực **không** bị dịch; AS3 bản ghi mới bắt đầu **sau** mọi bản ghi trước và không có hai cửa sổ đang hiệu lực chồng lấn
+- [x] T011 [P] [US2] Kiểm thử tích hợp trong `GRANT/grant_repair_integration_test.go`, tên hàm `TestIntegrationRepairClosesOldAndCreatesReadable`, `TestIntegrationRepairDoesNotShiftNormalWindow`, `TestIntegrationRepairStartsAfterAllPrior`: AS1 bản ghi cũ được đóng và bản ghi mới có ảnh chụp đọc được, **không** phát sinh lỗi ràng buộc; AS2 sự kiện mới hơn thì mốc hiệu lực **không** bị dịch; AS3 bản ghi mới bắt đầu **sau** mọi bản ghi trước và không có hai cửa sổ đang hiệu lực chồng lấn
 
 ### Triển khai cho User Story 2
 
 Ba task SQL cùng sửa **một tệp**, nên cố ý không đánh dấu `[P]`:
 
-- [ ] T012 [US2] **Thêm** điều kiện lọc theo cửa sổ hiệu lực (`effective_from <= now() AND (effective_to IS NULL OR effective_to > now())`) vào mục 4 trong `database/scripts/07-verify_policy_grants.sql`, và **giữ nguyên** việc không lọc theo trạng thái — mục 4 hiện tại chưa có điều kiện `status` nào để xoá. KHÔNG thêm bộ lọc trạng thái "để cho khớp mô tả": đó chính là điều FR-014/FR-015 cấm, và nó bỏ sót đúng trường hợp bản ghi `đã đóng` nhưng cửa sổ còn hiệu lực — trường hợp bộ đọc vẫn dùng
-- [ ] T013 [US2] Thêm truy vấn **thông tin** đếm bản ghi lịch sử có ảnh chụp không đọc được vào `database/scripts/07-verify_policy_grants.sql`, không tính vào kết quả kiểm tra (FR-016)
-- [ ] T014 [US2] Cập nhật phần mở đầu trong `database/scripts/07-verify_policy_grants.sql`: **giữ nguyên** tiêu đề "six invariants" vì mục 4 vẫn là một trong sáu mục, nhưng sửa **mô tả phạm vi của mục 4** và các dòng `\echo` của nó cho khớp với việc đã lọc theo cửa sổ hiệu lực; đồng thời sửa dòng ở mục 1 nói `restore` là cách sửa, vì sau sự cố 027 nó là một trong **hai** nguyên nhân
-- [ ] T015 [US2] Cập nhật `specs/027-grant-repair-unblock/runbook.md` cho khớp với hành vi đã triển khai, và bổ sung cổng chặn dựa trên bộ đếm `grant_rejected_by_reason` nếu cần
+- [x] T012 [US2] **Thêm** điều kiện lọc theo cửa sổ hiệu lực (`effective_from <= now() AND (effective_to IS NULL OR effective_to > now())`) vào mục 4 trong `database/scripts/07-verify_policy_grants.sql`, và **giữ nguyên** việc không lọc theo trạng thái — mục 4 hiện tại chưa có điều kiện `status` nào để xoá. KHÔNG thêm bộ lọc trạng thái "để cho khớp mô tả": đó chính là điều FR-014/FR-015 cấm, và nó bỏ sót đúng trường hợp bản ghi `đã đóng` nhưng cửa sổ còn hiệu lực — trường hợp bộ đọc vẫn dùng
+- [x] T013 [US2] Thêm truy vấn **thông tin** đếm bản ghi lịch sử có ảnh chụp không đọc được vào `database/scripts/07-verify_policy_grants.sql`, không tính vào kết quả kiểm tra (FR-016)
+- [x] T014 [US2] Cập nhật phần mở đầu trong `database/scripts/07-verify_policy_grants.sql`: **giữ nguyên** tiêu đề "six invariants" vì mục 4 vẫn là một trong sáu mục, nhưng sửa **mô tả phạm vi của mục 4** và các dòng `\echo` của nó cho khớp với việc đã lọc theo cửa sổ hiệu lực; đồng thời sửa dòng ở mục 1 nói `restore` là cách sửa, vì sau sự cố 027 nó là một trong **hai** nguyên nhân
+- [x] T015 [US2] Cập nhật `specs/027-grant-repair-unblock/runbook.md` cho khớp với hành vi đã triển khai, và bổ sung cổng chặn dựa trên bộ đếm `grant_rejected_by_reason` nếu cần
 
 **Checkpoint**: US2 chạy và kiểm thử được độc lập.
 

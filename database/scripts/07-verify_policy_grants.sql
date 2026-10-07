@@ -6,14 +6,24 @@
 -- Every one of the six counts must be 0. Each corresponds to a way the table
 -- could be wrong, and each of those ways produced a real customer-visible
 -- defect before this feature existed.
+--
+-- One query in section 4 is INFORMATIONAL rather than one of the six: 4b counts
+-- historical rows whose snapshot cannot be read but whose window no longer
+-- applies. It is expected to be non-zero and MUST NOT be read as a failure - see
+-- FR-016 of feature 027.
 -- ============================================================================
 
 \echo ''
 \echo '=== 1. Accounts with a plan but no policy grant ==='
 \echo '--- Expected 0. A non-zero count means those accounts cannot use paid AI'
 \echo '--- at all: the read path finds no grant and degrades, and the customer'
-\echo '--- sees a free-model answer for something they paid for. The restore'
-\echo '--- tool (POST /api/v1/admin/subscription-grants/restore) is the fix. ---'
+\echo '--- sees a free-model answer for something they paid for.'
+\echo '--- Fix it by re-granting through the administrative write path'
+\echo '--- POST /api/v1/admin/subscription-grants with a NEW Idempotency-Key'
+\echo '--- (see specs/027-grant-repair-unblock/runbook.md). Do NOT reuse the'
+\echo '--- restore tool: after incident 027 it is one of the two CAUSES of the'
+\echo '--- breakage, not a fix, and it answers already_restored for every'
+\echo '--- RESTORE_GRANT key already written. ---'
 SELECT count(*) AS accounts_missing_grant
 FROM subscription.user_subscriptions s
 WHERE NOT EXISTS (
@@ -52,17 +62,60 @@ WHERE g.status = 'active'
 \echo '=== 4. Grants with an empty or incomplete policy snapshot ==='
 \echo '--- Expected 0. The reader needs an `entitlements` group with all four'
 \echo '--- operations. Missing it means no limits at all are applied, which is'
-\echo '--- silent: nothing errors, the limits are simply not there. ---'
+\echo '--- silent: nothing errors, the limits are simply not there.'
+\echo '---'
+\echo '--- Scope: exactly the rows the READER can return, i.e. the same window'
+\echo '--- predicate the reader uses, with NO status filter (FR-014). The'
+\echo '--- absence of a status filter is deliberate: a row that is `closed` but'
+\echo '--- whose window is still in force is still read, so it belongs in this'
+\echo '--- count. A status filter would drop exactly that case and hide live bad'
+\echo '--- data (FR-015). Rows whose window has ended are not read, so they are'
+\echo '--- excluded here; their count is reported separately, as information, in'
+\echo '--- section 4b below. ---'
 SELECT count(*) AS bad_snapshots
 FROM aiexecutor.ai_policy_grants
-WHERE policy_snapshot = '{}'::jsonb
-   OR NOT (policy_snapshot ? 'envelope')
-   OR NOT (policy_snapshot ? 'entitlements')
-   OR NOT (
-        policy_snapshot->'entitlements' ? 'chat'
-    AND policy_snapshot->'entitlements' ? 'outfit'
-    AND policy_snapshot->'entitlements' ? 'summary'
-    AND policy_snapshot->'entitlements' ? 'rewriter'
+WHERE (
+        policy_snapshot = '{}'::jsonb
+     OR NOT (policy_snapshot ? 'envelope')
+     OR NOT (policy_snapshot ? 'entitlements')
+     OR NOT (
+          policy_snapshot->'entitlements' ? 'chat'
+      AND policy_snapshot->'entitlements' ? 'outfit'
+      AND policy_snapshot->'entitlements' ? 'summary'
+      AND policy_snapshot->'entitlements' ? 'rewriter'
+     )
+   )
+   AND effective_from <= now()
+   AND (effective_to IS NULL OR effective_to > now());
+
+\echo ''
+\echo '=== 4b. INFORMATIONAL only (NOT one of the six invariants):       ==='
+\echo '===     historical grants with an unreadable snapshot whose       ==='
+\echo '===     window has already ended.                                  ==='
+\echo '--- This is NOT a failure and is expected to stay non-zero after a'
+\echo '--- repair. Its count is NOT part of the six invariants above.'
+\echo '---'
+\echo '--- Why it exists (FR-016): section 4 was narrowed to the rows the reader'
+\echo '--- can actually return, so the rows it no longer counts would vanish'
+\echo '--- from the report entirely. They still happened. Legacy data has to'
+\echo '--- remain visible to whoever reads this report, instead of disappearing'
+\echo '--- just because it no longer affects anyone. ---'
+SELECT count(*) AS historical_bad_snapshots
+FROM aiexecutor.ai_policy_grants
+WHERE (
+        policy_snapshot = '{}'::jsonb
+     OR NOT (policy_snapshot ? 'envelope')
+     OR NOT (policy_snapshot ? 'entitlements')
+     OR NOT (
+          policy_snapshot->'entitlements' ? 'chat'
+      AND policy_snapshot->'entitlements' ? 'outfit'
+      AND policy_snapshot->'entitlements' ? 'summary'
+      AND policy_snapshot->'entitlements' ? 'rewriter'
+     )
+   )
+   AND NOT (
+        effective_from <= now()
+    AND (effective_to IS NULL OR effective_to > now())
    );
 
 \echo ''
