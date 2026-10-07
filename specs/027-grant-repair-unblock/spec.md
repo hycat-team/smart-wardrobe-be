@@ -210,17 +210,31 @@ nhân trong lượt chạy hôm nay.
 
 ### Functional Requirements
 
-- **FR-001**: Khi bản ghi mức quyền tính phí mới nhất của tài khoản không lấy được thời
-  điểm xảy ra từ ảnh chụp chính sách, hệ thống AI MUST **không** từ chối sự kiện vĩnh
-  viễn. Hệ thống AI MUST so sánh thứ tự bằng thời điểm tạo của chính bản ghi đó.
+- **FR-001**: Hệ thống AI MUST so sánh thứ tự sự kiện bằng **thời điểm tạo của chính bản ghi
+  mức quyền mới nhất** (cột `created_at`), và MUST **không** từ chối sự kiện vĩnh viễn chỉ vì
+  ảnh chụp chính sách của bản ghi đó không đọc được `occurred_at`.
+
+  Cách diễn đạt gốc của yêu cầu này — "khi không lấy được thời điểm xảy ra từ ảnh chụp thì
+  lùi về thời điểm tạo" — ngụ ý hệ thống vẫn đọc `occurred_at` khi có. Thiết kế đã chốt
+  **không** như vậy: `created_at` là đồng hồ duy nhất, không đọc `occurred_at` từ ảnh chụp.
+  Lý do là chính cột đó đã gây ra sự cố: 22/28 bản ghi không đọc được nó. Giữ `occurred_at`
+  làm đồng hồ ưu tiên nghĩa là giữ lại đúng sự phụ thuộc đã hỏng, chỉ đổi nhánh xử lý khi nó
+  hỏng. Xem `spec.md` dòng Input gốc: *"lấy created_at làm đồng hồ thay thế"*.
 
 - **FR-002**: Việc so sánh ở FR-001 MUST giữ nguyên tính chặn hồi sinh mức quyền đã bị
   thu hồi. Một sự kiện có thời điểm xảy ra **không mới hơn** thời điểm tạo của bản ghi
   mới nhất MUST bị từ chối, đúng như một sự kiện không mới hơn thời điểm xảy ra đã ghi.
 
-- **FR-003**: Hệ thống AI MUST ghi một dấu vết cảnh báo khi phải dùng thời điểm tạo bản
-  ghi thay cho thời điểm xảy ra trong ảnh chụp chính sách, để một nhân sự vận hành đọc log
-  thấy rằng bộ đếm từ chối đang chạy trên đồng hồ yếu hơn bình thường.
+- **FR-003**: Hệ thống AI MUST ghi một dấu vết cảnh báo khi **đồng hồ thứ tự bị suy giảm** —
+  tức khi `created_at` không dùng được và hệ thống phải lùi về `effective_from` — để một nhân
+  sự vận hành đọc log thấy rằng bộ đếm từ chối đang chạy trên đồng hồ yếu hơn bình thường.
+  Chi tiết dấu vết ở FR-018; FR-003 và FR-018 nay là **cùng một yêu cầu**.
+
+  Cách diễn đạt gốc của FR-003 ("dùng thời điểm tạo **thay cho** thời điểm xảy ra trong ảnh
+  chụp") giả định một đồng hồ hai tầng mà thiết kế đã chốt không có. Nếu đọc theo nghĩa đen
+  đó, hệ thống sẽ phải cảnh báo **mỗi lần** — vì `created_at` luôn là đồng hồ — và cảnh báo
+  sẽ thành nhiễu vô nghĩa. Điều FR-003 thật sự muốn là: người vận hành biết khi nào đồng hồ
+  thứ tự yếu đi. Đó chính là nhánh lùi về `effective_from`.
 
 - **FR-004**: Thời điểm bắt đầu hiệu lực của bản ghi mức quyền mới MUST **lớn hơn nghiêm**
   thời điểm bắt đầu hiệu lực của mọi bản ghi trước đó của cùng tài khoản. Vì bản ghi được

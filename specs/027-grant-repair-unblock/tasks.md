@@ -270,3 +270,16 @@ Task: "Bổ sung GRANT/grant_reject_metrics_test.go"
   /api/v1/admin/subscription-grants/restore` (khoá sự kiện đã ghi vĩnh viễn), **không**
   đẩy bất kỳ commit nào khi chưa được yêu cầu
 - Không đánh dấu `[X]` một task nếu chưa chạy lệnh xác minh tương ứng
+
+---
+
+## Phase 7: Convergence
+
+**Nguồn**: `/speckit-converge` chạy 2026-10-07 trên mã nguồn sau sáu phase. Đối chiếu
+FR-001..FR-019 (gồm FR-004a), AC-01..AC-03, SC-001..SC-008, hai hợp đồng trong `contracts/`,
+`data-model.md`, `quickstart.md` và `runbook.md` với mã thật dưới
+`services/ai/internal/modules/aiexecutor/`. Kết quả: đủ bằng chứng cho mọi mục **trừ FR-003**;
+nó chưa được dựng và không xuất hiện ở bất kỳ đâu trong `services/ai`.
+
+- [x] ~~T033~~ **ĐÃ HUỶ — không phải task.** `/speckit-converge` đề xuất T033 vì FR-003 chưa được cài. Nhưng T033 chỉ cần nếu FR-003 đọc theo nghĩa cũ ("dùng `created_at` **thay cho** `occurred_at` của ảnh chụp"), và nghĩa đó **sai**: mâu thuẫn FR-002 (đồng hồ là thời điểm tạo), mâu thuẫn đầu vào gốc ở `spec.md` dòng 9 (*"lấy created_at làm đồng hồ thay thế"*), và nếu cài đúng nghĩa đen thì hệ thống phải cảnh báo **mỗi lần** — vì `created_at` luôn là đồng hồ — biến cảnh báo thành nhiễu. FR-003 đã được viết lại trong đợt này để nói đúng điều nó muốn: cảnh báo khi đồng hồ **suy giảm** (lùi về `effective_from`), tức chính là FR-018. Không có mã nào cần viết.
+- [x] T034 [US3] Mở rộng phân loại `23514` sang đường `retireOnUnpriceableDowngrade` tại `GRANT/grant_uc.go`. FR-009 nói "một thao tác ghi vi phạm ràng buộc dữ liệu" — **mọi** thao tác ghi, không riêng đường tạo bản ghi. `CloseActiveGrants` trong nhánh đó đặt `effective_to = cutoff` cho các dòng có `effective_from <= cutoff`; nếu một dòng có `effective_from` **đúng bằng** `cutoff` thì `effective_to == effective_from` và Postgres trả `23514` — đúng hình dạng lỗi của sự cố 027. Hiện nhánh đó vẫn bọc lỗi thành `transient`, nên nó thử lại 5 lần rồi chết dưới nhãn `transient_failure`, che mất một lỗi tất định. Dùng `isCheckViolation` + `ReasonConstraintViolation` + `msgConstraintViolation` như đường tạo bản ghi, và thêm ca kiểm thử tích hợp ép được `23514` trên đường này. Đường `applyRevocation` **không** cần: nó chỉ nhận `AUTO_RENEW_UPDATED` và trả `nil` ngay trước khi tới `retirePreviousGrants`

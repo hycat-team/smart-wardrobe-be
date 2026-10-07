@@ -1,13 +1,16 @@
 package grant
 
 import (
+	"context"
 	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
+	sharedevent "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/domain/constants/aipolicygrantstatus"
+	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -239,5 +242,128 @@ func TestDeadlockStaysRetryable(t *testing.T) {
 	}
 	if isCheckViolation(deadlock) {
 		t.Fatalf("FR-010: a real deadlock must stay retryable, but isCheckViolation returned true for %v", deadlock)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 027 T034: FR-009 covers EVERY write, not only the row-inserting one.
+// ---------------------------------------------------------------------------
+
+// TestIntegrationUnpriceableDowngradeConstraintViolationIsPermanent closes the
+// gap Phase 5 left on the RETIRE path.
+//
+// `retireOnUnpriceableDowngrade` writes as well: it retires the account's active
+// rows through CloseActiveGrants, and that UPDATE has exactly the shape that
+// killed the first production repair run. CloseActiveGrants sets
+// `effective_to = cutoff` on every row with `effective_from <= cutoff`, so a row
+// whose effective_from EQUALS the cutoff is closed onto itself and Postgres
+// returns 23514. The row here is seeded at exactly the event's effectiveAt for
+// that reason.
+//
+// The event names a policy id that does not exist, which is the only way onto
+// this branch: GetPolicyByID returns nil and the handler retires the prior
+// entitlement without creating a new row. The 23514 therefore comes from the
+// retirement UPDATE, not from an insert - which is what T034 is about.
+//
+// Before T034 this error was wrapped in RetryableError and spun through the
+// delivery limit without ever changing its answer. The test can only pass if the
+// retirement really produced a 23514: any other error would take the transient
+// branch and fail the PermanentError assertion.
+func TestIntegrationUnpriceableDowngradeConstraintViolationIsPermanent(t *testing.T) {
+	conn := openGrantTestDB(t)
+	cleanupGrantTables(t, conn)
+	installErrorClassWindowCheck(t, conn)
+	uc := newGrantIntegrationUC(conn)
+
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	userID := uuid.New()
+	// The seeded policy exists so the prior grant row is fully populated; the
+	// EVENT names a different, non-existent policy so the handler takes the
+	// unpriceable-downgrade branch.
+	priorPolicy := seedGrantPolicy(t, conn, "premium")
+
+	// cutoff is the event's declared start, and the prior row starts exactly
+	// there, so CloseActiveGrants closes it onto itself.
+	cutoff := now.Add(-time.Hour)
+	prior := seedUnreadableActiveGrant(t, conn, userID, priorPolicy.ID, cutoff, now.Add(-2*time.Hour))
+	if !prior.EffectiveFrom.Equal(cutoff) {
+		t.Fatalf("test premise broken: prior.effective_from %v must equal the cutoff %v",
+			prior.EffectiveFrom, cutoff)
+	}
+
+	// Premise: the CHECK is installed and this window is the shape that violates
+	// it. Reproduce CloseActiveGrants' UPDATE inside a rolled-back transaction so
+	// the proof cannot leak into the fixture.
+	premiseTx := conn.Begin()
+	if premiseTx.Error != nil {
+		t.Fatalf("begin the premise transaction: %v", premiseTx.Error)
+	}
+	premiseErr := premiseTx.Model(&entities.AIPolicyGrant{}).
+		Where("id = ?", prior.ID).
+		Updates(map[string]any{
+			"effective_to": cutoff,
+			"status":       string(aipolicygrantstatus.Closed),
+		}).Error
+	if err := premiseTx.Rollback().Error; err != nil {
+		t.Fatalf("roll back the premise transaction: %v", err)
+	}
+	if premiseErr == nil {
+		t.Fatal("test premise broken: closing the row onto its own start did not violate the CHECK")
+	}
+	if !isCheckViolation(premiseErr) {
+		t.Fatalf("test premise broken: expected a real %s from the close, got %T: %v",
+			pgCheckViolationCode, premiseErr, premiseErr)
+	}
+
+	// A downgrade to a policy that does not resolve. occurredAt is newer than the
+	// prior row's created_at, so rejectStaleEvent passes and the retirement runs.
+	downgrade := planChangedPayload(userID, uuid.New(), uuid.New(),
+		subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE,
+		now,    // occurredAt: newer than prior.created_at
+		cutoff, // effectiveAt: equals prior.effective_from -> 23514
+		ptrTime(now.AddDate(0, 0, 30)),
+		30)
+
+	err := uc.HandlePlanChanged(context.Background(), downgrade)
+	if err == nil {
+		t.Fatal("FR-009: a constraint-violating retirement must surface an error, not succeed")
+	}
+
+	// FR-009 / SC-004: permanent, and NOT retryable - that is what sends it
+	// straight to the dead letter with zero retries.
+	var permanent sharedevent.PermanentError
+	if !errors.As(err, &permanent) {
+		t.Fatalf("FR-009: the retirement's 23514 must be a PermanentError, got %T: %v", err, err)
+	}
+	var retryable sharedevent.RetryableError
+	if errors.As(err, &retryable) {
+		t.Fatal("FR-009: the retirement's 23514 must NOT be requeued")
+	}
+
+	// FR-009 / FR-011: its own reason code, reachable through the wrapper and
+	// recorded in the public counter.
+	var rejection *RejectionError
+	if !errors.As(err, &rejection) {
+		t.Fatal("FR-009: the reason code must be reachable through the PermanentError")
+	}
+	if rejection.Reason != ReasonConstraintViolation {
+		t.Errorf("FR-009: reason = %q, want %q", rejection.Reason, ReasonConstraintViolation)
+	}
+	snapshot := uc.metrics.Snapshot()
+	if snapshot[ReasonConstraintViolation] != 1 {
+		t.Errorf("FR-011: %q must be counted once, got %v", ReasonConstraintViolation, snapshot)
+	}
+	if snapshot[ReasonTransientFailure] != 0 {
+		t.Errorf("FR-009: a 23514 must not be counted as %q, got %v", ReasonTransientFailure, snapshot)
+	}
+
+	// FR-012: the transaction rolled back, so the prior row is untouched.
+	var after entities.AIPolicyGrant
+	if err := conn.Where("id = ?", prior.ID).First(&after).Error; err != nil {
+		t.Fatalf("re-read the prior grant: %v", err)
+	}
+	if after.Status != aipolicygrantstatus.Active || after.EffectiveTo != nil {
+		t.Errorf("FR-012: the refusal must leave the prior row untouched, got status %q / effective_to %v",
+			after.Status, after.EffectiveTo)
 	}
 }

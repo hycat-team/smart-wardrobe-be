@@ -570,6 +570,24 @@ func (uc *GrantUseCase) retireOnUnpriceableDowngrade(ctx context.Context, event 
 		if errors.As(err, &rejection) {
 			return err
 		}
+		// 027 T034 (FR-009): this branch writes too. It closes the account's
+		// active rows through CloseActiveGrants, and that UPDATE can produce the
+		// same CHECK violation the create path classifies: when the prior row's
+		// effective_from equals the cutoff, CloseActiveGrants sets
+		// effective_to == effective_from and Postgres refuses with 23514. It is
+		// the same deterministic decision the create path makes, so it takes the
+		// same classification and the same reason code - FR-009 says EVERY write
+		// that violates a database constraint is a permanent refusal, not only
+		// the one that inserts a row.
+		//
+		// This branch MUST stay BEFORE the transient one, exactly as on the
+		// create path (grant_uc.go:321): the violation is a decision, not an
+		// incident, and every OTHER error keeps the pre-027 transient behaviour
+		// (FR-010).
+		if isCheckViolation(err) {
+			uc.metrics.RecordRejection(ReasonConstraintViolation, event.UserID.String())
+			return uc.reject(ReasonConstraintViolation, event.UserID.String(), msgConstraintViolation)
+		}
 		// Requeued rather than refused: this write did not land, so the
 		// entitlement is still there and another delivery has to try again.
 		uc.metrics.RecordRejection(ReasonTransientFailure, event.UserID.String())
