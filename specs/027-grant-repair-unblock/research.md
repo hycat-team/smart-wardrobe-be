@@ -102,34 +102,42 @@ nhau, và đó chính là loại lỗi mà một giao dịch phải tuyệt đ�
 của chính bản ghi". Bản ghi có nhiều cột thời gian. Chọn cột nào, và làm sao một cột thời
 gian kỹ thuật không thành đường tấn công?
 
-**Phát hiện**: Bản ghi có ít nhất ba mốc thời gian: `effective_from` (giá trị nghiệp vụ),
-`created_at`/`started_at` (mốc ghi kỹ thuật) và `effective_to`. `rejectStaleEvent`
-(`grant_uc.go:237`) hiện so sánh với `started_at` của bản ghi mới nhất.
+**Phát hiện**: Bản ghi có bốn mốc thời gian: `effective_from` (giá trị nghiệp vụ),
+`effective_to`, `created_at` và `updated_at`. **Không có cột `started_at`** — bảng
+`aiexecutor.ai_policy_grants` trong `database/scripts/closy-db-schema.sql` không hề có cột
+đó, và thực thể `AIPolicyGrant` (`domain/entities/policy.go:53`) kế thừa `CreatedAt` từ
+`BaseEntity`.
 
-Trong sự cố production, `started_at` của bản ghi cũ bằng đúng `now()` lúc chạy, và
-`occurred_at` đọc được từ ảnh chụp chính sách lại **trước** `started_at`. Vì vậy sự kiện bị
-xem là cũ và bị từ chối vĩnh viễn — đúng lỗi đã ghi ở đặc tả.
+Điều đáng chú ý hơn: `rejectStaleEvent` (`grant_uc.go:237`) **không** so sánh với bất kỳ cột
+thời gian nào của bản ghi. Nó gọi `ExtractOccurredAt(current)`
+(`grant_entitlements.go`), đọc `occurred_at` **từ vỏ bọc `envelope` trong
+`policy_snapshot`**, và khi đọc không được thì **từ chối vĩnh viễn** — không có đường lùi nào
+cả. Đó chính xác là khoá chết.
 
-**Quyết định**: Dùng `started_at` làm sàn thứ tự khi nó **không nằm trong tương lai** so
+Trong sự cố production, `created_at` của bản ghi cũ bằng đúng `now()` lúc chạy, còn
+`occurred_at` đọc được từ ảnh chụp chính sách của sự kiện lại **trước** `created_at`. Đó là
+kịch bản duy nhất dẫn tới `stale_event` mà FR-001 chủ định sửa.
+
+**Quyết định**: Dùng `created_at` làm sàn thứ tự khi nó **không nằm trong tương lai** so
 với đồng hồ ứng dụng; nếu không đọc được hoặc nằm trong tương lai thì lùi sang
 `effective_from`.
 
 **Lý do về mặt bảo mật**: Hai cột đều nằm trong cùng một bảng nên đều cần quyền ghi để
 giả mạo, nhưng chúng không cùng ràng buộc. `effective_from` chịu `CHECK`
 `effective_to > effective_from` và phải nằm trong khoảng thời gian khách hàng thực sự
-mua. `started_at` là cột kỹ thuật, không có `CHECK` nào, nên có thể bị đẩy tùy ý. Đặt mốc
+mua. `created_at` là cột kỹ thuật, không có `CHECK` nào, nên có thể bị đẩy tùy ý. Đặt mốc
 sàn ở một cột không ràng buộc là biến một giá trị kỹ thuật thành đồng hồ quyền hạn: kẻ nào
-đẩy `started_at` tới tương lai sẽ chặn được mọi cấp quyền sau đó của tài khoản đó tới khi
-mốc đó trôi qua. Vì vậy `started_at` chỉ được tin khi nó nằm ở quá khứ — đúng cái điều kiện
+đẩy `created_at` tới tương lai sẽ chặn được mọi cấp quyền sau đó của tài khoản đó tới khi
+mốc đó trôi qua. Vì vậy `created_at` chỉ được tin khi nó nằm ở quá khứ — đúng cái điều kiện
 mà dịch vụ AI tự tạo ra khi ghi một dòng mới.
 
 **Phương án đã cân nhắc**:
 
-- Chỉ dùng `created_at` — **loại**. Vẫn là cột kỹ thuật không ràng buộc, giữ nguyên đường
-  tấn công.
 - Chỉ dùng `effective_from` — **loại**. Sàn sẽ lệch về quá khứ so với bản ghi vừa ghi, khiến
   sự kiện hợp lệ kế tiếp phải bị dịch mỗi lần; mỗi lần dịch là một lần chạm vào dữ liệu.
-- Tin `started_at` vô điều kiện — **loại**. Nêu trên.
+- Tin `created_at` vô điều kiện — **loại**. Nêu trên.
+- Dùng `updated_at` — **loại**. Nó thay đổi mỗi lần `TruncateGrantsBefore` cắt một bản ghi,
+  nên nó **không** phản ánh thời điểm sự kiện được ghi và sẽ dịch sai.
 
 Cả quyết định này được nâng thành [ADR 014](../../docs/decisions/014-relax-grant-ordering-invariant.md)
 thay vì để nằm trong `spec.md`, vì nó nới lỏng một bất biến bảo mật và cần người đọc khác

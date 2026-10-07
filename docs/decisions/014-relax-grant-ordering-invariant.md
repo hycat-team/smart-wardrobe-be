@@ -52,14 +52,23 @@ Ba điều kiện kèm theo, cả ba đều bắt buộc:
 Về mặt bảo mật, sàn thứ tự được dựng trên cột thời gian nào là một phần của quyết định này
 chứ không phải chi tiết triển khai:
 
-- dùng `started_at` **khi nó không nằm trong tương lai** so với đồng hồ ứng dụng;
-- nếu `started_at` không đọc được hoặc nằm trong tương lai, lùi sang `effective_from`.
+- dùng `created_at` **khi nó không nằm trong tương lai** so với đồng hồ ứng dụng;
+- nếu `created_at` không đọc được hoặc nằm trong tương lai, lùi sang `effective_from`.
 
 `effective_from` là sàn thay thế vì nó chịu `CHECK` `effective_to > effective_from` và phải
-nằm trong khoảng thời gian khách hàng thực sự mua. `started_at` là cột kỹ thuật, không ràng
+nằm trong khoảng thời gian khách hàng thực sự mua. `created_at` là cột kỹ thuật, không ràng
 buộc gì, nên đặt sàn quyền hạn vào nó là biến một giá trị kỹ thuật thành đồng hồ quyền hạn:
-ai đẩy được `started_at` tới tương lai thì chặn được mọi cấp quyền sau đó của tài khoản đó
+ai đẩy được `created_at` tới tương lai thì chặn được mọi cấp quyền sau đó của tài khoản đó
 tới khi mốc đó trôi qua.
+
+`updated_at` bị loại trong sự cứu vãn: nó đổi mỗi lần một bản ghi bị cắt, nên nó phản ánh
+thời điểm sửa bản ghi chứ không phản ánh thời điểm sự kiện được ghi. Dùng nó làm sàn sẽ
+dịch sai.
+
+Sự cố không nằm ở việc đọc cột nào, mà ở chỗ `rejectStaleEvent` **không đọc cột nào cả**:
+nó gọi `ExtractOccurredAt` để lấy `occurred_at` từ `envelope` trong ảnh chụp chính sách, và
+khi đọc không được thì **từ chối vĩnh viễn** — không có đường lùi. Đó là lý do FR-001 phải
+lùi về `created_at`, và cũng là lý do quyết định này cần một cột dự phòng.
 
 ## 3. Consequences
 
@@ -84,7 +93,7 @@ tới khi mốc đó trôi qua.
 - Nhánh `rejectStaleEvent` không còn là nơi duy nhất giữ bất biến thứ tự, nên người đọc code
   phải theo `resolveGrantWindow` mới thấy toàn bộ. Đây là cái giá của việc dùng một nguồn
   sự thật thay cho hai lần tính.
-- Quy tắc lùi sang `effective_from` khi `started_at` ở tương lai có thể bị kích hoạt bởi
+- Quy tắc lùi sang `effective_from` khi `created_at` ở tương lai có thể bị kích hoạt bởi
   **lệch đồng hồ** giữa dịch vụ AI và PostgreSQL chứ không chỉ bởi can thiệp. Đây là hành
   vi an toàn: sàn lùi về giá trị ràng buộc chặt hơn, nên phải lùi cả khi nguyên nhân là
   đồng hồ lệch.

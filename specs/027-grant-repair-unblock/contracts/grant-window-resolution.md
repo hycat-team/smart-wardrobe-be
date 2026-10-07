@@ -63,9 +63,9 @@ prior := GetNewestGrantForOrdering(ctx, userID)
 nếu prior == nil:
     trả về window                                  // không có sàn nào để dịch
 
-floor := prior.StartedAt
+floor := prior.CreatedAt
 nếu floor là zero hoặc floor > now():
-    floor = prior.EffectiveFrom                    // cột chịu CHECK, R-003
+    floor = prior.EffectiveFrom                   // cột chịu CHECK, R-003
 
 nếu event.OccurredAt <= floor:
     trả về lỗi từ chối vĩnh viễn, mã stale_event   // FR-002

@@ -131,6 +131,14 @@ tệ hơn — dùng một gói mà không khai, thì build trên máy có thể 
 - **Không** thay đổi `transient()` hay `reject()`. Chúng vẫn giữ nguyên chữ ký và hành vi.
 - **Không** thêm hàng đợi, không thêm loại thư, không đổi thiết lập dead-letter.
 - **Không** phân loại `23514` ở tầng hạ tầng theo tên ràng buộc cụ thể
-  (`user_ai_policy_grants_check`). Mã `23514` là mức **đúng đắn**: nó áp dụng cho mọi ràng
-  buộc `CHECK` của bảng này, kể cả ràng buộc được thêm sau này, và không cần sửa mã khi có
-  thêm ràng buộc.
+  (`user_ai_policy_grants_check`). Lý do không phải sở thích mà là bằng chứng: tên đó là
+  **dấu vết lịch sử**, không còn khớp với bảng chứa nó. Ràng buộc được tạo bởi migration
+  `20260622131631_add_ai_cost_policy.sql` dưới dạng `CHECK` viết nội tuyến không đặt tên,
+  trên bảng lúc đó tên là `user_ai_policy_grants`. Sau đó bảng bị đổi tên thành
+  `ai_policy_grants` và chuyển sang schema `aiexecutor`
+  (`20260801000000_separate_module_schemas.sql` dùng `ALTER TABLE ... SET SCHEMA`). Cả hai
+  thao tác đều **giữ nguyên** tên ràng buộc đã sinh tự động — nên production vẫn báo
+  `user_ai_policy_grants_check` trong khi bảng là `aiexecutor.ai_policy_grants`. Người đọc
+  thấy tên đó sẽ đi tìm một bảng không tồn tại. Mã `23514` là mức **đúng đắn**: nó áp dụng
+  cho mọi ràng buộc `CHECK` của bảng này, kể cả ràng buộc được thêm sau này, và không cần
+  sửa mã khi có thêm ràng buộc.

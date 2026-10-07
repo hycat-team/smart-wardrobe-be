@@ -158,8 +158,8 @@ thứ tự:
 1. gọi `EventGrantWindow` lấy cửa sổ gốc;
 2. đọc bản ghi mới nhất qua `GetNewestGrantForOrdering`, và **nếu không có** thì trả về cửa
    sổ gốc ngay — không có bản ghi trước thì không có sàn thứ tự;
-3. dựng sàn từ `started_at` nếu nó không nằm trong tương lai so với `now()`, nếu không thì từ
-   `effective_from` (R-003); từ chối vĩnh viễn nếu `event.OccurredAt` không mới hơn sàn
+3. dựng sàn từ `created_at` nếu nó không nằm trong tương lai so với `now()`, nếu không thì
+   từ `effective_from` (R-003); từ chối vĩnh viễn nếu `event.OccurredAt` không mới hơn sàn
    (FR-002); nếu còn lại thì nâng `EffectiveFrom` lên `sàn + 1 µs`, không vượt quá mức đó.
 
 Sau đó `grant.EffectiveFrom` được gán bằng `window.EffectiveFrom` và `retirePreviousGrants`

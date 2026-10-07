@@ -49,10 +49,10 @@ Sự kiện `EXTENDED` phải cho **cùng** kết quả: mốc bắt đầu vẫ
 | Sự kiện kém hơn 1 µs | `s + 100µs` | `EffectiveFrom == s + 101µs` |
 | Sự kiện mới hơn `floor` nhưng kém mốc gốc | `s + 100µs`, mốc gốc `s + 50µs` | `EffectiveFrom == s + 100µs` |
 | Lệch trên 1 µs | `s + 5s` | `EffectiveFrom == s + 5s + 1µs` |
-| `started_at` ở tương lai | dùng `effective_from` | Lùi về `effective_from`, bỏ qua `started_at` |
-| `started_at` bằng 0 | dùng `effective_from` | Lùi về `effective_from` |
+| `created_at` ở tương lai | dùng `effective_from` | Lùi về `effective_from`, bỏ qua `created_at` |
+| `created_at` bằng 0 | dùng `effective_from` | Lùi về `effective_from` |
 
-Hai hàng cuối là toàn bộ R-003. Nếu chúng đỏ thì `started_at` tương lai vẫn đang đóng vai
+Hai hàng cuối là toàn bộ R-003. Nếu chúng đỏ thì `created_at` tương lai vẫn đang đóng vai
 đồng hồ quyền hạn — và ADR 014 đã nói rõ đó là điều không được chấp nhận.
 
 **Không hợp lệ** — phải là từ chối vĩnh viễn, mã `stale_event`:
@@ -75,6 +75,15 @@ go test ./internal/modules/aiexecutor/application/usecase/grant/ -race -count=3
 
 **Cần Postgres thật.** Xem lý do bắt buộc ở
 [contracts/error-classification.md](contracts/error-classification.md) §4.
+
+> **Cảnh báo về lược đồ kiểm thử**: thực thể `AIPolicyGrant`
+> (`domain/entities/policy.go:53`) **không có** thẻ `check:` trên `EffectiveTo`, nên
+> `AutoMigrate` trong `openGrantTestDB` **không** tạo ràng buộc
+> `user_ai_policy_grants_check`. Ràng buộc đó đến từ migration
+> `20260622131631_add_ai_cost_policy.sql` của dịch vụ Account. Kiểm thử vì vậy **phải tự
+> thêm** ràng buộc bằng `ALTER TABLE ... ADD CONSTRAINT ... CHECK (...)` trước khi ép vi
+> phạm; nếu không, `UPDATE` sẽ thành công và kiểm thử sẽ đỏ vì lý do sai — hoặc tệ hơn,
+> một biến thể lười sẽ xoá phần kiểm tra đó và báo "đã đúng".
 
 ```bash
 cd services/ai

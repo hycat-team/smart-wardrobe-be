@@ -15,11 +15,12 @@ buộc mà mọi tính toán phải tôn trọng.
 | Cột | Kiểu | Vai trò với 027 |
 | --- | --- | --- |
 | `user_id` | uuid | Khoá tài khoản cho `pg_advisory_xact_lock` và cho mọi truy vấn theo tài khoản |
-| `effective_from` | timestamptz | **Sàn thứ tự dự phòng** khi `started_at` không đáng tin (FR-001, R-003) |
+| `effective_from` | timestamptz | **Sàn thứ tự dự phòng** khi `created_at` không đáng tin (FR-001, R-003) |
 | `effective_to` | timestamptz NULL | Ranh giới trên. NULL = đang hiệu lực không thời hạn |
-| `started_at` | timestamptz | **Sàn thứ tự ưu tiên**, chỉ khi không nằm trong tương lai (R-003) |
+| `created_at` | timestamptz | **Sàn thứ tự ưu tiên**, chỉ khi không nằm trong tương lai (R-003). Cột `started_at` **không tồn tại** |
+| `updated_at` | timestamptz | Không dùng làm sàn — đổi mỗi lần cắt bản ghi, không phản ánh thời điểm sự kiện |
 | `status` | text | `active` / `future` / `closed`. 027 loại bỏ việc lọc theo trạng thái khỏi kiểm tra mục 4 (FR-014) |
-| `policy_snapshot` | jsonb | Nguồn của `envelope.occurred_at`; khi không đọc được thì dùng `started_at` |
+| `policy_snapshot` | jsonb | Nơi `occurred_at` hiện đang được đọc (qua `ExtractOccurredAt`); khi không đọc được thì lùi sang `created_at` |
 | `source_event_id` | uuid | Chống áp dụng trùng; kiểm tra **lại** dưới khoá |
 
 ### Ràng buộc phải tôn trọng
@@ -60,7 +61,7 @@ PlanChangedEvent
                 ├─ EventGrantWindow(event)
                 ├─ GetNewestGrantForOrdering(userID)
                 ├─ không có bản ghi trước? ──► trả về nguyên cửa sổ gốc
-                ├─ dựng sàn: started_at (nếu ≤ now) nếu không thì effective_from
+                ├─ dựng sàn: created_at (nếu ≤ now) nếu không thì effective_from
                 ├─ OccurredAt ≤ sàn? ──► từ chối vĩnh viễn (FR-002)
                 └─ nâng EffectiveFrom lên sàn + 1µs, không vượt quá mức đó (FR-004/FR-006)
 ```
@@ -68,7 +69,7 @@ PlanChangedEvent
 ### Quy tắc xác định sàn thứ tự
 
 ```text
-sàn(grant) = grant.started_at   nếu started_at ≤ now()      (bản ghi dịch vụ AI vừa ghi)
+sàn(grant) = grant.created_at      nếu created_at ≤ now()     (bản ghi dịch vụ AI vừa ghi)
           = grant.effective_from  nếu không                   (cột chịu CHECK, không giả mạo được tự do)
 ```
 
@@ -107,8 +108,8 @@ Tập trung vào nhánh tạo bản ghi mới (`EXTENDED`), là nhánh mà 027 s
                         không     │        có
                    ┌───────────────┘         └──────────────┐
                    ▼                                       ▼
-          EffectiveFrom = OccurredAt          dựng sàn từ started_at
-          (không dịch — FR-007)               hoặc effective_from
+EffectiveFrom = OccurredAt          dựng sàn từ created_at
+           (không dịch — FR-007)               hoặc effective_from
                    │                                       │
                    │                          ┌────────────┴────────────┐
                    │                    OccurredAt ≤ sàn          OccurredAt > sàn
