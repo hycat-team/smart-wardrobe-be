@@ -14,6 +14,7 @@ import (
 	repo_interfaces "smart-wardrobe-be/services/commerce/internal/modules/dashboard/domain/repositories"
 	"smart-wardrobe-be/shared/observability/workerlog"
 	"smart-wardrobe-be/shared/pkg/logger"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"go.uber.org/zap"
 )
@@ -46,7 +47,9 @@ func NewDashboardAggregatorUseCase(
 }
 
 func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Context, run *workerlog.Run) error {
-	today := time.Now().Truncate(24 * time.Hour)
+	// Daily statistics cut on the Vietnam calendar day: the admin audience
+	// reads "hôm nay" in local time, not UTC.
+	today := timeutils.TodayStartVN()
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -112,6 +115,9 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 	snapshot.SubscriptionRevenueVND = rev
 	snapshot.PayOSTransactionCount = subStats.PayOSTransactionCount
 	snapshot.PayOSSuccessCount = subStats.PayOSSuccessCount
+	snapshot.PayOSPendingCount = subStats.PayOSPendingCount
+	snapshot.PayOSFailedCount = subStats.PayOSFailedCount
+	snapshot.PayOSVoidedCount = subStats.PayOSVoidedCount
 	snapshot.NetAIMarginVND = rev - (float64(aiStats.AIActualCostMicroVND) / microVNDDivisor)
 
 	run.AddTotal(1)
@@ -124,7 +130,7 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 }
 
 func (uc *DashboardAggregatorUseCase) AggregateBrandSnapshots(ctx context.Context, run *workerlog.Run) error {
-	today := time.Now().Truncate(24 * time.Hour)
+	today := timeutils.TodayStartVN()
 
 	brandIDs, err := uc.brandReader.GetActiveBrandIDs(ctx)
 	if err != nil {

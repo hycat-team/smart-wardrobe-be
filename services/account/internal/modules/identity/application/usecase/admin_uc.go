@@ -134,6 +134,13 @@ func (uc *UserUseCase) GetAdminUserStats(ctx context.Context, snapshotDate time.
 	return uc.userRepo.GetAdminUserStats(ctx, snapshotDate)
 }
 
+// GetActiveUserIDs returns every non-deleted account id. The admin dashboard
+// reader needs the full population, so this goes straight to the repository
+// instead of through the paginated GetUsersForAdmin.
+func (uc *UserUseCase) GetActiveUserIDs(ctx context.Context) ([]uuid.UUID, error) {
+	return uc.userRepo.ListAllActiveUserIDs(ctx)
+}
+
 // GetUserDetail retrieves full user information and subscription overview for admin
 func (uc *UserUseCase) GetUserDetail(ctx context.Context, userID uuid.UUID) (*dto.AdminUserDetailRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)

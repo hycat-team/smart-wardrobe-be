@@ -100,6 +100,9 @@ func AdminStatsToDTO(pb *subscriptionv1.AdminSubscriptionStats) (*subscriptiondt
 		TotalSubscriptionRevenue: revenue,
 		PayOSTransactionCount:    int(pb.GetPayosTransactionCount()),
 		PayOSSuccessCount:        int(pb.GetPayosSuccessCount()),
+		PayOSPendingCount:        int(pb.GetPayosPendingCount()),
+		PayOSFailedCount:         int(pb.GetPayosFailedCount()),
+		PayOSVoidedCount:         int(pb.GetPayosVoidedCount()),
 	}, nil
 }
 

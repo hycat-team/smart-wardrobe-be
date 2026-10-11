@@ -44,6 +44,7 @@ func newLoginUseCase(user *entities.User, blacklist *fakeBlacklist) *usecase.Ses
 	uc, ok := usecase.NewSessionUseCase(
 		&loginUserRepo{user: user},
 		nil,
+		nil,
 		&exactHasher{password: "correct-horse"},
 		blacklist,
 		&config.Config{},

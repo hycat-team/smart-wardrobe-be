@@ -72,6 +72,9 @@ func AdminStatsToProto(d *subscriptiondto.AdminSubscriptionStatsDTO) *subscripti
 		TotalSubscriptionRevenue: d.TotalSubscriptionRevenue.String(),
 		PayosTransactionCount:    int32(d.PayOSTransactionCount),
 		PayosSuccessCount:        int32(d.PayOSSuccessCount),
+		PayosPendingCount:        int32(d.PayOSPendingCount),
+		PayosFailedCount:         int32(d.PayOSFailedCount),
+		PayosVoidedCount:         int32(d.PayOSVoidedCount),
 	}
 }
 

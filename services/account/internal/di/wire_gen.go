@@ -78,7 +78,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	if err != nil {
 		return nil, nil, err
 	}
-	iUserRepository := persistence.NewUserRepository(gormDB)
+	iUserActivityRepository := persistence.NewUserActivityRepository(gormDB)
+	iUserRepository := persistence.NewUserRepository(gormDB, iUserActivityRepository)
 	iCacheService := caching.NewRedisCacheService(client)
 	iCooldownService := caching.NewRedisCooldownService(client)
 	iOtpService := caching2.NewRedisOtpService(iCacheService, iCooldownService, cfg)
@@ -113,7 +114,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iNotificationContract, iPasswordHasher, cfg, iUserSubscriptionProvisioningContract, iUnitOfWork, rabbitMQClient)
 	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
 	iTokenBlacklistService := security2.NewRedisTokenBlacklistService(iCacheService)
-	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
+	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iUserActivityRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
 	iPasswordRecoveryUseCase := usecase.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iNotificationContract, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
 	iGoogleTokenVerifier := security.NewGoogleTokenVerifier(cfg)
 	ioAuthStateStore := caching2.NewRedisOAuthStateStore(iCacheService)

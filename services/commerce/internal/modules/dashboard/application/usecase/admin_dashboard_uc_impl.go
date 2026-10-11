@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/dto"
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/interface/usecase"
 	dashboardRepos "smart-wardrobe-be/services/commerce/internal/modules/dashboard/domain/repositories"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 )
 
 const microVNDDivisor = 1000000.0
@@ -48,7 +49,7 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 	}
 
 	if latest == nil {
-		now := time.Now()
+		now := timeutils.NowVN()
 		userStats, err := uc.userReader.GetAdminUserStats(ctx, now)
 		if err != nil {
 			return nil, err
@@ -103,10 +104,10 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 
 func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromDate, toDate time.Time) (*dto.AIMarginAnalyticsRes, error) {
 	if fromDate.IsZero() {
-		fromDate = time.Now().AddDate(0, 0, -30)
+		fromDate = timeutils.NowVN().AddDate(0, 0, -30)
 	}
 	if toDate.IsZero() {
-		toDate = time.Now()
+		toDate = timeutils.NowVN()
 	}
 
 	snapshots, err := uc.dashboardRepo.GetAdminSnapshots(ctx, fromDate, toDate)
@@ -195,16 +196,18 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*d
 			TotalTransactions: 0,
 			SuccessCount:      0,
 			FailedCount:       0,
+			PendingCount:      0,
+			VoidedCount:       0,
 			TotalSuccessValue: 0,
 		}, nil
 	}
 
-	failed := max(latest.PayOSTransactionCount-latest.PayOSSuccessCount, 0)
-
 	return &dto.PayOSReconciliationRes{
 		TotalTransactions: latest.PayOSTransactionCount,
 		SuccessCount:      latest.PayOSSuccessCount,
-		FailedCount:       failed,
+		FailedCount:       latest.PayOSFailedCount,
+		PendingCount:      latest.PayOSPendingCount,
+		VoidedCount:       latest.PayOSVoidedCount,
 		TotalSuccessValue: latest.SubscriptionRevenueVND,
 	}, nil
 }
@@ -240,10 +243,10 @@ func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context
 
 func (uc *AdminDashboardUseCase) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) (*dto.RevenueBreakdownRes, error) {
 	if fromDate.IsZero() {
-		fromDate = time.Now().AddDate(0, -6, 0)
+		fromDate = timeutils.NowVN().AddDate(0, -6, 0)
 	}
 	if toDate.IsZero() {
-		toDate = time.Now()
+		toDate = timeutils.NowVN()
 	}
 
 	rows, err := uc.subscriptionReader.GetRevenueBreakdown(ctx, fromDate, toDate)
@@ -274,10 +277,10 @@ func (uc *AdminDashboardUseCase) GetRevenueBreakdown(ctx context.Context, fromDa
 
 func (uc *AdminDashboardUseCase) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) (*dto.AIUsageByOperationRes, error) {
 	if fromDate.IsZero() {
-		fromDate = time.Now().AddDate(0, 0, -30)
+		fromDate = timeutils.NowVN().AddDate(0, 0, -30)
 	}
 	if toDate.IsZero() {
-		toDate = time.Now()
+		toDate = timeutils.NowVN()
 	}
 
 	rows, err := uc.aiCostReader.GetAIUsageByOperation(ctx, fromDate, toDate)
@@ -320,7 +323,7 @@ func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.
 	}
 
 	// Query total requests in last 30 days for error rate calculation
-	toDate := time.Now()
+	toDate := timeutils.NowVN()
 	fromDate := toDate.AddDate(0, 0, -30)
 	totalRequests, _ := uc.aiCostReader.GetTotalAIRequestCount(ctx, fromDate, toDate)
 
@@ -337,15 +340,20 @@ func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.
 	}, nil
 }
 
+// GetRenewalStats returns renewal-shot statistics. The success rate counts
+// attempts that reached a decisive payment outcome (succeeded or failed) as
+// its denominator: non-payment outcomes (skipped, downgraded, renewed) are
+// legitimate renewals, not failures, so counting them would deflate the rate.
 func (uc *AdminDashboardUseCase) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsRes, error) {
 	stats, err := uc.subscriptionReader.GetRenewalStats(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	decided := stats.SuccessCount + stats.FailedCount
 	successRate := 0.0
-	if stats.TotalAttempts > 0 {
-		successRate = float64(stats.SuccessCount) / float64(stats.TotalAttempts) * 100
+	if decided > 0 {
+		successRate = float64(stats.SuccessCount) / float64(decided) * 100
 	}
 
 	return &dto.RenewalStatsRes{
@@ -363,7 +371,7 @@ func (uc *AdminDashboardUseCase) GetSystemOverview(ctx context.Context) (*dto.Ad
 		return nil, err
 	}
 
-	now := time.Now()
+	now := timeutils.NowVN()
 	aiMargin, _ := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -dashboard_app.DefaultLookbackDays), now)
 
 	payos, _ := uc.GetPayOSReconciliation(ctx)

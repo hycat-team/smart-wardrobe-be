@@ -8,6 +8,7 @@ import (
 	identityerrors "smart-wardrobe-be/services/account/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/useractivitytype"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/shared/application/constants/jwttype"
@@ -22,6 +23,7 @@ import (
 type SessionUseCase struct {
 	userRepo              repositories.IUserRepository
 	refreshTokenRepo      repositories.IRefreshTokenRepository
+	activityRepo          repositories.IUserActivityRepository
 	passwordHasher        security.IPasswordHasher
 	tokenBlacklistService security.ITokenBlacklistService
 	cfg                   *config.Config
@@ -31,6 +33,7 @@ type SessionUseCase struct {
 func NewSessionUseCase(
 	userRepo repositories.IUserRepository,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
+	activityRepo repositories.IUserActivityRepository,
 	passwordHasher security.IPasswordHasher,
 	tokenBlacklistService security.ITokenBlacklistService,
 	cfg *config.Config,
@@ -39,6 +42,7 @@ func NewSessionUseCase(
 	return &SessionUseCase{
 		userRepo:              userRepo,
 		refreshTokenRepo:      refreshTokenRepo,
+		activityRepo:          activityRepo,
 		passwordHasher:        passwordHasher,
 		tokenBlacklistService: tokenBlacklistService,
 		cfg:                   cfg,
@@ -121,10 +125,26 @@ func (uc *SessionUseCase) IssueSession(ctx context.Context, user *entities.User,
 		return nil, err
 	}
 
+	uc.recordActivity(ctx, user.ID, useractivitytype.Login)
+
 	return &dto.TokenRes{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+// recordActivity appends one row to the activity log that feeds the admin
+// dashboard DAU. Best-effort on purpose: the log exists for statistics, and
+// failing a login or a refresh over a metrics row would be the wrong trade.
+func (uc *SessionUseCase) recordActivity(ctx context.Context, userID uuid.UUID, activityType useractivitytype.UserActivityType) {
+	if uc.activityRepo == nil {
+		return
+	}
+	_ = uc.activityRepo.Record(ctx, &entities.UserActivityEvent{
+		UserID:       userID,
+		ActivityType: activityType,
+		OccurredAt:   time.Now(),
+	})
 }
 
 func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenReq) (*dto.TokenRes, error) {
@@ -227,6 +247,10 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 	if err := uc.uow.Execute(ctx, refreshTokenFn); err != nil {
 		return nil, err
 	}
+
+	// Recorded after the transaction on purpose: the token rotation must not
+	// fail because a metrics row could not be written.
+	uc.recordActivity(ctx, userID, useractivitytype.Refresh)
 
 	return &dto.TokenRes{
 		AccessToken:  newAccessToken,

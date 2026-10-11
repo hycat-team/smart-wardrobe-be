@@ -29,7 +29,6 @@ type User struct {
 	RoleSlug       roleslug.RoleSlug         `gorm:"type:varchar(50);not null"`
 	BodyProfile    *BodyProfile              `gorm:"type:jsonb"`
 	Status         userstatus.UserStatus     `gorm:"type:smallint;not null;default:0"`
-	StyleProfile   *UserStyleProfile         `gorm:"foreignKey:UserID"`
 	AvatarUrl      *string                   `gorm:"type:varchar(500)"`
 	AvatarPublicID *string                   `gorm:"type:varchar(255)"`
 	// 025 T017 (FR-050): true only when the account was created through the
@@ -66,14 +65,6 @@ func (u *User) GetEffectiveBodyProfile() *BodyProfile {
 	}
 
 	return &effective
-}
-
-type UserStyleProfile struct {
-	UserID          uuid.UUID        `gorm:"type:uuid;primaryKey"`
-	TasteEmbedding  Vector           `gorm:"type:vector(768)"`
-	PreferredColors *PreferredColors `gorm:"type:jsonb"`
-	UpdatedAt       time.Time        `gorm:"type:timestamp with time zone;not null;default:now()"`
-	User            *User            `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 }
 
 type RefreshToken struct {

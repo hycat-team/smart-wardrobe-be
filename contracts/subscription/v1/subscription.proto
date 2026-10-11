@@ -64,10 +64,20 @@ message UpdateQuotaResponse {}
 
 // AdminSubscriptionStats mirrors subscription.AdminSubscriptionStatsDTO
 // (decimals cross the wire as strings to preserve precision).
+//
+// The payos_*_count breakdown partitions every deposit status together with
+// payos_success_count, so dashboards stop deriving "failed" as total − success:
+//
+//	pending: in-flight (Pending, Creating, ReconciliationRequired, Reconciling)
+//	failed:  FailedLegacy, CreationFailed, InvestigationRequired
+//	voided:  Cancelled, Expired, Refunded
 message AdminSubscriptionStats {
   string total_subscription_revenue = 1;
   int32 payos_transaction_count = 2;
   int32 payos_success_count = 3;
+  int32 payos_pending_count = 4;
+  int32 payos_failed_count = 5;
+  int32 payos_voided_count = 6;
 }
 
 message SubscriptionDistribution {

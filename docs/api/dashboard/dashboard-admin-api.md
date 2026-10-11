@@ -4,6 +4,8 @@ Tài liệu đặc tả các API Dashboard dành cho **System Admin**. Bao gồm
 
 Xem thêm hằng số tại [constants.md](constants.md).
 
+> **Quy ước ngày:** mọi mốc "ngày" trong dashboard admin đều tính theo **lịch Việt Nam (+07:00)**, không phải UTC. Snapshot `snapshot_date` cũng lưu ngày VN.
+
 ---
 
 ## 1. Lấy thẻ chỉ số KPI tổng quan
@@ -16,10 +18,10 @@ Xem thêm hằng số tại [constants.md](constants.md).
 | Field                  | JSON                     | Kiểu Go   | Ý nghĩa                                                         |
 | ---------------------- | ------------------------ | --------- | --------------------------------------------------------------- |
 | TotalUsers             | `totalUsers`             | int       | Tổng số người dùng đã đăng ký                                   |
-| ActiveUsersDAU         | `activeUsersDau`         | int       | Số người dùng hoạt động trong ngày (Daily Active Users)         |
+| ActiveUsersDAU         | `activeUsersDau`         | int       | Số người dùng hoạt động trong ngày (Daily Active Users) = số user phân biệt có sự kiện login/refresh trong ngày (bảng `user_activity_events`), **không** dựa trên `users.updated_at` |
 | TotalBrands            | `totalBrands`            | int       | Tổng số nhãn hàng đang hoạt động                                |
 | PendingReviewBrands    | `pendingReviewBrands`    | int       | Số nhãn hàng đang chờ phê duyệt                                 |
-| SubscriptionRevenueVND | `subscriptionRevenueVnd` | float64   | Tổng doanh thu gói Premium (VND), lấy từ `deposit_transactions` |
+| SubscriptionRevenueVND | `subscriptionRevenueVnd` | float64   | Tổng doanh thu gói Premium (VND) = `SUM(amount)` các giao dịch `direct_purchase` có `status=Success` trong ngày (bỏ qua pending/failed/cancelled/expired/refunded) |
 | NetAIMarginVND         | `netAiMarginVnd`         | float64   | Biên lợi nhuận AI = doanh thu - chi phí token (VND)             |
 | PayOSSuccessCount      | `payOSSuccessCount`      | int       | Số giao dịch PayOS thành công trong ngày                        |
 | UpdatedAt              | `updatedAt`              | time.Time | Thời điểm cập nhật gần nhất                                     |
@@ -76,8 +78,10 @@ Xem thêm hằng số tại [constants.md](constants.md).
 | Field             | JSON                | Kiểu Go | Ý nghĩa                                                                     |
 | ----------------- | ------------------- | ------- | --------------------------------------------------------------------------- |
 | TotalTransactions | `totalTransactions` | int     | Tổng số giao dịch PayOS trong snapshot gần nhất                             |
-| SuccessCount      | `successCount`      | int     | Số giao dịch thành công                                                     |
-| FailedCount       | `failedCount`       | int     | Số giao dịch thất bại                                                       |
+| SuccessCount      | `successCount`      | int     | Số giao dịch thành công (`status=Success`)                                  |
+| FailedCount       | `failedCount`       | int     | Số giao dịch **thất bại thật** (`FailedLegacy`, `CreationFailed`, `InvestigationRequired`) — KHÔNG còn tính bằng `total − success` |
+| PendingCount      | `pendingCount`      | int     | Số giao dịch đang xử lý (`Pending`, `Creating`, `ReconciliationRequired`, `Reconciling`) |
+| VoidedCount       | `voidedCount`       | int     | Số giao dịch đóng mà không thu tiền (hủy `Cancelled`, hết hạn `Expired`, hoàn tiền `Refunded`) |
 | TotalSuccessValue | `totalSuccessValue` | float64 | Tổng giá trị VND của giao dịch thành công (lấy từ `subscriptionRevenueVND`) |
 
 ---
@@ -102,9 +106,9 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/distribution`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
-- **Mô tả:** Thống kê số lượng người dùng đang hoạt động theo từng gói subscription (`free`, `premium-monthly`, v.v.), kèm tỷ lệ phần trăm.
+- **Mô tả:** Thống kê số lượng người dùng đang hoạt động theo từng gói subscription (`free`, `premium-monthly`, v.v.), kèm tỷ lệ phần trăm. Chỉ đếm subscription còn hiệu lực (`expires_at IS NULL OR expires_at > now()`); gói đã hết hạn không được tính.
 - **Response struct:** `SubscriptionDistributionRes`
-- **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) GROUP BY current_plan_code ORDER BY COUNT(*) DESC`.
+- **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) WHERE expires_at IS NULL OR expires_at > now() GROUP BY current_plan_code ORDER BY COUNT(*) DESC`.
 
 | Field        | JSON           | Kiểu                          | Ý nghĩa                                          |
 | ------------ | -------------- | ----------------------------- | ------------------------------------------------ |
@@ -125,7 +129,7 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
     - `fromDate` (string, optional) — Ngày bắt đầu, định dạng `YYYY-MM-DD`. Mặc định: 6 tháng trước.
     - `toDate` (string, optional) — Ngày kết thúc, định dạng `YYYY-MM-DD`. Mặc định: hôm nay.
 - **Response struct:** `RevenueBreakdownRes`
-- **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='direct_purchase'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`.
+- **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='direct_purchase'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`. Khoảng ngày bao cả 2 đầu: `[fromDate, toDate+1d)` nên `toDate` ở mốc 00:00 vẫn tính trọn ngày đó.
 
 | Field              | JSON               | Kiểu                  | Ý nghĩa                               |
 | ------------------ | ------------------ | --------------------- | ------------------------------------- |
@@ -171,7 +175,7 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
 - **Mô tả:** Thống kê số lượng lỗi AI, tổng số request trong 30 ngày qua, và tỷ lệ lỗi. Chi tiết lỗi được phân nhóm theo error_code, provider, và model.
 - **Response struct:** `AIErrorBreakdownRes`
-- **Nguồn dữ liệu:** Bảng `ai_usage_events`, lấy các status thuộc nhóm lỗi (tham khảo package `aiusageeventstatus`). Tổng request lấy từ `COUNT(*)` trong 30 ngày gần nhất.
+- **Nguồn dữ liệu:** Bảng `ai_usage_events`, lấy các status thuộc nhóm lỗi: `released` (gọi provider thất bại), `unknown_usage` (không quy được usage), `expired_unverified` (reservation hết hạn chưa xác nhận). Tổng request lấy từ `COUNT(*)` trong 30 ngày gần nhất.
 
 | Field         | JSON            | Kiểu                  | Ý nghĩa                                        |
 | ------------- | --------------- | --------------------- | ---------------------------------------------- |
@@ -196,11 +200,11 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 
 | Field         | JSON            | Kiểu    | Ý nghĩa                                                |
 | ------------- | --------------- | ------- | ------------------------------------------------------ |
-| TotalAttempts | `totalAttempts` | int     | Tổng số lần gia hạn (đã thực hiện)                     |
-| SuccessCount  | `successCount`  | int     | Số lần gia hạn thành công (status = 'SUCCESS')         |
-| FailedCount   | `failedCount`   | int     | Số lần gia hạn thất bại (status = 'FAILED')            |
-| SuccessRate   | `successRate`   | float64 | Tỷ lệ thành công = successCount / totalAttempts \* 100 |
-| AvgRetryCount | `avgRetryCount` | float64 | Số lần thử lại trung bình (AVG của attempt_count)      |
+| TotalAttempts | `totalAttempts` | int     | Tổng số lần gia hạn **đã kết thúc** (loại trạng thái đang chạy `processing`) |
+| SuccessCount  | `successCount`  | int     | Số lần gia hạn thành công (status = 'succeeded')       |
+| FailedCount   | `failedCount`   | int     | Số lần gia hạn thất bại (status = 'failed')            |
+| SuccessRate   | `successRate`   | float64 | Tỷ lệ thành công = successCount / (successCount + failedCount) \* 100 — các kết quả phi-thanh-toán (`skipped`, `downgraded`, `renewed`) không bị tính là thất bại |
+| AvgRetryCount | `avgRetryCount` | float64 | Số lần thử lại trung bình (AVG của attempt_count trên các lần đã kết thúc) |
 
 ---
 
@@ -243,12 +247,12 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 | Field                    | Nguồn dữ liệu          | Câu truy vấn / Cách tính                                                                                                                                                                                                                 |
 | ------------------------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `totalUsers`             | `users` table          | `SELECT COUNT(*) FROM users WHERE is_deleted = false`                                                                                                                                                                                    |
-| `activeUsersDau`         | `users` table          | `SELECT COUNT(*) FROM users WHERE is_deleted = false AND updated_at BETWEEN [00:00 hôm nay, 00:00 ngày mai)`. **Lưu ý:** Đây là user có `updated_at` trong ngày (đăng nhập, update profile,...), không phải DAU thực thụ từ activity log |
+| `activeUsersDau`         | `user_activity_events` | `SELECT COUNT(DISTINCT user_id) FROM user_activity_events WHERE occurred_at BETWEEN [00:00 hôm nay, 00:00 ngày mai) theo giờ VN AND user chưa bị xoá`. Nguồn sự kiện: login + refresh token (refresh ~15 phút/lần khi app đang dùng)      |
 | `totalBrands`            | `brands` table         | `SELECT COUNT(*) FROM brands`                                                                                                                                                                                                            |
 | `pendingReviewBrands`    | `brands` table         | `SELECT COUNT(*) FROM brands WHERE status = 'PENDING_REVIEW'`                                                                                                                                                                            |
-| `subscriptionRevenueVnd` | `deposit_transactions` | `SELECT COALESCE(SUM(amount),0) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND created_at IN [ngày]` — lấy từ Aggregator Worker chạy 15p/lần                                                                     |
+| `subscriptionRevenueVnd` | `deposit_transactions` | `SELECT COALESCE(SUM(amount) FILTER (WHERE status=1),0) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND created_at IN [ngày VN]` — lấy từ Aggregator Worker chạy 15p/lần                                                                     |
 | `netAiMarginVnd`         | Tính toán              | `subscriptionRevenueVnd - (aiActualCostMicroVnd / 1_000_000)`                                                                                                                                                                            |
-| `payOSSuccessCount`      | `deposit_transactions` | `SELECT COUNT(*) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND status=1 (Success) AND created_at IN [ngày]`                                                                                                     |
+| `payOSSuccessCount`      | `deposit_transactions` | `SELECT COUNT(*) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND status=1 (Success) AND created_at IN [ngày VN]`                                                                                                     |
 
 ### AI Margin (`GET /api/v1/admin/dashboard/ai-margin`)
 
@@ -268,8 +272,10 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 | ------------------- | --------------------------------- | ---------------------------------- |
 | `totalTransactions` | `dashboard_admin_daily_snapshots` | `snapshot.PayOSTransactionCount`   |
 | `successCount`      | `dashboard_admin_daily_snapshots` | `snapshot.PayOSSuccessCount`       |
-| `failedCount`       | Tính toán                         | `totalTransactions - successCount` |
-| `totalSuccessValue` | `dashboard_admin_daily_snapshots` | `snapshot.SubscriptionRevenueVND`  |
+| `failedCount`       | `dashboard_admin_daily_snapshots` | `snapshot.PayOSFailedCount` (thất bại thật, không còn `total − success`) |
+| `pendingCount`      | `dashboard_admin_daily_snapshots` | `snapshot.PayOSPendingCount`       |
+| `voidedCount`       | `dashboard_admin_daily_snapshots` | `snapshot.PayOSVoidedCount`        |
+| `totalSuccessValue` | `dashboard_admin_daily_snapshots` | `snapshot.SubscriptionRevenueVND` (chỉ tính giao dịch thành công) |
 
 ### Dynamic Query — Admin Metrics (`POST /api/v1/dashboard/analytics/query`)
 

@@ -616,15 +616,6 @@ CREATE TABLE "identity"."refresh_tokens" (
 );
 
 -- Table Definition
-CREATE TABLE "identity"."user_style_profiles" (
-    "user_id" uuid NOT NULL,
-    "taste_embedding" vector,
-    "preferred_colors" jsonb,
-    "updated_at" timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY ("user_id")
-);
-
--- Table Definition
 CREATE TABLE "public"."goose_db_version" (
     "id" int4 NOT NULL,
     "version_id" int8 NOT NULL,
@@ -1229,11 +1220,6 @@ CREATE UNIQUE INDEX idx_users_username_lower ON identity.users USING btree (lowe
 CREATE UNIQUE INDEX refresh_tokens_token_key ON identity.refresh_tokens USING btree (token);
 
 ALTER TABLE "identity"."refresh_tokens" ADD FOREIGN KEY ("user_id") REFERENCES "identity"."users"("id") ON DELETE CASCADE;
-
--- Indices
-CREATE INDEX ustyles_embedding_cosine_idx ON identity.user_style_profiles USING hnsw (taste_embedding vector_cosine_ops);
-
-ALTER TABLE "identity"."user_style_profiles" ADD FOREIGN KEY ("user_id") REFERENCES "identity"."users"("id") ON DELETE CASCADE;
 
 -- Indices
 CREATE INDEX idx_outbox_records_status_created_at ON shared.outbox_records USING btree (status, created_at);

@@ -535,11 +535,21 @@ func (*UpdateQuotaResponse) Descriptor() ([]byte, []int) {
 
 // AdminSubscriptionStats mirrors subscription.AdminSubscriptionStatsDTO
 // (decimals cross the wire as strings to preserve precision).
+//
+// The payos_*_count breakdown partitions every deposit status together with
+// payos_success_count, so dashboards stop deriving "failed" as total − success:
+//
+//	pending: in-flight (Pending, Creating, ReconciliationRequired, Reconciling)
+//	failed:  FailedLegacy, CreationFailed, InvestigationRequired
+//	voided:  Cancelled, Expired, Refunded
 type AdminSubscriptionStats struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	TotalSubscriptionRevenue string                 `protobuf:"bytes,1,opt,name=total_subscription_revenue,json=totalSubscriptionRevenue,proto3" json:"total_subscription_revenue,omitempty"`
 	PayosTransactionCount    int32                  `protobuf:"varint,2,opt,name=payos_transaction_count,json=payosTransactionCount,proto3" json:"payos_transaction_count,omitempty"`
 	PayosSuccessCount        int32                  `protobuf:"varint,3,opt,name=payos_success_count,json=payosSuccessCount,proto3" json:"payos_success_count,omitempty"`
+	PayosPendingCount        int32                  `protobuf:"varint,4,opt,name=payos_pending_count,json=payosPendingCount,proto3" json:"payos_pending_count,omitempty"`
+	PayosFailedCount         int32                  `protobuf:"varint,5,opt,name=payos_failed_count,json=payosFailedCount,proto3" json:"payos_failed_count,omitempty"`
+	PayosVoidedCount         int32                  `protobuf:"varint,6,opt,name=payos_voided_count,json=payosVoidedCount,proto3" json:"payos_voided_count,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -591,6 +601,27 @@ func (x *AdminSubscriptionStats) GetPayosTransactionCount() int32 {
 func (x *AdminSubscriptionStats) GetPayosSuccessCount() int32 {
 	if x != nil {
 		return x.PayosSuccessCount
+	}
+	return 0
+}
+
+func (x *AdminSubscriptionStats) GetPayosPendingCount() int32 {
+	if x != nil {
+		return x.PayosPendingCount
+	}
+	return 0
+}
+
+func (x *AdminSubscriptionStats) GetPayosFailedCount() int32 {
+	if x != nil {
+		return x.PayosFailedCount
+	}
+	return 0
+}
+
+func (x *AdminSubscriptionStats) GetPayosVoidedCount() int32 {
+	if x != nil {
+		return x.PayosVoidedCount
 	}
 	return 0
 }
@@ -1086,11 +1117,14 @@ const file_contracts_subscription_v1_subscription_proto_rawDesc = "" +
 	"\x12UpdateQuotaRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"\x15\n" +
-	"\x13UpdateQuotaResponse\"\xbe\x01\n" +
+	"\x13UpdateQuotaResponse\"\xca\x02\n" +
 	"\x16AdminSubscriptionStats\x12<\n" +
 	"\x1atotal_subscription_revenue\x18\x01 \x01(\tR\x18totalSubscriptionRevenue\x126\n" +
 	"\x17payos_transaction_count\x18\x02 \x01(\x05R\x15payosTransactionCount\x12.\n" +
-	"\x13payos_success_count\x18\x03 \x01(\x05R\x11payosSuccessCount\"V\n" +
+	"\x13payos_success_count\x18\x03 \x01(\x05R\x11payosSuccessCount\x12.\n" +
+	"\x13payos_pending_count\x18\x04 \x01(\x05R\x11payosPendingCount\x12,\n" +
+	"\x12payos_failed_count\x18\x05 \x01(\x05R\x10payosFailedCount\x12,\n" +
+	"\x12payos_voided_count\x18\x06 \x01(\x05R\x10payosVoidedCount\"V\n" +
 	"\x18SubscriptionDistribution\x12\x1b\n" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12\x1d\n" +
 	"\n" +

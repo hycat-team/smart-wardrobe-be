@@ -55,6 +55,9 @@ type IUserRepository interface {
 	// flows.
 	ListCreatedInWindow(ctx context.Context, filter CampaignAccountFilter) (*CampaignAccountPage, error)
 	GetUsersForAdmin(ctx context.Context, filter UserFilter) (*UserListResult, error)
-	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*UserStyleProfileRes, error)
+	// ListAllActiveUserIDs returns the ids of every non-deleted account, with no
+	// pagination: it backs the admin dashboard's "active user ids" reader,
+	// where a page-sized answer would silently drop most of the population.
+	ListAllActiveUserIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*UserAdminStatsDTO, error)
 }

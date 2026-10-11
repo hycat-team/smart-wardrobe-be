@@ -9906,6 +9906,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "failedCount": {
+                    "description": "FailedCount is the real failure bucket (gateway/reconciliation failures),\nnot total − success: pending and voided transactions are reported\nseparately so the admin does not chase normal churn as fraud.",
+                    "type": "integer"
+                },
+                "pendingCount": {
                     "type": "integer"
                 },
                 "successCount": {
@@ -9915,6 +9919,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "totalTransactions": {
+                    "type": "integer"
+                },
+                "voidedCount": {
                     "type": "integer"
                 }
             }

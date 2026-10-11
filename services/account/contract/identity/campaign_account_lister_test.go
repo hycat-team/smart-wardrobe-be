@@ -73,7 +73,7 @@ func newCampaignContractFixture(t *testing.T) (identity_contract.CampaignAccount
 	require.NoError(t, dbConn.Exec(contractTestUsersDDL).Error)
 	t.Cleanup(func() { _ = dbConn.Exec("DROP TABLE IF EXISTS users").Error })
 
-	repo := persistence.NewUserRepository(dbConn)
+	repo := persistence.NewUserRepository(dbConn, nil)
 	reader := usecase.NewCampaignAccountReader(repo)
 	return identity_contract.NewCampaignAccountLister(identity_contract.NewUserBriefContract(nil, reader)), dbConn
 }

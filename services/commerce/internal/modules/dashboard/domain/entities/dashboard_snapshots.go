@@ -24,6 +24,9 @@ type DashboardAdminDailySnapshot struct {
 	NetAIMarginVND         float64   `gorm:"column:net_ai_margin_vnd;type:numeric(12,2);not null;default:0"`
 	PayOSTransactionCount  int       `gorm:"column:payos_transaction_count;not null;default:0"`
 	PayOSSuccessCount      int       `gorm:"column:payos_success_count;not null;default:0"`
+	PayOSPendingCount      int       `gorm:"column:payos_pending_count;not null;default:0"`
+	PayOSFailedCount       int       `gorm:"column:payos_failed_count;not null;default:0"`
+	PayOSVoidedCount       int       `gorm:"column:payos_voided_count;not null;default:0"`
 }
 
 func (DashboardAdminDailySnapshot) TableName() string {

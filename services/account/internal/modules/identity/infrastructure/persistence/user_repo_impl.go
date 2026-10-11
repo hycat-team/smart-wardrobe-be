@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	shared_persist "smart-wardrobe-be/shared/infrastructure/repositories"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -20,13 +21,17 @@ import (
 // UserRepository implements identity repository actions using GORM
 type UserRepository struct {
 	shared_persist.GenericRepository[entities.User, uuid.UUID]
+	activityRepo repositories.IUserActivityRepository
 }
 
-// NewUserRepository creates a new UserRepository instance
-func NewUserRepository(db *gorm.DB) repositories.IUserRepository {
-	relations := []string{"StyleProfile"}
+// NewUserRepository creates a new UserRepository instance. activityRepo
+// supplies the admin dashboard DAU; a nil value disables it (tests that only
+// exercise other user queries pass nil).
+func NewUserRepository(db *gorm.DB, activityRepo repositories.IUserActivityRepository) repositories.IUserRepository {
+	relations := []string{}
 	return &UserRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.User, uuid.UUID](db, relations),
+		activityRepo:      activityRepo,
 	}
 }
 
@@ -263,21 +268,19 @@ func (r *UserRepository) ListCreatedInWindow(ctx context.Context, filter reposit
 	}, nil
 }
 
-func (r *UserRepository) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
-	var profile entities.UserStyleProfile
-	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&profile).Error
+// ListAllActiveUserIDs returns the ids of every non-deleted user, unpaginated.
+// The caller is the admin dashboard reader, which needs the whole population;
+// GetUsersForAdmin is page-sized (default 20) and would truncate it.
+func (r *UserRepository) ListAllActiveUserIDs(ctx context.Context) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.GetDB(ctx).
+		Model(&entities.User{}).
+		Where("is_deleted = ?", false).
+		Pluck("id", &ids).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
-
-	return &dto.UserStyleProfileRes{
-		UserID:          profile.UserID,
-		TasteEmbedding:  profile.TasteEmbedding,
-		PreferredColors: profile.PreferredColors,
-	}, nil
+	return ids, nil
 }
 
 func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositories.UserFilter) (*repositories.UserListResult, error) {
@@ -326,11 +329,15 @@ func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositori
 	}, nil
 }
 
+// GetAdminUserStats returns the admin dashboard user counts for the Vietnam
+// calendar day containing snapshotDate. ActiveUsersDau counts distinct users
+// with a real activity event (login/refresh) in that day, not users.updated_at:
+// an updated_at move says nothing about activity.
 func (r *UserRepository) GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error) {
 	db := r.GetDB(ctx)
 
-	startOfDay := time.Date(snapshotDate.Year(), snapshotDate.Month(), snapshotDate.Day(), 0, 0, 0, 0, snapshotDate.Location())
-	endOfDay := startOfDay.Add(24 * time.Hour)
+	// Daily stats cut on the Vietnam calendar day.
+	startOfDay, endOfDay := timeutils.VNDayRange(snapshotDate)
 
 	var totalUsers int64
 	if err := db.Model(&entities.User{}).Where("is_deleted = ?", false).Count(&totalUsers).Error; err != nil {
@@ -343,8 +350,12 @@ func (r *UserRepository) GetAdminUserStats(ctx context.Context, snapshotDate tim
 	}
 
 	var dauCount int64
-	if err := db.Model(&entities.User{}).Where("is_deleted = ? AND updated_at >= ? AND updated_at < ?", false, startOfDay, endOfDay).Count(&dauCount).Error; err != nil {
-		return nil, err
+	if r.activityRepo != nil {
+		count, err := r.activityRepo.CountDistinctUsers(ctx, startOfDay, endOfDay)
+		if err != nil {
+			return nil, err
+		}
+		dauCount = count
 	}
 
 	return &dto.UserAdminStatsDTO{

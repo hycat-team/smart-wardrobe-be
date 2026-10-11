@@ -10,12 +10,6 @@ import (
 
 // Repository read models owned by the domain layer (feature 017);
 // application/dto aliases them for handler compatibility.
-type UserStyleProfileRes struct {
-	UserID          uuid.UUID                 `json:"userId"`
-	TasteEmbedding  entities.Vector           `json:"tasteEmbedding,omitempty"`
-	PreferredColors *entities.PreferredColors `json:"preferredColors,omitempty"`
-}
-
 type UserAdminStatsDTO struct {
 	SnapshotDate   time.Time `json:"snapshotDate"`
 	TotalUsers     int       `json:"totalUsers"`
@@ -54,8 +48,8 @@ type CampaignAccountFilter struct {
 //
 // The task description asked for `[]*dto.UserBriefContractDTO` at this level. That
 // is not expressible in Go: `dto/identity` ALREADY imports this package — it
-// aliases `UserAdminStatsDTO` (dashboard_dto.go:7) and `UserStyleProfileRes`
-// (profile.go:63) — so importing `dto/identity` back from here is an import cycle
+// aliases `UserAdminStatsDTO` (dashboard_dto.go:7) — so importing `dto/identity`
+// back from here is an import cycle
 // and the whole service stops compiling. The rule the requirement was protecting
 // (constitution §II: "using DTOs, never domain entities") is still honoured where
 // it actually bites: `entities.User` never crosses the MODULE boundary. The

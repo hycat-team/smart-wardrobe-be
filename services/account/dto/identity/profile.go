@@ -2,7 +2,6 @@ package dto
 
 import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
-	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
 	"time"
@@ -59,8 +58,6 @@ type UserSubscriptionRes struct {
 	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
 }
-
-type UserStyleProfileRes = repositories.UserStyleProfileRes
 
 type UserBodyProfileRes struct {
 	HeightCM       float64                  `json:"heightCm"`

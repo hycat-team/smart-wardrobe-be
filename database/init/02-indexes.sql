@@ -7,11 +7,6 @@ CREATE INDEX IF NOT EXISTS witems_embedding_cosine_idx
 ON wardrobe_items
 USING hnsw (embedding vector_cosine_ops);
 
--- Chỉ mục HNSW cho Hồ sơ gu thời trang (Phục vụ Module 4: Newsfeed Ranking)
-CREATE INDEX IF NOT EXISTS ustyles_embedding_cosine_idx
-ON user_style_profiles
-USING hnsw (taste_embedding vector_cosine_ops);
-
 
 -- ========================================================
 -- CÁC CHỈ MỤC LOGIC THUẬT TOÁN (B-TREE INDEXES)

@@ -143,10 +143,6 @@ func (uc *UserUseCase) UpdateBodyProfile(ctx context.Context, userID uuid.UUID, 
 	return mapper.MapToUserRes(user, sub), nil
 }
 
-func (uc *UserUseCase) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
-	return uc.userRepo.GetStyleProfile(ctx, userID)
-}
-
 func (uc *UserUseCase) GetAvatarSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {
 	params := shared_dto.UploadSignatureParams{
 		Folder:   uc.cfg.Cloudinary.AvatarFolder,

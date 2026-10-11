@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/shared/infrastructure/repositories"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -174,22 +175,34 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 		TotalRevenue decimal.Decimal
 		TotalCount   int
 		SuccessCount int
+		PendingCount int
+		FailedCount  int
+		VoidedCount  int
 	}
 	var result revenueResult
 
-	dayStart := snapshotDate.Truncate(24 * time.Hour)
-	dayEnd := dayStart.Add(24 * time.Hour)
+	dayStart, dayEnd := timeutils.VNDayRange(snapshotDate)
 
+	// The three status buckets below partition every PayOS deposit status
+	// together with success, so downstream reports stop deriving "failed" as
+	// total − success. Buckets:
+	//   pending: in-flight statuses (depositstatus.ActivePaymentStatuses)
+	//   failed:  genuinely failed (FailedLegacy, CreationFailed,
+	//             InvestigationRequired)
+	//   voided:  closed without payment (Cancelled, Expired, Refunded)
 	err := r.GetDB(ctx).Raw(`
 		SELECT
-			COALESCE(SUM(amount), 0) AS total_revenue,
+			COALESCE(SUM(amount) FILTER (WHERE status = ?), 0) AS total_revenue,
 			COUNT(*) AS total_count,
-			COUNT(*) FILTER (WHERE status = 1) AS success_count
+			COUNT(*) FILTER (WHERE status = ?) AS success_count,
+			COUNT(*) FILTER (WHERE status IN ?) AS pending_count,
+			COUNT(*) FILTER (WHERE status IN ?) AS failed_count,
+			COUNT(*) FILTER (WHERE status IN ?) AS voided_count
 		FROM deposit_transactions
 		WHERE transaction_type = ?
 		  AND created_at >= ?
 		  AND created_at < ?
-	`, string(deposittransactiontype.DirectPurchase), dayStart, dayEnd).Scan(&result).Error
+	`, depositstatus.Success, depositstatus.Success, depositstatus.ActivePaymentStatuses, payOSFailedStatuses, payOSVoidedStatuses, string(deposittransactiontype.DirectPurchase), dayStart, dayEnd).Scan(&result).Error
 	if err != nil {
 		return nil, err
 	}
@@ -198,9 +211,32 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 		TotalSubscriptionRevenue: result.TotalRevenue,
 		PayOSTransactionCount:    result.TotalCount,
 		PayOSSuccessCount:        result.SuccessCount,
+		PayOSPendingCount:        result.PendingCount,
+		PayOSFailedCount:         result.FailedCount,
+		PayOSVoidedCount:         result.VoidedCount,
 	}, nil
 }
 
+// payOSFailedStatuses are deposit statuses that genuinely failed and need
+// operator attention or customer support.
+var payOSFailedStatuses = []depositstatus.DepositStatus{
+	depositstatus.FailedLegacy,
+	depositstatus.CreationFailed,
+	depositstatus.InvestigationRequired,
+}
+
+// payOSVoidedStatuses are deposit statuses closed without any payment reaching
+// the gateway outcome: the customer cancelled, the link expired, or the amount
+// was refunded.
+var payOSVoidedStatuses = []depositstatus.DepositStatus{
+	depositstatus.Cancelled,
+	depositstatus.Expired,
+	depositstatus.Refunded,
+}
+
+// GetRevenueBreakdown sums successful DirectPurchase revenue grouped by plan and
+// month. The range is inclusive on both calendar days: [fromDate, toDate+1d),
+// so a toDate of midnight still counts that whole day.
 func (r *DepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
 	query := r.GetDB(ctx).
 		Table("deposit_transactions").
@@ -210,7 +246,7 @@ func (r *DepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, 
 		query = query.Where("created_at >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("created_at <= ?", toDate)
+		query = query.Where("created_at < ?", toDate.AddDate(0, 0, 1))
 	}
 	var rows []dto.RevenueBreakdownDTO
 	err := query.Group("plan_code, DATE_TRUNC('month', created_at)").

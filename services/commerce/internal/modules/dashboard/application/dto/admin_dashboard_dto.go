@@ -35,9 +35,14 @@ type AIMarginAnalyticsRes struct {
 }
 
 type PayOSReconciliationRes struct {
-	TotalTransactions int     `json:"totalTransactions"`
-	SuccessCount      int     `json:"successCount"`
+	TotalTransactions int `json:"totalTransactions"`
+	SuccessCount      int `json:"successCount"`
+	// FailedCount is the real failure bucket (gateway/reconciliation failures),
+	// not total − success: pending and voided transactions are reported
+	// separately so the admin does not chase normal churn as fraud.
 	FailedCount       int     `json:"failedCount"`
+	PendingCount      int     `json:"pendingCount"`
+	VoidedCount       int     `json:"voidedCount"`
 	TotalSuccessValue float64 `json:"totalSuccessValue"`
 }
 

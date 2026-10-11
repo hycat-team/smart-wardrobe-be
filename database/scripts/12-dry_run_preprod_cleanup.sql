@@ -200,7 +200,6 @@ UNION ALL SELECT 'community.user_follow_stats',       count(*) FROM community.us
 UNION ALL SELECT 'fashion.conversational_contexts',  count(*) FROM fashion.conversational_contexts
 UNION ALL SELECT 'fashion.messages',                 count(*) FROM fashion.messages
 UNION ALL SELECT 'identity.refresh_tokens',          count(*) FROM identity.refresh_tokens
-UNION ALL SELECT 'identity.user_style_profiles',     count(*) FROM identity.user_style_profiles
 ORDER BY 1;
 
 -- KHU VỰC 6 — baseline phải CÒN sau khi dọn

@@ -19,7 +19,8 @@ func (r *DashboardRepository) UpsertAdminSnapshot(ctx context.Context, snapshot 
 			"pending_review_brands", "ai_requests_count",
 			"ai_error_count", "ai_paid_tokens", "ai_actual_cost_micro_vnd",
 			"subscription_revenue_vnd", "net_ai_margin_vnd", "payos_transaction_count",
-			"payos_success_count", "updated_at",
+			"payos_success_count", "payos_pending_count", "payos_failed_count",
+			"payos_voided_count", "updated_at",
 		}),
 	}).Create(snapshot).Error
 }

@@ -486,11 +486,10 @@ func (f *eagerProvisionFixture) countOutbox(t *testing.T) int64 {
 // installEagerUserForeignKey puts the production FK in place for the duration of
 // one test.
 //
-// `identity.users` is created with plain DDL rather than through AutoMigrate: the
-// identity entity carries a `UserStyleProfile` association with a `vector(768)`
-// column, which needs pgvector and has nothing to do with this FK. The columns
-// below are the ones the foreign key and the row insert need, and they are the
-// NOT NULL set of the production definition.
+// `identity.users` is created with plain DDL rather than through AutoMigrate:
+// the test only exercises the foreign key and the row insert, not the full
+// identity schema. The columns below are the ones the foreign key and the row
+// insert need, and they are the NOT NULL set of the production definition.
 func installEagerUserForeignKey(t *testing.T, dbConn *gorm.DB) {
 	t.Helper()
 	createdUsersTable := ensureEagerAccountTable(t, dbConn)

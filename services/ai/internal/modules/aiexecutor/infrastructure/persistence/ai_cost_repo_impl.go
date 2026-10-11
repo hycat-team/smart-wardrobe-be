@@ -13,6 +13,7 @@ import (
 	aiexecutor_entities "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/repositories"
 	shared_repos "smart-wardrobe-be/shared/infrastructure/repositories"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -319,17 +320,26 @@ WHERE ai_usage_period_ledgers.id = sub.ledger_id`, now, ids).Error
 func (r *AICostRepository) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error) {
 	db := r.GetDB(ctx)
 
-	startOfDay := time.Date(snapshotDate.Year(), snapshotDate.Month(), snapshotDate.Day(), 0, 0, 0, 0, snapshotDate.Location())
-	endOfDay := startOfDay.Add(24 * time.Hour)
+	// Daily stats cut on the Vietnam calendar day.
+	startOfDay, endOfDay := timeutils.VNDayRange(snapshotDate)
 
 	var reqCount int64
 	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
 		Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).
 		Count(&reqCount).Error
 
+	// A failed request ends in one of the terminal error states: Released
+	// (provider call failed), UnknownUsage (usage could not be attributed),
+	// or ExpiredUnverified (reserved call never confirmed before expiry).
+	aiErrorStatuses := []aiusageeventstatus.AIUsageEventStatus{
+		aiusageeventstatus.Released,
+		aiusageeventstatus.UnknownUsage,
+		aiusageeventstatus.ExpiredUnverified,
+	}
+
 	var errCount int64
 	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
-		Where("created_at >= ? AND created_at < ? AND status IN ?", startOfDay, endOfDay, []string{string(aiusageeventstatus.Released)}).
+		Where("created_at >= ? AND created_at < ? AND status IN ?", startOfDay, endOfDay, aiErrorStatuses).
 		Count(&errCount).Error
 
 	var paidTokens int64

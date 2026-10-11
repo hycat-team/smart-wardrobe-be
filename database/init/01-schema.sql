@@ -68,16 +68,6 @@ CREATE TABLE user_daily_quotas (
 );
 
 -- ========================================================
--- Bảng hồ sơ gu thời trang cá nhân (Taste Profiles)
--- ========================================================
-CREATE TABLE user_style_profiles (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    taste_embedding VECTOR(768), -- Vector gu thời trang người dùng
-    preferred_colors JSONB,      -- Lưu danh sách mảng màu tương tác phổ biến
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
--- ========================================================
 -- Bảng quản lý session (Refresh Tokens)
 -- ========================================================
 CREATE TABLE refresh_tokens (

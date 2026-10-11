@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"sort"
-	"time"
 
 	brand_dto "smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
 	brandContract "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/contract"
@@ -15,6 +14,7 @@ import (
 	fashionContract "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/contract"
 	wardrobeContract "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/contract"
 	"smart-wardrobe-be/shared/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 )
@@ -50,7 +50,7 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 	}
 
 	if latest == nil {
-		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, timeutils.NowVN())
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +94,7 @@ func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID 
 		expiring30d = latest.PointsExpiring30d
 		valVND = latest.PointsLiabilityValueVND
 	} else {
-		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, timeutils.NowVN())
 		if err != nil {
 			return nil, err
 		}

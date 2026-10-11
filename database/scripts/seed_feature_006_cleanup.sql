@@ -22,7 +22,7 @@ TRUNCATE TABLE brand.brand_benefits CASCADE;
 TRUNCATE TABLE subscription.user_subscriptions CASCADE;
 TRUNCATE TABLE subscription.user_daily_quotas CASCADE;
 TRUNCATE TABLE subscription.user_wallets CASCADE;
-TRUNCATE TABLE identity.user_style_profiles CASCADE;
+-- identity.user_style_profiles đã bị xoá (ADR 015, migration 20261011090000)
 TRUNCATE TABLE fashion.fashion_items CASCADE;
 TRUNCATE TABLE brand.brands CASCADE;
 TRUNCATE TABLE brand.loyalty_programs CASCADE;

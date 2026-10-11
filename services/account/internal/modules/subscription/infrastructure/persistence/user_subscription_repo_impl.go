@@ -135,10 +135,14 @@ func (r *UserSubscriptionRepository) ProvisionDefault(ctx context.Context, sub *
 	return r.GetDB(ctx).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true}).Create(sub).Error
 }
 
+// GetDistributionByPlanCode counts subscriptions by plan code, counting only
+// subscriptions that are still active (free plans never expire, so a NULL
+// expires_at is treated as active).
 func (r *UserSubscriptionRepository) GetDistributionByPlanCode(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error) {
 	var rows []dto.SubscriptionDistributionDTO
 	err := r.GetDB(ctx).
 		Model(&entities.UserSubscription{}).
+		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
 		Select("current_plan_code AS plan_code, COUNT(*) AS user_count").
 		Group("current_plan_code").
 		Order("user_count DESC").

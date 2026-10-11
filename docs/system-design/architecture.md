@@ -272,11 +272,11 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-m
 
 The system uses a PostgreSQL relational database (with pgvector) as the Single Source of Truth, integrating with GORM for entity management.
 
-> **Trạng thái hiện tại** (Sprint 2, migration `20260801000000_separate_module_schemas`; đã đối chiếu lại với DB thật): 53 bảng + 1 sequence đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`, `community`). DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
+> **Trạng thái hiện tại** (Sprint 2, migration `20260801000000_separate_module_schemas`; đã đối chiếu lại với DB thật): 52 bảng + 1 sequence đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`, `community`). DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
 
-### Tables by Module (53 bảng + 1 sequence)
+### Tables by Module (52 bảng + 1 sequence)
 
-**identity** (3): `users`, `refresh_tokens`, `user_style_profiles`
+**identity** (2): `users`, `refresh_tokens`
 
 **wardrobe** (3): `wardrobe_items`, `outfits`, `outfit_items`
 
@@ -327,7 +327,8 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 ### Chỉ mục vector (pgvector HNSW) — giữ nguyên sau tách schema
 
 - `fitems_embedding_cosine_idx` on `fashion.fashion_items.embedding` (HNSW `vector_cosine_ops`)
-- `ustyles_embedding_cosine_idx` on `identity.user_style_profiles.taste_embedding` (HNSW `vector_cosine_ops`)
+
+> Bảng `identity.user_style_profiles` và index HNSW `ustyles_embedding_cosine_idx` đã bị xoá (ADR 015, migration `20261011090000_drop_user_style_profiles.sql`).
 
 > Verified (Sprint 2): `EXPLAIN` vector search dùng `Index Scan using fitems_embedding_cosine_idx`; index def schema-qualified.
 

@@ -162,12 +162,17 @@ func (m *mockAICostReader) GetAIEventsDrillDown(ctx context.Context, status stri
 
 type mockSubscriptionReader struct {
 	subscriptionContract.ISubscriptionDashboardReader
-	stats *subscriptionDTO.AdminSubscriptionStatsDTO
-	err   error
+	stats   *subscriptionDTO.AdminSubscriptionStatsDTO
+	renewal *subscriptionDTO.RenewalStatsDTO
+	err     error
 }
 
 func (m *mockSubscriptionReader) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*subscriptionDTO.AdminSubscriptionStatsDTO, error) {
 	return m.stats, m.err
+}
+
+func (m *mockSubscriptionReader) GetRenewalStats(ctx context.Context) (*subscriptionDTO.RenewalStatsDTO, error) {
+	return m.renewal, m.err
 }
 
 func TestAdminGetKPICards_FromSnapshot(t *testing.T) {
@@ -308,6 +313,9 @@ func TestAdminGetPayOSReconciliation(t *testing.T) {
 		latestSnapshot: &entities.DashboardAdminDailySnapshot{
 			PayOSTransactionCount:  100,
 			PayOSSuccessCount:      95,
+			PayOSPendingCount:      3,
+			PayOSFailedCount:       1,
+			PayOSVoidedCount:       1,
 			SubscriptionRevenueVND: 5000000,
 		},
 	}
@@ -322,8 +330,11 @@ func TestAdminGetPayOSReconciliation(t *testing.T) {
 	if res.SuccessCount != 95 {
 		t.Errorf("expected SuccessCount=95, got %d", res.SuccessCount)
 	}
-	if res.FailedCount != 5 {
-		t.Errorf("expected FailedCount=5, got %d", res.FailedCount)
+	if res.FailedCount != 1 {
+		t.Errorf("expected FailedCount=1 (real failures, not total − success), got %d", res.FailedCount)
+	}
+	if res.PendingCount != 3 || res.VoidedCount != 1 {
+		t.Errorf("expected PendingCount=3 and VoidedCount=1, got %+v", res)
 	}
 }
 
@@ -366,5 +377,58 @@ func TestAdminGetSystemOverview(t *testing.T) {
 	}
 	if res.PayOSReconcile.TotalTransactions != 100 {
 		t.Errorf("expected TotalTransactions=100, got %d", res.PayOSReconcile.TotalTransactions)
+	}
+}
+
+func TestGetRenewalStatsSuccessRateExcludesNonDecidedAttempts(t *testing.T) {
+	repo := &mockAdminDashboardRepo{}
+	reader := &mockSubscriptionReader{
+		renewal: &subscriptionDTO.RenewalStatsDTO{
+			TotalAttempts: 10,
+			SuccessCount:  6,
+			FailedCount:   2,
+			AvgRetryCount: 1.5,
+		},
+	}
+
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+	res, err := uc.GetRenewalStats(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// 6 succeeded of 8 decided (the other 2 are skipped/downgraded/renewed
+	// outcomes, not failures): 75%, not the 60% the old total-attempts
+	// denominator produced.
+	if res.SuccessRate != 75.0 {
+		t.Errorf("expected SuccessRate=75.0, got %v", res.SuccessRate)
+	}
+	if res.TotalAttempts != 10 || res.SuccessCount != 6 || res.FailedCount != 2 {
+		t.Errorf("raw counts must pass through untouched: %+v", res)
+	}
+}
+
+func TestGetPayOSReconciliationUsesRealBreakdown(t *testing.T) {
+	repo := &mockAdminDashboardRepo{
+		latestSnapshot: &entities.DashboardAdminDailySnapshot{
+			PayOSTransactionCount: 100,
+			PayOSSuccessCount:     90,
+			PayOSPendingCount:     6,
+			PayOSFailedCount:      2,
+			PayOSVoidedCount:      2,
+		},
+	}
+
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
+	res, err := uc.GetPayOSReconciliation(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// The old formula reported failed = 100 - 90 = 10, lumping 6 pending and
+	// 2 voided transactions into "failed".
+	if res.FailedCount != 2 {
+		t.Errorf("expected FailedCount=2, got %d", res.FailedCount)
+	}
+	if res.PendingCount != 6 || res.VoidedCount != 2 || res.SuccessCount != 90 {
+		t.Errorf("breakdown mismatch: %+v", res)
 	}
 }

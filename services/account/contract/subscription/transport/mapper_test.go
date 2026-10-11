@@ -64,6 +64,9 @@ func TestAdminStatsDecimalRoundTrip(t *testing.T) {
 		TotalSubscriptionRevenue: decimal.NewFromFloat(1234567.89),
 		PayOSTransactionCount:    100,
 		PayOSSuccessCount:        97,
+		PayOSPendingCount:        1,
+		PayOSFailedCount:         1,
+		PayOSVoidedCount:         1,
 	}
 
 	wire := subscriptiontransport.AdminStatsToProto(original)
@@ -73,6 +76,9 @@ func TestAdminStatsDecimalRoundTrip(t *testing.T) {
 	}
 	if !back.TotalSubscriptionRevenue.Equal(original.TotalSubscriptionRevenue) {
 		t.Fatalf("decimal precision lost: %s vs %s", back.TotalSubscriptionRevenue, original.TotalSubscriptionRevenue)
+	}
+	if back.PayOSPendingCount != 1 || back.PayOSFailedCount != 1 || back.PayOSVoidedCount != 1 {
+		t.Fatalf("status breakdown lost across the wire: %+v", back)
 	}
 }
 

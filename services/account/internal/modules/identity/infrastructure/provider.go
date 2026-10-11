@@ -12,6 +12,7 @@ import (
 var ProviderSet = wire.NewSet(
 	persistence.NewUserRepository,
 	persistence.NewRefreshTokenRepository,
+	persistence.NewUserActivityRepository,
 	caching.NewRedisOtpService,
 	caching.NewRedisOAuthStateStore,
 	security.NewBcryptPasswordHasher,

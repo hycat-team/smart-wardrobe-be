@@ -7,11 +7,17 @@ import (
 )
 
 // Admin stats read models owned by the domain layer (feature 017);
-// application/dto aliases them for handler compatibility.
+// application/dto aliases it for handler compatibility.
 type AdminSubscriptionStatsDTO struct {
 	TotalSubscriptionRevenue decimal.Decimal
 	PayOSTransactionCount    int
 	PayOSSuccessCount        int
+	// Status breakdown of PayOSTransactionCount. The three buckets plus the
+	// success count cover every deposit status exactly once, so a report can
+	// stop deriving "failed" as total − success.
+	PayOSPendingCount int
+	PayOSFailedCount  int
+	PayOSVoidedCount  int
 }
 
 type SubscriptionDistributionDTO struct {

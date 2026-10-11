@@ -28,13 +28,7 @@ func (r *UserDashboardReader) GetAdminUserStats(ctx context.Context, snapshotDat
 }
 
 func (r *UserDashboardReader) GetActiveUserIDs(ctx context.Context) ([]uuid.UUID, error) {
-	res, err := r.userUC.GetUsersForAdmin(ctx, dto.GetUsersQueryReq{})
-	if err != nil || res == nil {
-		return nil, err
-	}
-	ids := make([]uuid.UUID, 0, len(res.Items))
-	for _, u := range res.Items {
-		ids = append(ids, u.ID)
-	}
-	return ids, nil
+	// The whole id set, not a page: it used to flow through GetUsersForAdmin
+	// whose pagination defaults cap the result at 20 ids.
+	return r.userUC.GetActiveUserIDs(ctx)
 }
