@@ -4982,6 +4982,10 @@
     "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PayOSReconciliationRes": {
       "properties": {
         "failedCount": {
+          "description": "FailedCount is the real failure bucket (gateway/reconciliation failures),\nnot total − success: pending and voided transactions are reported\nseparately so the admin does not chase normal churn as fraud.",
+          "type": "integer"
+        },
+        "pendingCount": {
           "type": "integer"
         },
         "successCount": {
@@ -4991,6 +4995,9 @@
           "type": "number"
         },
         "totalTransactions": {
+          "type": "integer"
+        },
+        "voidedCount": {
           "type": "integer"
         }
       },
