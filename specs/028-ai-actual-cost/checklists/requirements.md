@@ -36,3 +36,4 @@
 - Yêu cầu "SQL thủ công upsert, không migration code" được khóa bởi US-3 + FR-008 + SC-004, chi tiết tại manual-seed.md.
 - Dữ liệu lịch sử token=0 không backfill (Edge Cases + Assumptions).
 - Ghi chú cho dòng "No implementation details": spec cố ý chứa chi tiết kỹ thuật đã chốt qua clarify/plan (tên mã `error_code`, `countTokens`, ngữ nghĩa upsert SQL) — đây là quyết định có chủ ý, không phải rò rỉ implement.
+- Re-validate sau implement (T023): 16/16 giữ nguyên — SC-001/US1-AS2/FR-005 đã đồng bộ quyết định spike (embedding `usage_unreported`), FR-008 đã ghi đúng ngữ nghĩa `effective_to`, không marker mới.

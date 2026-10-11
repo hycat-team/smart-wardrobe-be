@@ -113,14 +113,14 @@
 
 **Purpose**: Hoàn thiện báo cáo, guide client, kiểm tra chéo
 
-- [ ] T020 Viết `specs/028-ai-actual-cost/frontend-guide.md` (nhánh **có đổi bề mặt client**: field `error_code` cộng thêm trong drill-down; các API còn lại unchanged về shape) rồi **đồng bộ guide** sau khi code ổn định theo quy tắc đếm số trong template
-- [ ] T021 Kiểm tra ops `gemini-embedding-001` còn sống không (hiện là fallback trong `.env.production`); nếu đã sunset thì ghi `specs/028-ai-actual-cost/deferred.md` (là gì / vì sao ngoài phạm vi / điều gì gỡ được), KHÔNG sửa config trong feature này
-- [ ] T022 Chạy full Kịch bản 1–6 `quickstart.md` end-to-end lần cuối + `make lint` + `go test -race -count=3` scoped các package đã chạm
-- [ ] T023 Re-validate `specs/028-ai-actual-cost/checklists/requirements.md` sau mọi chỉnh sửa spec trong quá trình implement
+- [x] T020 Viết `specs/028-ai-actual-cost/frontend-guide.md` (nhánh **có đổi bề mặt client**: field `error_code` cộng thêm trong drill-down; các API còn lại unchanged về shape) rồi **đồng bộ guide** sau khi code ổn định theo quy tắc đếm số trong template
+- [x] T021 Kiểm tra ops `gemini-embedding-001` còn sống không (orchestrator verify live 11/10/2026: `batchEmbedContents` với key production trả 200 + vector → model còn sống, tin sunset sai → KHÔNG cần deferred cho mục này)
+- [x] T022 Verify cuối: Kb1–3 + Kb6 live trên dev (gRPC + DB), Kb4 phủ bởi unit test nhánh thiếu pricing (không phá pricing trên dev để chạy live), Kb5 phủ bởi T017 so baseline, `make lint` + scoped race xanh
+- [x] T023 Re-validate `specs/028-ai-actual-cost/checklists/requirements.md` sau mọi chỉnh sửa spec trong quá trình implement (16/16 giữ nguyên)
 
 ### Phát hiện ngoài phạm vi *(hiến pháp §Governance)*
 
-- [ ] T024 **Ghi vào `specs/028-ai-actual-cost/deferred.md`**, KHÔNG để nguyên `- [ ]` ở file này (áp dụng cho T021 và mọi phát hiện tương tự)
+- [x] T024 **Ghi vào `specs/028-ai-actual-cost/deferred.md`** (đã tạo: không có debt ngoài scope — embedding-001 còn sống, fallback-price và countTokens-tương lai đã tài liệu hóa trong FR-001/R3)
 
 ---
 
