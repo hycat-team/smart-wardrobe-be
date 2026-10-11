@@ -9747,6 +9747,9 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "errorCode": {
+                    "type": "string"
+                },
                 "errorMessage": {
                     "type": "string"
                 },
