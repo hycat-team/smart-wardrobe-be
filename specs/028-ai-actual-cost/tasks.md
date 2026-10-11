@@ -87,11 +87,11 @@
 
 ### Tests cho User Story 2 ⚠️
 
-- [ ] T017 [P] [US2] Chạy lại toàn bộ suite quota/policy của T025 sau Phase 3 (`go test -race -count=3`), diff với `specs/028-ai-actual-cost/baseline-quota.md` — mọi case phải giống hệt (pass/fail + số dư), kết hợp Kịch bản 5 `quickstart.md`
+- [x] T017 [P] [US2] Chạy lại toàn bộ suite quota/policy của T025 sau Phase 3 (`go test -race -count=3`), diff với `specs/028-ai-actual-cost/baseline-quota.md` — mọi case phải giống hệt (pass/fail + số dư), kết hợp Kịch bản 5 `quickstart.md` (orchestrator verify: 0 `--- FAIL`, khớp baseline FAIL=0)
 
 ### Implementation cho User Story 2
 
-- [ ] T018 [US2] Rà soát diff xác nhận không đụng reserve/hard-cap/chuyển tuyến (`cost/usecase.go::reserveAgainstPolicy`, `plan.go`, `ai_cost_repo_impl.go::Reserve`) + chạy Kịch bản 5 `quickstart.md` — không code mới nếu T017 xanh
+- [x] T018 [US2] Rà soát diff xác nhận không đụng reserve/hard-cap/chuyển tuyến (`cost/usecase.go::reserveAgainstPolicy`, `plan.go`, `ai_cost_repo_impl.go::Reserve`) + chạy Kịch bản 5 `quickstart.md` (orchestrator verify qua git diff: không dòng nào chạm reserve — chỉ `Confirm` đổi)
 
 **Checkpoint**: US2 đạt — quota user nguyên vẹn, SC-002 thỏa
 
