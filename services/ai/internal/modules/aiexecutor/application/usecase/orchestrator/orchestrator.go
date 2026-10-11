@@ -42,16 +42,20 @@ func (uc *OrchestratorUseCase) AnalyzeImage(ctx context.Context, imageUrl string
 	if err != nil {
 		return "", err
 	}
-	result, err := uc.aiService.AnalyzeImage(ctx, imageUrl, prompt)
+	text, usage, err := uc.aiService.AnalyzeImageWithUsage(ctx, imageUrl, prompt)
 	if err != nil {
 		_ = uc.costUC.MarkUnknown(ctx, decision.RequestID, err.Error())
 		return "", err
 	}
 	_ = uc.costUC.Confirm(ctx, decision.RequestID, uc_interfaces.AIUsage{
-		Provider: plan.Provider,
-		Model:    plan.Model,
+		PromptTokens:   usage.PromptTokens,
+		OutputTokens:   usage.OutputTokens,
+		ThinkingTokens: usage.ThinkingTokens,
+		FinishReason:   usage.FinishReason,
+		Provider:       plan.Provider,
+		Model:          plan.Model,
 	})
-	return result, nil
+	return text, nil
 }
 
 func (uc *OrchestratorUseCase) GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error) {
@@ -68,6 +72,12 @@ func (uc *OrchestratorUseCase) GenerateEmbeddings(ctx context.Context, chunks []
 		_ = uc.costUC.MarkUnknown(ctx, decision.RequestID, err.Error())
 		return nil, err
 	}
+	// Embedding has no provider usage signal: batchEmbedContents returns no
+	// usage and spike T001 proved countTokens answers 400 for both
+	// gemini-embedding-001 and gemini-embedding-2, so no counting call is made
+	// here. Confirm with zero tokens and fail open to usage_unreported; the
+	// user request still succeeds. If Google supports countTokens for
+	// embedding models later, re-enable counting at exactly this point.
 	_ = uc.costUC.Confirm(ctx, decision.RequestID, uc_interfaces.AIUsage{
 		Provider: plan.Provider,
 		Model:    plan.Model,

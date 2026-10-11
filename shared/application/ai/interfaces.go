@@ -41,6 +41,9 @@ type TextGenerationOptions struct {
 
 type IAIService interface {
 	AnalyzeImage(ctx context.Context, imageUrl string, prompt string) (string, error)
+	// AnalyzeImageWithUsage is the additive usage-reporting variant of
+	// AnalyzeImage. The original method stays for existing callers.
+	AnalyzeImageWithUsage(ctx context.Context, imageUrl string, prompt string) (string, TokenUsage, error)
 	GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error)
 	GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options TextGenerationOptions) (string, error)
 	GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options TextGenerationOptions) (string, error)

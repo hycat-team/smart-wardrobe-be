@@ -1,6 +1,10 @@
 package persistence
 
 import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,4 +189,83 @@ func TestOperationLimitIsOnlyEnforcedInObserveOnly(t *testing.T) {
 	if premiumLike.MaxPaidAttemptsPerDay != nil {
 		t.Fatal("a strict policy's per-day limit must be NULL, not a number")
 	}
+}
+
+// ---- 028 US1 T010: the ledger accumulates actual cost on every route ----
+//
+// The project has no database test harness, so the Confirm ledger behaviour is
+// asserted over the source the same way TestRepositoryNoLongerReadsTheLiveAttemptCapColumn
+// does: the property under test is structural (where the accumulation line sits),
+// and a fake cannot catch a regression in the real file.
+
+// Confirm must accumulate actual_cost_micro_vnd for both paid and free routes.
+// The accumulation line must sit outside the paid/free token-bucket branch.
+func TestConfirmAccumulatesActualOnBothPaidAndFreeRoutes(t *testing.T) {
+	src := readRepoImpl(t)
+	actualLine := `ledgerUpdates["actual_cost_micro_vnd"] = gorm.Expr("actual_cost_micro_vnd + ?", cost)`
+	if !bytes.Contains(src, []byte(actualLine)) {
+		t.Fatalf("Confirm must accumulate actual_cost_micro_vnd, missing line %q", actualLine)
+	}
+	// The token buckets stay split by route...
+	for _, want := range []string{`ledgerUpdates["paid_input_tokens"]`, `ledgerUpdates["free_input_tokens"]`} {
+		if !bytes.Contains(src, []byte(want)) {
+			t.Errorf("Confirm must keep the split token bucket %s", want)
+		}
+	}
+	// ...but the actual accumulation must not live inside the paid-only branch.
+	// It is positioned after the if/else that splits the buckets.
+	paidIdx := bytes.Index(src, []byte("if paid {"))
+	actualIdx := bytes.Index(src, []byte(actualLine))
+	elseIdx := bytes.Index(src[paidIdx:], []byte("} else {"))
+	if paidIdx < 0 || actualIdx < 0 || elseIdx < 0 {
+		t.Fatalf("cannot locate the Confirm route branch (paid=%d actual=%d else=%d)", paidIdx, actualIdx, elseIdx)
+	}
+	elseClose := paidIdx + elseIdx
+	if actualIdx < elseClose {
+		t.Error("actual_cost_micro_vnd accumulation must sit after the paid/free branch so free events accumulate too")
+	}
+}
+
+// Confirm must not touch the reservation or admission logic: reserved cost is
+// only released back, and the token buckets are additive.
+func TestConfirmLeavesReservationAndBucketsAdditive(t *testing.T) {
+	src := readRepoImpl(t)
+	if !bytes.Contains(src, []byte(`"reserved_cost_micro_vnd": gorm.Expr("GREATEST(reserved_cost_micro_vnd - ?,0)"`)) {
+		t.Error("Confirm must release the reservation with GREATEST(reserved - ?, 0)")
+	}
+	if strings.Contains(string(src), "admitted") && strings.Contains(string(src), "func (r *AICostRepository) Confirm") {
+		confirmSrc := string(src[bytes.Index(src, []byte("func (r *AICostRepository) Confirm")):])
+		if idx := strings.Index(confirmSrc, "func (r *AICostRepository) Release"); idx >= 0 {
+			confirmSrc = confirmSrc[:idx]
+		}
+		if strings.Contains(confirmSrc, "admitted") {
+			t.Error("Confirm must not contain admission logic; Reserve owns it")
+		}
+	}
+}
+
+// A failed attempt (Released) must not accumulate actual cost: only Confirm
+// writes actual_cost_micro_vnd to the ledger.
+func TestReleasedAttemptsDoNotAccumulateActual(t *testing.T) {
+	src := readRepoImpl(t)
+	releaseIdx := bytes.Index(src, []byte("func (r *AICostRepository) finishWithoutCost"))
+	if releaseIdx < 0 {
+		t.Fatal("cannot locate finishWithoutCost (Release path)")
+	}
+	tail := src[releaseIdx:]
+	if next := bytes.Index(tail, []byte("\nfunc (r *AICostRepository) ExpireUnknown")); next >= 0 {
+		tail = tail[:next]
+	}
+	if bytes.Contains(tail, []byte("actual_cost_micro_vnd")) {
+		t.Error("Release/finishWithoutCost must never touch actual_cost_micro_vnd; failed attempts carry no cost")
+	}
+}
+
+func readRepoImpl(t *testing.T) []byte {
+	t.Helper()
+	src, err := os.ReadFile(filepath.Join(".", "ai_cost_repo_impl.go"))
+	if err != nil {
+		t.Fatalf("cannot read repo impl: %v", err)
+	}
+	return src
 }

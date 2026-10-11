@@ -221,6 +221,15 @@ func CallText(
 
 // CallVision analyzes image content.
 func CallVision(ctx context.Context, client *http.Client, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
+	text, _, err := CallVisionWithUsage(ctx, client, provider, imageUrl, prompt)
+	return text, err
+}
+
+// CallVisionWithUsage analyzes image content and reports the provider usage.
+// The OpenAI chat vision response carries no token usage payload, so the
+// returned usage is always zero (with the finish reason when present). Callers
+// that need billable tokens must treat this as unreported usage.
+func CallVisionWithUsage(ctx context.Context, client *http.Client, provider config.APIProviderConfig, imageUrl string, prompt string) (string, app_ai.TokenUsage, error) {
 	payload := map[string]any{
 		"model": provider.Model,
 		"messages": []map[string]any{
@@ -247,44 +256,50 @@ func CallVision(ctx context.Context, client *http.Client, provider config.APIPro
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", provider.Endpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
+		return "", app_ai.TokenUsage{}, apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 	}
 
 	var openAIResp struct {
 		Choices []struct {
-			Message struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 
 	if len(openAIResp.Choices) == 0 {
-		return "", apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
+		return "", app_ai.TokenUsage{}, apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
 	}
 
-	return openAIResp.Choices[0].Message.Content, nil
+	usage := app_ai.TokenUsage{}
+	if openAIResp.Choices[0].FinishReason != "" {
+		usage.FinishReason = openAIResp.Choices[0].FinishReason
+	}
+
+	return openAIResp.Choices[0].Message.Content, usage, nil
 }
 
 // CallEmbeddingBatch generates batch text embeddings.

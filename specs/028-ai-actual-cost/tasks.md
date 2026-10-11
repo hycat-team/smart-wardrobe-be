@@ -62,18 +62,18 @@
 
 > Viết test TRƯỚC, đảm bảo FAIL trước khi implement
 
-- [ ] T009 [P] [US1] Unit test 5 nhánh `costUC.Confirm` trong `services/ai/internal/modules/aiexecutor/application/usecase/cost/` ((1) paid giữ nguyên; (2) free có token → actual>0; (3) thiếu pricing non-empty → mã; (4) provider/model rỗng → mã; (5) token 0 → mã) + case `Confirm` luôn dùng đúng provider/model được truyền vào (không tự resolve lại — khóa ngoại lệ fallback R7)
-- [ ] T010 [P] [US1] Repo test cộng dồn ledger trong `services/ai/internal/modules/aiexecutor/infrastructure/persistence/ai_cost_repo_impl_test.go` (actual cộng cả paid lẫn free; reserved/token bucket không đổi) + case lượt failed (Released) không cộng `actual_cost_micro_vnd` của ledger
-- [ ] T011 [P] [US1] Test parse `usageMetadata` của `CallVisionWithUsage` trong `shared/infrastructure/ai/google/` (mock response có/không có usage)
-- [ ] T026 [P] [US1] Test orchestrator `GenerateEmbeddings` trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/` (`Confirm` nhận token 0 → fail-open `usage_unreported`, user vẫn thành công) — viết trước T015
+- [x] T009 [P] [US1] Unit test 5 nhánh `costUC.Confirm` trong `services/ai/internal/modules/aiexecutor/application/usecase/cost/` ((1) paid giữ nguyên; (2) free có token → actual>0; (3) thiếu pricing non-empty → mã; (4) provider/model rỗng → mã; (5) token 0 → mã) + case `Confirm` luôn dùng đúng provider/model được truyền vào (không tự resolve lại — khóa ngoại lệ fallback R7)
+- [x] T010 [P] [US1] Repo test cộng dồn ledger trong `services/ai/internal/modules/aiexecutor/infrastructure/persistence/ai_cost_repo_impl_test.go` (actual cộng cả paid lẫn free; reserved/token bucket không đổi) + case lượt failed (Released) không cộng `actual_cost_micro_vnd` của ledger
+- [x] T011 [P] [US1] Test parse `usageMetadata` của `CallVisionWithUsage` trong `shared/infrastructure/ai/google/` (mock response có/không có usage)
+- [x] T026 [P] [US1] Test orchestrator `GenerateEmbeddings` trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/` (`Confirm` nhận token 0 → fail-open `usage_unreported`, user vẫn thành công) — viết trước T015
 
 ### Implementation cho User Story 1
 
-- [ ] T012 [P] [US1] Parse `usageMetadata` + thêm `CallVisionWithUsage` trong `shared/infrastructure/ai/google/google_vision_embed.go` (giữ nguyên `CallVision` cũ cho caller commerce)
-- [ ] T013 [P] [US1] Thêm method `...WithUsage` cộng thêm trong `shared/application/ai/interfaces.go` (không đổi signature cũ)
-- [ ] T014 [US1] Orchestrator vision dùng `WithUsage` và `Confirm` bằng token thật trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go` (hàm `AnalyzeImage`) — phụ thuộc T012, T006
-- [ ] T015 [US1] Orchestrator embedding fail-open `usage_unreported` trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go` (hàm `GenerateEmbeddings`): `Confirm` với token 0 (không gọi `countTokens` — spike T001 đã chứng minh 400 với cả hai model; nếu Google hỗ trợ sau này thì bật lại tại đúng điểm này) — phụ thuộc T001, T006, T026
-- [ ] T016 [US1] Verify Kịch bản 1–3 + 6 `quickstart.md` trên môi trường đã seed T002 (commerce KHÔNG sửa code — snapshot/margin tự đúng qua `SUM(actual)`; Kb6 kiểm `overview`/`kpi-cards` đối chiếu `SUM(actual_cost_micro_vnd)`)
+- [x] T012 [P] [US1] Parse `usageMetadata` + thêm `CallVisionWithUsage` trong `shared/infrastructure/ai/google/google_vision_embed.go` (giữ nguyên `CallVision` cũ cho caller commerce)
+- [x] T013 [P] [US1] Thêm method `...WithUsage` cộng thêm trong `shared/application/ai/interfaces.go` (không đổi signature cũ)
+- [x] T014 [US1] Orchestrator vision dùng `WithUsage` và `Confirm` bằng token thật trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go` (hàm `AnalyzeImage`) — phụ thuộc T012, T006
+- [x] T015 [US1] Orchestrator embedding fail-open `usage_unreported` trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go` (hàm `GenerateEmbeddings`): `Confirm` với token 0 (không gọi `countTokens` — spike T001 đã chứng minh 400 với cả hai model; nếu Google hỗ trợ sau này thì bật lại tại đúng điểm này) — phụ thuộc T001, T006, T026
+- [x] T016 [US1] Verify Kịch bản 1–3 + 6 `quickstart.md` live trên dev (rebuild image ai + gRPC thật: vision free 1106/15 token actual 8222500 micro-VND khớp tay (1106×0.25+15×1.50)×27500; embedding usage_unreported; paid outfit giữ nguyên; GetAdminAIUsageStats today req=2 err=0 actualMicro=8222500 — mã Confirmed không lọt error metrics; usage-by-operation vision/free đã hiện tiền thay vì 0đ)
 
 **Checkpoint**: US1 chạy độc lập được — vision chi phí > 0, embedding có chi phí hoặc có mã, báo cáo đối chiếu khớp giá
 

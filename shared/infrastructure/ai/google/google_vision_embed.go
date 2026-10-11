@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	app_ai "smart-wardrobe-be/shared/application/ai"
 	"smart-wardrobe-be/shared/application/constants/apperror"
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/pkg/utils/httputils"
@@ -17,9 +18,18 @@ import (
 )
 
 func CallVision(ctx context.Context, client *http.Client, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
+	text, _, err := CallVisionWithUsage(ctx, client, provider, imageUrl, prompt)
+	return text, err
+}
+
+// CallVisionWithUsage analyzes image content and reports the provider usage.
+// The text result is identical to CallVision; the usage comes from the
+// generateContent usageMetadata. When the response carries no usageMetadata
+// the returned usage is zero and the call still succeeds.
+func CallVisionWithUsage(ctx context.Context, client *http.Client, provider config.APIProviderConfig, imageUrl string, prompt string) (string, app_ai.TokenUsage, error) {
 	imgBytes, mimeType, err := httputils.DownloadImage(client, ctx, imageUrl)
 	if err != nil {
-		return "", fmt.Errorf("failed to download image for Google Vision: %w", err)
+		return "", app_ai.TokenUsage{}, fmt.Errorf("failed to download image for Google Vision: %w", err)
 	}
 
 	base64Data := base64.StdEncoding.EncodeToString(imgBytes)
@@ -47,46 +57,57 @@ func CallVision(ctx context.Context, client *http.Client, provider config.APIPro
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 
 	url := fmt.Sprintf("%s/%s:generateContent?key=%s", provider.Endpoint, provider.Model, provider.ApiKey)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("Google Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
+		return "", app_ai.TokenUsage{}, apperror.NewUpstreamUnavailable(fmt.Errorf("Google Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 	}
 
 	var googleResp struct {
 		Candidates []struct {
-			Content struct {
+			FinishReason string `json:"finishReason"`
+			Content      struct {
 				Parts []struct {
 					Text string `json:"text"`
 				} `json:"parts"`
 			} `json:"content"`
 		} `json:"candidates"`
+		UsageMetadata googleUsageMetadata `json:"usageMetadata"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&googleResp); err != nil {
-		return "", err
+		return "", app_ai.TokenUsage{}, err
 	}
 
 	if len(googleResp.Candidates) == 0 || len(googleResp.Candidates[0].Content.Parts) == 0 {
-		return "", apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
+		return "", app_ai.TokenUsage{}, apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
 	}
 
-	return googleResp.Candidates[0].Content.Parts[0].Text, nil
+	usage := app_ai.TokenUsage{
+		PromptTokens:   googleResp.UsageMetadata.PromptTokenCount,
+		OutputTokens:   googleResp.UsageMetadata.CandidatesTokenCount,
+		ThinkingTokens: googleResp.UsageMetadata.ThoughtsTokenCount,
+	}
+	if len(googleResp.Candidates) > 0 {
+		usage.FinishReason = googleResp.Candidates[0].FinishReason
+	}
+
+	return googleResp.Candidates[0].Content.Parts[0].Text, usage, nil
 }
 
 // CallEmbeddingBatch generates batch text embeddings.

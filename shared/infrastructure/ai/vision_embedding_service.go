@@ -33,6 +33,40 @@ func (s *AIService) AnalyzeImage(ctx context.Context, imageUrl string, prompt st
 	)
 }
 
+// visionWithUsageResult carries the vision text together with its provider
+// usage so the generic fallback helper can transport both values.
+type visionWithUsageResult struct {
+	text  string
+	usage app_ai.TokenUsage
+}
+
+// AnalyzeImageWithUsage runs the vision fallback chain and reports provider
+// usage. The OpenAI branch returns zero token counts because its vision
+// response carries no usage payload.
+func (s *AIService) AnalyzeImageWithUsage(ctx context.Context, imageUrl string, prompt string) (string, app_ai.TokenUsage, error) {
+	if err := s.visionLimiter.Wait(ctx); err != nil {
+		return "", app_ai.TokenUsage{}, err
+	}
+
+	res, err := executeWithFallback(
+		s.logger,
+		"AnalyzeImage",
+		s.cfg.AI.VisionFallback,
+		func() (visionWithUsageResult, error) {
+			text, usage, err := s.tryVisionProviderWithUsage(ctx, s.cfg.AI.VisionPrimary, imageUrl, prompt)
+			return visionWithUsageResult{text: text, usage: usage}, err
+		},
+		func() (visionWithUsageResult, error) {
+			text, usage, err := s.tryVisionProviderWithUsage(ctx, s.cfg.AI.VisionFallback, imageUrl, prompt)
+			return visionWithUsageResult{text: text, usage: usage}, err
+		},
+	)
+	if err != nil {
+		return "", app_ai.TokenUsage{}, err
+	}
+	return res.text, res.usage, nil
+}
+
 func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error) {
 	if len(chunks) == 0 {
 		return nil, nil
@@ -64,6 +98,17 @@ func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIPr
 	}
 
 	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ trí tuệ nhân tạo này.")
+}
+
+func (s *AIService) tryVisionProviderWithUsage(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, app_ai.TokenUsage, error) {
+	switch provider.Provider {
+	case ProviderOpenAI:
+		return openai.CallVisionWithUsage(ctx, s.visionClient, provider, imageUrl, prompt)
+	case ProviderGemini:
+		return google.CallVisionWithUsage(ctx, s.visionClient, provider, imageUrl, prompt)
+	}
+
+	return "", app_ai.TokenUsage{}, apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ trí tuệ nhân tạo này.")
 }
 
 func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
