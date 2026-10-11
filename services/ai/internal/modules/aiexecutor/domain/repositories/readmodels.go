@@ -18,6 +18,7 @@ type AIEventDrillDownDTO struct {
 	Model        string    `json:"model"`
 	StatusCode   int       `json:"statusCode"`
 	ErrorMessage string    `json:"errorMessage"`
+	ErrorCode    string    `json:"errorCode"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
 

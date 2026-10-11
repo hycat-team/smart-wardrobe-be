@@ -41,12 +41,12 @@
 
 **⚠️ CRITICAL**: Không task user story nào được bắt đầu cho tới khi phase này xong
 
-- [ ] T003 [P] Mở rộng interface `Confirm` thêm `errorCode` trong `services/ai/internal/modules/aiexecutor/domain/repositories/ai_cost_repo.go`
-- [ ] T004 [P] Thêm `ErrorCode` vào `AIEventDrillDownDTO` trong `services/ai/internal/modules/aiexecutor/domain/repositories/readmodels.go`
-- [ ] T005 Sửa `Confirm` trong `services/ai/internal/modules/aiexecutor/infrastructure/persistence/ai_cost_repo_impl.go` (bỏ ép `cost=0` khi route free; ledger luôn cộng `actual_cost_micro_vnd`; ghi `error_code`; `GetAIEventsDrillDown` đọc thêm cột `error_code`) — phụ thuộc T003, T004
-- [ ] T006 Sửa `Confirm` trong `services/ai/internal/modules/aiexecutor/application/usecase/cost/usecase.go` (5 nhánh tường minh: (1) paid giữ nguyên; (2) free đủ pricing+token → actual; (3) free thiếu pricing non-empty → `pricing_config_missing`; (4) provider/model rỗng → `pricing_config_missing`; (5) token 0 → `usage_unreported`) — phụ thuộc T005
-- [ ] T007 Thêm field cộng thêm `error_code = 7` vào message `AIEventDrillDown` trong `contracts/ai/v1/ai.proto`, regen stub, map 2 chiều trong `services/ai/contract/aiexecutor/transport/to_proto.go` và `services/ai/contract/aiexecutor/transport/mapper.go`, rồi rà soát consumer drill-down phía commerce bằng `grep -rn "GetAIEventsDrillDown\|AIEventDrillDown" services/commerce/` (lưu output) — có dùng thì map tiếp field 7, không có thì ghi rõ "không có consumer" vào `specs/028-ai-actual-cost/contracts/admin-api-delta.md` để đóng yêu cầu contract
-- [ ] T008 Chạy `make lint` + `go test -race -count=3` scoped `services/ai/...` sau Phase 2
+- [x] T003 [P] Mở rộng interface `Confirm` thêm `errorCode` trong `services/ai/internal/modules/aiexecutor/domain/repositories/ai_cost_repo.go`
+- [x] T004 [P] Thêm `ErrorCode` vào `AIEventDrillDownDTO` trong `services/ai/internal/modules/aiexecutor/domain/repositories/readmodels.go`
+- [x] T005 Sửa `Confirm` trong `services/ai/internal/modules/aiexecutor/infrastructure/persistence/ai_cost_repo_impl.go` (bỏ ép `cost=0` khi route free; ledger luôn cộng `actual_cost_micro_vnd`; ghi `error_code`; `GetAIEventsDrillDown` đọc thêm cột `error_code`) — phụ thuộc T003, T004
+- [x] T006 Sửa `Confirm` trong `services/ai/internal/modules/aiexecutor/application/usecase/cost/usecase.go` (5 nhánh tường minh: (1) paid giữ nguyên; (2) free đủ pricing+token → actual; (3) free thiếu pricing non-empty → `pricing_config_missing`; (4) provider/model rỗng → `pricing_config_missing`; (5) token 0 → `usage_unreported`) — phụ thuộc T005
+- [x] T007 Thêm field cộng thêm `error_code = 7` vào message `AIEventDrillDown` trong `contracts/ai/v1/ai.proto`, regen stub, map 2 chiều trong `services/ai/contract/aiexecutor/transport/to_proto.go` và `services/ai/contract/aiexecutor/transport/mapper.go`, rồi rà soát consumer drill-down phía commerce bằng `grep -rn "GetAIEventsDrillDown\|AIEventDrillDown" services/commerce/` (lưu output) — có dùng thì map tiếp field 7, không có thì ghi rõ "không có consumer" vào `specs/028-ai-actual-cost/contracts/admin-api-delta.md` để đóng yêu cầu contract
+- [x] T008 Chạy `make lint` + `go test -race -count=3` scoped `services/ai/...` sau Phase 2
 
 **Checkpoint**: Foundation sẵn sàng — actual ghi đúng 5 nhánh (paid / free-đủ / thiếu-pricing / rỗng-provider-model / token-0), drill-down thấy `error_code`, proto regen xanh
 

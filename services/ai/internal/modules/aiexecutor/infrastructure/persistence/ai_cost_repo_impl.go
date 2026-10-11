@@ -209,7 +209,7 @@ func (r *AICostRepository) MarkInFlight(ctx context.Context, id uuid.UUID, at ti
 	return r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).Where("request_id=?", id).Updates(map[string]any{"status": aiusageeventstatus.InFlight, "sent_at": at, "updated_at": at}).Error
 }
 
-func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, output, thinking, cost int64, provider, model, finish string, at time.Time) error {
+func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, output, thinking, cost int64, provider, model, finish, errorCode string, at time.Time) error {
 	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		var e aiexecutor_entities.AIUsageEvent
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&e, "request_id=?", id).Error; err != nil {
@@ -222,10 +222,9 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 			return nil
 		}
 		paid := e.LogicalRoute == airoute.Paid
-		if !paid {
-			cost = 0
-		}
-		updates := map[string]any{"status": aiusageeventstatus.Confirmed, "prompt_tokens": prompt, "output_tokens": output, "thinking_tokens": thinking, "actual_cost_micro_vnd": cost, "reserved_cost_micro_vnd": 0, "provider": provider, "model": model, "finish_reason": finish, "completed_at": at, "updated_at": at}
+		// The actual cost is recorded for every route, including free: it is
+		// what the project pays the model provider, not what the user pays.
+		updates := map[string]any{"status": aiusageeventstatus.Confirmed, "prompt_tokens": prompt, "output_tokens": output, "thinking_tokens": thinking, "actual_cost_micro_vnd": cost, "reserved_cost_micro_vnd": 0, "provider": provider, "model": model, "finish_reason": finish, "error_code": errorCode, "completed_at": at, "updated_at": at}
 		if err := tx.Model(&e).Updates(updates).Error; err != nil {
 			return err
 		}
@@ -233,11 +232,14 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 		if paid {
 			ledgerUpdates["paid_input_tokens"] = gorm.Expr("paid_input_tokens + ?", prompt)
 			ledgerUpdates["paid_output_tokens"] = gorm.Expr("paid_output_tokens + ?", output+thinking)
-			ledgerUpdates["actual_cost_micro_vnd"] = gorm.Expr("actual_cost_micro_vnd + ?", cost)
 		} else {
 			ledgerUpdates["free_input_tokens"] = gorm.Expr("free_input_tokens + ?", prompt)
 			ledgerUpdates["free_output_tokens"] = gorm.Expr("free_output_tokens + ?", output+thinking)
 		}
+		// The ledger accumulates the actual cost of both paid and free routes;
+		// only the token buckets stay split by route. Reservation, enforcement
+		// and admission logic above and in Reserve are untouched.
+		ledgerUpdates["actual_cost_micro_vnd"] = gorm.Expr("actual_cost_micro_vnd + ?", cost)
 		return tx.Model(&aiexecutor_entities.AIUsagePeriodLedger{}).Where("id=?", e.LedgerID).Updates(ledgerUpdates).Error
 	})
 }
@@ -397,6 +399,10 @@ func (r *AICostRepository) GetAIEventsDrillDown(ctx context.Context, status stri
 		if e.Model != nil {
 			modelStr = *e.Model
 		}
+		errorCodeStr := ""
+		if e.ErrorCode != nil {
+			errorCodeStr = *e.ErrorCode
+		}
 
 		items = append(items, dto.AIEventDrillDownDTO{
 			RequestID:    e.RequestID.String(),
@@ -404,6 +410,7 @@ func (r *AICostRepository) GetAIEventsDrillDown(ctx context.Context, status stri
 			Model:        modelStr,
 			StatusCode:   200,
 			ErrorMessage: "",
+			ErrorCode:    errorCodeStr,
 			CreatedAt:    e.CreatedAt,
 		})
 	}

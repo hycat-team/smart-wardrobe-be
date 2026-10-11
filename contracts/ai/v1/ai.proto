@@ -84,6 +84,7 @@ message AIEventDrillDown {
   int32 status_code = 4;
   string error_message = 5;
   google.protobuf.Timestamp created_at = 6;
+  string error_code = 7;
 }
 
 message AIUsageByOperation {

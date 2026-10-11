@@ -53,6 +53,7 @@ func (uc *DrillDownUseCase) GetAIEventsDrillDown(ctx context.Context, req *dto.D
 			Model:        item.Model,
 			StatusCode:   item.StatusCode,
 			ErrorMessage: item.ErrorMessage,
+			ErrorCode:    item.ErrorCode,
 			CreatedAt:    item.CreatedAt,
 		})
 	}

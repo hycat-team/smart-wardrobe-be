@@ -687,6 +687,7 @@ type AIEventDrillDown struct {
 	StatusCode    int32                  `protobuf:"varint,4,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
 	ErrorMessage  string                 `protobuf:"bytes,5,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ErrorCode     string                 `protobuf:"bytes,7,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -761,6 +762,13 @@ func (x *AIEventDrillDown) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *AIEventDrillDown) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
 }
 
 type AIUsageByOperation struct {
@@ -1388,7 +1396,7 @@ const file_contracts_ai_v1_ai_proto_rawDesc = "" +
 	"\x11ai_requests_count\x18\x02 \x01(\x05R\x0faiRequestsCount\x12$\n" +
 	"\x0eai_error_count\x18\x03 \x01(\x05R\faiErrorCount\x12$\n" +
 	"\x0eai_paid_tokens\x18\x04 \x01(\x03R\faiPaidTokens\x126\n" +
-	"\x18ai_actual_cost_micro_vnd\x18\x05 \x01(\x03R\x14aiActualCostMicroVnd\"\xe4\x01\n" +
+	"\x18ai_actual_cost_micro_vnd\x18\x05 \x01(\x03R\x14aiActualCostMicroVnd\"\x83\x02\n" +
 	"\x10AIEventDrillDown\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1a\n" +
@@ -1398,7 +1406,9 @@ const file_contracts_ai_v1_ai_proto_rawDesc = "" +
 	"statusCode\x12#\n" +
 	"\rerror_message\x18\x05 \x01(\tR\ferrorMessage\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x8d\x02\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\a \x01(\tR\terrorCode\"\x8d\x02\n" +
 	"\x12AIUsageByOperation\x12\x1c\n" +
 	"\toperation\x18\x01 \x01(\tR\toperation\x12#\n" +
 	"\rlogical_route\x18\x02 \x01(\tR\flogicalRoute\x12#\n" +

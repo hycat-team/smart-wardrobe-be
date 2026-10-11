@@ -99,6 +99,7 @@ func EventsToDTOs(pb *aiv1.AIEventDrillDownList) ([]aidto.AIEventDrillDownDTO, i
 			Model:        item.GetModel(),
 			StatusCode:   int(item.GetStatusCode()),
 			ErrorMessage: item.GetErrorMessage(),
+			ErrorCode:    item.GetErrorCode(),
 		}
 		if ts := item.GetCreatedAt(); ts != nil {
 			entry.CreatedAt = ts.AsTime()

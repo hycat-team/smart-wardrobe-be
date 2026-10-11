@@ -3,7 +3,6 @@ package cost
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	aiexecutor_dto "smart-wardrobe-be/services/ai/dto/aiexecutor"
@@ -274,19 +273,39 @@ func (uc *CostUseCase) MarkInFlight(ctx context.Context, requestID uuid.UUID) er
 	return uc.repo.MarkInFlight(ctx, requestID, time.Now())
 }
 
-func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage uc_interfaces.AIUsage) error {
-	if usage.Provider == "" && usage.Model == "" {
-		_ = uc.repo.Confirm(ctx, requestID, 0, 0, 0, 0, "", "", "", time.Now())
-		return nil
-	}
+// Reconciliation codes recorded on confirmed events with no billable amount.
+// They are data for the admin drill-down, not error paths: every Confirm
+// branch below still lands the event in status Confirmed, so error metrics
+// (which only count Released/Unknown/Expired) never grow because of them.
+const (
+	errorCodePricingConfigMissing = "pricing_config_missing"
+	errorCodeUsageUnreported      = "usage_unreported"
+)
 
+func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage uc_interfaces.AIUsage) error {
+	now := time.Now()
+	// (4) Empty provider and model: nothing to price against. Replaces the old
+	// early return, which confirmed silently with no code left to reconcile.
+	if usage.Provider == "" && usage.Model == "" {
+		return uc.repo.Confirm(ctx, requestID, 0, 0, 0, 0, "", "", "", errorCodePricingConfigMissing, now)
+	}
+	// (3) Non-empty provider/model but no active pricing row: the user keeps
+	// flowing on the existing policy, so the event is still confirmed with
+	// actual 0 and a code for admin to reconcile instead of blocking the call.
 	pricing, err := uc.pricingUC.GetActivePricingConfig(ctx, usage.Provider, usage.Model)
 	if err != nil {
-		return fmt.Errorf("cannot find pricing for actual provider %s / model %s: %w", usage.Provider, usage.Model, err)
+		return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, 0, usage.Provider, usage.Model, usage.FinishReason, errorCodePricingConfigMissing, now)
 	}
-
+	// (5) Priced model but no reported usage: record actual 0 rather than
+	// inventing numbers the provider never reported.
+	if usage.PromptTokens+usage.OutputTokens+usage.ThinkingTokens == 0 {
+		return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, 0, usage.Provider, usage.Model, usage.FinishReason, errorCodeUsageUnreported, now)
+	}
+	// (1) Paid stays exactly as before; (2) a free request with full pricing
+	// and usage now flows through the same computation — the repository no
+	// longer zeroes the free route, so the actual cost lands in the ledger.
 	cost := microCost(usage.PromptTokens, usage.OutputTokens+usage.ThinkingTokens, pricing.InputUSDPerMillion, pricing.OutputUSDPerMillion, pricing.USDToVND)
-	return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, cost, usage.Provider, usage.Model, usage.FinishReason, time.Now())
+	return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, cost, usage.Provider, usage.Model, usage.FinishReason, "", now)
 }
 
 func (uc *CostUseCase) Release(ctx context.Context, requestID uuid.UUID, reason string) error {

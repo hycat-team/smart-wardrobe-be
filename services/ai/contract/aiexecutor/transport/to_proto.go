@@ -63,6 +63,7 @@ func EventsFromDTOs(ds []aidto.AIEventDrillDownDTO) []*aiv1.AIEventDrillDown {
 			Model:        d.Model,
 			StatusCode:   int32(d.StatusCode),
 			ErrorMessage: d.ErrorMessage,
+			ErrorCode:    d.ErrorCode,
 			CreatedAt:    timestamppb.New(d.CreatedAt),
 		})
 	}

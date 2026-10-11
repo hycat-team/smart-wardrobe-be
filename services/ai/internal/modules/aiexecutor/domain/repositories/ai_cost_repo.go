@@ -39,7 +39,12 @@ type IAICostRepository interface {
 	// paid route, which is the safe direction, and the caller escalates to tier 2.
 	Reserve(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, operation *aiexecutor_entities.AICostPolicyOperation, maxPaidAttemptsPerDay *int, event *aiexecutor_entities.AIUsageEvent, now time.Time) (*aiexecutor_entities.AIUsagePeriodLedger, bool, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID, at time.Time) error
-	Confirm(ctx context.Context, requestID uuid.UUID, promptTokens, outputTokens, thinkingTokens, actualCost int64, provider, model, finishReason string, at time.Time) error
+	// Confirm records the real usage of a request and its actual cost.
+	//
+	// errorCode carries the reconciliation code for confirmed events with no
+	// billable amount (e.g. "pricing_config_missing", "usage_unreported"); it
+	// is empty when the confirmation carries no such condition.
+	Confirm(ctx context.Context, requestID uuid.UUID, promptTokens, outputTokens, thinkingTokens, actualCost int64, provider, model, finishReason, errorCode string, at time.Time) error
 	Release(ctx context.Context, requestID uuid.UUID, reason string, at time.Time) error
 	MarkUnknown(ctx context.Context, requestID uuid.UUID, reason string, expiresAt time.Time) error
 	ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error)
