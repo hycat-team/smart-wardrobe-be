@@ -4,6 +4,7 @@ Các file dưới đây, mỗi file đọc xuôi từ trên xuống, không nh�
 
 | File | Dùng khi | Điểm vào |
 |---|---|---|
+| `deployment-pipeline.md` | Hiểu + vận hành Docker/CI/CD phạm vi VPS (dev mới đọc đầu tiên) | Mục 0 |
 | `vps-runbook.md` | VPS monolith → 3 service (GĐ1) | Bước 0 |
 | `aws-runbook.md` | Box ngoài AWS + managed (GĐ2): đăng ký → deploy → chu kỳ xóa/tạo → teardown $0 | Bước 0 |
 | `grant-restore-runbook.md` | Tài khoản không có grant tính phí AI (bộ đếm `tier1_default_policy` tăng) | Bước 1 |
