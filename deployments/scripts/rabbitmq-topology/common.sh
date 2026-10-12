@@ -65,10 +65,15 @@ run_tool() {
     args+=(--network "$RABBITMQ_NETWORK")
   fi
   if [ "$mode" = "migrate" ]; then
-    mkdir -p "$SPILL_HOST_DIR"
-    # Mounted so drained messages outlive the container: they are the only copy
-    # of that traffic until replay finishes.
+    # Drained messages are the only copy of that traffic until replay
+    # finishes, so they must survive the container: the tool is told to write
+    # to the mounted /spill, and an unwritable host dir fails here rather than
+    # mid-drain, after messages have left the queue.
+    mkdir -p "$SPILL_HOST_DIR" 2>/dev/null || true
+    [ -d "$SPILL_HOST_DIR" ] && [ -w "$SPILL_HOST_DIR" ] ||
+      die "spill dir $SPILL_HOST_DIR is missing or not writable (create it writable, or set SPILL_HOST_DIR)"
     args+=(-v "$SPILL_HOST_DIR:/spill")
+    set -- --spill-dir /spill "$@"
   fi
   docker run "${args[@]}" "$TOOL_IMAGE" --mode "$mode" "$@"
 }
