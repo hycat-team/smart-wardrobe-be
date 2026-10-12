@@ -98,6 +98,7 @@ $Const = @{
     'RABBITMQ_PORT'                  = '5671'
     'RABBITMQ_TLS_ENABLED'           = 'true'
     'RABBITMQ_MANAGEMENT_TLS_ENABLED'= 'true'
+    'RABBITMQ_MANAGEMENT_PORT'       = '443'
     'ELASTICSEARCH_ENABLED'          = 'false'
     'PAYOS_ENDPOINT'                 = 'https://api-merchant.payos.vn'
     'CLOUDINARY_API_URL'             = 'https://api.cloudinary.com'
