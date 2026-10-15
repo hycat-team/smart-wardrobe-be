@@ -151,8 +151,8 @@
 
 **Independent Test**: Đối chiếu guide với Swagger/mã nguồn bằng đếm; dựng thử mapping từ ví dụ JSON trong guide
 
-- [ ] T044 [US5] Viết `specs/029-admin-observability/frontend-guide.md`: (a) nhóm API MỚI activity-events + hướng dẫn tích hợp trang "Hoạt động người dùng"; (b) nhóm CHANGED payOS transactions before→after + hướng dẫn tích hợp trang "Giao dịch payOS" (list + detail + 4 hành động đối soát, phản hồi `data: null`); (c) nhóm CHANGED dashboard admin — before→after cho 7 endpoint nhận kỳ + `overview` (payosReconcile ngữ nghĩa mới) + `kpi-cards` (`payOSSuccessCount` đổi giá trị) + ngữ nghĩa payOS/error-rate; (d) mục đánh giá UX dashboard FE — tối thiểu 13 vấn đề FR-019, mỗi vấn đề kèm nguyên nhân gốc + phân loại BE-đã-sửa-029 / FE-cần-làm / deferred (repo FE `smart-wardrobe-fe`, ngoài workspace BE) — phụ thuộc T015, T024, T042
-- [ ] T045 [US5] Bổ sung vào guide: bảng mã HTTP cho từng endpoint, ví dụ JSON request/response thật (đối chiếu với response dev), checklist việc FE cần làm — phụ thuộc T044
+- [x] T044 [US5] Viết `specs/029-admin-observability/frontend-guide.md`: (a) nhóm API MỚI activity-events + hướng dẫn tích hợp trang "Hoạt động người dùng"; (b) nhóm CHANGED payOS transactions before→after + hướng dẫn tích hợp trang "Giao dịch payOS" (list + detail + 4 hành động đối soát, phản hồi `data: null`); (c) nhóm CHANGED dashboard admin — before→after cho 7 endpoint nhận kỳ + `overview` (payosReconcile ngữ nghĩa mới) + `kpi-cards` (`payOSSuccessCount` đổi giá trị) + ngữ nghĩa payOS/error-rate; (d) mục đánh giá UX dashboard FE — tối thiểu 13 vấn đề FR-019, mỗi vấn đề kèm nguyên nhân gốc + phân loại BE-đã-sửa-029 / FE-cần-làm / deferred (repo FE `smart-wardrobe-fe`, ngoài workspace BE) — phụ thuộc T015, T024, T042
+- [x] T045 [US5] Bổ sung vào guide: bảng mã HTTP cho từng endpoint, ví dụ JSON request/response thật (đối chiếu với response dev), checklist việc FE cần làm — phụ thuộc T044
 
 **Checkpoint**: US5 xong — dev FE đọc guide là triển khai được
 
@@ -162,9 +162,9 @@
 
 **Purpose**: Đồng bộ guide có đếm, deferred, re-validate checklist, verify cuối
 
-- [ ] T046 **Đồng bộ guide có đếm** (hiến pháp §Governance): đọc lại `specs/029-admin-observability/frontend-guide.md`, đối chiếu với mã nguồn và **đếm** — mọi trường JSON của DTO các nhóm API mới/thay đổi (activity-events, giao dịch payOS, dashboard admin), đủ 11 giá trị status, mọi route guide liệt kê (đối chiếu chéo danh sách route trong `contracts/admin-api-delta.md` — gồm cả `overview` + `kpi-cards` + 4 hành động), mọi mã HTTP guide khẳng định; sửa mọi chỗ lệch; ghi kết quả đếm vào cuối guide — phụ thuộc T045
-- [ ] T047 Ghi `specs/029-admin-observability/deferred.md`: lịch sử đổi gói cho distribution (R7); device/IP trong activity events (bảng không lưu); index bổ sung nếu T002 phát hiện; fix UX dashboard phía FE (danh sách trong guide — ngoài repo BE); mỗi mục kèm "là gì / vì sao ngoài phạm vi / điều gì gỡ được"
-- [ ] T048 Re-validate `specs/029-admin-observability/checklists/requirements.md` sau mọi chỉnh sửa spec trong quá trình implement (kỳ vọng giữ 21/21; nếu có mục đổi trạng thái thì ghi rõ)
+- [x] T046 **Đồng bộ guide có đếm** (hiến pháp §Governance): đọc lại `specs/029-admin-observability/frontend-guide.md`, đối chiếu với mã nguồn và **đếm** — mọi trường JSON của DTO các nhóm API mới/thay đổi (activity-events, giao dịch payOS, dashboard admin), đủ 11 giá trị status, mọi route guide liệt kê (đối chiếu chéo danh sách route trong `contracts/admin-api-delta.md` — gồm cả `overview` + `kpi-cards` + 4 hành động), mọi mã HTTP guide khẳng định; sửa mọi chỗ lệch; ghi kết quả đếm vào cuối guide — phụ thuộc T045
+- [x] T047 Ghi `specs/029-admin-observability/deferred.md`: lịch sử đổi gói cho distribution (R7); device/IP trong activity events (bảng không lưu); index bổ sung nếu T002 phát hiện; fix UX dashboard phía FE (danh sách trong guide — ngoài repo BE); mỗi mục kèm "là gì / vì sao ngoài phạm vi / điều gì gỡ được"
+- [x] T048 Re-validate `specs/029-admin-observability/checklists/requirements.md` sau mọi chỉnh sửa spec trong quá trình implement (kỳ vọng giữ 21/21; nếu có mục đổi trạng thái thì ghi rõ)
 - [ ] T049 Verify cuối: chạy đủ 5 kịch bản `quickstart.md` trên dev; `make lint`; `go test -race -count=3` scoped 3 service + shared; `make swagger-all` + `make buf-gen` sạch diff; **`make check` full trước push/tag** (theo bảng gate AGENTS.md)
 
 ### Frontend Integration Guide *(required — hiến pháp §Governance)*
