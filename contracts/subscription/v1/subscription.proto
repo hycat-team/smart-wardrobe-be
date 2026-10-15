@@ -78,6 +78,9 @@ message AdminSubscriptionStats {
   int32 payos_pending_count = 4;
   int32 payos_failed_count = 5;
   int32 payos_voided_count = 6;
+  // SUM(amount) of successful deposits, both transaction types (string decimal
+  // like total_subscription_revenue).
+  string total_payos_success_value = 7;
 }
 
 message SubscriptionDistribution {
@@ -101,9 +104,16 @@ message RenewalStats {
 
 message GetAdminSubscriptionStatsRequest {
   google.protobuf.Timestamp snapshot_date = 1;
+  // Half-open [from, to) VN day bounds; empty falls back to snapshot_date.
+  google.protobuf.Timestamp from_date = 2;
+  google.protobuf.Timestamp to_date = 3;
 }
 
-message GetSubscriptionDistributionRequest {}
+message GetSubscriptionDistributionRequest {
+  // Half-open [from, to) VN day bounds; empty keeps the current-plan window.
+  google.protobuf.Timestamp from_date = 1;
+  google.protobuf.Timestamp to_date = 2;
+}
 
 message SubscriptionDistributionList {
   repeated SubscriptionDistribution items = 1;
@@ -118,7 +128,11 @@ message RevenueBreakdownList {
   repeated RevenueBreakdown items = 1;
 }
 
-message GetRenewalStatsRequest {}
+message GetRenewalStatsRequest {
+  // Half-open [from, to) VN day bounds; empty keeps the all-time behaviour.
+  google.protobuf.Timestamp from_date = 1;
+  google.protobuf.Timestamp to_date = 2;
+}
 
 // SubscriptionService serves quota + overview across services.
 service SubscriptionService {

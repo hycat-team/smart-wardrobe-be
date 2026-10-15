@@ -1272,7 +1272,10 @@ func (x *TotalAIRequestCount) GetTotal() int64 {
 }
 
 type GetAIErrorBreakdownRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Half-open [from, to) VN day bounds; empty keeps the all-time behaviour.
+	FromDate      *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=from_date,json=fromDate,proto3" json:"from_date,omitempty"`
+	ToDate        *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=to_date,json=toDate,proto3" json:"to_date,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1305,6 +1308,20 @@ func (x *GetAIErrorBreakdownRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetAIErrorBreakdownRequest.ProtoReflect.Descriptor instead.
 func (*GetAIErrorBreakdownRequest) Descriptor() ([]byte, []int) {
 	return file_contracts_ai_v1_ai_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetAIErrorBreakdownRequest) GetFromDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FromDate
+	}
+	return nil
+}
+
+func (x *GetAIErrorBreakdownRequest) GetToDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ToDate
+	}
+	return nil
 }
 
 type AIErrorBreakdownList struct {
@@ -1441,8 +1458,10 @@ const file_contracts_ai_v1_ai_proto_rawDesc = "" +
 	"\tfrom_date\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bfromDate\x123\n" +
 	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"+\n" +
 	"\x13TotalAIRequestCount\x12\x14\n" +
-	"\x05total\x18\x01 \x01(\x03R\x05total\"\x1c\n" +
-	"\x1aGetAIErrorBreakdownRequest\"K\n" +
+	"\x05total\x18\x01 \x01(\x03R\x05total\"\x8a\x01\n" +
+	"\x1aGetAIErrorBreakdownRequest\x127\n" +
+	"\tfrom_date\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bfromDate\x123\n" +
+	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"K\n" +
 	"\x14AIErrorBreakdownList\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.closy.ai.v1.AIErrorBreakdownR\x05items2\x8d\x04\n" +
 	"\x15AIOrchestratorService\x12S\n" +
@@ -1511,32 +1530,34 @@ var file_contracts_ai_v1_ai_proto_depIdxs = []int32{
 	13, // 9: closy.ai.v1.AIUsageByOperationList.items:type_name -> closy.ai.v1.AIUsageByOperation
 	24, // 10: closy.ai.v1.GetTotalAIRequestCountRequest.from_date:type_name -> google.protobuf.Timestamp
 	24, // 11: closy.ai.v1.GetTotalAIRequestCountRequest.to_date:type_name -> google.protobuf.Timestamp
-	14, // 12: closy.ai.v1.AIErrorBreakdownList.items:type_name -> closy.ai.v1.AIErrorBreakdown
-	1,  // 13: closy.ai.v1.AIOrchestratorService.AnalyzeImage:input_type -> closy.ai.v1.AnalyzeImageRequest
-	3,  // 14: closy.ai.v1.AIOrchestratorService.GenerateEmbeddings:input_type -> closy.ai.v1.GenerateEmbeddingsRequest
-	6,  // 15: closy.ai.v1.AIOrchestratorService.GenerateChatText:input_type -> closy.ai.v1.GenerateChatTextRequest
-	8,  // 16: closy.ai.v1.AIOrchestratorService.GenerateRecommendationText:input_type -> closy.ai.v1.GenerateRecommendationTextRequest
-	6,  // 17: closy.ai.v1.AIOrchestratorService.GenerateChatTextStream:input_type -> closy.ai.v1.GenerateChatTextRequest
-	15, // 18: closy.ai.v1.AIDashboardService.GetAdminAIUsageStats:input_type -> closy.ai.v1.GetAdminAIUsageStatsRequest
-	16, // 19: closy.ai.v1.AIDashboardService.GetAIEventsDrillDown:input_type -> closy.ai.v1.GetAIEventsDrillDownRequest
-	18, // 20: closy.ai.v1.AIDashboardService.GetAIUsageByOperation:input_type -> closy.ai.v1.GetAIUsageByOperationRequest
-	20, // 21: closy.ai.v1.AIDashboardService.GetTotalAIRequestCount:input_type -> closy.ai.v1.GetTotalAIRequestCountRequest
-	22, // 22: closy.ai.v1.AIDashboardService.GetAIErrorBreakdown:input_type -> closy.ai.v1.GetAIErrorBreakdownRequest
-	2,  // 23: closy.ai.v1.AIOrchestratorService.AnalyzeImage:output_type -> closy.ai.v1.AnalyzeImageResponse
-	4,  // 24: closy.ai.v1.AIOrchestratorService.GenerateEmbeddings:output_type -> closy.ai.v1.GenerateEmbeddingsResponse
-	7,  // 25: closy.ai.v1.AIOrchestratorService.GenerateChatText:output_type -> closy.ai.v1.GenerateChatTextResponse
-	9,  // 26: closy.ai.v1.AIOrchestratorService.GenerateRecommendationText:output_type -> closy.ai.v1.GenerateRecommendationTextResponse
-	10, // 27: closy.ai.v1.AIOrchestratorService.GenerateChatTextStream:output_type -> closy.ai.v1.ChatChunk
-	11, // 28: closy.ai.v1.AIDashboardService.GetAdminAIUsageStats:output_type -> closy.ai.v1.AIUsageAdminStats
-	17, // 29: closy.ai.v1.AIDashboardService.GetAIEventsDrillDown:output_type -> closy.ai.v1.AIEventDrillDownList
-	19, // 30: closy.ai.v1.AIDashboardService.GetAIUsageByOperation:output_type -> closy.ai.v1.AIUsageByOperationList
-	21, // 31: closy.ai.v1.AIDashboardService.GetTotalAIRequestCount:output_type -> closy.ai.v1.TotalAIRequestCount
-	23, // 32: closy.ai.v1.AIDashboardService.GetAIErrorBreakdown:output_type -> closy.ai.v1.AIErrorBreakdownList
-	23, // [23:33] is the sub-list for method output_type
-	13, // [13:23] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	24, // 12: closy.ai.v1.GetAIErrorBreakdownRequest.from_date:type_name -> google.protobuf.Timestamp
+	24, // 13: closy.ai.v1.GetAIErrorBreakdownRequest.to_date:type_name -> google.protobuf.Timestamp
+	14, // 14: closy.ai.v1.AIErrorBreakdownList.items:type_name -> closy.ai.v1.AIErrorBreakdown
+	1,  // 15: closy.ai.v1.AIOrchestratorService.AnalyzeImage:input_type -> closy.ai.v1.AnalyzeImageRequest
+	3,  // 16: closy.ai.v1.AIOrchestratorService.GenerateEmbeddings:input_type -> closy.ai.v1.GenerateEmbeddingsRequest
+	6,  // 17: closy.ai.v1.AIOrchestratorService.GenerateChatText:input_type -> closy.ai.v1.GenerateChatTextRequest
+	8,  // 18: closy.ai.v1.AIOrchestratorService.GenerateRecommendationText:input_type -> closy.ai.v1.GenerateRecommendationTextRequest
+	6,  // 19: closy.ai.v1.AIOrchestratorService.GenerateChatTextStream:input_type -> closy.ai.v1.GenerateChatTextRequest
+	15, // 20: closy.ai.v1.AIDashboardService.GetAdminAIUsageStats:input_type -> closy.ai.v1.GetAdminAIUsageStatsRequest
+	16, // 21: closy.ai.v1.AIDashboardService.GetAIEventsDrillDown:input_type -> closy.ai.v1.GetAIEventsDrillDownRequest
+	18, // 22: closy.ai.v1.AIDashboardService.GetAIUsageByOperation:input_type -> closy.ai.v1.GetAIUsageByOperationRequest
+	20, // 23: closy.ai.v1.AIDashboardService.GetTotalAIRequestCount:input_type -> closy.ai.v1.GetTotalAIRequestCountRequest
+	22, // 24: closy.ai.v1.AIDashboardService.GetAIErrorBreakdown:input_type -> closy.ai.v1.GetAIErrorBreakdownRequest
+	2,  // 25: closy.ai.v1.AIOrchestratorService.AnalyzeImage:output_type -> closy.ai.v1.AnalyzeImageResponse
+	4,  // 26: closy.ai.v1.AIOrchestratorService.GenerateEmbeddings:output_type -> closy.ai.v1.GenerateEmbeddingsResponse
+	7,  // 27: closy.ai.v1.AIOrchestratorService.GenerateChatText:output_type -> closy.ai.v1.GenerateChatTextResponse
+	9,  // 28: closy.ai.v1.AIOrchestratorService.GenerateRecommendationText:output_type -> closy.ai.v1.GenerateRecommendationTextResponse
+	10, // 29: closy.ai.v1.AIOrchestratorService.GenerateChatTextStream:output_type -> closy.ai.v1.ChatChunk
+	11, // 30: closy.ai.v1.AIDashboardService.GetAdminAIUsageStats:output_type -> closy.ai.v1.AIUsageAdminStats
+	17, // 31: closy.ai.v1.AIDashboardService.GetAIEventsDrillDown:output_type -> closy.ai.v1.AIEventDrillDownList
+	19, // 32: closy.ai.v1.AIDashboardService.GetAIUsageByOperation:output_type -> closy.ai.v1.AIUsageByOperationList
+	21, // 33: closy.ai.v1.AIDashboardService.GetTotalAIRequestCount:output_type -> closy.ai.v1.TotalAIRequestCount
+	23, // 34: closy.ai.v1.AIDashboardService.GetAIErrorBreakdown:output_type -> closy.ai.v1.AIErrorBreakdownList
+	25, // [25:35] is the sub-list for method output_type
+	15, // [15:25] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_contracts_ai_v1_ai_proto_init() }

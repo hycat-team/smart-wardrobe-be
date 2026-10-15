@@ -33,10 +33,10 @@
 
 **⚠️ CRITICAL**: Không task US3/US4 nào bắt đầu trước khi phase này xong; US1 và US2 chỉ cần T003 (helper kỳ) — có thể chạy song song ngay sau T003, không cần chờ proto T004–T006
 
-- [ ] T003 [P] Viết helper `ParseVNDateRangeQuery(fromDate, toDate string) (from, to time.Time, err error)` + unit test trong `shared/pkg/utils/validation/date_range.go` và `shared/pkg/utils/validation/date_range_test.go`: trả cặp nửa mở `[from, to)` với `from = StartOfDayInVN`, `to = EndOfDayInVN`; đầu thiếu trả zero-time (repo bỏ điều kiện tương ứng — gửi một đầu thì đầu còn lại để mở); 400 `apperror` tiếng Việt chỉ khi định dạng sai hoặc khi gửi cả hai mà `fromDate > toDate`; case biên: rỗng cả hai, chỉ một đầu, mùng 1, cuối tháng (R1, data-model §3)
-- [ ] T004 [P] Mở rộng `contracts/subscription/v1/subscription.proto` (additive): `AdminSubscriptionStats` + `string total_payos_success_value = 7;`; `GetAdminSubscriptionStatsRequest` + `from_date = 2; to_date = 3;` (giữ `snapshot_date = 1`); `GetSubscriptionDistributionRequest` + `from_date = 1; to_date = 2;`; `GetRenewalStatsRequest` + `from_date = 1; to_date = 2;` (grpc-contract-delta §1)
-- [ ] T005 [P] Mở rộng `contracts/ai/v1/ai.proto` (additive): `GetAIErrorBreakdownRequest` + `from_date = 1; to_date = 2;` (grpc-contract-delta §2)
-- [ ] T006 Chạy `make buf-gen` regen stub cho cả hai hợp đồng; xác nhận build xanh (chưa map field mới ở bước này) — phụ thuộc T004, T005
+- [x] T003 [P] Viết helper `ParseVNDateRangeQuery(fromDate, toDate string) (from, to time.Time, err error)` + unit test trong `shared/pkg/utils/validation/date_range.go` và `shared/pkg/utils/validation/date_range_test.go`: trả cặp nửa mở `[from, to)` với `from = StartOfDayInVN`, `to = EndOfDayInVN`; đầu thiếu trả zero-time (repo bỏ điều kiện tương ứng — gửi một đầu thì đầu còn lại để mở); 400 `apperror` tiếng Việt chỉ khi định dạng sai hoặc khi gửi cả hai mà `fromDate > toDate`; case biên: rỗng cả hai, chỉ một đầu, mùng 1, cuối tháng (R1, data-model §3)
+- [x] T004 [P] Mở rộng `contracts/subscription/v1/subscription.proto` (additive): `AdminSubscriptionStats` + `string total_payos_success_value = 7;`; `GetAdminSubscriptionStatsRequest` + `from_date = 2; to_date = 3;` (giữ `snapshot_date = 1`); `GetSubscriptionDistributionRequest` + `from_date = 1; to_date = 2;`; `GetRenewalStatsRequest` + `from_date = 1; to_date = 2;` (grpc-contract-delta §1)
+- [x] T005 [P] Mở rộng `contracts/ai/v1/ai.proto` (additive): `GetAIErrorBreakdownRequest` + `from_date = 1; to_date = 2;` (grpc-contract-delta §2)
+- [x] T006 Chạy `make buf-gen` regen stub cho cả hai hợp đồng; xác nhận build xanh (chưa map field mới ở bước này) — phụ thuộc T004, T005
 
 **Checkpoint**: helper kỳ có test; proto regen xanh, chưa consumer nào đọc field mới
 
