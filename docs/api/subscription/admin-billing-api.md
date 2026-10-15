@@ -1,6 +1,37 @@
 # Admin Billing API Specs
 
-Tài liệu thiết kế các API quản trị viên liên quan đến quản lý giao dịch thanh toán và đối soát. Tất cả các giá trị hằng số sử dụng tham chiếu tại [constants.md](constants.md).
+Tài liệu thiết kế các API quản trị viên liên quan đến quản lý giao dịch thanh toán và đối soát. Các giá trị hằng số nghiệp vụ chung tham chiếu tại [constants.md](constants.md); riêng hợp đồng `status` của API admin là bảng 11 giá trị trong tài liệu này (khác với bảng nhãn cũ trong constants.md).
+
+Hợp đồng chi tiết của các thay đổi 029: `specs/029-admin-observability/contracts/admin-api-delta.md` §2.
+
+> **Before→after của 029 (tóm tắt):**
+> *   `status` trong mọi phản hồi admin của giao dịch: **số** → **chuỗi** đủ 11 giá trị (§Trạng thái bên dưới).
+> *   `GET /transactions/{id}`: **entity thô** (tên trường Go: `ID`, `UserID`, `OrderCode`, `Status` dạng số) → **`DepositTransactionRes` camelCase**, đúng bộ trường như item trong danh sách.
+> *   Kỳ ngày của danh sách: **nửa đêm UTC + `toDate <=`** (bỏ sót gần hết ngày cuối, lệch 7h; ngày sai bị **bỏ qua im lặng**) → **ngày lịch Việt Nam, cận nửa mở `[from, to)`**, ngày sai định dạng hoặc `fromDate > toDate` → **400** với thông báo tiếng Việt.
+> *   Bộ lọc `status` nhận thêm `failed_legacy` (khứ hồi đủ 11 giá trị vào/ra).
+> *   Phân trang, các filter còn lại và 4 endpoint resolve/retry: **không đổi**.
+
+---
+
+## Trạng thái giao dịch nạp tiền trong API admin (11 giá trị)
+
+Trường `status` của mọi phản hồi admin của giao dịch là **chuỗi**. Bảng giá trị (data-model §2):
+
+| Chuỗi xuất ra | Nhận ở filter `status` |
+|---|---|
+| `pending` | có |
+| `success` | có |
+| `failed_legacy` | **có (mới)** |
+| `creating` | có |
+| `reconciliation_required` | có |
+| `reconciling` | có |
+| `creation_failed` | có |
+| `cancelled` | có |
+| `expired` | có |
+| `investigation_required` | có |
+| `refunded` | có |
+
+Bất biến: mọi giá trị xuất ra dùng lại được làm đầu vào filter (khứ hồi một vòng). Giá trị lạ (ngoài 11 giá trị, chỉ có thể phát sinh do dữ liệu bị sửa tay) được trả là `unknown` và không phải đầu vào hợp lệ của filter.
 
 ---
 
@@ -10,25 +41,58 @@ Tài liệu thiết kế các API quản trị viên liên quan đến quản l�
 *   **Endpoint:** `GET /api/v1/admin/subscriptions/transactions`
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách bản ghi giao dịch nạp tiền `deposit_transactions`.
-*   **Mô tả:** Trả về danh sách giao dịch nạp tiền/đăng ký, hỗ trợ lọc theo trạng thái và thời gian.
+*   **Mô tả:** Trả về danh sách giao dịch nạp tiền/đăng ký, hỗ trợ lọc theo trạng thái và khoảng ngày.
 *   **Query Parameters:**
-    *   `status` (string, optional): Trạng thái giao dịch (tham chiếu tại [constants.md:DepositStatus](constants.md#1-trang-thai-giao-dich-nap-tien-depositstatus)).
-    *   `fromDate` (string, optional): Ngày bắt đầu (định dạng `YYYY-MM-DD`).
-    *   `toDate` (string, optional): Ngày kết thúc (định dạng `YYYY-MM-DD`).
+    *   `status` (string, optional): Trạng thái giao dịch — một trong 11 giá trị ở bảng trên. Giá trị khác bị bỏ qua (không lọc).
+    *   `fromDate` (string, optional): Ngày bắt đầu (`YYYY-MM-DD`, ngày lịch Việt Nam, bao gồm trọn ngày).
+    *   `toDate` (string, optional): Ngày kết thúc (`YYYY-MM-DD`, ngày lịch Việt Nam, bao gồm trọn ngày).
     *   `page` (integer, optional): Trang.
     *   `limit` (integer, optional): Số bản ghi/trang.
+*   **Quy tắc kỳ ngày:** gửi một đầu thì đầu còn lại để mở (chỉ `fromDate` = từ ngày đó trở đi; chỉ `toDate` = đến hết ngày đó). Sai định dạng hoặc `fromDate > toDate` (khi gửi cả hai) → 400.
 *   **Response:**
     *   `200 OK`: Trả về danh sách giao dịch thanh toán (phân trang).
+
+```json
+{
+  "message": "Lấy danh sách giao dịch thành công",
+  "data": {
+    "items": [
+      {
+        "id": "9f0b6a3e-...",
+        "userId": "1c2d3e4f-...",
+        "orderCode": 1234567890,
+        "amount": 250000,
+        "currency": "VND",
+        "status": "reconciliation_required",
+        "transactionType": "direct_purchase",
+        "targetPlanId": "7a1b...",
+        "paymentUrl": "https://pay.payos.vn/web/abc",
+        "reference": "REF-20261015-0001",
+        "paymentLinkId": "pay_link_123",
+        "failureReason": "gateway_timeout",
+        "cancelledAt": "2026-10-15T10:30:00Z",
+        "nextReconciliationAt": "2026-10-15T11:00:00Z",
+        "createdAt": "2026-10-15T08:00:00Z",
+        "updatedAt": "2026-10-15T09:00:00Z"
+      }
+    ],
+    "metadata": { "page": 1, "limit": 20, "totalItems": 1, "totalPages": 1 }
+  }
+}
+```
+*   **Mã lỗi:**
+    *   `400 Bad Request`: `fromDate`/`toDate` sai định dạng hoặc `fromDate > toDate` (thông báo tiếng Việt).
 
 ### 2. Lấy chi tiết giao dịch thanh toán
 *   **Endpoint:** `GET /api/v1/admin/subscriptions/transactions/{id}`
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
 *   **Đối tượng ảnh hưởng:** Đọc bản ghi giao dịch nạp tiền `deposit_transactions`.
-*   **Mô tả:** Trả về chi tiết một giao dịch thanh toán theo ID.
+*   **Mô tả:** Trả về chi tiết một giao dịch thanh toán theo ID. **Thay đổi 029:** thay vì trả entity thô, phản hồi là `DepositTransactionRes` camelCase — đúng bộ trường như một item trong danh sách (kể cả `status` dạng chuỗi).
 *   **Path Parameters:**
-    *   `id` (string, required): ID giao dịch.
+    *   `id` (string, required): ID giao dịch (UUID).
 *   **Response:**
-    *   `200 OK`: Trả về thông tin chi tiết giao dịch.
+    *   `200 OK`: Trả về thông tin chi tiết giao dịch, cùng shape với item trong danh sách.
+    *   `404 Not Found`: Không tìm thấy giao dịch theo `id`.
 
 ---
 

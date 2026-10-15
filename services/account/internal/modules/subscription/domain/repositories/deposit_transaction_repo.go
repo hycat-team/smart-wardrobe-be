@@ -18,6 +18,11 @@ type ClaimedDepositTransaction struct {
 }
 
 // AdminDepositTransactionFilter filters deposit transactions for the admin list.
+//
+// FromDate/ToDate are the half-open period [FromDate, ToDate) over VN calendar
+// days (data-model §3, R1): callers pass StartOfDayInVN(fromDate) and
+// EndOfDayInVN(toDate), and the query compares `created_at >= FromDate AND
+// created_at < ToDate`. A nil side leaves that side of the range open.
 type AdminDepositTransactionFilter struct {
 	Status    *depositstatus.DepositStatus
 	FromDate  *time.Time

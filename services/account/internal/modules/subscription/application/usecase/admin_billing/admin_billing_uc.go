@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/apperror"
 
 	"github.com/google/uuid"
 )
@@ -32,7 +33,17 @@ func (uc *AdminBillingUseCase) ListTransactions(ctx context.Context, filter usec
 }
 
 func (uc *AdminBillingUseCase) GetTransaction(ctx context.Context, id uuid.UUID) (*entities.DepositTransaction, error) {
-	return uc.depositRepo.GetByID(ctx, id)
+	tx, err := uc.depositRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// The generic repository reports a miss as (nil, nil); the admin contract
+	// promises 404 for an unknown transaction (029 data-model §8), and a 200
+	// with an empty body would read as "found, no data".
+	if tx == nil {
+		return nil, apperror.NewNotFound("Không tìm thấy giao dịch.")
+	}
+	return tx, nil
 }
 
 func (uc *AdminBillingUseCase) GetTransactionByOrderCode(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error) {

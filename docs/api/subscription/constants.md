@@ -4,15 +4,18 @@ Các hằng số dùng trong APIs liên quan đến Gói dịch vụ, Giao dịc
 
 ## 1. Trạng thái Giao dịch nạp tiền (DepositStatus)
 *   **Đường dẫn package:** `internal/shared/domain/constants/subscription/depositstatus`
-*   **Các giá trị hợp lệ:**
-    *   `creating`: Đang khởi tạo link thanh toán từ cổng trung gian (PayOS, Momo...).
+*   **Các giá trị hợp lệ (11 giá trị — API admin serialize dạng chuỗi, xem `admin-billing-api.md` §trạng thái):**
     *   `pending`: Link thanh toán đã được tạo, đang chờ người dùng chuyển khoản.
     *   `success`: Nạp tiền thành công, số dư ví đã được cộng.
+    *   `failed_legacy`: Trạng thái thất bại cũ (legacy) — chỉ còn trong dữ liệu lịch sử, không sinh mới.
+    *   `creating`: Đang khởi tạo link thanh toán từ cổng trung gian (PayOS, Momo...).
+    *   `reconciliation_required`: Giao dịch phát sinh lỗi đối soát cần kiểm tra thủ công.
+    *   `reconciling`: Đang đối soát lại với cổng thanh toán.
+    *   `creation_failed`: Khởi tạo link thanh toán không thành công.
     *   `cancelled`: Giao dịch bị người dùng hủy bỏ.
     *   `expired`: Link thanh toán hết hạn mà chưa nhận được tiền.
-    *   `failed`: Thanh toán bị lỗi.
-    *   `creation_failed`: Khởi tạo link thanh toán không thành công.
-    *   `reconciliation_required`: Giao dịch phát sinh lỗi đối soát cần kiểm tra thủ công.
+    *   `investigation_required`: Giao dịch cần điều tra thủ công (đối soát không kết luận được).
+    *   `refunded`: Giao dịch đã được hoàn tiền.
 
 ## 2. Loại Giao dịch nạp tiền (DepositTransactionType)
 *   **Đường dẫn package:** `internal/shared/domain/constants/subscription/deposittransactiontype`

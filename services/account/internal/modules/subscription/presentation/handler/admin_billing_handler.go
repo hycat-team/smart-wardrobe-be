@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"time"
-
 	admin_contract "smart-wardrobe-be/services/account/contract/admin"
 	admin_dto "smart-wardrobe-be/services/account/dto/admin"
 	subscription_dto "smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
-	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/mapper"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	"smart-wardrobe-be/shared/domain/constants/adminaudit"
 	"smart-wardrobe-be/shared/pkg/logger"
@@ -59,16 +57,19 @@ type adminListTransactionsReq struct {
 
 // ListTransactions
 // @Summary Lấy danh sách giao dịch thanh toán
-// @Description Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, thời gian).
+// @Description Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.
 // @Tags Admin Billing
 // @Accept json
 // @Produce json
-// @Param status query string false "Trạng thái giao dịch"
-// @Param fromDate query string false "Ngày bắt đầu (YYYY-MM-DD)"
-// @Param toDate query string false "Ngày kết thúc (YYYY-MM-DD)"
+// @Param status query string false "Trạng thái giao dịch (pending, success, failed_legacy, creating, reconciliation_required, reconciling, creation_failed, cancelled, expired, investigation_required, refunded)"
+// @Param fromDate query string false "Ngày bắt đầu (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)"
+// @Param toDate query string false "Ngày kết thúc (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số bản ghi/trang"
 // @Success 200 {object} shared_pres.APIResponse{data=subscription_dto.AdminDepositTransactionListRes}
+// @Failure 400 {object} shared_pres.APIResponse
+// @Failure 401 {object} shared_pres.APIResponse
+// @Failure 403 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/subscriptions/transactions [get]
 func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 	var req adminListTransactionsReq
@@ -77,19 +78,24 @@ func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 	}
 	filter := uc_interfaces.AdminBillingFilter{}
 	if req.Status != "" {
-		if st, ok := parseDepositStatus(req.Status); ok {
+		if st, ok := mapper.ParseDepositStatus(req.Status); ok {
 			filter.Status = &st
 		}
 	}
-	if req.FromDate != "" {
-		if t, err := time.Parse("2006-01-02", req.FromDate); err == nil {
-			filter.FromDate = &t
-		}
+	// VN calendar days, half-open [from, to) (data-model §3): the helper parses
+	// the user's dates into the instants the repository compares, and a
+	// malformed or inverted period is a 400. The old code parsed UTC midnight
+	// and dropped bad dates silently, so `toDate` lost the last seven hours of
+	// the Vietnamese day and a typo answered with an unfiltered page.
+	from, to, err := validation.ParseVNDateRangeQuery(req.FromDate, req.ToDate)
+	if err != nil {
+		return err
 	}
-	if req.ToDate != "" {
-		if t, err := time.Parse("2006-01-02", req.ToDate); err == nil {
-			filter.ToDate = &t
-		}
+	if !from.IsZero() {
+		filter.FromDate = &from
+	}
+	if !to.IsZero() {
+		filter.ToDate = &to
 	}
 	rows, total, err := h.adminBilling.ListTransactions(c.Request.Context(), filter, req.Page, req.Limit)
 	if err != nil {
@@ -98,32 +104,7 @@ func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 
 	items := make([]*subscription_dto.DepositTransactionRes, len(rows))
 	for i, tx := range rows {
-		var cancelAt, nextReconAt *time.Time
-		if tx.CancelledAt != nil {
-			cancelAt = tx.CancelledAt
-		}
-		if tx.NextReconciliationAt != nil {
-			nextReconAt = tx.NextReconciliationAt
-		}
-		floatAmt, _ := tx.Amount.Float64()
-		items[i] = &subscription_dto.DepositTransactionRes{
-			ID:                   tx.ID,
-			UserID:               tx.UserID,
-			OrderCode:            tx.OrderCode,
-			Amount:               floatAmt,
-			Currency:             string(tx.Currency),
-			Status:               tx.Status,
-			TransactionType:      string(tx.TransactionType),
-			TargetPlanID:         tx.SubscriptionPlanID,
-			PaymentUrl:           tx.PaymentUrl,
-			Reference:            tx.SuccessfulProviderReference,
-			PaymentLinkId:        tx.PaymentLinkID,
-			FailureReason:        tx.FailureReason,
-			CancelledAt:          cancelAt,
-			NextReconciliationAt: nextReconAt,
-			CreatedAt:            tx.CreatedAt,
-			UpdatedAt:            tx.UpdatedAt,
-		}
+		items[i] = mapper.DepositTransactionToRes(tx)
 	}
 
 	response := &shared_dto.PaginationResult[*subscription_dto.DepositTransactionRes]{
@@ -141,11 +122,14 @@ type adminGetTransactionParams struct {
 
 // GetTransaction
 // @Summary Lấy chi tiết giao dịch thanh toán
-// @Description Trả về chi tiết một giao dịch thanh toán theo ID.
+// @Description Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường camelCase như item trong danh sách, `status` là chuỗi.
 // @Tags Admin Billing
 // @Produce json
 // @Param id path string true "ID giao dịch"
 // @Success 200 {object} shared_pres.APIResponse{data=subscription_dto.DepositTransactionRes}
+// @Failure 401 {object} shared_pres.APIResponse
+// @Failure 403 {object} shared_pres.APIResponse
+// @Failure 404 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/subscriptions/transactions/{id} [get]
 func (h *AdminBillingHandler) GetTransaction(c *gin.Context) error {
 	var params adminGetTransactionParams
@@ -160,7 +144,10 @@ func (h *AdminBillingHandler) GetTransaction(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, successAdminGetTransaction, item)
+	// FR-007: the detail answers the SAME camelCase DTO as a list item. The use
+	// case keeps returning the entity (R5) and the shared mapper is the only
+	// place the two shapes could diverge.
+	shared_pres.Success(c, successAdminGetTransaction, mapper.DepositTransactionToRes(item))
 	return nil
 }
 
@@ -364,32 +351,4 @@ func (h *AdminBillingHandler) ResolveAsCreationFailed(c *gin.Context) error {
 
 	shared_pres.Success(c, successAdminResolveAsCreationFailed, nil)
 	return nil
-}
-
-// parseDepositStatus converts a status name (lowercase) into a DepositStatus value.
-func parseDepositStatus(name string) (depositstatus.DepositStatus, bool) {
-	switch name {
-	case "pending":
-		return depositstatus.Pending, true
-	case "success":
-		return depositstatus.Success, true
-	case "creating":
-		return depositstatus.Creating, true
-	case "reconciliation_required":
-		return depositstatus.ReconciliationRequired, true
-	case "reconciling":
-		return depositstatus.Reconciling, true
-	case "creation_failed":
-		return depositstatus.CreationFailed, true
-	case "cancelled":
-		return depositstatus.Cancelled, true
-	case "expired":
-		return depositstatus.Expired, true
-	case "investigation_required":
-		return depositstatus.InvestigationRequired, true
-	case "refunded":
-		return depositstatus.Refunded, true
-	default:
-		return 0, false
-	}
 }

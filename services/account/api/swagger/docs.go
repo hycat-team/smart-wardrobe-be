@@ -1123,7 +1123,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/subscriptions/transactions": {
             "get": {
-                "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, thời gian).",
+                "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1137,19 +1137,19 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Trạng thái giao dịch",
+                        "description": "Trạng thái giao dịch (pending, success, failed_legacy, creating, reconciliation_required, reconciling, creation_failed, cancelled, expired, investigation_required, refunded)",
                         "name": "status",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Ngày bắt đầu (YYYY-MM-DD)",
+                        "description": "Ngày bắt đầu (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)",
                         "name": "fromDate",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Ngày kết thúc (YYYY-MM-DD)",
+                        "description": "Ngày kết thúc (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)",
                         "name": "toDate",
                         "in": "query"
                     },
@@ -1184,13 +1184,31 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
                     }
                 }
             }
         },
         "/api/v1/admin/subscriptions/transactions/{id}": {
             "get": {
-                "description": "Trả về chi tiết một giao dịch thanh toán theo ID.",
+                "description": "Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường camelCase như item trong danh sách, ` + "`" + `status` + "`" + ` là chuỗi.",
                 "produces": [
                     "application/json"
                 ],
@@ -1224,6 +1242,24 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
                         }
                     }
                 }
@@ -4241,7 +4277,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_depositstatus.DepositStatus"
+                    "description": "Status is the admin API's string form (11 values, FR-008, data-model §2):\n` + "`" + `pending` + "`" + `, ` + "`" + `success` + "`" + `, ` + "`" + `failed_legacy` + "`" + `, ... A value outside that set is\nreported as ` + "`" + `unknown` + "`" + ` (see mapper.DepositStatusToString).\n\nIt is a string ONLY here. ` + "`" + `PaymentLinkDTO.PaymentStatus` + "`" + ` — the user-facing\nDTO — deliberately keeps the numeric type (R4), which is why the type\nitself carries no MarshalJSON.",
+                    "type": "string"
                 },
                 "targetPlanId": {
                     "type": "string"

@@ -45,7 +45,10 @@ func (r *DepositTransactionRepository) ListAdmin(ctx context.Context, filter rep
 		db = db.Where("created_at >= ?", *filter.FromDate)
 	}
 	if filter.ToDate != nil {
-		db = db.Where("created_at <= ?", *filter.ToDate)
+		// Half-open (R1/data-model §3): ToDate is the exclusive end of
+		// [FromDate, ToDate), i.e. EndOfDayInVN(toDate) = 00:00 of the next VN
+		// day. `<=` would double-count the instant that starts the next period.
+		db = db.Where("created_at < ?", *filter.ToDate)
 	}
 	if filter.OrderCode != nil {
 		db = db.Where("order_code = ?", *filter.OrderCode)

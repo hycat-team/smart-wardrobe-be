@@ -149,22 +149,29 @@ type SetPlanActiveReq struct {
 type AdminDepositTransactionListRes = shared_dto.PaginationResult[*DepositTransactionRes]
 
 type DepositTransactionRes struct {
-	ID                   uuid.UUID                   `json:"id"`
-	UserID               uuid.UUID                   `json:"userId"`
-	OrderCode            int64                       `json:"orderCode"`
-	Amount               float64                     `json:"amount"`
-	Currency             string                      `json:"currency"`
-	Status               depositstatus.DepositStatus `json:"status"`
-	TransactionType      string                      `json:"transactionType"`
-	TargetPlanID         *uuid.UUID                  `json:"targetPlanId,omitempty"`
-	PaymentUrl           *string                     `json:"paymentUrl,omitempty"`
-	Reference            *string                     `json:"reference,omitempty"`
-	PaymentLinkId        *string                     `json:"paymentLinkId,omitempty"`
-	FailureReason        *string                     `json:"failureReason,omitempty"`
-	CancelledAt          *time.Time                  `json:"cancelledAt,omitempty"`
-	NextReconciliationAt *time.Time                  `json:"nextReconciliationAt,omitempty"`
-	CreatedAt            time.Time                   `json:"createdAt"`
-	UpdatedAt            time.Time                   `json:"updatedAt"`
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"userId"`
+	OrderCode int64     `json:"orderCode"`
+	Amount    float64   `json:"amount"`
+	Currency  string    `json:"currency"`
+	// Status is the admin API's string form (11 values, FR-008, data-model §2):
+	// `pending`, `success`, `failed_legacy`, ... A value outside that set is
+	// reported as `unknown` (see mapper.DepositStatusToString).
+	//
+	// It is a string ONLY here. `PaymentLinkDTO.PaymentStatus` — the user-facing
+	// DTO — deliberately keeps the numeric type (R4), which is why the type
+	// itself carries no MarshalJSON.
+	Status               string     `json:"status"`
+	TransactionType      string     `json:"transactionType"`
+	TargetPlanID         *uuid.UUID `json:"targetPlanId,omitempty"`
+	PaymentUrl           *string    `json:"paymentUrl,omitempty"`
+	Reference            *string    `json:"reference,omitempty"`
+	PaymentLinkId        *string    `json:"paymentLinkId,omitempty"`
+	FailureReason        *string    `json:"failureReason,omitempty"`
+	CancelledAt          *time.Time `json:"cancelledAt,omitempty"`
+	NextReconciliationAt *time.Time `json:"nextReconciliationAt,omitempty"`
+	CreatedAt            time.Time  `json:"createdAt"`
+	UpdatedAt            time.Time  `json:"updatedAt"`
 }
 
 // PurchaseWithWalletReq dùng cho endpoint mua gói bằng ví nội bộ

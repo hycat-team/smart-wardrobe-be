@@ -1534,7 +1534,8 @@
           "type": "string"
         },
         "status": {
-          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_depositstatus.DepositStatus"
+          "description": "Status is the admin API's string form (11 values, FR-008, data-model §2):\n`pending`, `success`, `failed_legacy`, ... A value outside that set is\nreported as `unknown` (see mapper.DepositStatusToString).\n\nIt is a string ONLY here. `PaymentLinkDTO.PaymentStatus` — the user-facing\nDTO — deliberately keeps the numeric type (R4), which is why the type\nitself carries no MarshalJSON.",
+          "type": "string"
         },
         "targetPlanId": {
           "type": "string"
