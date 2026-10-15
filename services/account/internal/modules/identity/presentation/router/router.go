@@ -81,4 +81,14 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		adminUsers.GET("/:id/sessions", shared_pres.WrapHandler(r.adminHandler.ListUserSessions))
 		adminUsers.POST("/:id/sessions/revoke", shared_pres.WrapHandler(r.adminHandler.RevokeUserSessions))
 	}
+
+	// 029 R3: a group of its own rather than a child of /admin/users, because
+	// gin cannot mix the `/admin/users/:id` wildcard with the static
+	// `/admin/users/activity-events`. Read-only by construction: no write verb
+	// is registered (FR-005).
+	adminActivityEvents := group.Group("/admin/activity-events")
+	adminActivityEvents.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+	{
+		adminActivityEvents.GET("", shared_pres.WrapHandler(r.adminHandler.ListActivityEvents))
+	}
 }

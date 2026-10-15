@@ -22,6 +22,9 @@ type IUserUseCase interface {
 	UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserBriefRes, error)
 	UpdateUserStatus(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, input dto.UpdateUserStatusReq) (*dto.UserRes, error)
 	GetUsersForAdmin(ctx context.Context, query dto.GetUsersQueryReq) (*dto.AdminUserListRes, error)
+	// ListActivityEvents returns the paginated admin activity log (029 FR-001).
+	// Read-only: nothing in this path writes an event (FR-005).
+	ListActivityEvents(ctx context.Context, query dto.GetActivityEventsQueryReq) (*dto.ActivityEventListRes, error)
 	// GetActiveUserIDs returns every non-deleted account id, unpaginated: it
 	// backs the admin dashboard reader, where a page-sized answer would
 	// silently drop most of the population.

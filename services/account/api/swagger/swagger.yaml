@@ -139,6 +139,38 @@ definitions:
       metadata:
         $ref: '#/definitions/dto.PaginationMetadata'
     type: object
+  smart-wardrobe-be_services_account_dto_identity.ActivityEventListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_services_account_dto_identity.ActivityEventRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/dto.PaginationMetadata'
+    type: object
+  smart-wardrobe-be_services_account_dto_identity.ActivityEventRes:
+    properties:
+      activityType:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      occurredAt:
+        type: string
+      userEmail:
+        type: string
+      userFirstName:
+        description: |-
+          UserFirstName/UserLastName are absent when the account never set them
+          (NULL), while UserEmail is always present — the LEFT JOIN keeps the
+          event visible even for a soft-deleted account.
+        type: string
+      userId:
+        type: string
+      userLastName:
+        type: string
+    type: object
   smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes:
     properties:
       subscription: {}
@@ -1483,6 +1515,63 @@ paths:
       summary: Account service liveness probe
       tags:
       - Account Health
+  /api/v1/admin/activity-events:
+    get:
+      description: Lấy danh sách phân trang các sự kiện hoạt động (đăng nhập, làm
+        mới phiên) kèm danh tính người dùng. Hỗ trợ lọc theo người dùng, loại hoạt
+        động và khoảng ngày (ngày lịch Việt Nam). Chỉ đọc.
+      parameters:
+      - description: ID người dùng (UUID)
+        in: query
+        name: userId
+        type: string
+      - description: 'Loại hoạt động: login | refresh'
+        in: query
+        name: activityType
+        type: string
+      - description: Từ ngày, bao gồm (YYYY-MM-DD, giờ Việt Nam)
+        in: query
+        name: fromDate
+        type: string
+      - description: Đến ngày, bao gồm trọn ngày (YYYY-MM-DD, giờ Việt Nam)
+        in: query
+        name: toDate
+        type: string
+      - description: Trang (mặc định 1)
+        in: query
+        name: page
+        type: integer
+      - description: Số bản ghi mỗi trang (mặc định 20, tối đa 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách hoạt động thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_account_dto_identity.ActivityEventListRes'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+      summary: Danh sách hoạt động người dùng
+      tags:
+      - Admin User
   /api/v1/admin/audit-logs:
     get:
       description: Quản trị viên tra cứu lịch sử thao tác của các quản trị viên trong

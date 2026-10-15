@@ -311,7 +311,7 @@ func newEagerUserUseCaseWithPublisher(repo *eagerIdentityRepo, spy *eagerProvisi
 	// is why the "no subscription READ" assertions could never fail: there was no
 	// object in the use case that a read could reach.
 	return usecase.NewUserUseCase(
-		repo, eagerPasswordHasher{}, nil, nil, spy,
+		repo, nil, eagerPasswordHasher{}, nil, nil, spy,
 		spy, uow,
 		nil, &config.Config{}, publisher, nil,
 	)

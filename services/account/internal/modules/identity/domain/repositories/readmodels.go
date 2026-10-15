@@ -10,6 +10,23 @@ import (
 
 // Repository read models owned by the domain layer (feature 017);
 // application/dto aliases them for handler compatibility.
+
+// AdminActivityEventRow is one activity event plus the account identity the
+// admin list shows (029, data-model §1). Identity arrives through a LEFT JOIN
+// on users: a soft-deleted account keeps its row, and its events must stay
+// visible with the identity readable. FirstName/LastName stay pointers because
+// the columns are nullable.
+type AdminActivityEventRow struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	ActivityType string
+	OccurredAt   time.Time
+	CreatedAt    time.Time
+	Email        string
+	FirstName    *string
+	LastName     *string
+}
+
 type UserAdminStatsDTO struct {
 	SnapshotDate   time.Time `json:"snapshotDate"`
 	TotalUsers     int       `json:"totalUsers"`

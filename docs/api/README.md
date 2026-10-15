@@ -68,7 +68,8 @@ docs/api/
 │   ├── auth-api.md              ← API Đăng ký, Đăng nhập, Quên mật khẩu
 │   ├── google-login-frontend-guide.md ← Hướng dẫn FE đăng nhập Google (web + mobile)
 │   ├── me-api.md                ← API Hồ sơ của tôi (Profile)
-│   └── admin-user-api.md        ← API quản trị Người dùng (Admin)
+│   ├── admin-user-api.md        ← API quản trị Người dùng (Admin)
+│   └── admin-activity-api.md    ← API nhật ký hoạt động người dùng (Admin)
 ├── subscription/                ← Subscription & Billing module
 │   ├── constants.md             ← Hằng số Deposit, Plan, AI Policy
 │   ├── subscription-api.md      ← API xem gói, quản lý quota

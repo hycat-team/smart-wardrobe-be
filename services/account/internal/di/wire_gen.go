@@ -122,7 +122,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, iGoogleAuthUseCase, cfg)
 	iUserSubscriptionContract := contract4.NewUserSubscriptionContract(iSubscriptionUseCase, iSubscriptionOverviewCache)
 	iMediaService := media.NewCloudinaryService(cfg)
-	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iUserSubscriptionContract, iUserSubscriptionProvisioningContract, iUnitOfWork, iMediaService, cfg, rabbitMQClient, l)
+	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iUserActivityRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iUserSubscriptionContract, iUserSubscriptionProvisioningContract, iUnitOfWork, iMediaService, cfg, rabbitMQClient, l)
 	meHandler := handler.NewMeHandler(iUserUseCase)
 	adminHandler := handler.NewAdminHandler(iUserUseCase, iAuditLogContract)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)

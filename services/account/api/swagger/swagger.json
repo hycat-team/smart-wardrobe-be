@@ -27,6 +27,94 @@
                 }
             }
         },
+        "/api/v1/admin/activity-events": {
+            "get": {
+                "description": "Lấy danh sách phân trang các sự kiện hoạt động (đăng nhập, làm mới phiên) kèm danh tính người dùng. Hỗ trợ lọc theo người dùng, loại hoạt động và khoảng ngày (ngày lịch Việt Nam). Chỉ đọc.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin User"
+                ],
+                "summary": "Danh sách hoạt động người dùng",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID người dùng (UUID)",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại hoạt động: login | refresh",
+                        "name": "activityType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Từ ngày, bao gồm (YYYY-MM-DD, giờ Việt Nam)",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Đến ngày, bao gồm trọn ngày (YYYY-MM-DD, giờ Việt Nam)",
+                        "name": "toDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang (mặc định 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số bản ghi mỗi trang (mặc định 20, tối đa 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy danh sách hoạt động thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.ActivityEventListRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/audit-logs": {
             "get": {
                 "description": "Quản trị viên tra cứu lịch sử thao tác của các quản trị viên trong hệ thống.",
@@ -2983,6 +3071,50 @@
                 },
                 "metadata": {
                     "$ref": "#/definitions/dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_identity.ActivityEventListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.ActivityEventRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_identity.ActivityEventRes": {
+            "type": "object",
+            "properties": {
+                "activityType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "occurredAt": {
+                    "type": "string"
+                },
+                "userEmail": {
+                    "type": "string"
+                },
+                "userFirstName": {
+                    "description": "UserFirstName/UserLastName are absent when the account never set them\n(NULL), while UserEmail is always present — the LEFT JOIN keeps the\nevent visible even for a soft-deleted account.",
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "userLastName": {
+                    "type": "string"
                 }
             }
         },

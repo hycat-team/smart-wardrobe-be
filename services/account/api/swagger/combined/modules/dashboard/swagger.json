@@ -376,6 +376,50 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_account_dto_identity.ActivityEventListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.ActivityEventRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ActivityEventRes": {
+      "properties": {
+        "activityType": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "occurredAt": {
+          "type": "string"
+        },
+        "userEmail": {
+          "type": "string"
+        },
+        "userFirstName": {
+          "description": "UserFirstName/UserLastName are absent when the account never set them\n(NULL), while UserEmail is always present — the LEFT JOIN keeps the\nevent visible even for a soft-deleted account.",
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userLastName": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes": {
       "properties": {
         "subscription": {},

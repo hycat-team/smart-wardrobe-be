@@ -20,3 +20,9 @@ Các hằng số dùng trong APIs liên quan đến Phân quyền, Xác thực v
 *   **Các giá trị hợp lệ:**
     *   `local`: Tài khoản đăng ký bằng email + mật khẩu (xác thực qua OTP).
     *   `google`: Tài khoản tạo/liên kết qua Google (định danh theo Google `sub`).
+
+## 4. Loại hoạt động người dùng (UserActivityType)
+*   **Đường dẫn package:** `services/account/internal/modules/identity/domain/constants/useractivitytype`
+*   **Các giá trị hợp lệ:**
+    *   `login`: Phiên được cấp qua đăng nhập mật khẩu hoặc Google.
+    *   `refresh`: Phiên được gia hạn khi xoay refresh token.

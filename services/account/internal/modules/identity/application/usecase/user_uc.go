@@ -13,7 +13,11 @@ import (
 )
 
 type UserUseCase struct {
-	userRepo              repositories.IUserRepository
+	userRepo repositories.IUserRepository
+	// activityRepo backs the admin activity list (029 R3). The repository is
+	// already provided in the wire graph — the admin dashboard reader consumes
+	// it through UserRepository — so this is one extra edge, not a new provider.
+	activityRepo          repositories.IUserActivityRepository
 	passwordHasher        security.IPasswordHasher
 	refreshTokenRepo      repositories.IRefreshTokenRepository
 	tokenBlacklistService security.ITokenBlacklistService
@@ -32,6 +36,7 @@ type UserUseCase struct {
 
 func NewUserUseCase(
 	userRepo repositories.IUserRepository,
+	activityRepo repositories.IUserActivityRepository,
 	passwordHasher security.IPasswordHasher,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
 	tokenBlacklistService security.ITokenBlacklistService,
@@ -45,6 +50,7 @@ func NewUserUseCase(
 ) uc_interfaces.IUserUseCase {
 	return &UserUseCase{
 		userRepo:              userRepo,
+		activityRepo:          activityRepo,
 		passwordHasher:        passwordHasher,
 		refreshTokenRepo:      refreshTokenRepo,
 		tokenBlacklistService: tokenBlacklistService,
