@@ -109,7 +109,12 @@ type IAICostRepository interface {
 	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]AIEventDrillDownDTO, int64, error)
 	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]AIUsageByOperationDTO, error)
 	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
-	GetAIErrorBreakdown(ctx context.Context) ([]AIErrorBreakdownDTO, error)
+	// GetAIErrorBreakdown groups released errors by code/provider/model. With a
+	// period it filters `created_at >= from AND created_at < to` (029 R1/R9):
+	// the same window the caller uses for the request count, so the two halves
+	// of the error rate can never diverge. Both bounds zero keeps the all-time
+	// behaviour old callers rely on; a zero bound leaves that side open.
+	GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]AIErrorBreakdownDTO, error)
 	GetUsageByUser(ctx context.Context, userID uuid.UUID, fromDate, toDate *time.Time, page, limit int) ([]*aiexecutor_entities.AIUsageEvent, int64, error)
 	ListGrantsByUser(ctx context.Context, userID uuid.UUID) ([]*aiexecutor_entities.AIPolicyGrant, error)
 	GetPolicyByID(ctx context.Context, policyID uuid.UUID) (*aiexecutor_entities.AICostPolicy, error)

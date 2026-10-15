@@ -160,7 +160,7 @@ func (f *fakeDepositTxRepo) ClaimReconciliationCandidates(ctx context.Context, l
 func (f *fakeDepositTxRepo) UpdateWithToken(ctx context.Context, orderCode int64, token uuid.UUID, updates map[string]any) (int64, error) {
 	return 1, nil
 }
-func (f *fakeDepositTxRepo) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+func (f *fakeDepositTxRepo) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
 	return nil, nil
 }
 func (f *fakeDepositTxRepo) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
@@ -211,7 +211,7 @@ func (f *fakeSubRepo) BulkCreate(ctx context.Context, subs []*entities.UserSubsc
 func (f *fakeSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
 }
-func (f *fakeSubRepo) GetDistributionByPlanCode(ctx context.Context) ([]repositories.SubscriptionDistributionDTO, error) {
+func (f *fakeSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
 	return nil, nil
 }
 func (f *fakeSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {

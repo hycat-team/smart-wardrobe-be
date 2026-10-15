@@ -9,10 +9,15 @@ import (
 )
 
 type ISubscriptionDashboardReader interface {
-	GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error)
-	GetSubscriptionDistribution(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error)
+	// The period methods take the half-open VN range [from, to) (029 R1/
+	// data-model §3); a zero bound leaves that side open. For the stats the
+	// wire request also carries the legacy snapshot_date: when both bounds are
+	// zero the server falls back to that day's range, keeping old clients
+	// working.
+	GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error)
+	GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]dto.SubscriptionDistributionDTO, error)
 	GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error)
-	GetRenewalStats(ctx context.Context) (*dto.RenewalStatsDTO, error)
+	GetRenewalStats(ctx context.Context, from, to time.Time) (*dto.RenewalStatsDTO, error)
 }
 
 type SubscriptionDashboardReader struct {
@@ -23,18 +28,18 @@ func NewSubscriptionDashboardReader(adminStatsUC uc_interfaces.IAdminStatsUseCas
 	return &SubscriptionDashboardReader{adminStatsUC: adminStatsUC}
 }
 
-func (r *SubscriptionDashboardReader) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
-	return r.adminStatsUC.GetAdminSubscriptionStats(ctx, snapshotDate)
+func (r *SubscriptionDashboardReader) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+	return r.adminStatsUC.GetAdminSubscriptionStats(ctx, from, to)
 }
 
-func (r *SubscriptionDashboardReader) GetSubscriptionDistribution(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error) {
-	return r.adminStatsUC.GetSubscriptionDistribution(ctx)
+func (r *SubscriptionDashboardReader) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]dto.SubscriptionDistributionDTO, error) {
+	return r.adminStatsUC.GetSubscriptionDistribution(ctx, from, to)
 }
 
 func (r *SubscriptionDashboardReader) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
 	return r.adminStatsUC.GetRevenueBreakdown(ctx, fromDate, toDate)
 }
 
-func (r *SubscriptionDashboardReader) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsDTO, error) {
-	return r.adminStatsUC.GetRenewalStats(ctx)
+func (r *SubscriptionDashboardReader) GetRenewalStats(ctx context.Context, from, to time.Time) (*dto.RenewalStatsDTO, error) {
+	return r.adminStatsUC.GetRenewalStats(ctx, from, to)
 }

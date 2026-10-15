@@ -71,8 +71,15 @@ func (c *AICostDashboardReaderClient) GetTotalAIRequestCount(ctx context.Context
 	return res.GetTotal(), nil
 }
 
-func (c *AICostDashboardReaderClient) GetAIErrorBreakdown(ctx context.Context) ([]aidto.AIErrorBreakdownDTO, error) {
-	res, err := c.svc.GetAIErrorBreakdown(ctx, &aiv1.GetAIErrorBreakdownRequest{})
+// GetAIErrorBreakdown sends the half-open VN day pair [from, to) (029
+// grpc-delta §2/§3). Zero bounds are sent as zero timestamps, which the
+// server reads as "no period" (all-time); a pre-029 server ignores the new
+// fields entirely.
+func (c *AICostDashboardReaderClient) GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]aidto.AIErrorBreakdownDTO, error) {
+	res, err := c.svc.GetAIErrorBreakdown(ctx, &aiv1.GetAIErrorBreakdownRequest{
+		FromDate: timestamppb.New(from),
+		ToDate:   timestamppb.New(to),
+	})
 	if err != nil {
 		return nil, grpcx.ToAppError(err)
 	}

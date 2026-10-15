@@ -27,18 +27,18 @@ func NewAdminStatsUseCase(
 	}
 }
 
-func (uc *AdminStatsUseCase) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
-	return uc.depositRepo.GetAdminSubscriptionStats(ctx, snapshotDate)
+func (uc *AdminStatsUseCase) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+	return uc.depositRepo.GetAdminSubscriptionStats(ctx, from, to)
 }
 
-func (uc *AdminStatsUseCase) GetSubscriptionDistribution(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error) {
-	return uc.userSubRepo.GetDistributionByPlanCode(ctx)
+func (uc *AdminStatsUseCase) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]dto.SubscriptionDistributionDTO, error) {
+	return uc.userSubRepo.GetDistributionByPlanCode(ctx, from, to)
 }
 
 func (uc *AdminStatsUseCase) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
 	return uc.depositRepo.GetRevenueBreakdown(ctx, fromDate, toDate)
 }
 
-func (uc *AdminStatsUseCase) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsDTO, error) {
-	return uc.renewalRepo.GetRenewalStats(ctx)
+func (uc *AdminStatsUseCase) GetRenewalStats(ctx context.Context, from, to time.Time) (*dto.RenewalStatsDTO, error) {
+	return uc.renewalRepo.GetRenewalStats(ctx, from, to)
 }

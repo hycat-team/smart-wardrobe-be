@@ -41,6 +41,6 @@ type IDepositTransactionRepository interface {
 	GetActiveDirectPurchase(ctx context.Context, userID uuid.UUID) (*entities.DepositTransaction, error)
 	ClaimReconciliationCandidates(ctx context.Context, limit int, lease time.Duration) ([]*ClaimedDepositTransaction, error)
 	UpdateWithToken(ctx context.Context, orderCode int64, token uuid.UUID, updates map[string]any) (int64, error)
-	GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*AdminSubscriptionStatsDTO, error)
+	GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*AdminSubscriptionStatsDTO, error)
 	GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]RevenueBreakdownDTO, error)
 }

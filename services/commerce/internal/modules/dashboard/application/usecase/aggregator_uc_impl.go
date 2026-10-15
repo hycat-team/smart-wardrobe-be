@@ -87,7 +87,11 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 		return err
 	}
 
-	subStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctxTimeout, today)
+	// The subscription stats query now takes the half-open VN day pair
+	// (029 R1); passing today's VNDayRange keeps the worker's behaviour
+	// exactly as before (it used to derive the same range from `today`).
+	dayStart, dayEnd := timeutils.VNDayRange(today)
+	subStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctxTimeout, dayStart, dayEnd)
 	if err != nil {
 		run.ChildError(uc.logger, "Failed to read subscription stats for snapshot", zap.Error(err))
 		return err

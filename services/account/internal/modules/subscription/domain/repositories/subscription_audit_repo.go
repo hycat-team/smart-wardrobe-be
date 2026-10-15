@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 )
@@ -29,5 +30,8 @@ type ISubscriptionRenewalAttemptRepository interface {
 	Create(ctx context.Context, attempt *entities.SubscriptionRenewalAttempt) error
 	GetByKey(ctx context.Context, key string) (*entities.SubscriptionRenewalAttempt, error)
 	Update(ctx context.Context, attempt *entities.SubscriptionRenewalAttempt) error
-	GetRenewalStats(ctx context.Context) (*RenewalStatsDTO, error)
+	// GetRenewalStats summarises renewal attempts created in [from, to) (029 R8
+	// /data-model §6: the attempt belongs to the period it was created in). A
+	// zero bound leaves that side open; both zero keeps the all-time behaviour.
+	GetRenewalStats(ctx context.Context, from, to time.Time) (*RenewalStatsDTO, error)
 }

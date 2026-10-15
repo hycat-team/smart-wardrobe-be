@@ -336,8 +336,8 @@ func (uc *CostUseCase) GetTotalAIRequestCount(ctx context.Context, fromDate, toD
 	return uc.repo.GetTotalAIRequestCount(ctx, fromDate, toDate)
 }
 
-func (uc *CostUseCase) GetAIErrorBreakdown(ctx context.Context) ([]aiexecutor_dto.AIErrorBreakdownDTO, error) {
-	return uc.repo.GetAIErrorBreakdown(ctx)
+func (uc *CostUseCase) GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]aiexecutor_dto.AIErrorBreakdownDTO, error) {
+	return uc.repo.GetAIErrorBreakdown(ctx, from, to)
 }
 
 // resolvePaidAttemptCap returns the per-day paid-attempt cap to enforce.

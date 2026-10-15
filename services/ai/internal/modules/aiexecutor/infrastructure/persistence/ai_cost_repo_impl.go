@@ -428,7 +428,11 @@ func (r *AICostRepository) GetAIUsageByOperation(ctx context.Context, fromDate, 
 		query = query.Where("created_at >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("created_at <= ?", toDate)
+		// Half-open upper bound (029 R1/data-model §3): the caller passes
+		// EndOfDayInVN of the last calendar day; `<=` would also count the
+		// instant that starts the next period (and used to mis-read the VN
+		// offset on a UTC midnight).
+		query = query.Where("created_at < ?", toDate)
 	}
 	var rows []dto.AIUsageByOperationDTO
 	err := query.Group("operation, logical_route").
@@ -446,7 +450,8 @@ func (r *AICostRepository) GetTotalAIRequestCount(ctx context.Context, fromDate,
 		query = query.Where("created_at >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("created_at <= ?", toDate)
+		// Half-open upper bound (029 R1) — see GetAIUsageByOperation.
+		query = query.Where("created_at < ?", toDate)
 	}
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
@@ -455,11 +460,23 @@ func (r *AICostRepository) GetTotalAIRequestCount(ctx context.Context, fromDate,
 	return count, nil
 }
 
-func (r *AICostRepository) GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error) {
+// GetAIErrorBreakdown groups released errors by code/provider/model.
+//
+// 029 R9/data-model §7: with a period the same half-open range is applied as
+// every other metric query; with both bounds zero the breakdown stays
+// all-time, which is the behaviour pre-029 callers got.
+func (r *AICostRepository) GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]dto.AIErrorBreakdownDTO, error) {
 	var rows []dto.AIErrorBreakdownDTO
-	err := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).
+	query := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).
 		Select("error_code, provider, model, COUNT(*) AS error_count").
-		Where("status = ?", string(aiusageeventstatus.Released)).
+		Where("status = ?", string(aiusageeventstatus.Released))
+	if !from.IsZero() {
+		query = query.Where("created_at >= ?", from)
+	}
+	if !to.IsZero() {
+		query = query.Where("created_at < ?", to)
+	}
+	err := query.
 		Group("error_code, provider, model").
 		Order("error_count DESC").
 		Scan(&rows).Error

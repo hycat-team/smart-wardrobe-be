@@ -74,7 +74,7 @@ func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context,
 func (f *fakeRenewalSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
 }
-func (f *fakeRenewalSubRepo) GetDistributionByPlanCode(ctx context.Context) ([]repositories.SubscriptionDistributionDTO, error) {
+func (f *fakeRenewalSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
 	return nil, nil
 }
 func (f *fakeRenewalSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
@@ -169,7 +169,7 @@ func (f *fakeRenewalAttemptRepo) Update(ctx context.Context, attempt *entities.S
 	f.updates++
 	return nil
 }
-func (f *fakeRenewalAttemptRepo) GetRenewalStats(ctx context.Context) (*repositories.RenewalStatsDTO, error) {
+func (f *fakeRenewalAttemptRepo) GetRenewalStats(ctx context.Context, from, to time.Time) (*repositories.RenewalStatsDTO, error) {
 	return nil, nil
 }
 

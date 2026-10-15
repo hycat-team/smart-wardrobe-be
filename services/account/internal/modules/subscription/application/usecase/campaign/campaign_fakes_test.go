@@ -373,7 +373,7 @@ func (f *fakeSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, 
 	return nil, nil
 }
 
-func (f *fakeSubRepo) GetDistributionByPlanCode(ctx context.Context) ([]repositories.SubscriptionDistributionDTO, error) {
+func (f *fakeSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
 	return nil, nil
 }
 

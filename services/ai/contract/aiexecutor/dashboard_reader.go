@@ -13,7 +13,9 @@ type IAICostDashboardReader interface {
 	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
 	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error)
 	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
-	GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error)
+	// GetAIErrorBreakdown takes the half-open VN range [from, to) (029 R9);
+	// both bounds zero keeps the all-time behaviour for old callers.
+	GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]dto.AIErrorBreakdownDTO, error)
 }
 
 type AICostDashboardReader struct {
@@ -40,6 +42,6 @@ func (r *AICostDashboardReader) GetTotalAIRequestCount(ctx context.Context, from
 	return r.costUC.GetTotalAIRequestCount(ctx, fromDate, toDate)
 }
 
-func (r *AICostDashboardReader) GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error) {
-	return r.costUC.GetAIErrorBreakdown(ctx)
+func (r *AICostDashboardReader) GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]dto.AIErrorBreakdownDTO, error) {
+	return r.costUC.GetAIErrorBreakdown(ctx, from, to)
 }

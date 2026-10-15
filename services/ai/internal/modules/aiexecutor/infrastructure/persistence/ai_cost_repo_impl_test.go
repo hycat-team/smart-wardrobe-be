@@ -2,9 +2,13 @@ package persistence
 
 import (
 	"bytes"
+	"context"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +17,9 @@ import (
 	aiexecutor_entities "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
 
 	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // The project has no database test harness — no sqlmock, no testcontainers, no
@@ -268,4 +275,133 @@ func readRepoImpl(t *testing.T) []byte {
 		t.Fatalf("cannot read repo impl: %v", err)
 	}
 	return src
+}
+
+// ---- 029 T028: the admin period queries build the half-open VN range ----
+//
+// Same unreachable-dialector + statement-capture technique as
+// services/account/.../admin_stats_query_sql_test.go: gorm.Open with
+// DisableAutomaticPing builds the statement and fails on execution, and the
+// logger captures what would have gone to the driver. It proves the repository
+// BUILDS the query the period contract (R1/data-model §3) describes; that
+// PostgreSQL accepts it is covered by the live quickstart check.
+
+const unreachableStatsDSN = "host=127.0.0.1 port=1 user=none dbname=none sslmode=disable"
+
+type aiStatsSQLCapture struct {
+	gormlogger.Interface
+	mu         sync.Mutex
+	statements []string
+}
+
+func newAIStatsSQLCapture() *aiStatsSQLCapture {
+	base := gormlogger.New(log.New(io.Discard, "", 0), gormlogger.Config{LogLevel: gormlogger.Silent})
+	return &aiStatsSQLCapture{Interface: base}
+}
+
+func (l *aiStatsSQLCapture) ParamsFilter(_ context.Context, sql string, _ ...any) (string, []any) {
+	return sql, nil
+}
+
+func (l *aiStatsSQLCapture) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+	statement, _ := fc()
+	l.mu.Lock()
+	l.statements = append(l.statements, statement)
+	l.mu.Unlock()
+	l.Interface.Trace(ctx, begin, fc, err)
+}
+
+var _ gormlogger.Interface = (*aiStatsSQLCapture)(nil)
+
+// aiStatsStatement runs op against an unreachable dialector and returns the ONE
+// statement it built. A success would mean the repository never reached the
+// driver, so it is a failure of the test, not of the environment.
+func aiStatsStatement(t *testing.T, op func(dbConn *gorm.DB) error) string {
+	t.Helper()
+
+	capture := newAIStatsSQLCapture()
+	dbConn, err := gorm.Open(postgres.Open(unreachableStatsDSN), &gorm.Config{
+		Logger:               capture,
+		DisableAutomaticPing: true,
+	})
+	if err != nil {
+		t.Fatalf("initialise the dialector without connecting: %v", err)
+	}
+
+	if err := op(dbConn); err == nil {
+		t.Fatal("expected the call to fail without a server; a success would mean " +
+			"it never reached the driver")
+	}
+
+	capture.mu.Lock()
+	defer capture.mu.Unlock()
+	if len(capture.statements) != 1 {
+		t.Fatalf("expected exactly one statement, got %d: %v", len(capture.statements), capture.statements)
+	}
+	return capture.statements[0]
+}
+
+// TestAIErrorBreakdownAcceptsAPeriod pins FR-016's repository half: with a
+// period the grouping query must filter `created_at >= from AND created_at <
+// to` — the same half-open window the commerce use case uses for the request
+// count, so the numerator and denominator can never re-diverge.
+func TestAIErrorBreakdownAcceptsAPeriod(t *testing.T) {
+	from := time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
+	stmt := aiStatsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewAICostRepository(dbConn).GetAIErrorBreakdown(context.Background(), from, to)
+		return err
+	})
+
+	if !strings.Contains(stmt, "created_at >= ") || !strings.Contains(stmt, "created_at < ") {
+		t.Fatalf("029 FR-016: error breakdown must filter the half-open period, got: %s", stmt)
+	}
+	if !strings.Contains(stmt, "status = ") {
+		t.Fatalf("the released-status filter must survive the period change, got: %s", stmt)
+	}
+}
+
+// TestAIErrorBreakdownWithoutAPeriodKeepsAllTime is the backward-compatible
+// branch R9 asks for: an older caller that sends no period still receives the
+// all-time breakdown, proven by the absence of a created_at filter.
+func TestAIErrorBreakdownWithoutAPeriodKeepsAllTime(t *testing.T) {
+	stmt := aiStatsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewAICostRepository(dbConn).GetAIErrorBreakdown(context.Background(), time.Time{}, time.Time{})
+		return err
+	})
+
+	if strings.Contains(stmt, "created_at") {
+		t.Fatalf("a zero period must leave the breakdown unbounded, got: %s", stmt)
+	}
+}
+
+// TestAIUsageAndRequestCountUseHalfOpenUpperBound pins the R1 standardisation
+// of the two pre-existing period queries: `<=` on the upper bound dropped the
+// VN timezone offset and double-counted the instant that starts the next
+// period; both must build `created_at < to`.
+func TestAIUsageAndRequestCountUseHalfOpenUpperBound(t *testing.T) {
+	from := time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
+
+	usageStmt := aiStatsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewAICostRepository(dbConn).GetAIUsageByOperation(context.Background(), from, to)
+		return err
+	})
+	if !strings.Contains(usageStmt, "created_at >= ") || !strings.Contains(usageStmt, "created_at < ") {
+		t.Fatalf("R1: usage-by-operation must filter created_at >= from AND created_at < to, got: %s", usageStmt)
+	}
+	if strings.Contains(usageStmt, "created_at <= ") {
+		t.Fatalf("R1: the inclusive `<= to` bound must be gone, got: %s", usageStmt)
+	}
+
+	countStmt := aiStatsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewAICostRepository(dbConn).GetTotalAIRequestCount(context.Background(), from, to)
+		return err
+	})
+	if !strings.Contains(countStmt, "created_at >= ") || !strings.Contains(countStmt, "created_at < ") {
+		t.Fatalf("R1: the request count must filter created_at >= from AND created_at < to, got: %s", countStmt)
+	}
+	if strings.Contains(countStmt, "created_at <= ") {
+		t.Fatalf("R1: the inclusive `<= to` bound must be gone, got: %s", countStmt)
+	}
 }

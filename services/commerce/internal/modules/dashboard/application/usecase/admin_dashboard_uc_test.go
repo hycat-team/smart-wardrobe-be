@@ -18,6 +18,7 @@ import (
 
 	subscriptionContract "smart-wardrobe-be/services/account/contract/subscription"
 	subscriptionDTO "smart-wardrobe-be/services/account/dto/subscription"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -150,6 +151,19 @@ type mockAICostReader struct {
 	aiContract.IAICostDashboardReader
 	stats *aiDTO.AIUsageAdminStatsDTO
 	err   error
+
+	usageByOperation []aiDTO.AIUsageByOperationDTO
+	errorBreakdown   []aiDTO.AIErrorBreakdownDTO
+	totalRequests    int64
+
+	errorBreakdownCalls int
+	requestCountCalls   int
+	lastErrorFrom       time.Time
+	lastErrorTo         time.Time
+	lastRequestFrom     time.Time
+	lastRequestTo       time.Time
+	lastUsageFrom       time.Time
+	lastUsageTo         time.Time
 }
 
 func (m *mockAICostReader) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*aiDTO.AIUsageAdminStatsDTO, error) {
@@ -160,19 +174,61 @@ func (m *mockAICostReader) GetAIEventsDrillDown(ctx context.Context, status stri
 	return nil, 0, nil
 }
 
-type mockSubscriptionReader struct {
-	subscriptionContract.ISubscriptionDashboardReader
-	stats   *subscriptionDTO.AdminSubscriptionStatsDTO
-	renewal *subscriptionDTO.RenewalStatsDTO
-	err     error
+func (m *mockAICostReader) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]aiDTO.AIUsageByOperationDTO, error) {
+	m.lastUsageFrom, m.lastUsageTo = fromDate, toDate
+	return m.usageByOperation, m.err
 }
 
-func (m *mockSubscriptionReader) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*subscriptionDTO.AdminSubscriptionStatsDTO, error) {
+func (m *mockAICostReader) GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]aiDTO.AIErrorBreakdownDTO, error) {
+	m.errorBreakdownCalls++
+	m.lastErrorFrom, m.lastErrorTo = from, to
+	return m.errorBreakdown, m.err
+}
+
+func (m *mockAICostReader) GetTotalAIRequestCount(ctx context.Context, from, to time.Time) (int64, error) {
+	m.requestCountCalls++
+	m.lastRequestFrom, m.lastRequestTo = from, to
+	return m.totalRequests, m.err
+}
+
+type mockSubscriptionReader struct {
+	subscriptionContract.ISubscriptionDashboardReader
+	stats        *subscriptionDTO.AdminSubscriptionStatsDTO
+	renewal      *subscriptionDTO.RenewalStatsDTO
+	distribution []subscriptionDTO.SubscriptionDistributionDTO
+	revenue      []subscriptionDTO.RevenueBreakdownDTO
+	err          error
+
+	statsCalls           int
+	lastStatsFrom        time.Time
+	lastStatsTo          time.Time
+	lastRenewalFrom      time.Time
+	lastRenewalTo        time.Time
+	lastDistributionFrom time.Time
+	lastDistributionTo   time.Time
+	lastRevenueFrom      time.Time
+	lastRevenueTo        time.Time
+}
+
+func (m *mockSubscriptionReader) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*subscriptionDTO.AdminSubscriptionStatsDTO, error) {
+	m.statsCalls++
+	m.lastStatsFrom, m.lastStatsTo = from, to
 	return m.stats, m.err
 }
 
-func (m *mockSubscriptionReader) GetRenewalStats(ctx context.Context) (*subscriptionDTO.RenewalStatsDTO, error) {
+func (m *mockSubscriptionReader) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]subscriptionDTO.SubscriptionDistributionDTO, error) {
+	m.lastDistributionFrom, m.lastDistributionTo = from, to
+	return m.distribution, m.err
+}
+
+func (m *mockSubscriptionReader) GetRenewalStats(ctx context.Context, from, to time.Time) (*subscriptionDTO.RenewalStatsDTO, error) {
+	m.lastRenewalFrom, m.lastRenewalTo = from, to
 	return m.renewal, m.err
+}
+
+func (m *mockSubscriptionReader) GetRevenueBreakdown(ctx context.Context, from, to time.Time) ([]subscriptionDTO.RevenueBreakdownDTO, error) {
+	m.lastRevenueFrom, m.lastRevenueTo = from, to
+	return m.revenue, m.err
 }
 
 func TestAdminGetKPICards_FromSnapshot(t *testing.T) {
@@ -308,19 +364,45 @@ func TestAdminGetAIMarginAnalytics_FromSnapshots(t *testing.T) {
 	}
 }
 
+// 029 fixup: the margin response echoes the VN calendar days — 00:00 of the
+// first and of the last day — never the exclusive upper bound (00:00 of the
+// day AFTER the last one), which is what the raw EndOfDayInVN bound would
+// print.
+func TestAdminGetAIMarginAnalytics_EchoesVNDayLabels(t *testing.T) {
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
+
+	from := time.Date(2026, time.March, 1, 0, 0, 0, 0, timeutils.VnLoc())
+	to := time.Date(2026, time.April, 1, 0, 0, 0, 0, timeutils.VnLoc()) // exclusive bound; last day is Mar 31
+
+	res, err := uc.GetAIMarginAnalytics(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wantTo := time.Date(2026, time.March, 31, 0, 0, 0, 0, timeutils.VnLoc())
+	if !res.FromDate.Equal(from) {
+		t.Errorf("expected FromDate=%v, got %v", from, res.FromDate)
+	}
+	if !res.ToDate.Equal(wantTo) {
+		t.Errorf("expected ToDate=%v, got %v", wantTo, res.ToDate)
+	}
+}
+
 func TestAdminGetPayOSReconciliation(t *testing.T) {
-	repo := &mockAdminDashboardRepo{
-		latestSnapshot: &entities.DashboardAdminDailySnapshot{
-			PayOSTransactionCount:  100,
-			PayOSSuccessCount:      95,
-			PayOSPendingCount:      3,
-			PayOSFailedCount:       1,
-			PayOSVoidedCount:       1,
-			SubscriptionRevenueVND: 5000000,
+	// 029 T027/R6: the payOS panel now aggregates the transaction table over a
+	// period instead of reading the latest snapshot; the counts come from the
+	// subscription reader and the absent period defaults to today (VN).
+	reader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{
+			PayOSTransactionCount:    100,
+			PayOSSuccessCount:        95,
+			PayOSPendingCount:        3,
+			PayOSFailedCount:         1,
+			PayOSVoidedCount:         1,
+			TotalSubscriptionRevenue: decimal.NewFromInt(5000000),
 		},
 	}
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
-	res, err := uc.GetPayOSReconciliation(context.Background())
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+	res, err := uc.GetPayOSReconciliation(context.Background(), time.Time{}, time.Time{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -335,6 +417,14 @@ func TestAdminGetPayOSReconciliation(t *testing.T) {
 	}
 	if res.PendingCount != 3 || res.VoidedCount != 1 {
 		t.Errorf("expected PendingCount=3 and VoidedCount=1, got %+v", res)
+	}
+
+	// No period sent: the reader must be asked for exactly today's VN day.
+	wantFrom := timeutils.StartOfDayInVN(timeutils.NowVN())
+	wantTo := timeutils.EndOfDayInVN(timeutils.NowVN())
+	if !reader.lastStatsFrom.Equal(wantFrom) || !reader.lastStatsTo.Equal(wantTo) {
+		t.Errorf("default period = [%s, %s), want today's VN day [%s, %s)",
+			reader.lastStatsFrom, reader.lastStatsTo, wantFrom, wantTo)
 	}
 }
 
@@ -361,7 +451,15 @@ func TestAdminGetSystemOverview(t *testing.T) {
 			},
 		},
 	}
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
+	// 029 T027/T035: `overview` passes zero bounds to the payOS reconciliation
+	// and the use case fills in today (VN) — the panel never reads a snapshot.
+	reader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{
+			PayOSTransactionCount: 100,
+			PayOSSuccessCount:     95,
+		},
+	}
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
 	res, err := uc.GetSystemOverview(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -378,6 +476,13 @@ func TestAdminGetSystemOverview(t *testing.T) {
 	if res.PayOSReconcile.TotalTransactions != 100 {
 		t.Errorf("expected TotalTransactions=100, got %d", res.PayOSReconcile.TotalTransactions)
 	}
+	if reader.statsCalls == 0 {
+		t.Error("overview must reach the subscription reader for the payOS panel")
+	}
+	wantFrom := timeutils.StartOfDayInVN(timeutils.NowVN())
+	if !reader.lastStatsFrom.Equal(wantFrom) {
+		t.Errorf("overview payOS period must default to today VN, got from=%s want %s", reader.lastStatsFrom, wantFrom)
+	}
 }
 
 func TestGetRenewalStatsSuccessRateExcludesNonDecidedAttempts(t *testing.T) {
@@ -392,7 +497,9 @@ func TestGetRenewalStatsSuccessRateExcludesNonDecidedAttempts(t *testing.T) {
 	}
 
 	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
-	res, err := uc.GetRenewalStats(context.Background())
+	// 029 T027: distribution/renewal pass the bounds straight through; zero
+	// means "no period" and that meaning lives in the account service.
+	res, err := uc.GetRenewalStats(context.Background(), time.Time{}, time.Time{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -405,11 +512,15 @@ func TestGetRenewalStatsSuccessRateExcludesNonDecidedAttempts(t *testing.T) {
 	if res.TotalAttempts != 10 || res.SuccessCount != 6 || res.FailedCount != 2 {
 		t.Errorf("raw counts must pass through untouched: %+v", res)
 	}
+	if !reader.lastRenewalFrom.IsZero() || !reader.lastRenewalTo.IsZero() {
+		t.Errorf("an absent period must stay zero all the way to the reader, got [%s, %s)",
+			reader.lastRenewalFrom, reader.lastRenewalTo)
+	}
 }
 
 func TestGetPayOSReconciliationUsesRealBreakdown(t *testing.T) {
-	repo := &mockAdminDashboardRepo{
-		latestSnapshot: &entities.DashboardAdminDailySnapshot{
+	reader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{
 			PayOSTransactionCount: 100,
 			PayOSSuccessCount:     90,
 			PayOSPendingCount:     6,
@@ -418,8 +529,8 @@ func TestGetPayOSReconciliationUsesRealBreakdown(t *testing.T) {
 		},
 	}
 
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
-	res, err := uc.GetPayOSReconciliation(context.Background())
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+	res, err := uc.GetPayOSReconciliation(context.Background(), time.Time{}, time.Time{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -430,5 +541,183 @@ func TestGetPayOSReconciliationUsesRealBreakdown(t *testing.T) {
 	}
 	if res.PendingCount != 6 || res.VoidedCount != 2 || res.SuccessCount != 90 {
 		t.Errorf("breakdown mismatch: %+v", res)
+	}
+}
+
+// ---- 029 T027: the period is honoured everywhere ---------------------------------
+
+// TestAdminGetPayOSReconciliationUsesTheRequestedPeriod is FR-017's "tổng hợp
+// theo kỳ" half: an explicit period must reach the reader unchanged, not be
+// replaced by a snapshot or by today.
+func TestAdminGetPayOSReconciliationUsesTheRequestedPeriod(t *testing.T) {
+	reader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{PayOSTransactionCount: 7},
+	}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+
+	from := time.Date(2026, 9, 16, 0, 0, 0, 0, timeutils.VnLoc())
+	to := time.Date(2026, 10, 16, 0, 0, 0, 0, timeutils.VnLoc())
+	if _, err := uc.GetPayOSReconciliation(context.Background(), from, to); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !reader.lastStatsFrom.Equal(from) || !reader.lastStatsTo.Equal(to) {
+		t.Errorf("reader period = [%s, %s), want [%s, %s)", reader.lastStatsFrom, reader.lastStatsTo, from, to)
+	}
+}
+
+// TestAdminGetSubscriptionDistributionPassesThePeriodThrough covers the
+// distribution signature: the payload semantics live in the account service
+// (R7), so commerce must forward the bounds untouched — including zero for an
+// absent period.
+func TestAdminGetSubscriptionDistributionPassesThePeriodThrough(t *testing.T) {
+	reader := &mockSubscriptionReader{
+		distribution: []subscriptionDTO.SubscriptionDistributionDTO{
+			{PlanCode: "FREE", UserCount: 3},
+			{PlanCode: "PREMIUM_MONTHLY", UserCount: 1},
+		},
+	}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+
+	from := time.Date(2026, 10, 1, 0, 0, 0, 0, timeutils.VnLoc())
+	to := time.Date(2026, 11, 1, 0, 0, 0, 0, timeutils.VnLoc())
+	res, err := uc.GetSubscriptionDistribution(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reader.lastDistributionFrom.Equal(from) || !reader.lastDistributionTo.Equal(to) {
+		t.Errorf("reader period = [%s, %s), want [%s, %s)",
+			reader.lastDistributionFrom, reader.lastDistributionTo, from, to)
+	}
+	if res.TotalUsers != 4 {
+		t.Errorf("expected TotalUsers=4, got %d", res.TotalUsers)
+	}
+	for _, d := range res.Distribution {
+		if d.PlanCode == "PREMIUM_MONTHLY" && d.Percentage != 25 {
+			t.Errorf("expected the premium share to be 25%%, got %v", d.Percentage)
+		}
+	}
+
+	// No period: both bounds stay zero so the account service keeps its
+	// current-state semantics.
+	if _, err := uc.GetSubscriptionDistribution(context.Background(), time.Time{}, time.Time{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reader.lastDistributionFrom.IsZero() || !reader.lastDistributionTo.IsZero() {
+		t.Errorf("an absent period must stay zero, got [%s, %s)", reader.lastDistributionFrom, reader.lastDistributionTo)
+	}
+}
+
+// TestAdminGetAIErrorBreakdownSharesOnePeriod is FR-016's core: numerator,
+// denominator and grouping all use the SAME period, so the rate cannot exceed
+// 100% while E <= R, and it is 0 when the sample is empty.
+func TestAdminGetAIErrorBreakdownSharesOnePeriod(t *testing.T) {
+	reader := &mockAICostReader{
+		errorBreakdown: []aiDTO.AIErrorBreakdownDTO{
+			{ErrorCode: "provider_timeout", ErrorCount: 2},
+			{ErrorCode: "usage_unreported", ErrorCount: 3},
+		},
+		totalRequests: 20,
+	}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, reader, &mockSubscriptionReader{})
+
+	from := time.Date(2026, 9, 16, 0, 0, 0, 0, timeutils.VnLoc())
+	to := time.Date(2026, 10, 16, 0, 0, 0, 0, timeutils.VnLoc())
+	res, err := uc.GetAIErrorBreakdown(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res.TotalErrors != 5 {
+		t.Errorf("totalErrors must be the sum of the breakdown (2+3), got %d", res.TotalErrors)
+	}
+	if res.TotalRequests != 20 {
+		t.Errorf("expected TotalRequests=20, got %d", res.TotalRequests)
+	}
+	if res.ErrorRate != 25.0 {
+		t.Errorf("expected ErrorRate=5/20*100=25, got %v", res.ErrorRate)
+	}
+	if res.ErrorRate > 100 {
+		t.Errorf("FR-016: an error rate with E <= R can never exceed 100%%, got %v", res.ErrorRate)
+	}
+	if !reader.lastErrorFrom.Equal(from) || !reader.lastErrorTo.Equal(to) {
+		t.Errorf("breakdown period = [%s, %s), want [%s, %s)", reader.lastErrorFrom, reader.lastErrorTo, from, to)
+	}
+	if !reader.lastRequestFrom.Equal(from) || !reader.lastRequestTo.Equal(to) {
+		t.Errorf("request-count period = [%s, %s), want the SAME [%s, %s)",
+			reader.lastRequestFrom, reader.lastRequestTo, from, to)
+	}
+
+	// Empty sample: the rate is defined as 0, never a division by zero.
+	reader.totalRequests = 0
+	res, err = uc.GetAIErrorBreakdown(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.ErrorRate != 0 {
+		t.Errorf("an empty sample must produce 0%%, got %v", res.ErrorRate)
+	}
+}
+
+// TestAdminGetAIErrorBreakdownDefaultsToThirtyVNDays keeps the panel's
+// backward-compatible default (FR-012/FR-016) while moving it onto VN
+// calendar-day boundaries.
+func TestAdminGetAIErrorBreakdownDefaultsToThirtyVNDays(t *testing.T) {
+	reader := &mockAICostReader{}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, reader, &mockSubscriptionReader{})
+
+	if _, err := uc.GetAIErrorBreakdown(context.Background(), time.Time{}, time.Time{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	now := timeutils.NowVN()
+	wantFrom := timeutils.StartOfDayInVN(now.AddDate(0, 0, -30))
+	wantTo := timeutils.EndOfDayInVN(now)
+	if !reader.lastErrorFrom.Equal(wantFrom) || !reader.lastErrorTo.Equal(wantTo) {
+		t.Errorf("default breakdown period = [%s, %s), want [%s, %s)",
+			reader.lastErrorFrom, reader.lastErrorTo, wantFrom, wantTo)
+	}
+	if !reader.lastRequestFrom.Equal(wantFrom) || !reader.lastRequestTo.Equal(wantTo) {
+		t.Errorf("the request count must default to the same period, got [%s, %s)",
+			reader.lastRequestFrom, reader.lastRequestTo)
+	}
+}
+
+// TestAdminGetRevenueBreakdownDefaultsToSixVNDayBounds pins the intentional
+// FR-012 adjustment: the 6-month default survives, but its edges are now VN
+// calendar-day boundaries.
+func TestAdminGetRevenueBreakdownDefaultsToSixVNDayBounds(t *testing.T) {
+	reader := &mockSubscriptionReader{}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+
+	if _, err := uc.GetRevenueBreakdown(context.Background(), time.Time{}, time.Time{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	now := timeutils.NowVN()
+	wantFrom := timeutils.StartOfDayInVN(now.AddDate(0, -6, 0))
+	wantTo := timeutils.EndOfDayInVN(now)
+	if !reader.lastRevenueFrom.Equal(wantFrom) || !reader.lastRevenueTo.Equal(wantTo) {
+		t.Errorf("default revenue period = [%s, %s), want [%s, %s)",
+			reader.lastRevenueFrom, reader.lastRevenueTo, wantFrom, wantTo)
+	}
+}
+
+// TestAdminGetAIUsageByOperationDefaultsToThirtyVNDays mirrors the same
+// boundary move for the other pre-existing period endpoint.
+func TestAdminGetAIUsageByOperationDefaultsToThirtyVNDays(t *testing.T) {
+	reader := &mockAICostReader{}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, reader, &mockSubscriptionReader{})
+
+	if _, err := uc.GetAIUsageByOperation(context.Background(), time.Time{}, time.Time{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	now := timeutils.NowVN()
+	wantFrom := timeutils.StartOfDayInVN(now.AddDate(0, 0, -30))
+	wantTo := timeutils.EndOfDayInVN(now)
+	if !reader.lastUsageFrom.Equal(wantFrom) || !reader.lastUsageTo.Equal(wantTo) {
+		t.Errorf("default usage period = [%s, %s), want [%s, %s)",
+			reader.lastUsageFrom, reader.lastUsageTo, wantFrom, wantTo)
 	}
 }

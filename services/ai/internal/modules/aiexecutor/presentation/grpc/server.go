@@ -178,8 +178,18 @@ func (s *AIDashboardServer) GetTotalAIRequestCount(ctx context.Context, req *aiv
 	return &aiv1.TotalAIRequestCount{Total: total}, nil
 }
 
+// GetAIErrorBreakdown reads the new from_date/to_date pair (029 grpc-delta
+// §2). Absent fields stay zero, which the reader treats as "all-time" — the
+// pre-029 behaviour.
 func (s *AIDashboardServer) GetAIErrorBreakdown(ctx context.Context, req *aiv1.GetAIErrorBreakdownRequest) (*aiv1.AIErrorBreakdownList, error) {
-	items, err := s.reader.GetAIErrorBreakdown(ctx)
+	var from, to time.Time
+	if ts := req.GetFromDate(); ts != nil {
+		from = ts.AsTime()
+	}
+	if ts := req.GetToDate(); ts != nil {
+		to = ts.AsTime()
+	}
+	items, err := s.reader.GetAIErrorBreakdown(ctx, from, to)
 	if err != nil {
 		return nil, grpcx.ToGRPCError(err)
 	}

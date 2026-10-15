@@ -11,7 +11,6 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/shared/infrastructure/repositories"
-	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -173,7 +172,15 @@ func (r *DepositTransactionRepository) UpdateWithToken(ctx context.Context, orde
 	return res.RowsAffected, res.Error
 }
 
-func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+// GetAdminSubscriptionStats aggregates deposit transactions in the half-open
+// period [from, to) (029 R1/data-model §3): callers pass day boundaries
+// (from = StartOfDayInVN, to = EndOfDayInVN of the last day) and a zero bound
+// leaves that side open.
+//
+// Until US4 (029 T039) both the revenue SUM and the payOS counters still
+// filter transaction_type = direct_purchase; this task only replaces the
+// internally derived VNDayRange(snapshotDate) with the caller's period.
+func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
 	type revenueResult struct {
 		TotalRevenue decimal.Decimal
 		TotalCount   int
@@ -184,8 +191,6 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 	}
 	var result revenueResult
 
-	dayStart, dayEnd := timeutils.VNDayRange(snapshotDate)
-
 	// The three status buckets below partition every PayOS deposit status
 	// together with success, so downstream reports stop deriving "failed" as
 	// total − success. Buckets:
@@ -193,7 +198,7 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 	//   failed:  genuinely failed (FailedLegacy, CreationFailed,
 	//             InvestigationRequired)
 	//   voided:  closed without payment (Cancelled, Expired, Refunded)
-	err := r.GetDB(ctx).Raw(`
+	query := `
 		SELECT
 			COALESCE(SUM(amount) FILTER (WHERE status = ?), 0) AS total_revenue,
 			COUNT(*) AS total_count,
@@ -202,10 +207,25 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 			COUNT(*) FILTER (WHERE status IN ?) AS failed_count,
 			COUNT(*) FILTER (WHERE status IN ?) AS voided_count
 		FROM deposit_transactions
-		WHERE transaction_type = ?
-		  AND created_at >= ?
-		  AND created_at < ?
-	`, depositstatus.Success, depositstatus.Success, depositstatus.ActivePaymentStatuses, payOSFailedStatuses, payOSVoidedStatuses, string(deposittransactiontype.DirectPurchase), dayStart, dayEnd).Scan(&result).Error
+		WHERE transaction_type = ?`
+	args := []any{
+		depositstatus.Success,
+		depositstatus.Success,
+		depositstatus.ActivePaymentStatuses,
+		payOSFailedStatuses,
+		payOSVoidedStatuses,
+		string(deposittransactiontype.DirectPurchase),
+	}
+	if !from.IsZero() {
+		query += " AND created_at >= ?"
+		args = append(args, from)
+	}
+	if !to.IsZero() {
+		query += " AND created_at < ?"
+		args = append(args, to)
+	}
+
+	err := r.GetDB(ctx).Raw(query, args...).Scan(&result).Error
 	if err != nil {
 		return nil, err
 	}
@@ -238,8 +258,10 @@ var payOSVoidedStatuses = []depositstatus.DepositStatus{
 }
 
 // GetRevenueBreakdown sums successful DirectPurchase revenue grouped by plan and
-// month. The range is inclusive on both calendar days: [fromDate, toDate+1d),
-// so a toDate of midnight still counts that whole day.
+// month over the half-open period [fromDate, toDate) (029 R1/data-model §3):
+// callers pass day boundaries (toDate = EndOfDayInVN of the last day), and a
+// zero side leaves that side open. The caller owns the day arithmetic —
+// adding a day here was the off-by-7h this standard removed.
 func (r *DepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
 	query := r.GetDB(ctx).
 		Table("deposit_transactions").
@@ -249,7 +271,7 @@ func (r *DepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, 
 		query = query.Where("created_at >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("created_at < ?", toDate.AddDate(0, 0, 1))
+		query = query.Where("created_at < ?", toDate)
 	}
 	var rows []dto.RevenueBreakdownDTO
 	err := query.Group("plan_code, DATE_TRUNC('month', created_at)").

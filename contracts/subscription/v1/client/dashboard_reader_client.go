@@ -27,9 +27,14 @@ func NewSubscriptionDashboardReaderClient(cc grpc.ClientConnInterface) *Subscrip
 	return &SubscriptionDashboardReaderClient{svc: subscriptionv1.NewSubscriptionDashboardServiceClient(cc)}
 }
 
-func (c *SubscriptionDashboardReaderClient) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*subscriptiondto.AdminSubscriptionStatsDTO, error) {
+// GetAdminSubscriptionStats sends the half-open VN day pair [from, to)
+// (029 grpc-delta §1/§3). Zero bounds are sent as zero timestamps: a 029
+// server treats a both-zero pair as "no period" and falls back to
+// snapshot_date (absent here), and a pre-029 server ignores the new fields.
+func (c *SubscriptionDashboardReaderClient) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*subscriptiondto.AdminSubscriptionStatsDTO, error) {
 	res, err := c.svc.GetAdminSubscriptionStats(ctx, &subscriptionv1.GetAdminSubscriptionStatsRequest{
-		SnapshotDate: timestamppb.New(snapshotDate),
+		FromDate: timestamppb.New(from),
+		ToDate:   timestamppb.New(to),
 	})
 	if err != nil {
 		return nil, grpcx.ToAppError(err)
@@ -37,8 +42,11 @@ func (c *SubscriptionDashboardReaderClient) GetAdminSubscriptionStats(ctx contex
 	return subscriptiontransport.AdminStatsToDTO(res)
 }
 
-func (c *SubscriptionDashboardReaderClient) GetSubscriptionDistribution(ctx context.Context) ([]subscriptiondto.SubscriptionDistributionDTO, error) {
-	res, err := c.svc.GetSubscriptionDistribution(ctx, &subscriptionv1.GetSubscriptionDistributionRequest{})
+func (c *SubscriptionDashboardReaderClient) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]subscriptiondto.SubscriptionDistributionDTO, error) {
+	res, err := c.svc.GetSubscriptionDistribution(ctx, &subscriptionv1.GetSubscriptionDistributionRequest{
+		FromDate: timestamppb.New(from),
+		ToDate:   timestamppb.New(to),
+	})
 	if err != nil {
 		return nil, grpcx.ToAppError(err)
 	}
@@ -56,8 +64,11 @@ func (c *SubscriptionDashboardReaderClient) GetRevenueBreakdown(ctx context.Cont
 	return subscriptiontransport.RevenueBreakdownToDTOs(res.GetItems())
 }
 
-func (c *SubscriptionDashboardReaderClient) GetRenewalStats(ctx context.Context) (*subscriptiondto.RenewalStatsDTO, error) {
-	res, err := c.svc.GetRenewalStats(ctx, &subscriptionv1.GetRenewalStatsRequest{})
+func (c *SubscriptionDashboardReaderClient) GetRenewalStats(ctx context.Context, from, to time.Time) (*subscriptiondto.RenewalStatsDTO, error) {
+	res, err := c.svc.GetRenewalStats(ctx, &subscriptionv1.GetRenewalStatsRequest{
+		FromDate: timestamppb.New(from),
+		ToDate:   timestamppb.New(to),
+	})
 	if err != nil {
 		return nil, grpcx.ToAppError(err)
 	}

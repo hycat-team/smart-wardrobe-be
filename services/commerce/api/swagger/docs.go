@@ -745,7 +745,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/ai-margin": {
             "get": {
-                "description": "Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm biên lợi nhuận.",
+                "description": "Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm biên lợi nhuận. Kỳ tính theo ngày lịch Việt Nam, bao gồm trọn ngày hai đầu; không gửi kỳ mặc định 30 ngày gần nhất.",
                 "produces": [
                     "application/json"
                 ],
@@ -756,13 +756,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
                         "name": "fromDate",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
                         "name": "toDate",
                         "in": "query"
                     }
@@ -791,7 +791,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/ai/error-breakdown": {
             "get": {
-                "description": "Thống kê số lượng lỗi, tổng số request và tỷ lệ lỗi AI, phân nhóm theo error_code, provider và model",
+                "description": "Thống kê số lượng lỗi, tổng số request và tỷ lệ lỗi AI, phân nhóm theo error_code, provider và model. Tử số, mẫu số và phân nhóm cùng một kỳ (ngày lịch Việt Nam); không gửi kỳ mặc định 30 ngày gần nhất.",
                 "produces": [
                     "application/json"
                 ],
@@ -799,6 +799,20 @@ const docTemplate = `{
                     "Dashboard Admin"
                 ],
                 "summary": "Thống kê lỗi AI theo mã lỗi, nhà cung cấp và mô hình",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Lấy thống kê lỗi AI thành công",
@@ -823,7 +837,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/ai/usage-by-operation": {
             "get": {
-                "description": "Thống kê số lượng request, chi phí và token AI theo từng loại tác vụ (operation) và tuyến xử lý (logical_route), hỗ trợ lọc khoảng thời gian",
+                "description": "Thống kê số lượng request, chi phí và token AI theo từng loại tác vụ (operation) và tuyến xử lý (logical_route); kỳ tính theo ngày lịch Việt Nam, bao gồm trọn ngày hai đầu; không gửi kỳ mặc định 30 ngày gần nhất.",
                 "produces": [
                     "application/json"
                 ],
@@ -834,13 +848,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
                         "name": "fromDate",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
                         "name": "toDate",
                         "in": "query"
                     }
@@ -923,7 +937,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/kpi-cards": {
             "get": {
-                "description": "Lấy thông tin tổng số lượng người dùng, chỉ số DAU, số nhãn hàng active, số nhãn hàng chờ duyệt, doanh thu subscription và biên lợi nhuận AI net margin.",
+                "description": "Lấy thông tin tổng số lượng người dùng, chỉ số DAU, số nhãn hàng active, số nhãn hàng chờ duyệt, doanh thu subscription và biên lợi nhuận AI net margin. Thẻ KPI là ảnh chụp (snapshot), không nhận tham số kỳ.",
                 "produces": [
                     "application/json"
                 ],
@@ -955,7 +969,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/overview": {
             "get": {
-                "description": "Tổng hợp tất cả dữ liệu từ KPI Cards, AI Margin Analytics và PayOS Reconciliation trong 1 kết quả duy nhất.",
+                "description": "Tổng hợp tất cả dữ liệu từ KPI Cards, AI Margin Analytics và PayOS Reconciliation trong 1 kết quả duy nhất. Panel đối soát PayOS mang ngữ nghĩa theo kỳ mặc định hôm nay (giờ Việt Nam).",
                 "produces": [
                     "application/json"
                 ],
@@ -987,7 +1001,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/payos-reconciliation": {
             "get": {
-                "description": "Báo cáo đối soát số lượng giao dịch thanh toán PayOS, tỷ lệ thành công/thất bại và tổng số tiền thanh toán thực tế.",
+                "description": "Báo cáo đối soát giao dịch PayOS (cả mua gói trực tiếp lẫn nạp ví) theo ngày lịch Việt Nam: số lượng theo nhóm trạng thái và tổng giá trị giao dịch thành công trong kỳ. Không gửi kỳ mặc định hôm nay.",
                 "produces": [
                     "application/json"
                 ],
@@ -995,6 +1009,20 @@ const docTemplate = `{
                     "Dashboard Admin"
                 ],
                 "summary": "Thống kê đối soát giao dịch PayOS",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Lấy thông tin đối soát PayOS thành công",
@@ -1019,7 +1047,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/subscriptions/distribution": {
             "get": {
-                "description": "Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription (FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY, v.v.)",
+                "description": "Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription. Không gửi kỳ: hiện trạng (gói còn hiệu lực). Có kỳ: user có cửa sổ gói hiện tại giao với khoảng ngày (ngày lịch Việt Nam).",
                 "produces": [
                     "application/json"
                 ],
@@ -1027,6 +1055,20 @@ const docTemplate = `{
                     "Dashboard Admin"
                 ],
                 "summary": "Phân bổ người dùng theo gói subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Lấy phân bổ subscription thành công",
@@ -1051,7 +1093,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/subscriptions/renewal-stats": {
             "get": {
-                "description": "Thống kê tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ thành công và số lần thử lại trung bình",
+                "description": "Thống kê tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ thành công và số lần thử lại trung bình. Có kỳ: chỉ attempt tạo trong khoảng ngày (ngày lịch Việt Nam); không gửi kỳ: toàn thời gian.",
                 "produces": [
                     "application/json"
                 ],
@@ -1059,6 +1101,20 @@ const docTemplate = `{
                     "Dashboard Admin"
                 ],
                 "summary": "Thống kê gia hạn subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Lấy thống kê gia hạn subscription thành công",
@@ -1083,7 +1139,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/subscriptions/revenue-breakdown": {
             "get": {
-                "description": "Thống kê doanh thu subscription theo từng plan_code và theo tháng, hỗ trợ lọc khoảng thời gian",
+                "description": "Thống kê doanh thu subscription theo từng plan_code và theo tháng; kỳ tính theo ngày lịch Việt Nam, bao gồm trọn ngày hai đầu; không gửi kỳ mặc định 6 tháng gần nhất.",
                 "produces": [
                     "application/json"
                 ],
@@ -1094,13 +1150,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+                        "description": "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400",
                         "name": "fromDate",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+                        "description": "Ngày kết thúc, ngày lịch Việt Nam (YYYY-MM-DD), bao gồm trọn ngày; sai định dạng hoặc đảo chiều trả 400",
                         "name": "toDate",
                         "in": "query"
                     }

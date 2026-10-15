@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 	"smart-wardrobe-be/services/account/dto/subscription"
@@ -43,15 +44,27 @@ func (r *SubscriptionRenewalAttemptRepository) Update(ctx context.Context, attem
 // success/failed split stays literal; the caller derives the success rate from
 // those two counts so non-payment outcomes (skipped/downgraded/renewed) do not
 // read as failures.
-func (r *SubscriptionRenewalAttemptRepository) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsDTO, error) {
+//
+// 029 R8/data-model §6: with a period, only attempts CREATED in [from, to)
+// count — an attempt belongs to the period it was created in, which keeps
+// in-flight attempts of the period visible while an attempt created before the
+// period and completed inside it stays out. A zero bound leaves that side
+// open; both zero keeps the all-time behaviour.
+func (r *SubscriptionRenewalAttemptRepository) GetRenewalStats(ctx context.Context, from, to time.Time) (*dto.RenewalStatsDTO, error) {
 	var result dto.RenewalStatsDTO
-	err := r.current(ctx).
+	query := r.current(ctx).
 		Table("subscription_renewal_attempts").
 		Select("COUNT(*) FILTER (WHERE status <> 'processing') AS total_attempts, " +
 			"COALESCE(SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END), 0) AS success_count, " +
 			"COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed_count, " +
-			"COALESCE(AVG(attempt_count) FILTER (WHERE status <> 'processing'), 0) AS avg_retry_count").
-		Scan(&result).Error
+			"COALESCE(AVG(attempt_count) FILTER (WHERE status <> 'processing'), 0) AS avg_retry_count")
+	if !from.IsZero() {
+		query = query.Where("created_at >= ?", from)
+	}
+	if !to.IsZero() {
+		query = query.Where("created_at < ?", to)
+	}
+	err := query.Scan(&result).Error
 	if err != nil {
 		return nil, err
 	}

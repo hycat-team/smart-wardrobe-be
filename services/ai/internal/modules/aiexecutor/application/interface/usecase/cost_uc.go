@@ -22,5 +22,5 @@ type IAICostUseCase interface {
 	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
 	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error)
 	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
-	GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error)
+	GetAIErrorBreakdown(ctx context.Context, from, to time.Time) ([]dto.AIErrorBreakdownDTO, error)
 }

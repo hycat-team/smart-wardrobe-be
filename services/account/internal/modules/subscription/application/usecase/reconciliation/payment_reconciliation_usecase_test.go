@@ -65,7 +65,7 @@ func (f *fakeDepositTransactionRepository) UpdateWithToken(ctx context.Context, 
 	}
 	return 1, nil
 }
-func (f *fakeDepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+func (f *fakeDepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
 	return nil, nil
 }
 func (f *fakeDepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {

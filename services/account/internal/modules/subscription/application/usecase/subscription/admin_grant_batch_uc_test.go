@@ -244,7 +244,7 @@ func (f *fakeGrantSubRepo) ProvisionDefault(ctx context.Context, sub *entities.U
 	f.subs[sub.UserID] = sub
 	return nil
 }
-func (f *fakeGrantSubRepo) GetDistributionByPlanCode(ctx context.Context) ([]repositories.SubscriptionDistributionDTO, error) {
+func (f *fakeGrantSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
 	return nil, nil
 }
 func (f *fakeGrantSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {

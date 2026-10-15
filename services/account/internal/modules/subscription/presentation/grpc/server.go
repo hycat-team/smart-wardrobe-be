@@ -12,6 +12,7 @@ import (
 	subscriptioncontract "smart-wardrobe-be/services/account/contract/subscription"
 	subscriptiontransport "smart-wardrobe-be/services/account/contract/subscription/transport"
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 )
@@ -108,20 +109,43 @@ func NewSubscriptionDashboardServer(reader subscriptioncontract.ISubscriptionDas
 	return &SubscriptionDashboardServer{reader: reader}
 }
 
+// GetAdminSubscriptionStats reads the new from_date/to_date pair when present
+// (029 grpc-delta §1). When both are absent it keeps the old wire contract:
+// the request's snapshot_date feeds VNDayRange, so a pre-029 client still gets
+// the day it asked for.
 func (s *SubscriptionDashboardServer) GetAdminSubscriptionStats(ctx context.Context, req *subscriptionv1.GetAdminSubscriptionStatsRequest) (*subscriptionv1.AdminSubscriptionStats, error) {
-	var snapshotDate time.Time
-	if ts := req.GetSnapshotDate(); ts != nil {
-		snapshotDate = ts.AsTime()
+	var from, to time.Time
+	if ts := req.GetFromDate(); ts != nil {
+		from = ts.AsTime()
 	}
-	out, err := s.reader.GetAdminSubscriptionStats(ctx, snapshotDate)
+	if ts := req.GetToDate(); ts != nil {
+		to = ts.AsTime()
+	}
+	if from.IsZero() && to.IsZero() {
+		var snapshotDate time.Time
+		if ts := req.GetSnapshotDate(); ts != nil {
+			snapshotDate = ts.AsTime()
+		}
+		from, to = timeutils.VNDayRange(snapshotDate)
+	}
+	out, err := s.reader.GetAdminSubscriptionStats(ctx, from, to)
 	if err != nil {
 		return nil, grpcx.ToGRPCError(err)
 	}
 	return subscriptiontransport.AdminStatsToProto(out), nil
 }
 
+// GetSubscriptionDistribution passes the request's day pair through; absent
+// fields stay zero and the repository keeps its current-state semantics.
 func (s *SubscriptionDashboardServer) GetSubscriptionDistribution(ctx context.Context, req *subscriptionv1.GetSubscriptionDistributionRequest) (*subscriptionv1.SubscriptionDistributionList, error) {
-	out, err := s.reader.GetSubscriptionDistribution(ctx)
+	var from, to time.Time
+	if ts := req.GetFromDate(); ts != nil {
+		from = ts.AsTime()
+	}
+	if ts := req.GetToDate(); ts != nil {
+		to = ts.AsTime()
+	}
+	out, err := s.reader.GetSubscriptionDistribution(ctx, from, to)
 	if err != nil {
 		return nil, grpcx.ToGRPCError(err)
 	}
@@ -148,7 +172,14 @@ func (s *SubscriptionDashboardServer) GetRevenueBreakdown(ctx context.Context, r
 }
 
 func (s *SubscriptionDashboardServer) GetRenewalStats(ctx context.Context, req *subscriptionv1.GetRenewalStatsRequest) (*subscriptionv1.RenewalStats, error) {
-	out, err := s.reader.GetRenewalStats(ctx)
+	var from, to time.Time
+	if ts := req.GetFromDate(); ts != nil {
+		from = ts.AsTime()
+	}
+	if ts := req.GetToDate(); ts != nil {
+		to = ts.AsTime()
+	}
+	out, err := s.reader.GetRenewalStats(ctx, from, to)
 	if err != nil {
 		return nil, grpcx.ToGRPCError(err)
 	}

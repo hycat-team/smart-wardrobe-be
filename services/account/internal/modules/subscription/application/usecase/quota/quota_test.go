@@ -92,7 +92,7 @@ func (f *fakeQuotaSubRepo) GetActiveExpiredSubscriptionByUserIDWithLock(ctx cont
 func (f *fakeQuotaSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeQuotaSubRepo) GetDistributionByPlanCode(ctx context.Context) ([]repositories.SubscriptionDistributionDTO, error) {
+func (f *fakeQuotaSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
 	return nil, nil
 }
 func (f *fakeQuotaSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {

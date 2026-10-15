@@ -18,6 +18,14 @@ import (
 
 const microVNDDivisor = 1000000.0
 
+// vnInclusiveDayLabel renders one instant of a VN calendar day as the
+// YYYY-MM-DD label the period responses echo. Callers step the exclusive upper
+// bound (EndOfDayInVN = 00:00 of the NEXT day) back by a nanosecond first so
+// the label never shows the day after the period ends.
+func vnInclusiveDayLabel(t time.Time) string {
+	return t.In(timeutils.VnLoc()).Format("2006-01-02")
+}
+
 type AdminDashboardUseCase struct {
 	dashboardRepo      dashboardRepos.IDashboardRepository
 	userReader         identityContract.IUserDashboardReader
@@ -62,7 +70,11 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 		if err != nil {
 			return nil, err
 		}
-		subscriptionStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctx, now)
+		// The subscription stats query takes the half-open VN day pair
+		// (029 R1); VNDayRange(now) is exactly the day range the repository
+		// used to derive internally, so the KPI fallback keeps its behaviour.
+		statsFrom, statsTo := timeutils.VNDayRange(now)
+		subscriptionStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctx, statsFrom, statsTo)
 		if err != nil {
 			return nil, err
 		}
@@ -103,21 +115,35 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 }
 
 func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromDate, toDate time.Time) (*dto.AIMarginAnalyticsRes, error) {
+	// Defaults are VN calendar-day boundaries now (029 R1/FR-012): the range
+	// meaning is the same 30 days it was, the edges no longer drift with the
+	// clock or the server timezone.
 	if fromDate.IsZero() {
-		fromDate = timeutils.NowVN().AddDate(0, 0, -30)
+		fromDate = timeutils.StartOfDayInVN(timeutils.NowVN().AddDate(0, 0, -30))
 	}
 	if toDate.IsZero() {
-		toDate = timeutils.NowVN()
+		toDate = timeutils.EndOfDayInVN(timeutils.NowVN())
 	}
 
+	// The response echoes the VN calendar days, not the exclusive bounds:
+	// 00:00 of the first day and 00:00 of the last day. Echoing the raw bounds
+	// would label the period with 00:00 of the day AFTER the last one.
+	labelFrom := timeutils.StartOfDayInVN(fromDate)
+	labelTo := timeutils.StartOfDayInVN(toDate.Add(-time.Nanosecond))
+
+	// `toDate` is the EXCLUSIVE upper bound (00:00 of the next VN day), while
+	// `snapshot_date` is a DATE column: `<=` with the bound still includes the
+	// final selected day, because its stored 00:00 is not after the bound.
 	snapshots, err := uc.dashboardRepo.GetAdminSnapshots(ctx, fromDate, toDate)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(snapshots) == 0 {
-		// Fallback to live AI reader
-		aiStats, err := uc.aiCostReader.GetAdminAIUsageStats(ctx, toDate)
+		// Fallback to live AI reader. The reader wants a single calendar day,
+		// not a half-open bound: step back just inside the last day so an
+		// EndOfDayInVN `toDate` does not roll VNDayRange over to the next day.
+		aiStats, err := uc.aiCostReader.GetAdminAIUsageStats(ctx, toDate.Add(-time.Nanosecond))
 		if err != nil {
 			return nil, err
 		}
@@ -126,8 +152,8 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 			netMargin := -actualCostVND
 
 			return &dto.AIMarginAnalyticsRes{
-				FromDate:                fromDate,
-				ToDate:                  toDate,
+				FromDate:                labelFrom,
+				ToDate:                  labelTo,
 				TotalSubscriptionRevVND: 0,
 				TotalAIActualCostVND:    actualCostVND,
 				NetAIMarginVND:          netMargin,
@@ -139,8 +165,8 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 		}
 
 		return &dto.AIMarginAnalyticsRes{
-			FromDate:                fromDate,
-			ToDate:                  toDate,
+			FromDate:                labelFrom,
+			ToDate:                  labelTo,
 			TotalSubscriptionRevVND: 0,
 			TotalAIActualCostVND:    0,
 			NetAIMarginVND:          0,
@@ -173,8 +199,8 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 	}
 
 	return &dto.AIMarginAnalyticsRes{
-		FromDate:                fromDate,
-		ToDate:                  toDate,
+		FromDate:                labelFrom,
+		ToDate:                  labelTo,
 		TotalSubscriptionRevVND: totalRev,
 		TotalAIActualCostVND:    actualCostVND,
 		NetAIMarginVND:          totalMargin,
@@ -185,13 +211,26 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 	}, nil
 }
 
-func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*dto.PayOSReconciliationRes, error) {
-	latest, err := uc.dashboardRepo.GetLatestAdminSnapshot(ctx)
+// GetPayOSReconciliation aggregates the transaction table over the selected
+// period instead of reading the latest snapshot (029 R6/FR-017).
+//
+// FR-017's scope change (wallet_topup included) and `totalSuccessValue`'s new
+// source live in the account query and are completed in US4 (T039/T041); this
+// task moves the panel onto a period and keeps the borrowing of
+// SubscriptionRevenueVND for the value field until then.
+func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context, from, to time.Time) (*dto.PayOSReconciliationRes, error) {
+	if from.IsZero() && to.IsZero() {
+		// No period sent: today by the VN calendar (data-model §3). A single
+		// sent bound leaves the other side open.
+		now := timeutils.NowVN()
+		from, to = timeutils.VNDayRange(now)
+	}
+
+	stats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctx, from, to)
 	if err != nil {
 		return nil, err
 	}
-
-	if latest == nil {
+	if stats == nil {
 		return &dto.PayOSReconciliationRes{
 			TotalTransactions: 0,
 			SuccessCount:      0,
@@ -203,17 +242,17 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*d
 	}
 
 	return &dto.PayOSReconciliationRes{
-		TotalTransactions: latest.PayOSTransactionCount,
-		SuccessCount:      latest.PayOSSuccessCount,
-		FailedCount:       latest.PayOSFailedCount,
-		PendingCount:      latest.PayOSPendingCount,
-		VoidedCount:       latest.PayOSVoidedCount,
-		TotalSuccessValue: latest.SubscriptionRevenueVND,
+		TotalTransactions: stats.PayOSTransactionCount,
+		SuccessCount:      stats.PayOSSuccessCount,
+		FailedCount:       stats.PayOSFailedCount,
+		PendingCount:      stats.PayOSPendingCount,
+		VoidedCount:       stats.PayOSVoidedCount,
+		TotalSuccessValue: stats.TotalSubscriptionRevenue.InexactFloat64(),
 	}, nil
 }
 
-func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context) (*dto.SubscriptionDistributionRes, error) {
-	rows, err := uc.subscriptionReader.GetSubscriptionDistribution(ctx)
+func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*dto.SubscriptionDistributionRes, error) {
+	rows, err := uc.subscriptionReader.GetSubscriptionDistribution(ctx, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +281,13 @@ func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context
 }
 
 func (uc *AdminDashboardUseCase) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) (*dto.RevenueBreakdownRes, error) {
+	// Same defaults as before (6 months back, ending now) — the intentional
+	// FR-012 change is only that the edges are VN calendar-day boundaries.
 	if fromDate.IsZero() {
-		fromDate = timeutils.NowVN().AddDate(0, -6, 0)
+		fromDate = timeutils.StartOfDayInVN(timeutils.NowVN().AddDate(0, -6, 0))
 	}
 	if toDate.IsZero() {
-		toDate = timeutils.NowVN()
+		toDate = timeutils.EndOfDayInVN(timeutils.NowVN())
 	}
 
 	rows, err := uc.subscriptionReader.GetRevenueBreakdown(ctx, fromDate, toDate)
@@ -268,19 +309,20 @@ func (uc *AdminDashboardUseCase) GetRevenueBreakdown(ctx context.Context, fromDa
 	}
 
 	return &dto.RevenueBreakdownRes{
-		FromDate:        fromDate.Format("2006-01-02"),
-		ToDate:          toDate.Format("2006-01-02"),
+		FromDate:        vnInclusiveDayLabel(fromDate),
+		ToDate:          vnInclusiveDayLabel(toDate.Add(-time.Nanosecond)),
 		Breakdown:       breakdown,
 		TotalRevenueVND: totalRevenue,
 	}, nil
 }
 
 func (uc *AdminDashboardUseCase) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) (*dto.AIUsageByOperationRes, error) {
+	// The same 30-day defaults, now bounded by VN calendar days (029 R1).
 	if fromDate.IsZero() {
-		fromDate = timeutils.NowVN().AddDate(0, 0, -30)
+		fromDate = timeutils.StartOfDayInVN(timeutils.NowVN().AddDate(0, 0, -30))
 	}
 	if toDate.IsZero() {
-		toDate = timeutils.NowVN()
+		toDate = timeutils.EndOfDayInVN(timeutils.NowVN())
 	}
 
 	rows, err := uc.aiCostReader.GetAIUsageByOperation(ctx, fromDate, toDate)
@@ -301,14 +343,27 @@ func (uc *AdminDashboardUseCase) GetAIUsageByOperation(ctx context.Context, from
 	}
 
 	return &dto.AIUsageByOperationRes{
-		FromDate:   fromDate.Format("2006-01-02"),
-		ToDate:     toDate.Format("2006-01-02"),
+		FromDate:   vnInclusiveDayLabel(fromDate),
+		ToDate:     vnInclusiveDayLabel(toDate.Add(-time.Nanosecond)),
 		Operations: operations,
 	}, nil
 }
 
-func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.AIErrorBreakdownRes, error) {
-	rows, err := uc.aiCostReader.GetAIErrorBreakdown(ctx)
+// GetAIErrorBreakdown reports the AI error rate over ONE period (FR-016).
+//
+// The old implementation counted errors all-time while the request sample
+// covered the last 30 days, which is how the rate could exceed 100%. Now the
+// numerator (sum of the grouped breakdown), the denominator and the groups all
+// share `[from, to)`; absent bounds default to the last 30 VN calendar days.
+// A single sent bound leaves the other side open.
+func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context, from, to time.Time) (*dto.AIErrorBreakdownRes, error) {
+	if from.IsZero() && to.IsZero() {
+		now := timeutils.NowVN()
+		from = timeutils.StartOfDayInVN(now.AddDate(0, 0, -30))
+		to = timeutils.EndOfDayInVN(now)
+	}
+
+	rows, err := uc.aiCostReader.GetAIErrorBreakdown(ctx, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -322,10 +377,7 @@ func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.
 		totalErrors += r.ErrorCount
 	}
 
-	// Query total requests in last 30 days for error rate calculation
-	toDate := timeutils.NowVN()
-	fromDate := toDate.AddDate(0, 0, -30)
-	totalRequests, _ := uc.aiCostReader.GetTotalAIRequestCount(ctx, fromDate, toDate)
+	totalRequests, _ := uc.aiCostReader.GetTotalAIRequestCount(ctx, from, to)
 
 	errorRate := 0.0
 	if totalRequests > 0 {
@@ -340,12 +392,16 @@ func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.
 	}, nil
 }
 
-// GetRenewalStats returns renewal-shot statistics. The success rate counts
-// attempts that reached a decisive payment outcome (succeeded or failed) as
-// its denominator: non-payment outcomes (skipped, downgraded, renewed) are
-// legitimate renewals, not failures, so counting them would deflate the rate.
-func (uc *AdminDashboardUseCase) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsRes, error) {
-	stats, err := uc.subscriptionReader.GetRenewalStats(ctx)
+// GetRenewalStats returns renewal-shot statistics over the half-open period
+// [from, to) (029 R8: attempts created in the period). Both bounds zero keeps
+// the all-time behaviour; the account service owns the filtering.
+//
+// The success rate counts attempts that reached a decisive payment outcome
+// (succeeded or failed) as its denominator: non-payment outcomes (skipped,
+// downgraded, renewed) are legitimate renewals, not failures, so counting them
+// would deflate the rate.
+func (uc *AdminDashboardUseCase) GetRenewalStats(ctx context.Context, from, to time.Time) (*dto.RenewalStatsRes, error) {
+	stats, err := uc.subscriptionReader.GetRenewalStats(ctx, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +430,8 @@ func (uc *AdminDashboardUseCase) GetSystemOverview(ctx context.Context) (*dto.Ad
 	now := timeutils.NowVN()
 	aiMargin, _ := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -dashboard_app.DefaultLookbackDays), now)
 
-	payos, _ := uc.GetPayOSReconciliation(ctx)
+	// Zero bounds: the payOS panel applies its today (VN) default (029 T035).
+	payos, _ := uc.GetPayOSReconciliation(ctx, time.Time{}, time.Time{})
 
 	return &dto.AdminOverviewRes{
 		KPICards:       kpi,
