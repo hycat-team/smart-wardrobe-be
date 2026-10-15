@@ -88,11 +88,18 @@ func UserSubscriptionToDTO(pb *subscriptionv1.UserSubscription) (*subscriptiondt
 }
 
 // AdminStatsToDTO converts wire subscription statistics into the contract DTO.
+// Both decimals cross the wire as strings; field 7
+// (total_payos_success_value) sums successful payOS amounts over both
+// transaction types (029 R6).
 func AdminStatsToDTO(pb *subscriptionv1.AdminSubscriptionStats) (*subscriptiondto.AdminSubscriptionStatsDTO, error) {
 	if pb == nil {
 		return nil, nil
 	}
 	revenue, err := parseDecimal(pb.GetTotalSubscriptionRevenue())
+	if err != nil {
+		return nil, err
+	}
+	payosSuccessValue, err := parseDecimal(pb.GetTotalPayosSuccessValue())
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +110,7 @@ func AdminStatsToDTO(pb *subscriptionv1.AdminSubscriptionStats) (*subscriptiondt
 		PayOSPendingCount:        int(pb.GetPayosPendingCount()),
 		PayOSFailedCount:         int(pb.GetPayosFailedCount()),
 		PayOSVoidedCount:         int(pb.GetPayosVoidedCount()),
+		TotalPayOSSuccessValue:   payosSuccessValue,
 	}, nil
 }
 

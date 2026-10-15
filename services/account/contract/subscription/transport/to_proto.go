@@ -63,7 +63,8 @@ func UserSubscriptionDTOToProto(d *subscriptiondto.UserSubscriptionDTO) *subscri
 }
 
 // AdminStatsToProto converts the contract DTO into its wire form. Decimals
-// cross the wire as strings to preserve precision.
+// cross the wire as strings to preserve precision; field 7 carries the sum of
+// successful payOS amounts over both transaction types (029 R6).
 func AdminStatsToProto(d *subscriptiondto.AdminSubscriptionStatsDTO) *subscriptionv1.AdminSubscriptionStats {
 	if d == nil {
 		return nil
@@ -75,6 +76,7 @@ func AdminStatsToProto(d *subscriptiondto.AdminSubscriptionStatsDTO) *subscripti
 		PayosPendingCount:        int32(d.PayOSPendingCount),
 		PayosFailedCount:         int32(d.PayOSFailedCount),
 		PayosVoidedCount:         int32(d.PayOSVoidedCount),
+		TotalPayosSuccessValue:   d.TotalPayOSSuccessValue.String(),
 	}
 }
 

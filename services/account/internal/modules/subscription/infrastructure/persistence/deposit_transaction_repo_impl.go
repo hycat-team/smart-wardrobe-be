@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/services/account/dto/subscription"
@@ -177,9 +178,13 @@ func (r *DepositTransactionRepository) UpdateWithToken(ctx context.Context, orde
 // (from = StartOfDayInVN, to = EndOfDayInVN of the last day) and a zero bound
 // leaves that side open.
 //
-// Until US4 (029 T039) both the revenue SUM and the payOS counters still
-// filter transaction_type = direct_purchase; this task only replaces the
-// internally derived VNDayRange(snapshotDate) with the caller's period.
+// Two scopes live in this one statement on purpose (029 R6/data-model §4):
+//   - total_subscription_revenue stays subscriptions-only — status = success
+//     AND transaction_type = direct_purchase — because it feeds the
+//     subscription revenue and the AI margin;
+//   - the five payOS counters and total_payos_success_value cover EVERY payOS
+//     money line, direct purchase + wallet top-up, so reconciliation and the
+//     KPI cards count all money that actually moved.
 func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
 	type revenueResult struct {
 		TotalRevenue decimal.Decimal
@@ -188,6 +193,11 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 		PendingCount int
 		FailedCount  int
 		VoidedCount  int
+		// The gorm tag pins the alias: GORM derives the column name from the
+		// field name, and its snake_case conversion splits the "OS" run
+		// (total_pay_os_success_value), which does not match the SQL alias.
+		// Without the tag the scan silently leaves this decimal at zero.
+		TotalPayOSSuccessValue decimal.Decimal `gorm:"column:total_payos_success_value"`
 	}
 	var result revenueResult
 
@@ -198,31 +208,38 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 	//   failed:  genuinely failed (FailedLegacy, CreationFailed,
 	//             InvestigationRequired)
 	//   voided:  closed without payment (Cancelled, Expired, Refunded)
+	// The transaction_type filter sits INSIDE the revenue SUM filter only: the
+	// counters and the success value must span both transaction types (029 R6).
 	query := `
 		SELECT
-			COALESCE(SUM(amount) FILTER (WHERE status = ?), 0) AS total_revenue,
+			COALESCE(SUM(amount) FILTER (WHERE status = ? AND transaction_type = ?), 0) AS total_revenue,
 			COUNT(*) AS total_count,
 			COUNT(*) FILTER (WHERE status = ?) AS success_count,
 			COUNT(*) FILTER (WHERE status IN ?) AS pending_count,
 			COUNT(*) FILTER (WHERE status IN ?) AS failed_count,
-			COUNT(*) FILTER (WHERE status IN ?) AS voided_count
-		FROM deposit_transactions
-		WHERE transaction_type = ?`
+			COUNT(*) FILTER (WHERE status IN ?) AS voided_count,
+			COALESCE(SUM(amount) FILTER (WHERE status = ?), 0) AS total_payos_success_value
+		FROM deposit_transactions`
 	args := []any{
 		depositstatus.Success,
+		string(deposittransactiontype.DirectPurchase),
 		depositstatus.Success,
 		depositstatus.ActivePaymentStatuses,
 		payOSFailedStatuses,
 		payOSVoidedStatuses,
-		string(deposittransactiontype.DirectPurchase),
+		depositstatus.Success,
 	}
+	conditions := make([]string, 0, 2)
 	if !from.IsZero() {
-		query += " AND created_at >= ?"
+		conditions = append(conditions, "created_at >= ?")
 		args = append(args, from)
 	}
 	if !to.IsZero() {
-		query += " AND created_at < ?"
+		conditions = append(conditions, "created_at < ?")
 		args = append(args, to)
+	}
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	err := r.GetDB(ctx).Raw(query, args...).Scan(&result).Error
@@ -237,6 +254,7 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 		PayOSPendingCount:        result.PendingCount,
 		PayOSFailedCount:         result.FailedCount,
 		PayOSVoidedCount:         result.VoidedCount,
+		TotalPayOSSuccessValue:   result.TotalPayOSSuccessValue,
 	}, nil
 }
 

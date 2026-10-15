@@ -544,6 +544,33 @@ func TestGetPayOSReconciliationUsesRealBreakdown(t *testing.T) {
 	}
 }
 
+// TestAdminGetPayOSReconciliationUsesTotalPayOSSuccessValue is 029 T038/
+// FR-017/SC-005: `totalSuccessValue` is the real SUM(amount) of the successful
+// payOS transactions over BOTH transaction types (direct purchase + wallet
+// top-up), so a successful top-up makes it differ from the subscription-only
+// revenue the panel used to borrow.
+func TestAdminGetPayOSReconciliationUsesTotalPayOSSuccessValue(t *testing.T) {
+	reader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{
+			PayOSTransactionCount:    3,
+			PayOSSuccessCount:        2,
+			PayOSPendingCount:        1,
+			TotalSubscriptionRevenue: decimal.NewFromInt(5000000), // direct_purchase only
+			TotalPayOSSuccessValue:   decimal.NewFromInt(7500000), // + a 2,500,000đ wallet top-up
+		},
+	}
+
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+	res, err := uc.GetPayOSReconciliation(context.Background(), time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.TotalSuccessValue != 7500000 {
+		t.Errorf("totalSuccessValue must be the real successful-payOS sum from "+
+			"TotalPayOSSuccessValue (top-up included), got %v", res.TotalSuccessValue)
+	}
+}
+
 // ---- 029 T027: the period is honoured everywhere ---------------------------------
 
 // TestAdminGetPayOSReconciliationUsesTheRequestedPeriod is FR-017's "tổng hợp
@@ -656,6 +683,33 @@ func TestAdminGetAIErrorBreakdownSharesOnePeriod(t *testing.T) {
 	}
 	if res.ErrorRate != 0 {
 		t.Errorf("an empty sample must produce 0%%, got %v", res.ErrorRate)
+	}
+}
+
+// TestAdminGetAIErrorBreakdownRateNeverExceedsOneHundred locks 029 T038/FR-016
+// now that US3 put the numerator and the denominator on one period: the
+// boundary case — every request in the period failed (E == R) — is exactly
+// 100%, never above.
+func TestAdminGetAIErrorBreakdownRateNeverExceedsOneHundred(t *testing.T) {
+	reader := &mockAICostReader{
+		errorBreakdown: []aiDTO.AIErrorBreakdownDTO{
+			{ErrorCode: "provider_timeout", ErrorCount: 12},
+		},
+		totalRequests: 12,
+	}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, reader, &mockSubscriptionReader{})
+
+	from := time.Date(2026, 9, 16, 0, 0, 0, 0, timeutils.VnLoc())
+	to := time.Date(2026, 10, 16, 0, 0, 0, 0, timeutils.VnLoc())
+	res, err := uc.GetAIErrorBreakdown(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.ErrorRate != 100 {
+		t.Errorf("E == R in the same period must be exactly 100%%, got %v", res.ErrorRate)
+	}
+	if res.ErrorRate > 100 {
+		t.Errorf("FR-016: with E <= R in the same period the rate can never exceed 100%%, got %v", res.ErrorRate)
 	}
 }
 

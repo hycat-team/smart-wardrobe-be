@@ -5,6 +5,10 @@ Tài liệu đặc tả các API Dashboard dành cho **System Admin**. Bao gồm
 Xem thêm hằng số tại [constants.md](constants.md).
 
 > **Quy ước ngày:** mọi mốc "ngày" trong dashboard admin đều tính theo **lịch Việt Nam (+07:00)**, không phải UTC. Snapshot `snapshot_date` cũng lưu ngày VN.
+>
+> **Kỳ `fromDate`/`toDate` (029):** `YYYY-MM-DD`, ngày lịch VN, bao gồm trọn hai đầu; nội bộ chuyển thành `[from, to)` với `from` = 00:00 VN ngày đầu và `to` = 00:00 VN của ngày kế tiếp ngày cuối. Gửi một đầu thì đầu còn lại để mở (chỉ `fromDate` = từ ngày đó trở đi; chỉ `toDate` = đến hết ngày đó). Định dạng sai hoặc gửi cả hai mà `fromDate > toDate` → HTTP 400 (thông báo tiếng Việt). Áp dụng cho cả 7 endpoint nhận kỳ: `revenue-breakdown`, `distribution`, `renewal-stats`, `ai/error-breakdown`, `payos-reconciliation`, `ai-margin`, `ai/usage-by-operation`.
+>
+> **Trước 029:** `ai-margin`, `ai/usage-by-operation` (và `revenue-breakdown`) nhận ngày nhưng hiểu là nửa đêm UTC — lệch 7 giờ so với ngày lịch VN; lỗi `fromDate > toDate` bị bỏ qua, riêng `payos-reconciliation`, `distribution`, `renewal-stats`, `ai/error-breakdown` chưa nhận kỳ.
 
 ---
 
@@ -23,8 +27,10 @@ Xem thêm hằng số tại [constants.md](constants.md).
 | PendingReviewBrands    | `pendingReviewBrands`    | int       | Số nhãn hàng đang chờ phê duyệt                                 |
 | SubscriptionRevenueVND | `subscriptionRevenueVnd` | float64   | Tổng doanh thu gói Premium (VND) = `SUM(amount)` các giao dịch `direct_purchase` có `status=Success` trong ngày (bỏ qua pending/failed/cancelled/expired/refunded) |
 | NetAIMarginVND         | `netAiMarginVnd`         | float64   | Biên lợi nhuận AI = doanh thu - chi phí token (VND)             |
-| PayOSSuccessCount      | `payOSSuccessCount`      | int       | Số giao dịch PayOS thành công trong ngày                        |
+| PayOSSuccessCount      | `payOSSuccessCount`      | int       | Số giao dịch PayOS thành công trong ngày (cả `direct_purchase` + `wallet_topup` — 029) |
 | UpdatedAt              | `updatedAt`              | time.Time | Thời điểm cập nhật gần nhất                                     |
+
+> **Thay đổi 029 — `payOSSuccessCount`:** **trước** chỉ đếm `transaction_type='direct_purchase'`; **sau** đếm cả `wallet_topup` (cùng truy vấn `GetAdminSubscriptionStats` mà worker snapshot dùng). Shape không đổi, chỉ giá trị đổi chủ đích. `subscriptionRevenueVnd` **không đổi** — vẫn chỉ `direct_purchase`, status success.
 
 **Ví dụ response:**
 
@@ -53,6 +59,7 @@ Xem thêm hằng số tại [constants.md](constants.md).
 - **Query Parameters:**
     - `fromDate` (string, optional) — Ngày bắt đầu, định dạng `YYYY-MM-DD`.
     - `toDate` (string, optional) — Ngày kết thúc, định dạng `YYYY-MM-DD`.
+    - Kỳ 029: ngày lịch VN, gửi một đầu thì đầu còn lại để mở, 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** mốc ngày hiểu là nửa đêm UTC (lệch 7h), chưa có 400 khi `fromDate > toDate`.
 - **Response struct:** `AIMarginAnalyticsRes`
 
 | Field                   | JSON                      | Kiểu Go   | Ý nghĩa                                                                             |
@@ -73,16 +80,31 @@ Xem thêm hằng số tại [constants.md](constants.md).
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/payos-reconciliation`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
+- **Query Parameters (mới từ 029):**
+    - `fromDate` (string, optional) — Ngày bắt đầu kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN. Mặc định: hôm nay.
+    - `toDate` (string, optional) — Ngày kết thúc kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN. Mặc định: hôm nay.
+    - Kỳ 029: gửi một đầu thì đầu còn lại để mở; 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu).
 - **Response struct:** `PayOSReconciliationRes`
+
+**Thay đổi 029 (trước → sau):**
+
+| Khía cạnh | Trước | Sau |
+| --- | --- | --- |
+| Nguồn dữ liệu | Snapshot mới nhất `dashboard_admin_daily_snapshots` (worker ghi 15 phút/lần) | Truy vấn trực tiếp bảng `deposit_transactions` theo kỳ (mặc định hôm nay VN) |
+| Phạm vi giao dịch | Chỉ `transaction_type='direct_purchase'` | Cả `direct_purchase` + `wallet_topup` |
+| `totalSuccessValue` | Mượn trường `subscriptionRevenueVND` (doanh thu gói cước) | `SUM(amount)` các giao dịch thành công trên phạm vi hai loại, cùng kỳ |
+| Tham số kỳ | Không có | `fromDate`/`toDate` (mặc định hôm nay) |
 
 | Field             | JSON                | Kiểu Go | Ý nghĩa                                                                     |
 | ----------------- | ------------------- | ------- | --------------------------------------------------------------------------- |
-| TotalTransactions | `totalTransactions` | int     | Tổng số giao dịch PayOS trong snapshot gần nhất                             |
+| TotalTransactions | `totalTransactions` | int     | Tổng số giao dịch payOS trong kỳ (cả `direct_purchase` + `wallet_topup`)    |
 | SuccessCount      | `successCount`      | int     | Số giao dịch thành công (`status=Success`)                                  |
 | FailedCount       | `failedCount`       | int     | Số giao dịch **thất bại thật** (`FailedLegacy`, `CreationFailed`, `InvestigationRequired`) — KHÔNG còn tính bằng `total − success` |
 | PendingCount      | `pendingCount`      | int     | Số giao dịch đang xử lý (`Pending`, `Creating`, `ReconciliationRequired`, `Reconciling`) |
 | VoidedCount       | `voidedCount`       | int     | Số giao dịch đóng mà không thu tiền (hủy `Cancelled`, hết hạn `Expired`, hoàn tiền `Refunded`) |
-| TotalSuccessValue | `totalSuccessValue` | float64 | Tổng giá trị VND của giao dịch thành công (lấy từ `subscriptionRevenueVND`) |
+| TotalSuccessValue | `totalSuccessValue` | float64 | Tổng giá trị VND của giao dịch thành công trên cả hai loại (nguồn `total_payos_success_value`) — không còn lấy từ `subscriptionRevenueVND` |
+
+- Shape không đổi; `GET /api/v1/admin/dashboard/overview` → `payosReconcile` mang ngữ nghĩa mới, kỳ mặc định hôm nay.
 
 ---
 
@@ -100,6 +122,8 @@ Xem thêm hằng số tại [constants.md](constants.md).
 
 Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về HTTP 500 với thông báo lỗi.
 
+> **Thay đổi 029:** `payosReconcile` trong `overview` mang ngữ nghĩa payOS mới (phạm vi hai loại giao dịch, tổng hợp theo kỳ, mặc định hôm nay VN — xem §3); `kpiCards.payOSSuccessCount` đổi giá trị theo phạm vi hai loại (xem §1).
+
 ---
 
 ## 5. Lấy phân bổ người dùng theo gói subscription
@@ -107,8 +131,13 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/distribution`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
 - **Mô tả:** Thống kê số lượng người dùng đang hoạt động theo từng gói subscription (`free`, `premium-monthly`, v.v.), kèm tỷ lệ phần trăm. Chỉ đếm subscription còn hiệu lực (`expires_at IS NULL OR expires_at > now()`); gói đã hết hạn không được tính.
+- **Query Parameters (mới từ 029):**
+    - `fromDate` (string, optional) — Ngày bắt đầu kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
+    - `toDate` (string, optional) — Ngày kết thúc kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
+    - Không gửi kỳ = hiện trạng (không đổi); có kỳ = đếm user có gói hiệu lực **giao** với kỳ: `started_at < to AND (expires_at IS NULL OR expires_at >= from)` (R7). Gửi một đầu thì đầu còn lại để mở; 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** endpoint không nhận kỳ.
+    - Giới hạn chấp nhận: lịch sử đổi gói không tái dựng được — user chỉ tính theo gói **hiện tại**; gói FREE (`expires_at IS NULL`) hiện diện mọi kỳ.
 - **Response struct:** `SubscriptionDistributionRes`
-- **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) WHERE expires_at IS NULL OR expires_at > now() GROUP BY current_plan_code ORDER BY COUNT(*) DESC`.
+- **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) WHERE expires_at IS NULL OR expires_at > now() GROUP BY current_plan_code ORDER BY COUNT(*) DESC` (không kỳ); có kỳ thì thay điều kiện bằng cửa sổ giao nêu trên.
 
 | Field        | JSON           | Kiểu                          | Ý nghĩa                                          |
 | ------------ | -------------- | ----------------------------- | ------------------------------------------------ |
@@ -128,8 +157,9 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Query Parameters:**
     - `fromDate` (string, optional) — Ngày bắt đầu, định dạng `YYYY-MM-DD`. Mặc định: 6 tháng trước.
     - `toDate` (string, optional) — Ngày kết thúc, định dạng `YYYY-MM-DD`. Mặc định: hôm nay.
+    - Kỳ 029: ngày lịch VN, nội bộ `[from, to)`, gửi một đầu thì đầu còn lại để mở, 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** ngày được hiểu là nửa đêm UTC và `toDate` cộng thêm 1 ngày (`[fromDate, toDate+1d)`) — lệch 7h so với ngày VN.
 - **Response struct:** `RevenueBreakdownRes`
-- **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='direct_purchase'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`. Khoảng ngày bao cả 2 đầu: `[fromDate, toDate+1d)` nên `toDate` ở mốc 00:00 vẫn tính trọn ngày đó.
+- **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='direct_purchase'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`. Khoảng ngày ngày lịch VN: `created_at >= from AND created_at < to` (`to` = 00:00 VN ngày kế tiếp của ngày cuối), nên trọn ngày cuối vẫn được tính và không double-count mốc bắt đầu ngày kế.
 
 | Field              | JSON               | Kiểu                  | Ý nghĩa                               |
 | ------------------ | ------------------ | --------------------- | ------------------------------------- |
@@ -152,6 +182,7 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Query Parameters:**
     - `fromDate` (string, optional) — Ngày bắt đầu, định dạng `YYYY-MM-DD`. Mặc định: 30 ngày trước.
     - `toDate` (string, optional) — Ngày kết thúc, định dạng `YYYY-MM-DD`. Mặc định: hôm nay.
+    - Kỳ 029: ngày lịch VN, nội bộ `[from, to)`, gửi một đầu thì đầu còn lại để mở, 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** hiểu là nửa đêm UTC (lệch 7h), chưa có 400 khi `fromDate > toDate`.
 - **Response struct:** `AIUsageByOperationRes`
 - **Nguồn dữ liệu:** Bảng `ai_usage_events`, `GROUP BY operation, logical_route`.
 
@@ -173,15 +204,19 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/ai/error-breakdown`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
-- **Mô tả:** Thống kê số lượng lỗi AI, tổng số request trong 30 ngày qua, và tỷ lệ lỗi. Chi tiết lỗi được phân nhóm theo error_code, provider, và model.
+- **Mô tả:** Thống kê số lượng lỗi AI, tổng số request, và tỷ lệ lỗi — tất cả trong **cùng một kỳ**. Chi tiết lỗi được phân nhóm theo error_code, provider, và model.
+- **Query Parameters (mới từ 029):**
+    - `fromDate` (string, optional) — Ngày bắt đầu kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN. Mặc định: 30 ngày trước.
+    - `toDate` (string, optional) — Ngày kết thúc kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN. Mặc định: hôm nay.
+    - Gửi một đầu thì đầu còn lại để mở; 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** endpoint không nhận kỳ — `totalErrors`/`breakdown[]` đếm toàn thời gian còn `totalRequests` chỉ 30 ngày, nên `errorRate` có thể vượt 100%.
 - **Response struct:** `AIErrorBreakdownRes`
-- **Nguồn dữ liệu:** Bảng `ai_usage_events`, lấy các status thuộc nhóm lỗi: `released` (gọi provider thất bại), `unknown_usage` (không quy được usage), `expired_unverified` (reservation hết hạn chưa xác nhận). Tổng request lấy từ `COUNT(*)` trong 30 ngày gần nhất.
+- **Nguồn dữ liệu:** Bảng `ai_usage_events`, lấy các status thuộc nhóm lỗi: `released` (gọi provider thất bại), `unknown_usage` (không quy được usage), `expired_unverified` (reservation hết hạn chưa xác nhận). Tổng request lấy từ `COUNT(*)` với cùng điều kiện kỳ `created_at >= from AND created_at < to`.
 
 | Field         | JSON            | Kiểu                  | Ý nghĩa                                        |
 | ------------- | --------------- | --------------------- | ---------------------------------------------- |
-| TotalErrors   | `totalErrors`   | int64                 | Tổng số request bị lỗi                         |
-| TotalRequests | `totalRequests` | int64                 | Tổng số request (30 ngày qua)                  |
-| ErrorRate     | `errorRate`     | float64               | Tỷ lệ lỗi = totalErrors / totalRequests \* 100 |
+| TotalErrors   | `totalErrors`   | int64                 | Tổng số request bị lỗi trong kỳ (= Σ `breakdown[].errorCount`) |
+| TotalRequests | `totalRequests` | int64                 | Tổng số request trong **cùng kỳ**              |
+| ErrorRate     | `errorRate`     | float64               | Tỷ lệ lỗi = totalErrors / totalRequests \* 100; `0` khi mẫu 0; không vượt 100% khi E ≤ R |
 | Breakdown     | `breakdown`     | []AIErrorBreakdownDTO | Chi tiết lỗi theo nhóm                         |
 | ├ ErrorCode   | `errorCode`     | string                | Mã lỗi (rate_limit_exceeded, timeout, ...)     |
 | ├ Provider    | `provider`      | string                | Nhà cung cấp AI (openai, anthropic, ...)       |
@@ -195,6 +230,10 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/renewal-stats`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
 - **Mô tả:** Thống kê tổng quan về tình trạng gia hạn subscription: tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ thành công, và số lần thử lại trung bình.
+- **Query Parameters (mới từ 029):**
+    - `fromDate` (string, optional) — Ngày bắt đầu kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
+    - `toDate` (string, optional) — Ngày kết thúc kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
+    - Không gửi kỳ = toàn thời gian (không đổi); có kỳ = chỉ tính attempt **tạo trong kỳ** (`created_at >= from AND created_at < to`, R8), vẫn loại `processing`. Gửi một đầu thì đầu còn lại để mở; 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** endpoint không nhận kỳ.
 - **Response struct:** `RenewalStatsRes`
 - **Nguồn dữ liệu:** Bảng `subscription_renewal_attempts`.
 
@@ -250,9 +289,9 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 | `activeUsersDau`         | `user_activity_events` | `SELECT COUNT(DISTINCT user_id) FROM user_activity_events WHERE occurred_at BETWEEN [00:00 hôm nay, 00:00 ngày mai) theo giờ VN AND user chưa bị xoá`. Nguồn sự kiện: login + refresh token (refresh ~15 phút/lần khi app đang dùng)      |
 | `totalBrands`            | `brands` table         | `SELECT COUNT(*) FROM brands`                                                                                                                                                                                                            |
 | `pendingReviewBrands`    | `brands` table         | `SELECT COUNT(*) FROM brands WHERE status = 'PENDING_REVIEW'`                                                                                                                                                                            |
-| `subscriptionRevenueVnd` | `deposit_transactions` | `SELECT COALESCE(SUM(amount) FILTER (WHERE status=1),0) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND created_at IN [ngày VN]` — lấy từ Aggregator Worker chạy 15p/lần                                                                     |
+| `subscriptionRevenueVnd` | `deposit_transactions` | `SELECT COALESCE(SUM(amount) FILTER (WHERE status=1),0) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND created_at IN [ngày VN]` — lấy từ Aggregator Worker chạy 15p/lần; **không đổi 029**                                                                     |
 | `netAiMarginVnd`         | Tính toán              | `subscriptionRevenueVnd - (aiActualCostMicroVnd / 1_000_000)`                                                                                                                                                                            |
-| `payOSSuccessCount`      | `deposit_transactions` | `SELECT COUNT(*) FROM deposit_transactions WHERE transaction_type='direct_purchase' AND status=1 (Success) AND created_at IN [ngày VN]`                                                                                                     |
+| `payOSSuccessCount`      | `deposit_transactions` | `SELECT COUNT(*) FROM deposit_transactions WHERE status=1 (Success) AND created_at IN [ngày VN]` — **029:** bỏ `transaction_type='direct_purchase'`, đếm cả `wallet_topup`                                                                                                     |
 
 ### AI Margin (`GET /api/v1/admin/dashboard/ai-margin`)
 
@@ -268,14 +307,16 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 
 ### PayOS Reconciliation (`GET /api/v1/admin/dashboard/payos-reconciliation`)
 
-| Field               | Nguồn                             | Cách tính                          |
-| ------------------- | --------------------------------- | ---------------------------------- |
-| `totalTransactions` | `dashboard_admin_daily_snapshots` | `snapshot.PayOSTransactionCount`   |
-| `successCount`      | `dashboard_admin_daily_snapshots` | `snapshot.PayOSSuccessCount`       |
-| `failedCount`       | `dashboard_admin_daily_snapshots` | `snapshot.PayOSFailedCount` (thất bại thật, không còn `total − success`) |
-| `pendingCount`      | `dashboard_admin_daily_snapshots` | `snapshot.PayOSPendingCount`       |
-| `voidedCount`       | `dashboard_admin_daily_snapshots` | `snapshot.PayOSVoidedCount`        |
-| `totalSuccessValue` | `dashboard_admin_daily_snapshots` | `snapshot.SubscriptionRevenueVND` (chỉ tính giao dịch thành công) |
+**029 đổi nguồn:** từ snapshot `dashboard_admin_daily_snapshots` sang truy vấn trực tiếp `deposit_transactions` theo kỳ `[from, to)`, phạm vi **cả** `direct_purchase` + `wallet_topup` (mặc định hôm nay VN).
+
+| Field               | Nguồn                | Cách tính                          |
+| ------------------- | -------------------- | ---------------------------------- |
+| `totalTransactions` | `deposit_transactions` | `COUNT(*) FILTER (WHERE created_at IN [kỳ])` (cả hai loại) |
+| `successCount`      | `deposit_transactions` | `COUNT(*) FILTER (WHERE status = success AND created_at IN [kỳ])` |
+| `failedCount`       | `deposit_transactions` | `COUNT(*) FILTER (WHERE status IN (failed_legacy, creation_failed, investigation_required) AND created_at IN [kỳ])` (thất bại thật, không còn `total − success`) |
+| `pendingCount`      | `deposit_transactions` | `COUNT(*) FILTER (WHERE status IN (pending, creating, reconciliation_required, reconciling) AND created_at IN [kỳ])` |
+| `voidedCount`       | `deposit_transactions` | `COUNT(*) FILTER (WHERE status IN (cancelled, expired, refunded) AND created_at IN [kỳ])` |
+| `totalSuccessValue` | `deposit_transactions` | `COALESCE(SUM(amount) FILTER (WHERE status = success), 0)` trong kỳ, cả hai loại — **trước 029** mượn `snapshot.SubscriptionRevenueVND` |
 
 ### Dynamic Query — Admin Metrics (`POST /api/v1/dashboard/analytics/query`)
 

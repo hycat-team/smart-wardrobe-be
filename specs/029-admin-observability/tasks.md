@@ -130,15 +130,15 @@
 
 ### Tests cho User Story 4 ⚠️
 
-- [ ] T037 [P] [US4] SQL pinning (mở rộng `admin_stats_query_sql_test.go`): 5 số đếm payOS không còn filter `transaction_type`; `total_payos_success_value` = `SUM(amount) FILTER (status = success)`; `total_subscription_revenue` VẪN `transaction_type = direct_purchase`
-- [ ] T038 [P] [US4] Commerce uc test (mở rộng `admin_dashboard_uc_test.go`): `TotalSuccessValue` lấy từ field mới (khác `SubscriptionRevenueVND` khi có topup); assert error-rate ≤ 100% sau US3
+- [x] T037 [P] [US4] SQL pinning (mở rộng `admin_stats_query_sql_test.go`): 5 số đếm payOS không còn filter `transaction_type`; `total_payos_success_value` = `SUM(amount) FILTER (status = success)`; `total_subscription_revenue` VẪN `transaction_type = direct_purchase`
+- [x] T038 [P] [US4] Commerce uc test (mở rộng `admin_dashboard_uc_test.go`): `TotalSuccessValue` lấy từ field mới (khác `SubscriptionRevenueVND` khi có topup); assert error-rate ≤ 100% sau US3
 
 ### Implementation cho User Story 4
 
-- [ ] T039 [US4] Account SQL + readmodel: `GetAdminSubscriptionStats` trong `deposit_transaction_repo_impl.go` — bỏ filter type cho 5 số đếm, thêm `total_payos_success_value`; thêm `TotalPayOSSuccessValue decimal.Decimal` vào `domain/repositories/readmodels.go` — phụ thuộc T037
-- [ ] T040 [US4] Transport mapper field 7: `services/account/contract/subscription/transport/mapper.go` + `to_proto.go` (string decimal ↔ decimal) + cập nhật `transport/mapper_test.go` (round-trip field 7, giữ test cũ xanh) — phụ thuộc T039
-- [ ] T041 [US4] Commerce: `GetPayOSReconciliation` trong `admin_dashboard_uc_impl.go` lấy `TotalSuccessValue` từ `TotalPayOSSuccessValue` (bỏ mượn `SubscriptionRevenueVND`) — phụ thuộc T040
-- [ ] T042 [US4] Docs + swagger: cập nhật `docs/api/dashboard/dashboard-admin-api.md` before→after (tham số kỳ mọi endpoint; payOS scope 2 loại + giá trị thật; error-rate cùng kỳ) + `make swagger svc=commerce` — phụ thuộc T041
+- [x] T039 [US4] Account SQL + readmodel: `GetAdminSubscriptionStats` trong `deposit_transaction_repo_impl.go` — bỏ filter type cho 5 số đếm, thêm `total_payos_success_value`; thêm `TotalPayOSSuccessValue decimal.Decimal` vào `domain/repositories/readmodels.go` — phụ thuộc T037
+- [x] T040 [US4] Transport mapper field 7: `services/account/contract/subscription/transport/mapper.go` + `to_proto.go` (string decimal ↔ decimal) + cập nhật `transport/mapper_test.go` (round-trip field 7, giữ test cũ xanh) — phụ thuộc T039
+- [x] T041 [US4] Commerce: `GetPayOSReconciliation` trong `admin_dashboard_uc_impl.go` lấy `TotalSuccessValue` từ `TotalPayOSSuccessValue` (bỏ mượn `SubscriptionRevenueVND`) — phụ thuộc T040
+- [x] T042 [US4] Docs + swagger: cập nhật `docs/api/dashboard/dashboard-admin-api.md` before→after (tham số kỳ mọi endpoint; payOS scope 2 loại + giá trị thật; error-rate cùng kỳ) + `make swagger svc=commerce` — phụ thuộc T041
 - [ ] T043 [US4] Verify Kịch bản 4 `quickstart.md` live trên dev (đối chiếu SQL 0 đồng; topup tăng đếm) + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./services/commerce/...`
 
 **Checkpoint**: US4 xong — hai con số tin được; US1–US3 không hồi quy

@@ -212,12 +212,10 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 }
 
 // GetPayOSReconciliation aggregates the transaction table over the selected
-// period instead of reading the latest snapshot (029 R6/FR-017).
-//
-// FR-017's scope change (wallet_topup included) and `totalSuccessValue`'s new
-// source live in the account query and are completed in US4 (T039/T041); this
-// task moves the panel onto a period and keeps the borrowing of
-// SubscriptionRevenueVND for the value field until then.
+// period instead of reading the latest snapshot (029 R6/FR-017). The counters
+// span both transaction types (direct purchase + wallet top-up), and
+// `totalSuccessValue` is the real SUM(amount) of the successful ones — the
+// panel no longer borrows the subscription-only revenue.
 func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context, from, to time.Time) (*dto.PayOSReconciliationRes, error) {
 	if from.IsZero() && to.IsZero() {
 		// No period sent: today by the VN calendar (data-model §3). A single
@@ -247,7 +245,7 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context, fro
 		FailedCount:       stats.PayOSFailedCount,
 		PendingCount:      stats.PayOSPendingCount,
 		VoidedCount:       stats.PayOSVoidedCount,
-		TotalSuccessValue: stats.TotalSubscriptionRevenue.InexactFloat64(),
+		TotalSuccessValue: stats.TotalPayOSSuccessValue.InexactFloat64(),
 	}, nil
 }
 
