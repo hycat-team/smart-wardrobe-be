@@ -86,3 +86,14 @@ Nothing here blocks closing 029; nothing here is a task of 029.
 - **Gỡ bằng cách nào**: spec riêng bổ sung cột/nguồn dữ liệu thiết bị cho sự kiện login (hoặc join
   sessions theo thời điểm) kèm cân nhắc PII.
 - **Ảnh hưởng tới task đã tick**: không.
+
+### D-08 — `GET /admin/ai/usage` (feature 012) vẫn dùng cận `created_at <=`
+
+- **Vấn đề**: endpoint usage cũ (`ai_cost_repo_impl.go`, feature 012) so `created_at <= toDate` với
+  mốc UTC-midnight — cùng lớp lỗi lệch ngày mà 029 chuẩn hoá cho 7 endpoint theo kỳ (FR-014).
+  Endpoint này KHÔNG nằm trong danh sách FR-011 nên 029 giữ nguyên.
+- **Vì sao ngoài phạm vi**: không thuộc bề mặt 029 (không có trong plan/guide); sửa là thay đổi
+  hành vi của feature 012, cần rà caller riêng.
+- **Gỡ bằng cách nào**: một spec/task nhỏ chuẩn hoá endpoint này theo `ParseVNDateRangeQuery` +
+  cận nửa mở, kèm test pin kỳ.
+- **Ảnh hưởng tới task đã tick**: không — phát hiện bởi converge vòng 2, ghi nhận ngoài phạm vi.

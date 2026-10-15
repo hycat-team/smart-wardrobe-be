@@ -1,7 +1,7 @@
 # Frontend Integration Guide — Khả năng quan sát cho admin (029)
 
 **Feature**: `029-admin-observability`
-**Trạng thái**: Phase 7 (T044/T045) — guide hoàn thiện; ví dụ JSON dựng từ hợp đồng + DTO trong mã nguồn, chưa đối chiếu live (T046 sẽ đối chiếu).
+**Trạng thái**: Đã đồng bộ có đếm với mã nguồn và **đối chiếu live 2026-10-16** trên stack Docker dev — xem biên bản §8 (ví dụ JSON đã đối chiếu hình dạng/trường; số liệu trong ví dụ là minh hoạ).
 **Đối tượng đọc**: Lập trình viên frontend repo `smart-wardrobe-fe` (trang quản trị admin).
 **Mục tiêu**: FE triển khai được 2 trang quản trị mới + sửa dashboard **chỉ bằng tài liệu này** — KHÔNG cần đọc mã nguồn backend hay Swagger.
 

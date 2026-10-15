@@ -30,6 +30,9 @@ type mockAdminDashboardRepo struct {
 	upsertAdminCalled   bool
 	latestSnapshotError error
 	snapshotsError      error
+
+	lastSnapshotsFrom time.Time
+	lastSnapshotsTo   time.Time
 }
 
 func (m *mockAdminDashboardRepo) UpsertAdminSnapshot(ctx context.Context, snapshot *entities.DashboardAdminDailySnapshot) error {
@@ -38,6 +41,7 @@ func (m *mockAdminDashboardRepo) UpsertAdminSnapshot(ctx context.Context, snapsh
 }
 
 func (m *mockAdminDashboardRepo) GetAdminSnapshots(ctx context.Context, fromDate, toDate time.Time) ([]*entities.DashboardAdminDailySnapshot, error) {
+	m.lastSnapshotsFrom, m.lastSnapshotsTo = fromDate, toDate
 	if m.snapshotsError != nil {
 		return nil, m.snapshotsError
 	}
@@ -384,6 +388,38 @@ func TestAdminGetAIMarginAnalytics_EchoesVNDayLabels(t *testing.T) {
 	}
 	if !res.ToDate.Equal(wantTo) {
 		t.Errorf("expected ToDate=%v, got %v", wantTo, res.ToDate)
+	}
+}
+
+// TestAdminGetAIMarginAnalytics_SnapshotWindowExcludesTheDayAfterThePeriod is
+// 029 T050/FR-011/FR-014/SC-003. `GetAdminSnapshots` compares the DATE column
+// `snapshot_date` against an instant with `<=`; the period callers of this use
+// case pass the EXCLUSIVE half-open upper bound (00:00 +07 of the day AFTER the
+// last selected day), which the DATE value of that next day also satisfies —
+// without stepping back, the snapshot row of the day after the period is summed
+// into the panel (reproduced on the dev DB: range 14–15/10 with `<= 16/10
+// 00:00+07` picked up the 2026-10-16 row). The repository window must end just
+// inside the last day.
+func TestAdminGetAIMarginAnalytics_SnapshotWindowExcludesTheDayAfterThePeriod(t *testing.T) {
+	repo := &mockAdminDashboardRepo{}
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
+
+	lastDay := time.Date(2026, time.October, 15, 0, 0, 0, 0, timeutils.VnLoc())
+	from := timeutils.StartOfDayInVN(time.Date(2026, time.October, 14, 0, 0, 0, 0, timeutils.VnLoc()))
+	to := timeutils.EndOfDayInVN(lastDay) // exclusive: 2026-10-16 00:00+07
+
+	if _, err := uc.GetAIMarginAnalytics(context.Background(), from, to); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !repo.lastSnapshotsFrom.Equal(from) {
+		t.Errorf("snapshots fromDate = %s, want %s (the lower bound must pass through unchanged)",
+			repo.lastSnapshotsFrom, from)
+	}
+	wantTo := to.Add(-time.Nanosecond) // just inside 2026-10-15, so the 16/10 row cannot match `<=`
+	if !repo.lastSnapshotsTo.Equal(wantTo) {
+		t.Errorf("snapshots toDate = %s, want %s (%s - 1ns); the DATE-column `<=` would otherwise "+
+			"include the next day's snapshot row", repo.lastSnapshotsTo, wantTo, to)
 	}
 }
 

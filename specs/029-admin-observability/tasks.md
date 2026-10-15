@@ -64,7 +64,7 @@
 - [x] T013 [US1] Usecase: thêm `ListActivityEvents` vào `services/account/internal/modules/identity/application/interface/usecase/user_uc.go` + implement method trên `UserUseCase` trong `.../application/usecase/activity_uc.go` (mới) + mapper `.../application/mapper/activity_mapper.go` (mới) — phụ thuộc T010, T012
 - [x] T014 [US1] Handler + route: method `ListActivityEvents` trên `AdminHandler` trong `services/account/internal/modules/identity/presentation/handler/activity_handler.go` (mới, swagger annotation) + group `/admin/activity-events` trong `.../presentation/router/router.go` (auth + `RolesAuthorize(roleslug.Admin)`) — phụ thuộc T013
 - [x] T015 [US1] Docs + swagger: tạo `docs/api/identity/admin-activity-api.md` + cập nhật mục lục `docs/api/README.md` + chạy `make swagger svc=account` — phụ thuộc T014
-- [ ] T016 [US1] Verify Kịch bản 1 `quickstart.md` live trên dev (login/refresh 2 tài khoản; lọc đủ 3 điều kiện; 400/403) + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./shared/...`
+- [x] T016 [US1] Verify Kịch bản 1 (đã verify live 2026-10-16 trên Docker dev: 2 tài khoản login, danh sách kèm danh tính, lọc đủ 3 điều kiện = 1 sự kiện, 400 cho logout/abc/ngày sai/đảo chiều, 403 user-token; gate lint + race account/shared xanh ở Phase 3) `quickstart.md` live trên dev (login/refresh 2 tài khoản; lọc đủ 3 điều kiện; 400/403) + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./shared/...`
 
 **Checkpoint**: US1 chạy độc lập — admin tra được lịch sử hoạt động kèm danh tính, không cần tra chéo
 
@@ -89,7 +89,7 @@
 - [x] T022 [US2] Handler `services/account/internal/modules/subscription/presentation/handler/admin_billing_handler.go`: detail map qua `DepositTransactionToRes`; list dùng cùng mapper (bỏ khối build inline); parse `fromDate/toDate` qua `validation.ParseVNDateRangeQuery` (T003) → 400; bỏ hàm local `parseDepositStatus`, gọi `mapper.ParseDepositStatus` (đã nhận thêm `failed_legacy`) — phụ thuộc T003, T020, T021
 - [x] T023 [US2] Repo `services/account/internal/modules/subscription/infrastructure/persistence/deposit_transaction_repo_impl.go`: `ListAdmin` đổi `created_at <=` → `<` với `ToDate` là cận nửa mở; ghi chú semantics trên `AdminDepositTransactionFilter` (`domain/repositories/deposit_transaction_repo.go`) — phụ thuộc T018
 - [x] T024 [US2] Docs + swagger: cập nhật `docs/api/subscription/admin-billing-api.md` before→after (status chuỗi 11 giá trị, detail camelCase, kỳ VN + 400) + `make swagger svc=account` — phụ thuộc T022
-- [ ] T025 [US2] Verify Kịch bản 2 `quickstart.md` live trên dev + gate: `make lint` + `go test -race -count=3` scoped `./services/account/...`
+- [x] T025 [US2] Verify Kịch bản 2 (đã verify live 2026-10-16: status chuỗi 11 giá trị, failed_legacy khứ hồi, detail camelCase, 404 id lạ, biên 23:30 VN nằm trong kỳ, 400 đảo chiều; gate lint + race account xanh ở Phase 4) `quickstart.md` live trên dev + gate: `make lint` + `go test -race -count=3` scoped `./services/account/...`
 
 **Checkpoint**: US2 xong — trang giao dịch có contract dùng được; US1 không hồi quy
 
@@ -116,7 +116,7 @@
 - [x] T033 [US3] AI chain: `ai_cost_repo_impl.go` (breakdown nhận kỳ + chuẩn hoá `<`), `application/usecase/cost/usecase.go` + `application/interface/usecase/cost_uc.go`, `services/ai/contract/aiexecutor/dashboard_reader.go`, `services/ai/internal/modules/aiexecutor/presentation/grpc/server.go`, `contracts/ai/v1/client/dashboard_reader_client.go` — phụ thuộc T005, T006, T028
 - [x] T034 [P] [US3] Commerce handler: `services/commerce/internal/modules/dashboard/presentation/handler/admin_dashboard_handler.go` — thay 3 khối parse lặp bằng helper chung (T003); thêm tham số kỳ cho distribution/renewal/error-breakdown/payos; cập nhật swagger annotation — phụ thuộc T003
 - [x] T035 [US3] Commerce usecase: `services/commerce/internal/modules/dashboard/application/usecase/admin_dashboard_uc_impl.go` — chữ ký `(from, to)`; payos mặc định hôm nay + gọi reader theo kỳ; error-breakdown mặc định 30 ngày VN + `totalErrors = Σ breakdown` + rate cùng kỳ; distribution/renewal passthrough; revenue-breakdown mặc định 6 tháng theo biên ngày VN; sửa call site KPI fallback (dòng ~65: lấy `from, to := VNDayRange(now)` rồi truyền cặp — giữ hành vi ngày); rà `GetAdminSnapshots` so `snapshot_date` với cận ngày VN (date column) — phụ thuộc T027, T031, T033, T034
-- [ ] T036 [US3] Verify Kịch bản 3 `quickstart.md` live trên dev + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./services/ai/... ./services/commerce/...` (gate đỏ nếu còn fake/test chữ ký cũ chưa cập nhật ở T030)
+- [x] T036 [US3] Verify Kịch bản 3 (đã verify live 2026-10-16: revenue-breakdown theo kỳ, distribution giao cửa sổ — Oct có premium, Sep không; renewal theo created_at 1 vs 2 attempt; error-breakdown cùng kỳ rate 0; 400×3 endpoint; gate lint + race 3 service xanh ở Phase 5) `quickstart.md` live trên dev + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./services/ai/... ./services/commerce/...` (gate đỏ nếu còn fake/test chữ ký cũ chưa cập nhật ở T030)
 
 **Checkpoint**: US3 xong — đổi kỳ làm số liệu đổi; mặc định giữ nguyên; 400 nhất quán
 
@@ -139,7 +139,7 @@
 - [x] T040 [US4] Transport mapper field 7: `services/account/contract/subscription/transport/mapper.go` + `to_proto.go` (string decimal ↔ decimal) + cập nhật `transport/mapper_test.go` (round-trip field 7, giữ test cũ xanh) — phụ thuộc T039
 - [x] T041 [US4] Commerce: `GetPayOSReconciliation` trong `admin_dashboard_uc_impl.go` lấy `TotalSuccessValue` từ `TotalPayOSSuccessValue` (bỏ mượn `SubscriptionRevenueVND`) — phụ thuộc T040
 - [x] T042 [US4] Docs + swagger: cập nhật `docs/api/dashboard/dashboard-admin-api.md` before→after (tham số kỳ mọi endpoint; payOS scope 2 loại + giá trị thật; error-rate cùng kỳ) + `make swagger svc=commerce` — phụ thuộc T041
-- [ ] T043 [US4] Verify Kịch bản 4 `quickstart.md` live trên dev (đối chiếu SQL 0 đồng; topup tăng đếm) + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./services/commerce/...`
+- [x] T043 [US4] Verify Kịch bản 4 (đã verify live 2026-10-16: totalSuccessValue=150000 khớp SQL SUM success cả 2 loại; revenue direct-only=100000 tách biệt; topup làm tăng số đếm; gate lint + race account/commerce xanh ở Phase 6) `quickstart.md` live trên dev (đối chiếu SQL 0 đồng; topup tăng đếm) + gate: `make lint` + `go test -race -count=3` scoped `./services/account/... ./services/commerce/...`
 
 **Checkpoint**: US4 xong — hai con số tin được; US1–US3 không hồi quy
 
@@ -271,3 +271,10 @@ Task: "Commerce handler helper kỳ (T034)"
 
 - Tổng 49 task (T001–T049), 100% theo format `- [ ] [ID] [P?] [Story?] mô tả + đường dẫn file`
 - Setup: 2 • Foundational: 4 • US1: 10 (T007–T016) • US2: 9 (T017–T025) • US3: 11 (T026–T036) • US4: 7 (T037–T043) • US5: 2 (T044–T045) • Polish: 4 (T046–T049)
+
+---
+
+## Phase 9: Convergence
+
+- [x] T050 Sửa off-by-one cận trên cửa sổ kỳ của panel `ai-margin`: `GetAdminSnapshots` (`services/commerce/internal/modules/dashboard/infrastructure/persistence/dashboard_admin_repo.go:31`) so `snapshot_date <= toDate` trong khi `toDate` là cận LOẠI TRỪ (00:00 +07 ngày kế tiếp), nên với session DB `Asia/Ho_Chi_Minh` (`configs/config.yaml:71` → `shared/infrastructure/db/db.go:64`) snapshot của NGÀY SAU ngày kết thúc bị tính vào kết quả — đã tái hiện trên DB dev: kỳ 14–15/10 với `<= 16/10 00:00+07` khớp thêm dòng snapshot 2026-10-16; sửa để kết quả chỉ gồm trọn [fromDate, toDate] (chú ý caller khác của method dùng chung — `dynamic_query_execute_uc.go`, `dynamic_query_aggregate_uc.go` — truyền cận UTC-midnight riêng, đổi thẳng sang `<` sẽ làm rơi ngày cuối của họ) + test pin kỳ per FR-011/FR-014/SC-003 (contradicts)
+- [x] T051 Cập nhật (2026-10-16: dòng trạng thái đã cập nhật theo biên bản §8) dòng `**Trạng thái**` ở đầu `specs/029-admin-observability/frontend-guide.md` — đang ghi "chưa đối chiếu live (T046 sẽ đối chiếu)" trong khi §8 của chính file đã ghi biên bản đồng bộ T046 (đối chiếu live có đếm, 2026-10-16) per FR-020 (partial)

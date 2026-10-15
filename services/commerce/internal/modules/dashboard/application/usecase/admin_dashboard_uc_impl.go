@@ -131,10 +131,15 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 	labelFrom := timeutils.StartOfDayInVN(fromDate)
 	labelTo := timeutils.StartOfDayInVN(toDate.Add(-time.Nanosecond))
 
-	// `toDate` is the EXCLUSIVE upper bound (00:00 of the next VN day), while
-	// `snapshot_date` is a DATE column: `<=` with the bound still includes the
-	// final selected day, because its stored 00:00 is not after the bound.
-	snapshots, err := uc.dashboardRepo.GetAdminSnapshots(ctx, fromDate, toDate)
+	// `snapshot_date` is a DATE column and the repository compares it with `<=`,
+	// while `toDate` is the EXCLUSIVE upper bound (00:00 of the next VN day):
+	// passing the bound unchanged would also count the snapshot row of the day
+	// AFTER the period, because that DATE value's stored 00:00 equals the bound
+	// (off-by-one reproduced on the dev DB: range 14–15/10 picked up the 16/10
+	// row). Step back just inside the last selected day so the window covers
+	// exactly [fromDate, last day]. `GetSystemOverview` passes a mid-day `now`;
+	// stepping back 1ns stays within that day, so its behaviour is unchanged.
+	snapshots, err := uc.dashboardRepo.GetAdminSnapshots(ctx, fromDate, toDate.Add(-time.Nanosecond))
 	if err != nil {
 		return nil, err
 	}
