@@ -46,5 +46,6 @@
 ## Ghi chú chung
 
 - Phiên clarify 2026-10-15 đã chốt 5 quyết định (xem mục Clarifications trong spec): ngữ nghĩa phân bổ theo kỳ; phạm vi payOS gồm cả nạp ví; panel payOS nhận kỳ; sửa kỳ lọc ngày của danh sách giao dịch; trạng thái legacy `failed_legacy`.
+- T048 (re-validate cuối, 2026-10-16): spec.md không đổi trong suốt implement (chỉ guide/tasks/deferred đổi) → giữ nguyên 21/21.
 - FR-019 liệt kê tối thiểu các phát hiện UX từ khảo sát repo FE ngày 2026-10-15 (chi tiết file:line nằm trong kế hoạch/báo cáo khảo sát, không thuộc spec).
 - Ranh giới phạm vi: chỉ repo BE; code FE không đổi trong tính năng này (Assumptions).
