@@ -62,7 +62,7 @@ Người vận hành (chính chủ hệ thống, thao tác tay theo runbook) đ�
 
 **Acceptance Scenarios**:
 
-1. **Given** bản sao production, **When** chạy toàn bộ quy trình bàn giao, **Then** schema cuối đồng nhất 100% với database dựng trắng từ lịch sử mới (so sánh từng bảng, cột, index, constraint).
+1. **Given** bản sao production, **When** chạy toàn bộ quy trình bàn giao, **Then** schema cuối đồng nhất 100% ở phạm vi handover với database dựng trắng từ lịch sử mới (10 bảng `aiexecutor`+`dashboard`: từng bảng, cột, index, constraint).
 2. **Given** đang trong cửa sổ cutover, **When** bất kỳ bước kiểm tra nào đỏ, **Then** dừng lại và khôi phục từ backup thay vì sửa tiếp trên dữ liệu sống.
 3. **Given** đã cutover xong, **When** người dùng đăng ký, mua gói, dùng AI, xem dashboard, **Then** mọi luồng nghiệp vụ chạy bình thường (smoke grant + dashboard xanh).
 4. **Given** database dev hiện tại (schema y chang production), **When** chạy toàn bộ quy trình bàn giao trên đó sau khi đã backup, **Then** mọi kiểm tra pass — đây là cổng go/no-go: chỉ khi case này xanh mới được đặt giờ G production.
@@ -120,7 +120,7 @@ Người kiểm chứng quy trình bàn giao trên database tạm được tạo
 ### Measurable Outcomes
 
 - **SC-001**: 100% file migration chạm `aiexecutor.*` nằm ở cây AI và 100% thay đổi `dashboard.*` mới nằm ở cây Commerce (rà soát toàn bộ cây migration, 0 ngoại lệ).
-- **SC-002**: Schema cuối của 2 đường kiểm chứng (database trắng dựng từ lịch sử mới vs bản sao production sau hội tụ) đồng nhất 100% ở mức bảng, cột, index, constraint.
+- **SC-002**: Schema cuối của 2 đường kiểm chứng (database trắng dựng từ lịch sử mới vs bản sao production sau hội tụ) đồng nhất 100% ở phạm vi handover (10 bảng `aiexecutor`+`dashboard`: bảng/cột/index/constraint); drift ngoài phạm vi (nếu có) được ghi `deferred.md`, không chặn hội tụ.
 - **SC-003**: Không còn tham chiếu tới tên constraint cũ trong toàn bộ mã nguồn, kiểm thử, runbook và tài liệu (tìm kiếm toàn repo trả về 0 kết quả, trừ dòng lịch sử trong tài liệu bàn giao).
 - **SC-004**: Bảng version của Account giữ nguyên số dòng trước/sau (mốc dev: 35 dòng; môi trường khác theo điểm cắt T001); kiểm tra tự động chặn được 3 mẫu migration vi phạm (mỗi luật có 1 mẫu thử đỏ).
 - **SC-005**: Cutover production hoàn thành trong cửa sổ đã duyệt với 0 mất mát dữ liệu (đếm dòng các bảng nghiệp vụ trước/sau bằng nhau) và 100% luồng smoke (đăng ký, mua gói, dùng AI, xem dashboard) xanh sau cutover.
