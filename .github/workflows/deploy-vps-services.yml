@@ -60,13 +60,13 @@ jobs:
                 service: ${{ fromJson(needs.plan.outputs.matrix) }}
         steps:
             - name: Checkout source
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+              uses: docker/setup-buildx-action@v4
 
             - name: Log in to GHCR
-              uses: docker/login-action@v3
+              uses: docker/login-action@v4
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
@@ -78,7 +78,7 @@ jobs:
               run: echo "name=ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}" >> "${GITHUB_OUTPUT}"
 
             - name: Build and push ${{ matrix.service }} image
-              uses: docker/build-push-action@v6
+              uses: docker/build-push-action@v7
               with:
                   context: .
                   file: services/${{ matrix.service }}/Dockerfile
@@ -113,13 +113,13 @@ jobs:
             ref: ${{ steps.digest.outputs.ref }}
         steps:
             - name: Checkout source
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+              uses: docker/setup-buildx-action@v4
 
             - name: Log in to GHCR
-              uses: docker/login-action@v3
+              uses: docker/login-action@v4
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
@@ -131,7 +131,7 @@ jobs:
               run: echo "name=ghcr.io/${GHCR_BASENAME,,}/rabbitmq-topology" >> "${GITHUB_OUTPUT}"
 
             - name: Build and push rabbitmq-topology
-              uses: docker/build-push-action@v6
+              uses: docker/build-push-action@v7
               with:
                   context: .
                   file: shared/tools/rabbitmq-topology/Dockerfile
@@ -160,13 +160,13 @@ jobs:
         environment: vps-production
         steps:
             - name: Checkout deployment files
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+              uses: docker/setup-buildx-action@v4
 
             - name: Log in to GHCR
-              uses: docker/login-action@v3
+              uses: docker/login-action@v4
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
