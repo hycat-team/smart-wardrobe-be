@@ -183,3 +183,389 @@ docker exec -e PGPASSWORD=123456 postgres-closy-dev psql -U admin -d smart_wardr
 - `DROP DATABASE verify_d06_v1` + `verify_d06_race`; `pg_database LIKE 'verify_d06%'` = **0 dòng**; file stage `/tmp/v1_0*.sql` trong container đã xóa; 3 process test đã taskkill (không còn `account/commerce/ai.exe` nào).
 - Dev nguyên trạng thái T001: `goose_db_version` 35 dòng, `goose_db_version_commerce` 3 dòng, `goose_db_version_ai` chưa tồn tại (chỉ đọc, không ghi).
 - Không `down -v`, không xóa volume, không chạm production trong toàn bộ batch.
+
+## US2 — Gate + Makefile + V3 + rename + docs (T018–T022)
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: ĐẠT cả 5 task (không tick `tasks.md` theo lệnh điều phối; không chạy gate repo `lint`/`check`/`test-race`).
+
+### T018 — Gate script `shared/tools/migration-ownership-check/` (`main.go` + `main_test.go`)
+
+- **Vị trí/quy ước**: Go tool trong `shared/tools/` theo đúng mẫu `nginx-check`
+  (`go run ./shared/tools/<tên>`), portable cả Windows lẫn sh nên không cần
+  nhánh OS trong Makefile. Output CLI tiếng Anh.
+- **Single source of truth**: script parse bảng §1 (map schema→cây) và đúng
+  dòng bullet §2 (danh sách cấm mỗi luật + ngoại lệ `REFERENCES identity.users(`)
+  từ `contracts/ownership-contract.md` — không hardcode danh sách schema nào.
+  G-AI = mọi schema trong universe §1 trừ `aiexecutor`, không ngoại lệ. Parse
+  hỏng (luật rỗng, schema lạ, thiếu cây) → exit 2 fail-closed, không pass lặng.
+- **Miễn trừ ông nội**: đúng 13 tên file chính xác (11 Account viết lại + 2
+  baseline), skip theo (service, tree, version) — comment trong code trỏ hợp
+  đồng §3 (điều khoản chuyển tiếp) + §4 (versioning). Ghi nhận lệch đánh số:
+  lệnh điều phối gọi "§4" cho điều khoản miễn trừ, nhưng trong file hợp đồng
+  điều khoản chuyển tiếp nằm ở **§3**, §4 là versioning — code trỏ cả hai.
+- Quét `services/*/database/migrations/*.sql` theo dòng: phải có từ khóa
+  `ALTER/CREATE/DROP` kèm `"<schema>."` mới tính; comment `--` được cắt trước;
+  dòng mang ngoại lệ FK user được bỏ qua. Vi phạm in `LUẬT file:dòng: nội dung`,
+  exit 1; sạch in `OK`, exit 0.
+- Hai bug bắt được nhờ test + chạy thật (đã sửa, có test hồi quy): (1) universe
+  bỏ sót `shared`/`public` vì `continue` trước khi gom schema ở dòng owner lạ;
+  (2) dòng §3 nhắc "G-ACCT" ghi đè bullet §2 — chỉ nhận dòng bullet `- ` đầu tiên.
+- Xanh trên cây thật: `go run ./shared/tools/migration-ownership-check` →
+  `OK — 25 migration file(s) scanned, 13 grandfathered version(s) skipped,
+  0 violations`, exit 0. (25 = 35 Account−11 + 4 Commerce−1 + 2 AI−1−embed.)
+
+### T019 — Makefile `migration-check` + đấu vào `check:`
+
+- Target mới sau `vet` (`go run ./shared/tools/migration-ownership-check`,
+  không nhánh OS), `.PHONY` + dòng help `quality-help` tương ứng.
+- `check: fmt-check tidy-check generate-check nginx-check vet migration-check
+  test-race build-all`.
+- `make migration-check` → gate OK + `Migration ownership check finished.`,
+  exit 0, không warning. Phát hiện ngoài lề: dòng echo `make vet` trong
+  `quality-help` thiếu tab đầu dòng nên make hiểu nhầm thành định nghĩa target
+  `vet` (cảnh báo `overriding recipe`) — đã sửa tab, warning hết.
+
+### T020 — Quickstart V3 đỏ/xanh (không git: chạy trên bản sao temp)
+
+- Lệnh dựng cây tạm (PowerShell, từ root repo):
+  `$tmp = Join-Path $env:TEMP "v3-ownership-gate"` (`C:\Users\Duck\AppData\Local\Temp\v3-ownership-gate`);
+  tạo `$tmp\specs\030-ddl-ownership-handover\contracts` + 3 cây
+  `$tmp\services\<account|commerce|ai>\database\migrations`; copy hợp đồng +
+  toàn bộ `*.sql` 3 cây vào temp.
+- Xanh trên cây thật trước khi thử: exit 0 (dòng `OK — 25 ... 0 violations`).
+- 3 mẫu vi phạm (mỗi file đúng 1 câu, tên file `99999999_v3_probe_*.sql` không
+  thuộc diện miễn trừ):
+  - Account: `ALTER TABLE aiexecutor.ai_policy_grants ADD COLUMN v3_probe_acct integer;`
+  - Commerce: `ALTER TABLE subscription.subscription_plans ADD COLUMN v3_probe_comm integer;`
+  - AI: `CREATE TABLE public.v3_probe_ai (id serial PRIMARY KEY);`
+- Đỏ: `go run ./shared/tools/migration-ownership-check -root $tmp` →
+  `G-ACCT services/account/.../99999999_v3_probe_acct.sql:2: ...` +
+  `G-COMM services/commerce/.../99999999_v3_probe_comm.sql:2: ...` +
+  `G-AI services/ai/.../99999999_v3_probe_ai.sql:2: ...` +
+  `FAIL — 3 violation(s) in 28 scanned file(s) (13 grandfathered skipped)`,
+  exit 1. Đủ cả 3 luật, mỗi luật đúng file + dòng.
+- Xanh: xóa 3 file mẫu → cùng lệnh → `OK — 25 ... 0 violations`, exit 0.
+- Dọn: `Remove-Item -Recurse $tmp`; `Test-Path $tmp` = False; glob repo
+  `**/99999999_*` = 0 file (mẫu chỉ tồn tại trong temp, cây thật nguyên vẹn).
+- Không ghi database nào (gate chỉ đọc file), không tạo/không cần drop DB tạm.
+
+### T021 — Đổi tên constraint cũ → `ai_policy_grants_effective_window_check`
+
+- Đã đổi (7 điểm, giữ nguyên nghĩa câu): comment
+  `grant_repair_integration_test.go:34`; `docs/operations/shared-reference.md`
+  (lệnh grep); `docs/operations/grant-restore-runbook.md` (3 điểm: mô tả
+  constraint, nguyên văn lỗi, mục chẩn đoán); `specs/027-grant-repair-unblock/runbook.md`
+  (khối trích dẫn); `specs/027-grant-repair-unblock/data-model.md` (bảng ràng buộc).
+- Giữ nguyên có chủ ý (dòng lịch sử — xem báo cáo grep cuối batch US2):
+  `verification-log.md` + `spec.md` FR-004 + `plan.md` (ghi quá trình rename);
+  `baseline-old.sql` (snapshot DB cũ); khối rename `DO` trong baseline AI;
+  `deferred.md` D-06 (văn bản vấn đề gốc; T022 chỉ append trạng thái);
+  `tasks.md`/`quickstart.md`/`error-classification.md` của spec 027 đã đóng;
+  ADR 013 (ADR bất biến, không sửa nội dung cũ).
+- Ghi nhận lệch thông tin: lệnh điều phối nêu
+  "`grant_error_class_integration_test.go:32` comment" — file hiện tại không
+  còn tham chiếu tên cũ ở đó (đã dùng tên riêng
+  `ai_policy_grants_error_class_check` + chỉ nhắc D-06), không có gì để đổi.
+- Tên bảng/index legacy (`user_ai_policy_grants_*`, trừ đúng CHECK trên) KHÔNG
+  thuộc phạm vi T021 — baseline cố ý giữ để khớp DB cũ từng byte.
+
+### T022 — ADR 016 + D-06 resolved
+
+- `docs/decisions/016-ddl-ownership-handover.md` (số tiếp theo sau 015, theo
+  cấu trúc ADR 014: Context/Decision/Consequences, thân tiếng Việt): vì sao
+  rewrite baseline, luật ông nội, gate, rollback = restore backup. Index trong
+  `docs/decisions/README.md` đã thêm dòng 016.
+- `specs/027-grant-repair-unblock/deferred.md` D-06: append khối
+  `Trạng thái (2026-10-16, spec 030 — RESOLVED)` kèm dấu vết sang spec 030 +
+  ADR 016; văn bản vấn đề gốc giữ nguyên.
+
+## T023 — Rehearsal V2 (restore + handover) + đo lock — DỪNG Ở PHÁT HIỆN DIFF (STOP)
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: HANDOVER SCOPE ĐẠT, FULL-DB PHÁT HIỆN DIFF NGOÀI PHẠM VI → DỪNG theo lệnh worker (không "fix" data, không chạy V5 trên dev live).
+
+**Đường chạy handover**: goose CLI qua `Makefile` (`make migrate-up svc=<name> DB_NAME=<db>`,
+đã fix `-table` ở T039: account → `goose_db_version`, ai → `goose_db_version_ai`,
+commerce → `goose_db_version_commerce`). Không boot binary ở T023a (tránh worker/email);
+V5 binary dự kiến ở bước sau — CHƯA CHẠY.
+
+### T023a-bước 1 — Backup dev + restore vào `verify_d06_rehearsal`
+
+- `pg_dump -U admin -Fc -f /tmp/verify_d06_rehearsal.dump smart_wardrobe_db`
+  → 1527231 bytes; `pg_restore --list` đọc được: 410 dòng TOC / 399 entries
+  (backup hợp lệ, KHÔNG dump production — chỉ dev).
+- `CREATE DATABASE verify_d06_rehearsal` + `pg_restore -d verify_d06_rehearsal`
+  (KHÔNG BAO GIỜ là DB live). Đối chiếu sau restore: `goose_db_version` 35 dòng
+  max `20261011090002`; `goose_db_version_commerce` 3 dòng max `20260927120000`;
+  `goose_db_version_ai` chưa tồn tại; constraint grants còn tên cũ
+  `user_ai_policy_grants_check` — đồng nhất dev trước handover.
+
+### T023a-bước 2 — Đếm dòng pre-handover (54 bảng, 8 schema module)
+
+| Nhóm | Kết quả pre |
+|---|---|
+| `aiexecutor` (7 bảng) | policies 2, audit 0, operations 8, models 7, grants 41, events 478, ledgers 21 |
+| `dashboard` (3 bảng) | admin 8, brand 0, summaries 0 |
+| `identity` | users 28, refresh_tokens 302, activity_events 0 |
+| `subscription` (13 bảng) | plans 2, user_subs 28, sub_events 19, wallets 11, statements 10, deposits 12, pay_events 14, webhook_inbox 14, quotas 25, renewals 0, campaigns 1, claims 6, sweep_runs 1 |
+| `wardrobe`/`fashion` | outfits 26, outfit_items 87, wardrobe_items 408, fashion_items 317, categories 9, messages 68, contexts 19 |
+| `brand` (15 bảng) | toàn bộ 0 |
+| `community` (6 bảng) | posts 6, comments 11, likes 17, media 5, follows 3, follow_stats 5 |
+
+### T023a-bước 3 — Đo thời gian giữ lock rename (cô lập, ROLLBACK giữ nguyên trạng thái)
+
+- Lệnh (trên `verify_d06_rehearsal`, trước handover):
+  `BEGIN; SELECT clock_timestamp(); ALTER TABLE aiexecutor.ai_policy_grants
+  RENAME CONSTRAINT user_ai_policy_grants_check TO ai_policy_grants_effective_window_check;
+  SELECT clock_timestamp(); ROLLBACK;`
+- Kết quả: t0 `15:31:18.412745+00` → t1 `15:31:18.41316+00` ≈ **0.415 ms**
+  (metadata-only; sau ROLLBACK tên cũ còn nguyên — handover sau đó vẫn làm rename thật).
+- Thời gian goose báo cho cả file baseline trên rehearsal (bao gồm mọi CREATE/seed +
+  rename, là cận trên của lock DDL): AI `6.92ms`, Commerce `16.69ms`
+  (trên DB trắng V1: AI `16.46ms`, Commerce `7.86ms`).
+- **Giá trị `lock_timeout` đề xuất (CHƯA CHỐT — chờ điều phối/V5 xác nhận): 10 giây**
+  (>20000 lần thời gian rename đo được, vượt xa thời gian cả file baseline, nhưng đủ
+  nhanh để abort khi kẹt lock thật trong cửa sổ full-stop 1–2h).
+
+### T023a-bước 4 — Chạy handover trên rehearsal
+
+- `make migrate-up svc=account DB_NAME=verify_d06_rehearsal`
+  → `goose: no migrations to run. current version: 20261011090002` (Up ~0, đúng kỳ vọng).
+- `make migrate-up svc=ai DB_NAME=verify_d06_rehearsal`
+  → `OK 20261016213000_adopt_aiexecutor_ownership.sql (6.92ms)`,
+  `successfully migrated database to version: 20261016213000`.
+- `make migrate-up svc=commerce DB_NAME=verify_d06_rehearsal`
+  → `OK 20261016213001_adopt_dashboard_ownership.sql (16.69ms)`,
+  `successfully migrated database to version: 20261016213001`.
+- Không lỗi bảng đã tồn tại, không deadlock.
+- Assert sau handover: `goose_db_version` **35 dòng** max `20261011090002` (không đổi);
+  `goose_db_version_commerce` **4 dòng** max `20261016213001`;
+  `goose_db_version_ai` **2 dòng** (0 + baseline) max `20261016213000`;
+  constraint grants chỉ còn `ai_policy_grants_effective_window_check` (tên cũ biến mất,
+  không trùng); đủ 7 bảng `aiexecutor` + 3 bảng `dashboard`.
+
+### T023a-bước 5 — Đếm dòng post-handover: BẰNG NHAU TUYỆT ĐỐI
+
+- Toàn bộ 54 bảng trên (ai 2/0/8/7/41/478/21, dashboard 8/0/0, users 28,
+  refresh_tokens 302, subscription 2/28/19/11/10/12/14/14/25/0/1/6/1,
+  wardrobe/fashion 26/87/408/317/9/68/19, brand toàn 0, community 6/11/17/5/3/5)
+  — **khớp từng dòng với pre-handover, 0 mất mát**.
+
+### T023a-bước 6 — Dựng DB trắng V1 (`verify_d06_v1ref`) + diff schema V1 vs V2
+
+- V1: `CREATE DATABASE verify_d06_v1ref`, nạp `00-init→01-schema→02-indexes→03-seed`
+  từ `/docker-entrypoint-initdb.d/` (xanh), rồi `make migrate-up` account (35/35 xanh,
+  gồm các file viết lại T033–T037) → ai (baseline `16.46ms`) → commerce
+  (2 cũ + baseline `7.86ms`). Assert V1: 35 / 4 / 2, đủ 7+3 bảng, cũ 0 / mới 1.
+- So sánh catalog `aiexecutor`+`dashboard` V1 vs V2 (rehearsal post-handover):
+  bảng **10/10 đồng nhất**, cột **156/156 đồng nhất**, constraint (tên+loại)
+  **48/48 đồng nhất**, index **27/27 đồng nhất**; định nghĩa CHECK chỉ khác cách
+  render cast của pg (`ARRAY['strict'::text...]` vs `ARRAY[('strict'::varchar)::text...]`,
+  tập giá trị enforce giống hệt — cosmetic do version deparse, không phải semantic).
+- **DIFF THÔ `pg_dump --schema-only` V1 vs V2: CÓ 4 điểm khác THẬT, toàn bộ nằm ở
+  schema `subscription` (ngoài phạm vi handover), nguyên văn**:
+  1. `subscription.subscription_plans.plan_kind` + `tier_rank`: V1 có `DEFAULT 0`,
+     V2 (và dev live) KHÔNG có default.
+  2. `CONSTRAINT deposit_transactions_gateway_reference_key UNIQUE (gateway_reference)`
+     trên `subscription.deposit_transactions`: V2 (và dev live) CÓ, V1 KHÔNG có.
+  3. `CREATE INDEX idx_webhook_inbox_processing ON subscription.provider_webhook_inbox ...`:
+     V1 CÓ, V2 (và dev live) KHÔNG có.
+  4. `subscription.user_subscriptions.started_at`: V1 có `DEFAULT now()`,
+     V2 (và dev live) KHÔNG có default.
+  (Các diff còn lại là cosmetic: token `\restrict` của pg_dump, ngắt dòng thân function
+  `unaccent`, thứ tự phần tử trong `ANY (ARRAY[0,3,4,5])` vs `ANY (ARRAY[3,0,4,5])` —
+  tương đương ngữ nghĩa.)
+- **Chứng minh pre-existing (không do handover gây ra)**: cả 4 điểm trên đều có trạng
+  thái V2 == dev-live (truy vấn trực tiếp `smart_wardrobe_db`, chỉ đọc), trong khi các
+  file handover chứa 0 DDL `subscription.*` (gate T018/T020 đã chứng minh cây Account
+  sạch + 2 baseline chỉ chạm `aiexecutor`/`dashboard`). Tức replay trắng từ
+  init-hiện-tại + history-mới KHÔNG tái hiện byte-for-byte shape `subscription` của dev
+  (drift có từ trước, ngoài phạm vi spec 030 — KỂ CẢ drift `user_style_profiles` đã vá
+  ở T038 thì 4 điểm này vẫn còn).
+
+### T023 — QUYẾT ĐỊNH STOP (tuân lệnh worker: diff schema → STOP, không "fix" data)
+
+- **V5 trên DB dev live: KHÔNG CHẠY** (chưa backup-v5, chưa boot binary vào dev, chưa
+  smoke). Dev giữ nguyên trạng thái T001: 35 / 3 / chưa có bảng AI, tên constraint cũ
+  còn nguyên (xác minh lại sau dọn dẹp — xem dưới).
+- **T024 (cutover-runbook.md): CHƯA VIẾT** — runbook cho cutover production không được
+  xuất bản trên rehearsal đỏ (thiếu V5 xanh + smoke + ngưỡng abort đã kiểm chứng).
+- **T025 (Down trên rehearsal): CHƯA CHẠY** — dừng cùng batch; ghi nhận phân tích tĩnh:
+  `Down` của 2 baseline là `DROP TABLE IF EXISTS` toàn bộ 7+3 bảng (KHÔNG rename ngược),
+  nên trên DB hội tụ (có dữ liệu) `Down` sẽ XÓA dữ liệu chứ không "tên cũ trở lại" như
+  văn bản T025 mô tả — mâu thuẫn spec-vs-code cần điều phối chốt (rollback thật theo
+  FR-007 là restore backup, không phải Down).
+- **Dọn dẹp**: đã `DROP DATABASE verify_d06_rehearsal` + `verify_d06_v1ref`, xóa
+  `/tmp/verify_d06_rehearsal.dump` + 2 file schema dump trong container;
+  `pg_database LIKE 'verify_d06%'` = 0 dòng. Không `down -v`, không xóa volume,
+  không chạm production, không ghi gì vào dev (dev chỉ đọc suốt batch trừ lệnh DROP/CREATE
+  DB tạm).
+- Xác minh dev nguyên trạng sau batch: `goose_db_version` 35/`20261011090002`,
+  `goose_db_version_commerce` 3/`20260927120000`, `goose_db_version_ai` chưa tồn tại,
+  5 constraint grants vẫn tên cũ (`user_ai_policy_grants_check`, ...).
+- **Cần điều phối quyết định**: (a) chấp nhận 4 diff `subscription` là drift ngoài phạm
+  vi (ghi `deferred.md` ở T030) rồi cho chạy V5; hay (b) điều tra drift trước giờ G;
+  (c) chốt lại kỳ vọng T025 (Down vs restore-backup) và (d) chốt `lock_timeout = 10s`.
+
+## Quyết định ràng buộc của điều phối (Phase 5 retry, 2026-10-16)
+
+Worker tuân thủ nguyên văn, không quyết định lại, không điều tra lại:
+
+1. **4 diff schema `subscription` (T023-bước 6) là drift có sẵn, ngoài phạm vi,
+   được CHẤP NHẬN**: câu lệnh định nghĩa chúng nằm trong file không đụng tới
+   `20260620_payment_lifecycle.sql` (Up dòng 1–265, Down dòng 267–370), các file
+   viết lại không bao giờ chạm chúng; V2 == dev-live ở cả 4 điểm. KHÔNG sửa,
+   KHÔNG truy diff thêm. Ghi nhận chấp thuận tại đây; T030 file vào `deferred.md`
+   nguyên văn 4 mục dưới đây:
+   - (i) `subscription.subscription_plans.plan_kind` + `tier_rank`: V1 có
+     `DEFAULT 0`, V2 (và dev live) KHÔNG có default.
+   - (ii) `CONSTRAINT deposit_transactions_gateway_reference_key UNIQUE
+     (gateway_reference)` trên `subscription.deposit_transactions`: V2 (và dev
+     live) CÓ, V1 KHÔNG có.
+   - (iii) `CREATE INDEX idx_webhook_inbox_processing ON
+     subscription.provider_webhook_inbox ...`: V1 CÓ, V2 (và dev live) KHÔNG có.
+   - (iv) `subscription.user_subscriptions.started_at`: V1 có `DEFAULT now()`,
+     V2 (và dev live) KHÔNG có default.
+2. **`lock_timeout = 10 giây` ĐÃ DUYỆT** (rename đo 0.415ms, cả file ~17ms).
+   Dùng làm ngưỡng abort trong runbook.
+3. **T025-revised**: CHỈ là vòng Down/Up trên database DỰNG TRẮNG (DROP an toàn
+   ở đó). Rollback trên database có dữ liệu = restore từ backup, không bao giờ
+   Down. Thực hiện đúng văn bản T025 mới.
+4. **Quy tắc mail của hiến pháp**: MỌI lần boot binary đều đặt
+   `EMAIL_ENABLED=false`. Không ngoại lệ.
+
+## T025-revised — Vòng Down/Up trên database trắng `verify_d06_downdb`
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: ĐẠT (vòng Down/Up khép kín trên DB trắng).
+
+- Dựng trắng: `CREATE DATABASE verify_d06_downdb`, nạp `00-init→03-seed` xanh,
+  `make migrate-up` account (toàn chain tới `20261011090002`) → ai (baseline
+  `20261016213000`, 37.87ms) → commerce (2 cũ + baseline `20261016213001`).
+  Assert trước Down: `aiexecutor` 7 bảng, `dashboard` 3 bảng, versions **35 / 4 / 2**.
+- `make migrate-down svc=commerce` → `OK 20261016213001 (18.36ms)`;
+  `make migrate-down svc=ai` → `OK 20261016213000 (10.23ms)`.
+- Verify sau Down: 0 bảng trong `aiexecutor`/`dashboard`
+  (`to_regclass` cả 2 bảng mẫu = NULL), 0 schema còn lại;
+  `goose_db_version` **35 dòng** max `20261011090002` (Account nguyên vẹn);
+  `goose_db_version_commerce` về **3 dòng** max `20260927120000` (dòng baseline mất);
+  `goose_db_version_ai` còn **1 dòng** max `0` (dòng baseline mất, còn dòng `0`).
+- `Up` lại xanh: ai `OK (17.6ms)` → commerce `OK (18.5ms)`; assert: 7+3 bảng trở
+  lại, versions **35 / 4 / 2**, chỉ còn `ai_policy_grants_effective_window_check`.
+- Ghi nhận đúng như phân tích ở T023: `Down` 2 baseline là `DROP TABLE IF EXISTS`
+  toàn bộ 7+3 bảng (KHÔNG rename ngược) — trên DB có dữ liệu sẽ XÓA dữ liệu;
+  vì vậy rollback thật theo FR-007 là restore backup, runbook §6 ghi rõ.
+- Dọn dẹp: đã `DROP DATABASE verify_d06_downdb`; không `down -v`, không xóa
+  volume, không chạm production/dev-live (DB tạm duy nhất).
+
+## T023-hoàn tất — Rehearsal V5 trên database dev live (cổng go/no-go SC-007)
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: ĐẠT 100% (đủ điều kiện đặt giờ G).
+
+Bằng chứng V2 restore-rehearsal (ghi ở mục T023 trên) còn nguyên:
+handover scope 10/10 đồng nhất, đếm dòng 54 bảng bằng nhau tuyệt đối,
+versions 35/4/2 — KHÔNG chạy lại, đi thẳng V5 theo lệnh điều phối.
+
+### V5-bước 1 — Backup dev đầy đủ + xác minh đọc được
+
+- `pg_dump -U admin -Fc -f /tmp/verify_d06_v5_dev_before.dump smart_wardrobe_db`
+  → **1527231 bytes** trong container; bản sao thứ hai trên host
+  (`opencode\verify_d06_v5_dev_before.dump`, 1527233 bytes — chênh 2 bytes
+  header copy, nội dung đồng nhất).
+- `pg_restore --list` đọc được: **399 TOC entries** (khớp mốc T023a), gồm đủ
+  TABLE + TABLE DATA + CONSTRAINT + INDEX + FK toàn database — backup hợp lệ,
+  đường về sẵn sàng (KHÔNG dump production — chỉ dev).
+
+### V5-bước 2 — Số liệu pre-handover trên dev (55 bảng, 8 schema module)
+
+`ai`: policies 2, audit 0, operations 8, models 7, grants 41, events 478,
+ledgers 21; `dashboard`: 8/0/0; `identity`: users 28, refresh_tokens 302,
+activity_events 0; `subscription`: plans 2, user_subs 28, sub_events 19,
+wallets 11, statements 10, deposits 12, pay_events 14, webhook_inbox 14,
+quotas 25, renewals 0, campaigns 1, claims 6, sweep_runs 1; `wardrobe`/`fashion`:
+outfits 26, outfit_items 87, wardrobe_items 408, fashion_items 317, categories 9,
+messages 68, contexts 19; `brand` 15 bảng toàn 0; `community`: 6/11/17/5/3/5.
+(Khớp từng dòng với pre-handover T023a — dev không drift dữ liệu từ đó.)
+
+### V5-bước 3 — Deploy 3 binary mới (EMAIL_ENABLED=false) vào dev live
+
+- `make build-all` xanh (nhúng migrations mới nhất).
+- Boot tuần tự Account(:8111) → AI(:8113) → Commerce(:8112) từ `bin/*.exe`,
+  env như compose dev (`DATABASE_MIGRATE_ON_START=true`, bảng version
+  per-service, `INGRESS_*_URL` trỏ localhost 8111/8112/8113) + bắt buộc
+  `EMAIL_ENABLED=false`. Log ra file `v5-<svc>.log` ngoài repo.
+- Cả 3: `Running database migrations...` → `Database migrations applied
+  successfully.` → `service listening` (account 22:47:00, ai 22:49:49,
+  commerce 22:52:00 — serialize qua advisory lock, 0 lỗi bảng đã tồn tại,
+  0 deadlock, 0 migration-failed). Health `/api/v1/health` **200 cả 3**.
+
+### V5-bước 4 — Kiểm tra sau handover (toàn bộ xanh)
+
+- Versions: `goose_db_version` **35** max `20261011090002` (không đổi);
+  `goose_db_version_commerce` **4** max `20261016213001`;
+  `goose_db_version_ai` **2** max `20261016213000`.
+- Constraint grant: chỉ còn `ai_policy_grants_effective_window_check`,
+  tên cũ biến mất, không trùng.
+- Đếm dòng post-handover (55 bảng): **bằng nhau tuyệt đối với pre**
+  (ai 2/0/8/7/41/478/21, dashboard 8/0/0, users 28, refresh 302,
+  subscription 2/28/19/11/10/12/14/14/25/0/1/6/1, wardrobe/fashion
+  26/87/408/317/9/68/19, brand toàn 0, community 6/11/17/5/3/5) —
+  **0 mất mát (SC-005)**.
+- Schema handover-scope dev-post vs DB trắng V1 (`verify_d06_v1ref` dựng mới
+  từ init + history mới): bảng **10/10**, cột **156/156**, constraint **48/48**,
+  index **27/27** — đồng nhất ở mức catalog; `pg_dump --schema-only`
+  2 schema chỉ còn token `\restrict` và khác biệt render cast cosmetic của pg
+  (tập giá trị enforce giống hệt — cùng hiện tượng đã ghi ở T023a).
+  **SC-002 trên dev: ĐẠT** (4 diff `subscription` ngoài phạm vi đã được chấp
+  nhận ở trên, không chặn).
+
+### V5-bước 5 — Smoke V4 trên dev (qua binary mới)
+
+Tài khoản kiểm chứng đánh dấu rõ `v5smoke.20261016@example.com` / `v5smoke01`
+(KHÔNG đụng tài khoản người thật):
+
+- Đăng ký → **200**; OTP đọc từ Redis (`otp:registration:value:...`) →
+  confirm → **200**; login → **200** (token 423 ký tự).
+- `GET /api/v1/subscriptions/plans` → **200**, 2 gói (catalogue mua gói xanh).
+- `POST /api/v1/ai/chat/sessions` → **201** (tạo phiên AI xanh, không tốn
+  quota provider); `GET` sessions → **200**, count=1.
+- `GET /api/v1/admin/dashboard/overview` bằng token user thường → **403**
+  (RBAC còn nguyên sau handover; dashboard admin đọc bằng admin nằm ngoài
+  smoke vì không đoán mật khẩu seed — ghi nhận trung thực).
+- Grant ghi đúng: tài khoản smoke có **2 grants** (`active` + `closed`, do
+  worker cấp khi đăng ký) trong `aiexecutor.ai_policy_grants` qua constraint
+  tên mới — không lỗi CHECK.
+- **0 email gửi ra ngoài**: log worker ghi nguyên văn `Email delivery skipped:
+  outbound email is disabled (email.enabled=false)`, `skippedCount=1,
+  successCount=0` — công tắc `EMAIL_ENABLED=false` hiệu lực đã chứng minh.
+- Delta do chính smoke tạo (ghi riêng, không tính vào đếm handover):
+  users 28→29 (+1 smoke), refresh_tokens 302→304 (+2 phiên smoke),
+  grants 41→43 (+2 cấp cho smoke), contexts 19→20 (+1 session smoke).
+  Tài khoản smoke được giữ lại có đánh dấu để team nhận diện, không xóa tay
+  trên dev.
+
+### V5 dọn dẹp + trạng thái dev sau batch
+
+- Đã kill 3 binary host (`account/ai/commerce` không còn process); stack dev
+  containers (code cũ) vẫn chạy bình thường trên schema đã hội tụ (tương thích
+  ngược: chỉ đổi tên constraint + thêm bảng đã tồn tại).
+- Đã `DROP DATABASE verify_d06_v1ref`, xóa file scope-dump tạm trong container;
+  `pg_database LIKE 'verify_d06%'` = 0 dòng. **Giữ lại** backup
+  `/tmp/verify_d06_v5_dev_before.dump` (+ bản host) tới khi T031 xong.
+- Dev sau V5: versions 35/4/2, constraint tên mới, dữ liệu nguyên vẹn +
+  delta smoke đã ghi. Không `down -v`, không xóa volume, không chạm production.
+- Ghi nhận sự cố harness (không ảnh hưởng kết luận): lệnh `Start-Process`
+  với `&` đầu dòng thỉnh thoảng bị wrapper kill (`Unknown: ChildProcess.kill`)
+  — chạy lại giống hệt thì qua (gặp 2 lần ở ai/commerce, cả 2 đều xanh ở lần 2).
+
+## T024 — Runbook cắt over (`cutover-runbook.md`)
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: ĐẠT (file mới, thao tác tay cho chủ hệ thống).
+
+- Nội dung: preconditions (§0: V5-xanh SC-007, backup + verify restore,
+  full-stop 1–2h, FR-011 tới T028, `EMAIL_ENABLED=false` mọi boot kiểm chứng,
+  `lock_timeout=10s`), backup/restore (§1), số liệu pre (§2), deploy
+  Account→AI→Commerce (§3), monitor lock + abort (§4: query `pg_locks`/
+  `pg_stat_activity`, ngưỡng 10s, 6 tiêu chí abort — đỏ là dừng + restore,
+  không fix-forward), smoke V4 + checklist post-cutover (§5: versions 35/4/2,
+  tên constraint mới duy nhất, đếm dòng bằng nhau, smoke xanh),
+  rollback = restore (§6 — ghi rõ KHÔNG dùng Down trên DB có dữ liệu),
+  môi trường sót tự hội tụ (§7), đóng cửa sổ (§8).
