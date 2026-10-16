@@ -294,7 +294,7 @@ hồi.**
 docker logs ai-closy-dev 2>&1 | grep 'không đọc được thời điểm xảy ra'
 
 # Cảnh báo 2 — đóng grant vi phạm CHECK constraint
-docker logs ai-closy-dev 2>&1 | grep 'user_ai_policy_grants_check'
+docker logs ai-closy-dev 2>&1 | grep 'ai_policy_grants_effective_window_check'
 ```
 
 `stale_event` trong `grant_rejected_by_reason` **không** luôn có nghĩa sự kiện đến

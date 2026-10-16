@@ -40,12 +40,12 @@ hồi.
 `RestorePolicyGrants` ghim `EffectiveAt = subscription.started_at`, rồi
 `retirePreviousGrants` đóng grant cũ với cutoff bằng đúng giá trị đó. Khi hai giá
 trị bằng nhau thì `effective_to == effective_from`, và constraint
-`user_ai_policy_grants_check` (`CHECK (effective_to IS NULL OR effective_to > effective_from)`)
+`ai_policy_grants_effective_window_check` (`CHECK (effective_to IS NULL OR effective_to > effective_from)`)
 từ chối:
 
 ```
 ERROR: new row for relation "ai_policy_grants" violates check constraint
-       "user_ai_policy_grants_check" (SQLSTATE 23514)
+        "ai_policy_grants_effective_window_check" (SQLSTATE 23514)
 ```
 
 Lỗi này bị phân loại **nhầm là transient**, nên thông điệp bị requeue rồi thử lại 5
@@ -245,7 +245,7 @@ Nếu vẫn còn tài khoản hỏng, kiểm tra theo thứ tự:
 1. Hàng đỗi `subscription_plan_changed_queue` có còn đang chạy không.
 2. Log dịch vụ AI:
    - `"reason":"stale_event"` → cảnh báo 1. Sự kiện đã dead-letter, không retry.
-   - `SQLSTATE 23514` hoặc `user_ai_policy_grants_check` → cảnh báo 2. Sự kiện đã
+    - `SQLSTATE 23514` hoặc `ai_policy_grants_effective_window_check` → cảnh báo 2. Sự kiện đã
      bị requeue 5 lần rồi dead-letter.
 3. Bộ đếm `grant_rejected_by_reason` trên `GET /api/v1/ai/health` (xem
    `shared-reference.md` §4.1). Bộ đếm này **process-local**, reset mỗi lần deploy —

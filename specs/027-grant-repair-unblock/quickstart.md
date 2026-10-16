@@ -115,9 +115,10 @@ go test ./internal/modules/aiexecutor/application/usecase/grant/ -race -count=3
 > **Cảnh báo về lược đồ kiểm thử**: thực thể `AIPolicyGrant`
 > (`domain/entities/policy.go:52`) **không có** thẻ `check:` trên `EffectiveTo`, nên
 > `AutoMigrate` trong `openGrantTestDB` **không** tạo ràng buộc mà production có — ràng buộc
-> `user_ai_policy_grants_check` trên production đến từ migration
-> `20260622131631_add_ai_cost_policy.sql` của dịch vụ Account. Kiểm thử vì vậy **phải tự
-> thêm** ràng buộc bằng `ALTER TABLE ... ADD CONSTRAINT ... CHECK (...)` trước khi ép vi
+> kiểm tra cửa sổ hiệu lực trên production (hiện tên `ai_policy_grants_effective_window_check`;
+> trước spec 030 nó mang tên tự sinh `user_ai_policy_grants_check` từ migration
+> `20260622131631_add_ai_cost_policy.sql` của dịch vụ Account) vẫn phải được kiểm thử **tự
+> thêm** bằng `ALTER TABLE ... ADD CONSTRAINT ... CHECK (...)` trước khi ép vi
 > phạm; nếu không, `UPDATE` sẽ thành công và kiểm thử sẽ đỏ vì lý do sai — hoặc tệ hơn,
 > một biến thể lười sẽ xoá phần kiểm tra đó và báo "đã đúng".
 

@@ -31,7 +31,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // grantWindowCheckName is the name this test gives the window CHECK it installs.
-// It is deliberately NOT the production name (user_ai_policy_grants_check): this
+// It is deliberately NOT the production name (ai_policy_grants_effective_window_check): this
 // test drops and recreates its own constraint around a single run, and reusing
 // the production name would make the cleanup reach into a schema the test does
 // not own.

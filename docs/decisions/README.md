@@ -22,6 +22,7 @@ Mỗi file ghi một quyết định kiến trúc/vận hành đã chốt, kèm 
 | [013](013-deferred-lazy-grant-self-heal.md) | 2026-10-07 | Deferred: lazy grant self-heal when an account has no policy grant | Accepted | nợ kỹ thuật; điều kiện mở lại ở §2 |
 | [014](014-relax-grant-ordering-invariant.md) | 2026-10-07 | Nới lỏng bất biến thứ tự của bản ghi mức quyền | Accepted | thay ADR 013 §2 |
 | [015](015-drop-user-style-profiles.md) | 2026-10-11 | Xoá bảng `user_style_profiles` | Accepted | kèm migration `20261011090000_drop_user_style_profiles.sql` |
+| [016](016-ddl-ownership-handover.md) | 2026-10-16 | Bàn giao quyền sở hữu DDL theo schema (Account → AI/Commerce) | Accepted | giải quyết 027/D-06; gate `migration-check` |
 
 ## Quy ước
 
