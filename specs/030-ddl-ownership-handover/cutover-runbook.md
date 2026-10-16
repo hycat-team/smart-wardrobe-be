@@ -36,6 +36,50 @@ phần diễn giải là tiếng Việt.
 6. **Ngưỡng abort đã chốt**: `lock_timeout = 10 giây` (đo rename thật 0.415ms,
    cả file baseline ~7–40ms — xem verification-log T023; 10s lớn hơn 20000 lần
    thời gian rename nhưng đủ nhanh để abort khi kẹt lock thật).
+7. **Precaution pre-giờ G trên prod (chỉ đọc, xem chi tiết ở §0b)**: diff 4 điểm
+   schema D-01..D-04 + đối chiếu 4 giá trị data D-05 giữa prod-live và chain
+   seed. Khớp drift đã biết trên dev thì đi tiếp; lệch kiểu khác thì dừng điều
+   tra, chưa đặt giờ G.
+
+---
+
+## 0b. Precaution pre-giờ G: đối chiếu prod với drift đã biết (chỉ đọc)
+
+Chạy trên prod-live, toàn bộ là `SELECT` (không lock, không đổi dữ liệu).
+Ghi kết quả vào sổ giờ G trước khi quyết cutover.
+
+```sql
+-- D-01: DEFAULT của plan_kind / tier_rank (dev-drift: KHÔNG có default)
+SELECT column_name, column_default
+FROM information_schema.columns
+WHERE table_schema = 'subscription' AND table_name = 'subscription_plans'
+  AND column_name IN ('plan_kind', 'tier_rank');
+-- D-02: UNIQUE gateway_reference (dev-drift: CÓ constraint
+-- deposit_transactions_gateway_reference_key)
+SELECT conname FROM pg_constraint
+WHERE conrelid = 'subscription.deposit_transactions'::regclass AND contype = 'u';
+-- D-03: index webhook inbox (dev-drift: KHÔNG có idx_webhook_inbox_processing)
+SELECT indexname FROM pg_indexes
+WHERE schemaname = 'subscription' AND tablename = 'provider_webhook_inbox';
+-- D-04: DEFAULT của started_at (dev-drift: KHÔNG có default)
+SELECT column_name, column_default
+FROM information_schema.columns
+WHERE table_schema = 'subscription' AND table_name = 'user_subscriptions'
+  AND column_name = 'started_at';
+-- D-05: 4 giá trị data (so với chain seed: premium hard_cost_micro_vnd 25000000000,
+-- KHÔNG có model gemini-3.5-flash-lite, embedding output 0.20/0.15)
+SELECT code, hard_cost_micro_vnd FROM aiexecutor.ai_cost_policies;
+SELECT provider, model FROM aiexecutor.ai_model_configs ORDER BY 1, 2;
+SELECT operation, max_paid_attempts_per_day FROM aiexecutor.ai_cost_policy_operations
+WHERE policy_id = (SELECT id FROM aiexecutor.ai_cost_policies WHERE code = 'premium-default')
+ORDER BY 1;
+SELECT count(*) FROM aiexecutor.ai_cost_policy_audit_logs;
+```
+
+| Kết quả | Hành động |
+|---|---|
+| Khớp drift dev đã biết (D-01..D-04 như deferred, D-05 là sửa-tay có chủ ý) | Đi tiếp (baseline không ghi đè DB cũ nên an toàn) |
+| Lệch kiểu khác (object lạ, thiếu object baseline cần) | DỪNG, điều tra, chưa đặt giờ G |
 
 ---
 
@@ -177,5 +221,8 @@ lại. Không có runbook riêng cho từng môi trường sót.
 - Mở lại traffic, quan sát log 15 phút (không migration-failed, không deadlock,
   không lỗi FK/constraint mới).
 - Giữ file backup §1 ít nhất tới khi T031 (final report) xong.
+- Backup V5 của DB dev (bản rehearsal SC-007) giữ tới khi T032 xong — vừa là bằng
+  chứng rehearsal, vừa là điểm về cho dev nếu cần. Sau T032, chủ hệ thống quyết
+  giữ hay xóa; không tự động xóa.
 - Ghi sổ giờ G: thời gian full-stop thực tế, số liệu §2/§5, kết quả smoke,
   mọi abort (nếu có) và cách xử lý.
