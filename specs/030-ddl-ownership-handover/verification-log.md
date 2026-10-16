@@ -569,3 +569,111 @@ Tài khoản kiểm chứng đánh dấu rõ `v5smoke.20261016@example.com` / `v
   tên constraint mới duy nhất, đếm dòng bằng nhau, smoke xanh),
   rollback = restore (§6 — ghi rõ KHÔNG dùng Down trên DB có dữ liệu),
   môi trường sót tự hội tụ (§7), đóng cửa sổ (§8).
+
+## T026 — Quét repo cuối (SC-003, SC-006)
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: ĐẠT (với 1 diễn giải by-design ở T026b, chờ owner chốt).
+
+### T026a — Tên constraint cũ `user_ai_policy_grants_check`: 23 kết quả, toàn bộ là dòng lịch sử có chủ ý
+
+Tìm kiếm toàn repo (`user_ai_policy_grants_check`): **23 kết quả, 0 vi phạm**. Không có kết quả nào trong `services/account|commerce/database/migrations/*.sql` (cây cũ đã sạch) hay trong test/integration (T021 đã đổi) — kết quả duy nhất trong code chạy là khối rename chức năng của baseline AI.
+
+| # | Vị trí | Lý do giữ lại (1 từ) |
+|---|---|---|
+| 1 | `specs/030-ddl-ownership-handover/verification-log.md:38` | mốc-baseline |
+| 2 | `verification-log.md:39` | lệnh-kiểm-lại |
+| 3 | `verification-log.md:97` | thiết-kế-rename |
+| 4 | `verification-log.md:166` | parity-check |
+| 5 | `verification-log.md:300` | số-liệu-pre |
+| 6 | `verification-log.md:318` | lệnh-đo-lock |
+| 7 | `verification-log.md:404` | xác-minh-dev |
+| 8 | `specs/030-ddl-ownership-handover/spec.md:101` | FR-004 |
+| 9 | `specs/030-ddl-ownership-handover/plan.md:9` | tóm-tắt |
+| 10 | `specs/030-ddl-ownership-handover/cutover-runbook.md:66` | kiểm-tra-pre |
+| 11 | `cutover-runbook.md:67` | truy-vấn-IN |
+| 12 | `cutover-runbook.md:138` | checklist-post |
+| 13 | `specs/030-ddl-ownership-handover/baseline-old.sql:285` | snapshot |
+| 14 | `docs/decisions/016-ddl-ownership-handover.md:15` | ADR |
+| 15 | `docs/decisions/016-ddl-ownership-handover.md:51` | ADR |
+| 16 | `docs/decisions/013-deferred-lazy-grant-self-heal.md:99` | ADR-bất-biến |
+| 17 | `specs/027-grant-repair-unblock/tasks.md:298` | hồ-sơ-đóng |
+| 18 | `specs/027-grant-repair-unblock/quickstart.md:119` | ghi-chú-giải-quyết |
+| 19 | `specs/027-grant-repair-unblock/deferred.md:84` | văn-bản-gốc-D-06 |
+| 20 | `specs/027-grant-repair-unblock/contracts/error-classification.md:134` | phân-loại-giải-quyết |
+| 21 | `error-classification.md:141` | phân-loại-giải-quyết |
+| 22 | `services/ai/database/migrations/20261016213000_adopt_aiexecutor_ownership.sql:252` | rename-chức-năng |
+| 23 | `20261016213000_adopt_aiexecutor_ownership.sql:258` | rename-chức-năng |
+
+Khớp đúng danh sách cho phép (spec FR-004, plan, snapshot, khối DO baseline AI, ADR 016, văn-bản-gốc + hồ-sơ-đóng + ADR 013 của 027, evidence verification-log 030, ghi-chú-giải-quyết quickstart/error-classification của 027). **SC-003: ĐẠT.**
+
+### T026b — Lệnh xóa volume + target production (SC-006): 0 lệnh thực thi trên đường verify
+
+- Trong `specs/030-ddl-ownership-handover/`: 7 kết quả `down -v` đều là **văn bản cấm** ("Cấm `down -v`…" ở tasks/quickstart/plan/verification-log), **0 lệnh thực thi**. Gate `shared/tools/migration-ownership-check/` là Go thuần chỉ đọc file (0 lệnh docker/volume/DB). `Makefile` migrate-* chỉ nhận `DB_NAME` tham số — mọi lần gọi verify trong spec đều là `verify_d06_*`.
+- `quickstart.md`: 0 lệnh xóa volume, 0 target production thực thi (các chữ "production" chỉ là văn xuôi + 1 lệnh đọc `docker volume ls`).
+- `cutover-runbook.md`: **0 lệnh xóa volume**; CÓ các lệnh placeholder trỏ production (§1 backup/restore, §2 pre-checks, §6 rollback với `<ten-container-postgres-prod>`/`<user-prod>`/`<ten-db-prod>`) — đây là **đường thao tác tay T032 của chủ hệ thống** (không phải kịch bản verify), không thể viết runbook cutover mà không nhắc production. Diễn giải SC-006: "0 target production" áp cho đường verify (quickstart/gate/scripts); runbook là ngoại lệ by-design. Owner chốt diễn giải này trước giờ G.
+
+## T027 — Chạy quickstart V1–V5, batch đóng (2026-10-16)
+
+**Kết quả**: V1 ĐẠT, V1b ĐẠT, V2 evidence-check HOÀN TẤT (không chạy lại restore), V3 ĐẠT, V4 ĐẠT (trên DB tạm, không đụng dev), V5 evidence-check HOÀN TẤT (không chạy lại handover trên dev). Mọi boot binary đều `EMAIL_ENABLED=false`. Không `down -v`, không xóa volume, không chạm production; dev chỉ đọc (SELECT đếm + tên constraint).
+
+### T027-V1 — Fresh replay trên `verify_d06_t27v1`: XANH
+
+Nạp `00-init→01-schema→02-indexes→03-seed` xanh, rồi `make migrate-up` account (35/35 tới `20261011090002`) → ai (baseline `20261016213000`, 15.98ms) → commerce (2 cũ + baseline `20261016213001`, 6.11ms). Assert: `aiexecutor` **7** bảng, `dashboard` **3** bảng, tên cũ **0** / tên mới **1**, versions **35 / 4 / 2**, seed policies **2** / operations **8** / models **6**. Đã `DROP DATABASE verify_d06_t27v1` (sau khi dùng tiếp cho V4 dưới đây).
+
+### T027-V1b — Boot đồng thời 3 binary (`EMAIL_ENABLED=false`) vào `verify_d06_t27race` trắng+init: XANH
+
+Account (`:8111`, 23:02:42) → AI (`:8113`, 23:02:48) → Commerce (`:8112`, 23:02:54) serialize qua advisory lock; cả 3 `service listening`, health `/api/v1/health` **200 cả 3**. Log: **0 lỗi bảng đã tồn tại, 0 deadlock, 0 migration-failed** (1 dòng grep trúng là `errorCount:0` trong dòng success — false positive). Schema đồng nhất V1: 7+3 bảng, cũ 0 / mới 1, **35 / 4 / 2**. **0 email gửi ra ngoài** (không có dòng seed-mail như T040 — công tắc `EMAIL_ENABLED=false` hiệu lực; chỉ có `Email delivery skipped` ở V4). Kill 3 process + `DROP DATABASE verify_d06_t27race`.
+
+### T027-V2 — Evidence-check (KHÔNG chạy lại restore): HOÀN TẤT, bằng chứng đầy đủ
+
+Đối chiếu mục T023 đã ghi: backup dev 1527231 bytes + `pg_restore --list` 410 TOC/399 entries (hợp lệ, chỉ dev); restore vào `verify_d06_rehearsal`; pre-counts 54 bảng; rename đo cô lập **0.415ms** → `lock_timeout=10s` (đã duyệt); handover account Up~0 + AI 6.92ms + Commerce 16.69ms, 0 lỗi; versions **35/4/2**; post-counts **bằng nhau tuyệt đối**; catalog handover-scope **10/10 bảng, 156/156 cột, 48/48 constraint, 27/27 index**; raw-diff 4 điểm `subscription` đã có chứng minh pre-existing (V2==dev-live, handover 0 DDL subscription) và quyết định chấp nhận của điều phối; dọn sạch DB tạm. Không thiếu mục nào — không cần chạy lại.
+
+### T027-V3 — Gate đỏ/xanh trên bản sao temp: XANH
+
+Dựng temp `t27-ownership-gate` (copy hợp đồng + toàn bộ `*.sql` 3 cây, không git): xanh `OK — 25 file(s), 13 grandfathered, 0 violations`, exit **0** → thêm 3 mẫu vi phạm (`99999999_v3_probe_*`, mỗi luật 1 câu): đỏ đủ **G-ACCT + G-COMM + G-AI kèm file + dòng**, exit **1** → xóa mẫu: xanh lại exit **0**. Xóa temp (`Test-Path` = False); quét repo `**/99999999_*` = **0 file** (cây thật nguyên vẹn, gate chỉ đọc file, không đụng DB).
+
+### T027-V4 — Smoke trên DB tạm `verify_d06_t27v1` (đã hội tụ từ V1, KHÔNG đụng dev): XANH
+
+Boot 3 binary mới (`EMAIL_ENABLED=false`, ports 8111/8112/8113, `DB_NAME=verify_d06_t27v1`): cả 3 `service listening` (migrations no-op trên DB đã hội tụ — đúng kỳ vọng). Tài khoản đánh dấu `t27smoke.20261016@example.com` / `t27smoke01` (KHÔNG đụng tài khoản thật): đăng ký → **200**; OTP đọc từ Redis → confirm → **200**; login → **200**; `GET /api/v1/subscriptions/plans` → **200** (2 gói); `POST /api/v1/ai/chat/sessions` (commerce :8112) → **201** + list → **200** (count=1); `GET /api/v1/admin/dashboard/overview` bằng token user thường → **403** (RBAC nguyên). Grant ghi đúng: tài khoản smoke có **2 grants** (`active`+`closed`, worker cấp khi đăng ký) qua constraint tên mới — 0 lỗi CHECK. **0 email gửi**: log ghi `Email delivery skipped: outbound email is disabled (email.enabled=false)`. Kill binaries + `DROP DATABASE verify_d06_t27v1`. (Redis dev còn các key OTP `otp:registration:*` của địa chỉ smoke — có TTL tự hết, không phải dữ liệu user.)
+
+### T027-V5 — Evidence-check (KHÔNG chạy lại handover trên dev): HOÀN TẤT, bằng chứng đầy đủ
+
+Dev đã migrated (chạy lại handover chỉ là no-op + rủi ro ghi lên DB sống) nên chỉ đối chiếu mục T023-hoàn-tất đã ghi: backup dev 2 bản (container 1527231 bytes + host) + 399 TOC (đường về sẵn sàng); pre-counts 55 bảng khớp T023a; boot 3 binary `EMAIL_ENABLED=false` serialize không lỗi, health 200 cả 3; versions **35/4/2**; constraint mới duy nhất; post-counts **bằng nhau tuyệt đối** (0 mất mát, SC-005-phía-rehearsal); schema handover-scope vs trắng-V1 **10/10, 156/156, 48/48, 27/27** (SC-002, 4 diff subscription đã chấp nhận); smoke V4 trên dev xanh (register/confirm/login 200, plans 200, AI session 201, dashboard 403, 2 grants, 0 email); dọn sạch temp, giữ backup tới T031. Không thiếu mục nào — **SC-007 giữ nguyên ĐẠT**, không cần chạy lại.
+
+### T027 dọn dẹp + ghi nhận harness
+
+`pg_database LIKE 'verify_d06%'` = **0 dòng** (đã DROP `verify_d06_t27v1` + `verify_d06_t27race`); không còn process `account/ai/commerce` test nào; backup `/tmp/verify_d06_v5_dev_before.dump` (+ bản host) vẫn giữ tới T031. Ghi nhận flakiness harness (không ảnh hưởng kết luận, đã gặp ở V5): `Start-Process` thỉnh thoảng bị wrapper kill (`Unknown: ChildProcess.kill`) — chạy lại giống hệt thì qua (gặp 3 lần ở batch này); PID `Get-Process` thấy lệch PID `Start-Process` trả về nhưng log chứng minh đúng service listening đúng port.
+
+## T028 — `make lint` + `make migration-check` xanh + dỡ FR-011
+
+**Ngày ghi**: 2026-10-16 | **Kết quả**: ĐẠT.
+
+- `make lint` → exit **0** (`Go source formatting is valid` + `Go vet finished` + `Lint finished`).
+- `make migration-check` → exit **0** (`OK — 25 migration file(s) scanned, 13 grandfathered version(s) skipped, 0 violations`).
+- KHÔNG chạy `make check` ở đây (check đầy đủ chạy đúng 1 lần ở close-out bởi điều phối, theo cost discipline trong tasks.md T028).
+
+### Thông báo dỡ lệnh ngừng bắn FR-011 (văn bản — owner gửi nhóm, agent không gửi)
+
+> Thông báo: lệnh ngừng bắn migration FR-011 (spec 030) được DỠ từ thời điểm này. T001–T031 đã xanh (`make lint` + `make migration-check` exit 0, evidence V1–V5 đầy đủ). Từ nay được tạo migration mới chạm `aiexecutor.*`/`dashboard.*`, nhưng BẮT BUỘC đúng cây chủ (AI cho `aiexecutor`, Commerce cho `dashboard`) — gate `migration-check` (3 luật G-ACCT/G-COMM/G-AI) hiệu lực vĩnh viễn và sẽ đỏ nếu sai cây. Nhắc lại: rollback trên DB có dữ liệu = restore từ backup, KHÔNG dùng Down baseline. Giờ G production (T032) do chủ hệ thống quyết theo `cutover-runbook.md`.
+
+## T029 — Frontend-guide exemption: đã xác minh, không cần sửa
+
+`tasks.md` còn nguyên khối quyết định "Không đổi bề mặt client → không viết `frontend-guide.md`" (nhánh "có đổi" đã gỡ) + khối "Phát hiện ngoài phạm vi" trỏ T030. Nội dung CHÍNH XÁC: feature chỉ chạm `.sql`, `migrations.go`, `di/providers.go`, gate script, `Makefile`, docs/ADR — 0 thêm/xóa/sửa HTTP endpoint, event payload hay DTO client-facing (khớp Assumptions của spec). Không sửa gì.
+
+## T031 — Final report SC-001..SC-007 (2026-10-16)
+
+Đối chiếu từng SC với bằng chứng trong log này:
+
+| SC | Verdict | Bằng chứng |
+|---|---|---|
+| SC-001 (100% `aiexecutor`→AI, dashboard-mới→Commerce, 0 ngoại lệ) | **PASS** | 11 rewrite + 2 baseline (T007–T015, T033–T037); gate xanh 25 files/0 vi phạm (T018–T020, T027-V3, T028); T026a: 0 SQL chạm schema cấm còn lại trong cây Account |
+| SC-002 (trắng vs hội tụ đồng nhất 100% handover-scope; drift ngoài phạm vi vào deferred) | **PASS** (có caveat đã filed) | T023a-b6 + V5-b4: 10/10, 156/156, 48/48, 27/27; T027-V1/V1b tái khẳng định; 4 diff subscription filed D-01..D-04 |
+| SC-003 (0 tham chiếu tên cũ trừ dòng lịch sử) | **PASS** | T026a: 23 hits toàn bộ lịch sử có chủ ý, 0 trong SQL/tests chạy |
+| SC-004 (Account version rows không đổi + gate chặn 3 mẫu) | **PASS** | 35 dòng giữ nguyên mọi checkpoint (T001/T017/T023a/V5/T027-V1); gate đỏ/xanh đủ 3 luật (T020, T027-V3) |
+| SC-005 (cutover prod 0 mất mát + smoke xanh) | **PENDING** (chờ T032) | Phía rehearsal PASS: đếm dòng bằng nhau tuyệt đối (T023a, V5, T027-V4-delta-riêng); smoke xanh (V5, T027-V4). Prod chỉ owner chạy tay |
+| SC-006 (0 lệnh xóa volume / 0 target production) | **PASS** (diễn giải ở T026b) | Đường verify 0/0; runbook giữ placeholder prod by-design cho T032, 0 lệnh xóa volume mọi nơi. Owner chốt diễn giải |
+| SC-007 (rehearsal dev pass 100%, cổng go/no-go) | **PASS** | V5 evidence đầy đủ (T027-V5 check): versions/counts/schema/boot/smoke/0-email |
+
+**Outstanding**: chỉ còn **T032 go-live production** (owner chạy tay theo `cutover-runbook.md` trong cửa sổ full-stop 1–2h). Không còn task agent nào treo (T026–T031 đóng trong batch này; `tasks.md` không tick theo lệnh điều phối).
+
+**Đề xuất follow-up** (không thuộc 030, owner quyết): (1) Precaution pre-cutover: diff schema prod-live vs DB trắng V1 ở phạm vi `subscription` theo D-01..D-04 (chấp nhận nếu bản restore == prod-live). (2) Đối chiếu 4 giá trị data D-05 trên prod nếu cần seed trắng khớp prod. (3) Giữ/xóa backup `/tmp/verify_d06_v5_dev_before.dump` (+ bản host) sau báo cáo này theo runbook §8. (4) Owner gửi thông báo dỡ FR-011 (văn bản ở T028) tới nhóm. (5) Flakiness `Start-Process` wrapper-kill chỉ là công cụ harness, retry là qua — không cần action code.

@@ -79,11 +79,11 @@
 
 **Independent Test**: 3 mẫu migration vi phạm (mỗi luật 1 mẫu) đều bị gate đỏ kèm tên luật + file + dòng; tìm kiếm tên constraint cũ toàn repo = 0 (trừ dòng lịch sử)
 
-- [ ] T018 [P] [US2] Create gate script đọc `specs/030-ddl-ownership-handover/contracts/ownership-contract.md` làm single source of truth (vị trí theo quy ước Makefile, ví dụ `shared/tools/migration-ownership-check`), implement 3 luật G-ACCT/G-COMM/G-AI kèm ngoại lệ `REFERENCES identity.users(`
-- [ ] T019 [US2] Makefile: thêm target `migration-check` và đấu vào `make check` sau `vet` (depends on T018)
-- [ ] T020 [P] [US2] Chạy quickstart V3: 3 mẫu vi phạm đỏ + xóa mẫu xanh, ghi kết quả vào `specs/030-ddl-ownership-handover/verification-log.md` (depends on T019)
-- [ ] T021 [US2] Update mọi tham chiếu tên constraint cũ sang `ai_policy_grants_effective_window_check`: file test T016 (`*_integration_test.go` có ALTER tay), `grant_error_class_integration_test.go:32`, `specs/027-grant-repair-unblock/runbook.md` (grep), docs kiến trúc/data-model có nhắc tên cũ
-- [ ] T022 [US2] Docs: ADR bàn giao mới trong `docs/decisions/` + đánh dấu D-06 resolved trong `specs/027-grant-repair-unblock/deferred.md` kèm dấu vết sang spec 030
+- [X] T018 [P] [US2] Create gate script đọc `specs/030-ddl-ownership-handover/contracts/ownership-contract.md` làm single source of truth (vị trí theo quy ước Makefile, ví dụ `shared/tools/migration-ownership-check`), implement 3 luật G-ACCT/G-COMM/G-AI kèm ngoại lệ `REFERENCES identity.users(`
+- [X] T019 [US2] Makefile: thêm target `migration-check` và đấu vào `make check` sau `vet` (depends on T018)
+- [X] T020 [P] [US2] Chạy quickstart V3: 3 mẫu vi phạm đỏ + xóa mẫu xanh, ghi kết quả vào `specs/030-ddl-ownership-handover/verification-log.md` (depends on T019)
+- [X] T021 [US2] Update mọi tham chiếu tên constraint cũ sang `ai_policy_grants_effective_window_check`: file test T016 (`*_integration_test.go` có ALTER tay), `grant_error_class_integration_test.go:32`, `specs/027-grant-repair-unblock/runbook.md` (grep), docs kiến trúc/data-model có nhắc tên cũ
+- [X] T022 [US2] Docs: ADR bàn giao mới trong `docs/decisions/` + đánh dấu D-06 resolved trong `specs/027-grant-repair-unblock/deferred.md` kèm dấu vết sang spec 030
 
 **Checkpoint**: US1 + US2 đều đứng độc lập — code xong và bằng chứng gate xong
 
@@ -95,9 +95,9 @@
 
 **Independent Test**: Schema V1 (trắng mới) vs V2 (restore hội tụ) đồng nhất 100%; đếm dòng nghiệp vụ trước/sau bằng nhau; `Down` chạy về ổn định
 
-- [ ] T023 [US3] Rehearsal quickstart V2: restore backup → `verify_d06_rehearsal`, chạy handover, diff schema V1 vs V2 (bảng/cột/index/constraint), đếm dòng toàn bộ bảng nghiệp vụ thuộc 8 schema module (`identity`, `subscription`, `wardrobe`, `fashion`, `brand`, `community`, `dashboard`, `aiexecutor`) trước/sau và assert bằng nhau tuyệt đối, đo thời gian giữ lock rename để chốt `lock_timeout`, ghi hết vào `specs/030-ddl-ownership-handover/verification-log.md` (depends on Phase 3); sau đó rehearsal quickstart V5 trên DB dev hiện tại (backup dev trước, schema dev y chang prod): pass 100% là cổng go/no-go giờ G, đỏ thì restore dev và dừng
-- [ ] T024 [US3] Write `specs/030-ddl-ownership-handover/cutover-runbook.md` DÀNH CHO THAO TÁC TAY của chủ hệ thống: backup + verify restore, dừng traffic (full-stop 1–2h, không cần cơ chế chặn tự động), thứ tự deploy (Account→AI→Commerce), query monitor lock, ngưỡng abort, bước smoke, bước rollback = restore backup (depends on T023). BẮT BUỘC trong runbook: mọi lần boot binary kiểm chứng (V1b/V4/V5) phải tắt đường mail thật (`EMAIL_ENABLED=false`) — V1b đã lọt 1 mail tới địa chỉ seed vì thiếu bước này (trong ngưỡng hiến pháp nhưng không được lặp lại)
-- [ ] T025 [US3] Test rollback trên rehearsal: chạy `Down` handover (tên cũ trở lại) + verify boot ổn định, chứng minh đường về hoạt động trước giờ G (depends on T024)
+- [X] T023 [US3] Rehearsal quickstart V2: restore backup → `verify_d06_rehearsal`, chạy handover, diff schema V1 vs V2 (bảng/cột/index/constraint), đếm dòng toàn bộ bảng nghiệp vụ thuộc 8 schema module (`identity`, `subscription`, `wardrobe`, `fashion`, `brand`, `community`, `dashboard`, `aiexecutor`) trước/sau và assert bằng nhau tuyệt đối, đo thời gian giữ lock rename để chốt `lock_timeout`, ghi hết vào `specs/030-ddl-ownership-handover/verification-log.md` (depends on Phase 3); sau đó rehearsal quickstart V5 trên DB dev hiện tại (backup dev trước, schema dev y chang prod): pass 100% là cổng go/no-go giờ G, đỏ thì restore dev và dừng
+- [X] T024 [US3] Write `specs/030-ddl-ownership-handover/cutover-runbook.md` DÀNH CHO THAO TÁC TAY của chủ hệ thống: backup + verify restore, dừng traffic (full-stop 1–2h, không cần cơ chế chặn tự động), thứ tự deploy (Account→AI→Commerce), query monitor lock, ngưỡng abort, bước smoke, bước rollback = restore backup (depends on T023). BẮT BUỘC trong runbook: mọi lần boot binary kiểm chứng (V1b/V4/V5) phải tắt đường mail thật (`EMAIL_ENABLED=false`) — V1b đã lọt 1 mail tới địa chỉ seed vì thiếu bước này (trong ngưỡng hiến pháp nhưng không được lặp lại)
+- [X] T025 [US3] Test rollback: chạy `Down` 2 baseline TRÊN DB TRẮNG đã dựng ở T040 (nơi DROP an toàn), verify schema về rỗng đúng thứ tự + `Up` lại xanh (chứng minh vòng Down/Up khép kín); ghi rõ trong runbook: rollback trên DB có dữ liệu = restore từ backup, KHÔNG dùng `Down` (Down baseline là DROP TABLE, destructive) (depends on T024)
 
 **Checkpoint**: US3 xong = rehearsal + runbook tay + rollback đã sẵn sàng chờ giờ G (chưa chạm prod)
 
@@ -109,9 +109,9 @@
 
 **Independent Test**: 3 câu quét (tên cũ / lệnh xóa volume / target production) đều 0 kết quả ngoài cho phép; quickstart V1–V5 xanh hết (gồm V1b boot đồng thời và V5 DB dev)
 
-- [ ] T026 [US4] Repo-wide scans: tên constraint cũ = 0 (trừ dòng lịch sử tài liệu bàn giao), tài liệu/kịch bản 0 lệnh xóa volume + 0 target production (SC-003, SC-006)
-- [ ] T027 [US4] Run quickstart V1–V5 end-to-end trên database tạm (riêng V5 chạy trên DB dev đã backup trước theo quickstart), ghi kết quả vào `specs/030-ddl-ownership-handover/verification-log.md`, dọn đúng DB/stack tạm (depends on Phase 3–5)
-- [ ] T028 [US4] Run `make check` đầy đủ (gồm `migration-check` mới) xanh và dỡ lệnh ngừng bắn FR-011 bằng thông báo nhóm (depends on T027)
+- [X] T026 [US4] Repo-wide scans: tên constraint cũ = 0 (trừ dòng lịch sử tài liệu bàn giao), tài liệu/kịch bản 0 lệnh xóa volume + 0 target production (SC-003, SC-006)
+- [X] T027 [US4] Run quickstart V1–V5 end-to-end trên database tạm (riêng V5 chạy trên DB dev đã backup trước theo quickstart), ghi kết quả vào `specs/030-ddl-ownership-handover/verification-log.md`, dọn đúng DB/stack tạm (depends on Phase 3–5)
+- [X] T028 [US4] Run `make lint` + `make migration-check` xanh và dỡ lệnh ngừng bắn FR-011 bằng thông báo nhóm (depends on T027) — KHÔNG chạy `make check` ở đây (check đầy đủ chạy đúng 1 lần ở close-out sau converge, theo cost discipline)
 
 **Checkpoint**: Mọi user story đã verify độc lập xong
 
@@ -121,9 +121,9 @@
 
 **Purpose**: Đóng gói spec theo governance trước khi review/merge
 
-- [ ] T029 Record frontend-guide exemption trong `tasks.md` này: 0 thay đổi endpoint/event/DTO client-facing (giữ nhánh này, xoá nhánh guide bên dưới)
-- [ ] T030 Ghi mọi phát hiện ngoài phạm vi phát sinh trong lúc làm vào `specs/030-ddl-ownership-handover/deferred.md` (là gì / vì sao ngoài phạm vi / điều gì gỡ được + nêu số task bị ảnh hưởng nếu có), KHÔNG để `- [ ]` treo ở file này
-- [ ] T031 Final report: đối chiếu SC-001..SC-007 với bằng chứng trong `verification-log.md`, liệt kê supported/ outstanding (nếu có) và đề xuất follow-up
+- [X] T029 Record frontend-guide exemption trong `tasks.md` này: 0 thay đổi endpoint/event/DTO client-facing (giữ nhánh này, xoá nhánh guide bên dưới)
+- [X] T030 Ghi mọi phát hiện ngoài phạm vi phát sinh trong lúc làm vào `specs/030-ddl-ownership-handover/deferred.md` (là gì / vì sao ngoài phạm vi / điều gì gỡ được + nêu số task bị ảnh hưởng nếu có), KHÔNG để `- [ ]` treo ở file này
+- [X] T031 Final report: đối chiếu SC-001..SC-007 với bằng chứng trong `verification-log.md`, liệt kê supported/ outstanding (nếu có) và đề xuất follow-up
 
 ### Frontend Integration Guide *(required — hiến phán §Governance)*
 
