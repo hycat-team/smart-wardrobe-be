@@ -24,13 +24,10 @@
 -- operator who has deliberately set something else is not silently overwritten
 -- on every deploy. This is the same guard 04-update_ai_cost_limits.sql uses.
 
-UPDATE aiexecutor.ai_cost_policy_operations AS o
-SET max_paid_attempts_per_day = 4
-FROM aiexecutor.ai_cost_policies AS p
-WHERE o.policy_id = p.id
-  AND p.code = 'free-default'
-  AND o.operation = 'outfit'
-  AND o.max_paid_attempts_per_day IS DISTINCT FROM 4;
+-- 030 DDL ownership handover (US1): the free-default outfit cap (value 4) is
+-- now seeded directly by the AI service baseline. No-op preserves the version
+-- row (FR-008). Rationale below is kept for history.
+SELECT 1;
 
 -- +goose Down
 -- Restore the value this migration replaced: 3, which is what
@@ -64,10 +61,7 @@ WHERE o.policy_id = p.id
 -- The correct operational response is to re-run Up after a rollback, which is
 -- idempotent.
 
-UPDATE aiexecutor.ai_cost_policy_operations AS o
-SET max_paid_attempts_per_day = 3
-FROM aiexecutor.ai_cost_policies AS p
-WHERE o.policy_id = p.id
-  AND p.code = 'free-default'
-  AND o.operation = 'outfit'
-  AND o.max_paid_attempts_per_day IS DISTINCT FROM 3;
+-- 030 handover: exact reverse of the new Up — nothing to undo. Applied
+-- databases keep their cap value (R1); fresh databases get value 4 from the AI
+-- baseline seed.
+SELECT 1;
