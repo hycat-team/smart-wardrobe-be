@@ -347,7 +347,7 @@ $COMPOSE logs --tail=500 ai | grep -E 'rejected subscription.plan.changed|plan-c
 Kỳ vọng: **không có dòng nào**. Nếu có, `reason` trong dòng đó chỉ ra nguyên nhân; các mã
 thường gặp: `stale_event`, `missing_required_field`, `policy_grant_constraint_violation`.
 
-> **`user_ai_policy_grants_check` không còn là tín hiệu ở log dịch vụ AI.** Trước 027, một vi
+> **`ai_policy_grants_effective_window_check` không còn là tín hiệu ở log dịch vụ AI.** Trước 027, một vi
 > phạm ràng buộc đi qua đường `transient`, mà đường đó log nguyên lỗi driver nên tên ràng buộc
 > hiện ra. Sau 027, `23514` là từ chối vĩnh viễn và đi qua `reject`, mà `reject` **bỏ lỗi gốc**
 > (xem `deferred.md` D-07). Nên tín hiệu trong log AI nay là mã lý do

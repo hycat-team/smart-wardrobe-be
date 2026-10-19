@@ -106,8 +106,20 @@ bịa ra sai.
 - **Ảnh hưởng tới task đã tick**: **Có — gián tiếp.** T016 phải **tự thêm** ràng buộc bằng
   `ALTER TABLE` trong cơ sở dữ liệu kiểm thử, vì `AutoMigrate` không tạo ra nó (thực thể
   `AIPolicyGrant` không có thẻ `check:`). Đây không phải sự cố của ràng buộc, nhưng nếu ai đó
-  sửa lược đồ kiểm thử theo hướng "bỏ `ALTER TABLE` vì thừa" thì kiểm thử sẽ ngừng chứng
-  minh điều gì và US3 sẽ trông như đã kiểm chứng.
+   sửa lược đồ kiểm thử theo hướng "bỏ `ALTER TABLE` vì thừa" thì kiểm thử sẽ ngừng chứng
+   minh điều gì và US3 sẽ trông như đã kiểm chứng.
+- **Trạng thái (2026-10-16, spec 030 — RESOLVED)**: đã gỡ xong. Nội dung 11 file
+  migration Account chạm `aiexecutor`/`dashboard` được viết lại (giữ tên +
+  version); chain baseline độc lập ở đúng cây chủ
+  (`services/ai/database/migrations/20261016213000_adopt_aiexecutor_ownership.sql`
+  với tên tường minh `ai_policy_grants_effective_window_check` + khối rename
+  một lần từ tên cũ,
+  `services/commerce/database/migrations/20261016213001_adopt_dashboard_ownership.sql`);
+  gate `migration-check` (3 luật G-ACCT/G-COMM/G-AI, 13 version miễn trừ đúng
+  tên file) chặn vi phạm mới; rollback = restore backup. Dấu vết đầy đủ ở
+  `specs/030-ddl-ownership-handover/` (hợp đồng, verification-log)
+  và [ADR 016](../../docs/decisions/016-ddl-ownership-handover.md). Nội dung
+  vấn đề gốc ở trên giữ nguyên làm lịch sử.
 
 ### D-07 — Lỗi gốc không được gắn vào lỗi từ chối vĩnh viễn
 

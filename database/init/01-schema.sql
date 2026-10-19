@@ -82,6 +82,24 @@ CREATE TABLE refresh_tokens (
 
 
 -- ========================================================
+-- User style profiles (taste embedding for personalised feed)
+-- NOTE (030 handover): this table must exist in the public schema at init
+-- time because 20260801000000 moves public.user_style_profiles to identity
+-- and 20261011090000 drops identity.user_style_profiles. Shape matches the
+-- Down restore block of 20261011090000_drop_user_style_profiles.sql.
+-- ========================================================
+CREATE TABLE IF NOT EXISTS public.user_style_profiles (
+    user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    taste_embedding VECTOR(768),
+    preferred_colors JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ustyles_embedding_cosine_idx
+ON public.user_style_profiles
+USING hnsw (taste_embedding vector_cosine_ops);
+
+-- ========================================================
 -- Bảng quản lý phiên hội thoại Chatbot (Sessions)
 -- ========================================================
 CREATE TABLE conversational_contexts (

@@ -4,14 +4,14 @@ import (
 	"context"
 	"io/fs"
 
+	aimigrations "smart-wardrobe-be/services/ai/database/migrations"
 	sharedbootstrap "smart-wardrobe-be/shared/bootstrap"
 )
 
-// provideMigrationsFS exposes the AI-owned migration tree. AI has no
-// migrations yet, so it returns nil and App.Run skips auto-migration;
-// future AI migrations add an embed.go and return it here (FR-035).
+// provideMigrationsFS exposes the AI-owned migration tree as an fs.FS so
+// the runtime can run migrations on start when enabled (FR-035).
 func provideMigrationsFS() fs.FS {
-	return nil
+	return aimigrations.EmbedFS
 }
 
 type noopValidator struct{}

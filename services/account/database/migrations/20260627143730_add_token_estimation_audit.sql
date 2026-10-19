@@ -1,18 +1,16 @@
 -- +goose Up
 -- +goose StatementBegin
-ALTER TABLE ai_usage_events
-    ADD COLUMN estimated_prompt_tokens BIGINT
-        CHECK (estimated_prompt_tokens IS NULL OR estimated_prompt_tokens >= 0),
-    ADD COLUMN token_estimation_method VARCHAR(30)
-        CHECK (token_estimation_method IS NULL OR token_estimation_method IN ('LOCAL', 'PROVIDER_COUNT')),
-    ADD COLUMN token_count_latency_ms BIGINT
-        CHECK (token_count_latency_ms IS NULL OR token_count_latency_ms >= 0);
+-- 030 DDL ownership handover (US1): the three ai_usage_events audit columns
+-- (estimated_prompt_tokens, token_estimation_method, token_count_latency_ms)
+-- are created by the AI service baseline in their final state, so this
+-- migration is a no-op. No-op preserves the version row (FR-008); R1 keeps
+-- content edits invisible to already-applied databases.
+SELECT 1;
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-ALTER TABLE ai_usage_events
-    DROP COLUMN IF EXISTS estimated_prompt_tokens,
-    DROP COLUMN IF EXISTS token_estimation_method,
-    DROP COLUMN IF EXISTS token_count_latency_ms;
+-- 030 handover: Up is now a no-op (DDL lives in the AI baseline), so Down is
+-- the exact reverse — nothing to undo.
+SELECT 1;
 -- +goose StatementEnd

@@ -96,7 +96,17 @@ name := $(or $(name),$(NAME))
 SVC_REQ = $(if $(filter $(SVC),account commerce ai),,$(error This target requires svc=<account|commerce|ai> — e.g. make $@ svc=account))
 unexport SVC_REQ
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose rabbitmq-topology-check rabbitmq-topology-migrate image-build-tool image-push-tool
+# Per-service goose version table (030 handover, FR-035): each service records
+# into its own table so `make migrate-up svc=ai` never pollutes goose_db_version.
+ifeq ($(SVC),commerce)
+GOOSE_TABLE := goose_db_version_commerce
+else ifeq ($(SVC),ai)
+GOOSE_TABLE := goose_db_version_ai
+else
+GOOSE_TABLE := goose_db_version
+endif
+
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet migration-check test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose rabbitmq-topology-check rabbitmq-topology-migrate image-build-tool image-push-tool
 
 help:
 	@echo "========================================================================"
@@ -135,6 +145,7 @@ quality-help:
 	@echo "  make tidy-check       : Verify all go.mod/go.sum files are clean"
 	@echo "  make generate-check   : Verify generated Wire and Swagger files are up-to-date"
 	@echo "  make vet              : Run static analysis using 'go vet' (all modules)"
+	@echo "  make migration-check  : Verify migration DDL ownership (030 contract)"
 	@echo "  make test             : Run all Go unit and integration tests (all modules)"
 	@echo "  make test-workspace   : Alias of test across the go.work workspace"
 	@echo "  make test-race        : Run all Go tests with race detector enabled"
@@ -277,6 +288,14 @@ vet:
 	@cd services/ai && go vet ./...
 	@echo Go vet finished.
 
+# 030 DDL ownership handover (FR-009): the gate reads the schema lists from
+# specs/030-ddl-ownership-handover/contracts/ownership-contract.md, so it
+# follows map changes without edits here. `go run` is portable, no OS branch.
+migration-check:
+	@echo Checking migration DDL ownership against the ownership contract...
+	@go run ./shared/tools/migration-ownership-check
+	@echo Migration ownership check finished.
+
 test:
 	@echo "Running Go tests (all workspace modules)..."
 	@cd shared && $(TEST_CMD)
@@ -328,7 +347,7 @@ run: build
 
 dev: generate build-all
 
-check: fmt-check tidy-check generate-check nginx-check vet test-race build-all
+check: fmt-check tidy-check generate-check nginx-check vet migration-check test-race build-all
 
 clean-swagger:
 	@echo Cleaning generated Swagger files...
@@ -348,15 +367,15 @@ clean: clean-swagger
 
 migrate-status:
 	$(SVC_REQ)
-	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) status
+	@goose -table $(GOOSE_TABLE) -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) status
 
 migrate-up:
 	$(SVC_REQ)
-	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) up
+	@goose -table $(GOOSE_TABLE) -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) up
 
 migrate-down:
 	$(SVC_REQ)
-	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) down
+	@goose -table $(GOOSE_TABLE) -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) down
 
 migrate-create:
 	$(SVC_REQ)
@@ -367,7 +386,7 @@ endif
 
 migrate-version:
 	$(SVC_REQ)
-	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) version
+	@goose -table $(GOOSE_TABLE) -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) version
 
 docker-build:
 	$(SVC_REQ)

@@ -28,7 +28,7 @@ buộc mà mọi tính toán phải tôn trọng.
 
 | Ràng buộc | Nội dung | Ai giữ |
 | --- | --- | --- |
-| `CHECK user_ai_policy_grants_check` | `effective_to > effective_from` | **Postgres**. Vi phạm là `23514`, giờ là từ chối vĩnh viễn (FR-009) |
+| `CHECK ai_policy_grants_effective_window_check` | `effective_to > effective_from` | **Postgres**. Vi phạm là `23514`, giờ là từ chối vĩnh viễn (FR-009) |
 | Quy tắc tầng ứng dụng (FR-034 của spec 024) | Các cửa sổ đang hiệu lực của một tài khoản không chồng lấn | `TruncateGrantsBefore` + `resolveGrantWindow` |
 
 ### Bất biến FR-034 không được đẩy xuống schema

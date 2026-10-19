@@ -141,4 +141,7 @@ tệ hơn — dùng một gói mà không khai, thì build trên máy có thể 
   `user_ai_policy_grants_check` trong khi bảng là `aiexecutor.ai_policy_grants`. Người đọc
   thấy tên đó sẽ đi tìm một bảng không tồn tại. Mã `23514` là mức **đúng đắn**: nó áp dụng
   cho mọi ràng buộc `CHECK` của bảng này, kể cả ràng buộc được thêm sau này, và không cần
-  sửa mã khi có thêm ràng buộc.
+   sửa mã khi có thêm ràng buộc.
+- **Ghi nhận sau spec 030**: ràng buộc trên đã được đổi tên tường minh thành
+  `ai_policy_grants_effective_window_check` (baseline rewrite DDL ownership).
+  Lập luận trên giữ nguyên giá trị lịch sử — phân loại vẫn theo `23514`, không theo tên.
