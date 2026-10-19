@@ -1,4 +1,4 @@
-# Brand Item API Specs
+﻿# Brand Item API Specs
 
 Tài liệu thiết kế các API liên quan đến sản phẩm/mẫu thử của nhãn hàng (Brand Items): bao gồm sản phẩm thương mại thực tế, các mẫu thử thiết kế kỹ thuật số (3D/phác thảo), luồng thu nhận ý kiến khảo sát/bình chọn (feedback/vote) của khách hàng và quy trình quản trị sản phẩm trên cổng Brand Portal.
 
@@ -108,7 +108,6 @@ Người dùng duyệt xem các mẫu thiết kế mới của nhãn hàng, có 
     - `202 Accepted`: Trả về thông tin sản phẩm vừa tạo kèm theo `taskId` để client kết nối SSE theo dõi tiến trình phân tích ảnh.
         ```json
         {
-          "success": true,
           "message": "Tạo sản phẩm thành công, đang tiến hành phân tích nền",
           "data": {
             "id": "e5b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",

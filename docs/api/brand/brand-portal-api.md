@@ -27,7 +27,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
     - `200 OK`:
         ```json
         {
-            "success": true,
+            "message": "Lấy danh sách thương hiệu thành công",
             "data": {
                 "items": [
                     {
@@ -79,7 +79,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
     - `200 OK`:
         ```json
         {
-            "success": true,
+            "message": "Lấy danh sách sản phẩm của thương hiệu thành công",
             "data": {
                 "items": [
                     {
@@ -380,7 +380,7 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
     - `200 OK`:
         ```json
         {
-            "success": true,
+            "message": "Tạo mã claim thành công",
             "data": {
                 "claimToken": "raw-claim-token-returned-once",
                 "expiresAt": "2026-06-30T10:00:00Z"

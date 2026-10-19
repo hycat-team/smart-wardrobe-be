@@ -97,7 +97,11 @@ func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 	if !to.IsZero() {
 		filter.ToDate = &to
 	}
-	rows, total, err := h.adminBilling.ListTransactions(c.Request.Context(), filter, req.Page, req.Limit)
+	// Normalize once and use the same values for the query and the metadata
+	// (029 D-02). The repository caps at 200 and PaginationQuery caps at 100, so
+	// passing the raw limit returned 150 rows while metadata said 100.
+	page := req.PaginationQuery.Normalize()
+	rows, total, err := h.adminBilling.ListTransactions(c.Request.Context(), filter, page.Page, page.Limit)
 	if err != nil {
 		return err
 	}
@@ -109,7 +113,7 @@ func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 
 	response := &shared_dto.PaginationResult[*subscription_dto.DepositTransactionRes]{
 		Items:    items,
-		Metadata: shared_dto.BuildPaginationMetadata(req.PaginationQuery, total),
+		Metadata: shared_dto.BuildPaginationMetadata(page, total),
 	}
 
 	shared_pres.Success(c, successAdminListTransactions, response)

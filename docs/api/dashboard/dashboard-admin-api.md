@@ -36,7 +36,7 @@ Xem thêm hằng số tại [constants.md](constants.md).
 
 ```json
 {
-    "success": true,
+    "message": "Lấy số liệu tổng quan thành công",
     "data": {
         "totalUsers": 1500,
         "activeUsersDau": 720,

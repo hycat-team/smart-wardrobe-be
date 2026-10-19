@@ -48,7 +48,7 @@ Tài liệu thiết kế API quản trị (Admin) liên quan đến quản lý t
     - `200 OK`: Trả về danh sách thương hiệu phân trang `AdminBrandListRes`.
         ```json
         {
-            "success": true,
+            "message": "Lấy danh sách thương hiệu thành công",
             "data": {
                 "items": [
                     {

@@ -34,6 +34,10 @@ Nothing here blocks closing 029; nothing here is a task of 029.
 - **Gỡ bằng cách nào**: thống nhất một trần duy nhất (khuyến nghị 100 theo `PaginationQuery`) trong
   handler hoặc repo, kèm test; guide 029 đã khuyến nghị FE gửi ≤ 100.
 - **Ảnh hưởng tới task đã tick**: không (T019/T022/T023 giữ nguyên semantics phân trang cũ theo FR-010).
+- **TRẠNG THÁI (2026-10-20, đợt quick-win — RESOLVED)**: handler `ListTransactions` nay
+  `Normalize()` một lần rồi dùng đúng giá trị đó cho cả truy vấn và metadata, nên trần là 100 ở
+  cả hai nơi. Có test `TestAdminBillingListAppliesTheMetadataLimit` khoá 3 ca: `limit=150 → 100`,
+  `limit=50 → 50`, không truyền → 20.
 
 ### D-03 — Ví dụ envelope cũ (`"success": true`) trong `docs/api/dashboard/dashboard-admin-api.md`
 
@@ -45,6 +49,10 @@ Nothing here blocks closing 029; nothing here is a task of 029.
 - **Gỡ bằng cách nào**: rà `docs/api/dashboard/*.md` thay mọi ví dụ `"success": true` bằng envelope
   thật; cân nhắc thêm bước lint doc.
 - **Ảnh hưởng tới task đã tick**: không.
+- **TRẠNG THÁI (2026-10-20, đợt quick-win — RESOLVED)**: đã rà toàn bộ `docs/api/**` và thay
+  mọi ví dụ `"success": true` bằng envelope thật `{message, data}` — 6 chỗ trong 4 file
+  (`dashboard-admin-api.md`, `admin-brand-api.md`, `brand-item-api.md`, `brand-portal-api.md`).
+  Grep `"success": true` trong `docs/api` = 0.
 
 ### D-04 — Message 401 là chuỗi mã nội bộ ("4011")
 
@@ -97,3 +105,8 @@ Nothing here blocks closing 029; nothing here is a task of 029.
 - **Gỡ bằng cách nào**: một spec/task nhỏ chuẩn hoá endpoint này theo `ParseVNDateRangeQuery` +
   cận nửa mở, kèm test pin kỳ.
 - **Ảnh hưởng tới task đã tick**: không — phát hiện bởi converge vòng 2, ghi nhận ngoài phạm vi.
+- **TRẠNG THÁI (2026-10-20, đợt quick-win — CLOSED, không cần code)**: mục này đã trở nên lỗi
+  thời. Endpoint `GET /admin/ai/usage` của feature 012 **không còn tồn tại** trong router hiện tại
+  (`services/commerce/.../dashboard/presentation/router/router.go` chỉ còn
+  `/ai/usage-by-operation` và `/ai/error-breakdown`), và repo `ai_cost_repo_impl.go` đã dùng cận nửa
+  mở `created_at < ?` với comment tham chiếu 029 R1. Grep `created_at <=` toàn repo = 0.

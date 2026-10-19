@@ -420,3 +420,50 @@ func containsString(haystack []string, needle string) bool {
 	}
 	return false
 }
+
+// TestAdminBillingListAppliesTheMetadataLimit pins 029 D-02: the handler used to
+// pass the raw `limit` down to the repository (capped at 200) while
+// PaginationQuery.Normalize (used for `metadata`) capped at 100, so `limit=150`
+// returned 150 items while the response said 100. One normalized value must now
+// drive both the query and the metadata.
+func TestAdminBillingListAppliesTheMetadataLimit(t *testing.T) {
+	cases := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{"above the ceiling", "?limit=150&page=1", 100},
+		{"inside the range", "?limit=50&page=1", 50},
+		{"absent uses the default", "?page=1", 20},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &stubAdminBillingUC{}
+			engine := newAdminBillingEngine(t, stub)
+
+			rec := request(t, engine, http.MethodGet, adminBillingPath+tc.query)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+			}
+			if stub.lastLimit != tc.want {
+				t.Fatalf("use case must receive limit %d, got %d", tc.want, stub.lastLimit)
+			}
+
+			var parsed struct {
+				Data struct {
+					Metadata struct {
+						Limit int `json:"limit"`
+					} `json:"metadata"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &parsed); err != nil {
+				t.Fatalf("parse response %q: %v", rec.Body.String(), err)
+			}
+			if parsed.Data.Metadata.Limit != tc.want {
+				t.Fatalf("metadata.limit must agree with the applied limit: want %d, got %d",
+					tc.want, parsed.Data.Metadata.Limit)
+			}
+		})
+	}
+}
