@@ -3,8 +3,10 @@ package webhook
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,6 +78,59 @@ func (f *integrationBrief) SearchUserBriefs(ctx context.Context, keyword string,
 
 // ---- Helpers ----
 
+// webhookTestUserID is fixed on purpose. 025 D-02 requires cleanup to be scoped
+// to this file's own rows; a random id per run would make a crashed run's
+// leftovers impossible to find without touching rows that are not ours.
+var webhookTestUserID = uuid.MustParse("a0000000-0000-4000-8000-000000000030")
+
+const (
+	webhookPremiumPlanSlug  = "premium-webhook"
+	webhookUnknownOrderCode = int64(123)
+)
+
+// webhookTestSearchPath mirrors configs/config.yaml `database.search_path`.
+// Migrations place the tables in module schemas while the repositories use
+// unqualified names, exactly like production, where the server-side search_path
+// resolves them (FR-046). A bare TEST_DATABASE_URL has no such setting, so the
+// harness supplies it; without it every query fails with "relation does not
+// exist" even though the schema is correct.
+const webhookTestSearchPath = "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
+
+// webhookTestDSN adds the search_path to TEST_DATABASE_URL when the caller did
+// not already set one (a caller that sets it explicitly keeps control).
+func webhookTestDSN(t *testing.T) string {
+	t.Helper()
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if strings.Contains(dsn, "search_path=") {
+		return dsn
+	}
+	if u, err := url.Parse(dsn); err == nil && u.Scheme != "" {
+		q := u.Query()
+		q.Set("search_path", webhookTestSearchPath)
+		u.RawQuery = q.Encode()
+		return u.String()
+	}
+	return dsn + " search_path=" + webhookTestSearchPath
+}
+
+// openWebhookTestDB requires the schema to be the one this repository builds
+// (025 D-01). It used to call GORM AutoMigrate, which derived tables from the Go
+// structs and therefore produced a schema that only RESEMBLED production: it
+// created `uni_subscription_plans_slug` where the migration creates
+// `subscription_plans_slug_key`, and it cannot express the CHECK constraints or
+// partial indexes the migrations carry. Evidence gathered on that schema was
+// evidence about a different database.
+//
+// Instead of rebuilding the schema here, this harness REQUIRES a database built
+// the documented way — `database/init/*.sql` (the project's base schema) followed
+// by the Account migrations:
+//
+//	psql "$TEST_DATABASE_URL" -f database/init/00-init.sql   (then 01/02/03)
+//	make migrate-up svc=account DB_NAME=<the same database>
+//
+// The guard below turns a wrong database into one actionable failure instead of
+// a cascade of confusing ones. It is deliberately not AutoMigrate: the point of
+// the fix is that the test can no longer author its own schema.
 func openWebhookTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
@@ -83,42 +138,100 @@ func openWebhookTestDB(t *testing.T) *gorm.DB {
 		t.Skip("TEST_DATABASE_URL not set; skipping payment webhook integration test")
 	}
 	gin.SetMode(gin.TestMode)
-	dbConn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	dbConn, err := gorm.Open(postgres.Open(webhookTestDSN(t)), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("connect test database: %v", err)
 	}
-	if err := dbConn.AutoMigrate(
-		&entities.SubscriptionPlan{},
-		&entities.UserSubscription{},
-		&entities.UserDailyQuota{},
-		&entities.UserWallet{},
-		&entities.DepositTransaction{},
-		&entities.WalletStatement{},
-		&entities.UserSubscriptionEvent{},
-		&entities.SubscriptionRenewalAttempt{},
-		&entities.ProviderPaymentEvent{},
-		&entities.ProviderWebhookInbox{},
-	); err != nil {
-		t.Fatalf("auto migrate: %v", err)
+
+	var schemaReady bool
+	if err := dbConn.Raw(`
+		SELECT to_regclass('subscription.subscription_plans') IS NOT NULL
+		   AND to_regclass('subscription.deposit_transactions') IS NOT NULL
+		   AND to_regclass('identity.users') IS NOT NULL
+		   AND to_regclass('public.goose_db_version') IS NOT NULL`).Scan(&schemaReady).Error; err != nil {
+		t.Fatalf("probe test schema: %v", err)
+	}
+	if !schemaReady {
+		t.Fatalf("TEST_DATABASE_URL is not a migration-built database: apply database/init/*.sql then " +
+			"`make migrate-up svc=account DB_NAME=<that database>` first (see openWebhookTestDB)")
+	}
+
+	var constraintName string
+	if err := dbConn.Raw(`
+		SELECT conname FROM pg_constraint
+		WHERE conrelid = 'subscription.subscription_plans'::regclass
+		  AND contype = 'u'
+		  AND conname = 'subscription_plans_slug_key'`).Scan(&constraintName).Error; err != nil {
+		t.Fatalf("probe plan slug constraint: %v", err)
+	}
+	if constraintName == "" {
+		t.Fatalf("test schema carries the AutoMigrate shape (`uni_subscription_plans_slug`), not the " +
+			"migration shape (`subscription_plans_slug_key`); recreate the database from database/init + migrations")
 	}
 	return dbConn
 }
 
+// ensureWebhookUser inserts the fixed fixture user. The migration-built schema
+// carries the production FKs, so user_subscriptions.user_id needs a real
+// identity.users row (AutoMigrate never enforced that).
+func ensureWebhookUser(t *testing.T, dbConn *gorm.DB, id uuid.UUID, username, email string) {
+	t.Helper()
+	if err := dbConn.Exec(`
+		INSERT INTO identity.users (id, username, email, password_hash, role_slug)
+		VALUES (?, ?, ?, 'fixture-not-a-real-hash', 'user')
+		ON CONFLICT (id) DO NOTHING`, id, username, email).Error; err != nil {
+		t.Fatalf("ensure fixture user %s: %v", id, err)
+	}
+}
+
+// cleanupWebhookTables removes only rows this file creates (025 D-02). The old
+// implementation deleted with `WHERE 1 = 1`, which emptied whole tables: that is
+// why running it needed an explicit consent gate, and that gate is what let the
+// Brevo incident go unnoticed. Every statement below is keyed on a fixture value
+// (the fixed user id, the fixture plan slugs, or the fixture order codes), so a
+// shared database keeps every row that is not ours.
 func cleanupWebhookTables(t *testing.T, dbConn *gorm.DB) {
 	t.Helper()
-	for _, model := range []any{
-		&entities.UserSubscriptionEvent{},
-		&entities.WalletStatement{},
-		&entities.DepositTransaction{},
-		&entities.ProviderPaymentEvent{},
-		&entities.ProviderWebhookInbox{},
-		&entities.UserDailyQuota{},
-		&entities.UserSubscription{},
-		&entities.UserWallet{},
-		&entities.SubscriptionPlan{},
-	} {
-		if err := dbConn.Where("1 = 1").Delete(model).Error; err != nil {
-			t.Fatalf("cleanup table: %v", err)
+	const (
+		sqlDeleteEvents = `DELETE FROM subscription.user_subscription_events
+			WHERE user_id = ?
+			   OR source_deposit_transaction_id IN (
+			        SELECT id FROM subscription.deposit_transactions WHERE order_code = ?)`
+		sqlDeleteStatements = `DELETE FROM subscription.wallet_statements WHERE user_id = ?`
+		sqlDeleteDeposits   = `DELETE FROM subscription.deposit_transactions WHERE order_code = ?`
+		sqlDeletePayEvents  = `DELETE FROM subscription.provider_payment_events WHERE order_code IN (?, ?)`
+		sqlDeleteInbox      = `DELETE FROM subscription.provider_webhook_inbox WHERE order_code IN (?, ?)`
+		sqlDeleteQuotas     = `DELETE FROM subscription.user_daily_quotas WHERE user_id = ?`
+		sqlDeleteRenewals   = `DELETE FROM subscription.subscription_renewal_attempts
+			WHERE user_id = ?
+			   OR expected_plan_id IN (
+			        SELECT id FROM subscription.subscription_plans WHERE slug = ?)`
+		sqlDeleteSubs = `DELETE FROM subscription.user_subscriptions
+			WHERE user_id = ?
+			   OR subscription_plan_id IN (
+			        SELECT id FROM subscription.subscription_plans WHERE slug = ?)`
+		sqlDeleteWallets = `DELETE FROM subscription.user_wallets WHERE user_id = ?`
+		sqlDeletePlans   = `DELETE FROM subscription.subscription_plans WHERE slug = ?`
+	)
+
+	stmts := []struct {
+		sql  string
+		args []any
+	}{
+		{sqlDeleteEvents, []any{webhookTestUserID, webhookOrderCode}},
+		{sqlDeleteStatements, []any{webhookTestUserID}},
+		{sqlDeleteDeposits, []any{webhookOrderCode}},
+		{sqlDeletePayEvents, []any{webhookOrderCode, webhookUnknownOrderCode}},
+		{sqlDeleteInbox, []any{webhookOrderCode, webhookUnknownOrderCode}},
+		{sqlDeleteQuotas, []any{webhookTestUserID}},
+		{sqlDeleteRenewals, []any{webhookTestUserID, webhookPremiumPlanSlug}},
+		{sqlDeleteSubs, []any{webhookTestUserID, webhookPremiumPlanSlug}},
+		{sqlDeleteWallets, []any{webhookTestUserID}},
+		{sqlDeletePlans, []any{webhookPremiumPlanSlug}},
+	}
+	for _, stmt := range stmts {
+		if err := dbConn.Exec(stmt.sql, stmt.args...).Error; err != nil {
+			t.Fatalf("cleanup %q: %v", stmt.sql, err)
 		}
 	}
 }
@@ -134,15 +247,20 @@ func seedWebhookScenario(t *testing.T, dbConn *gorm.DB) uuid.UUID {
 	subRepo := persistence.NewUserSubscriptionRepository(dbConn)
 	txRepo := persistence.NewDepositTransactionRepository(dbConn)
 
-	freePlan := &entities.SubscriptionPlan{Slug: "free-webhook", Name: "Free", IsActive: true, Price: decimal.Zero, PlanKind: plankind.DefaultFree}
-	if err := planRepo.Create(ctx, freePlan); err != nil {
-		t.Fatalf("seed free plan: %v", err)
+	// The default free plan is seeded by database/init/03-seed.sql. Reuse it: the
+	// migration-built schema carries `ux_single_active_default_free_plan`, a
+	// partial unique index the AutoMigrate schema never expressed, so a second
+	// active free plan cannot exist. That is the constraint doing its job.
+	freePlan, err := planRepo.GetDefaultPlan(ctx)
+	if err != nil || freePlan == nil {
+		t.Fatalf("default free plan missing from test database (apply database/init/03-seed.sql): %v", err)
 	}
-	premiumPlan := &entities.SubscriptionPlan{Slug: "premium-webhook", Name: "Premium Webhook", IsActive: true, Price: decimal.NewFromInt(99000), TierRank: 1, PlanKind: plankind.Finite, DurationDays: webhookPtr(30), AiOutfitDailyQuota: 10, AiChatDailyQuota: 20}
+	premiumPlan := &entities.SubscriptionPlan{Slug: webhookPremiumPlanSlug, Name: "Premium Webhook", IsActive: true, Price: decimal.NewFromInt(99000), TierRank: 1, PlanKind: plankind.Finite, DurationDays: webhookPtr(30), AiOutfitDailyQuota: 10, AiChatDailyQuota: 20}
 	if err := planRepo.Create(ctx, premiumPlan); err != nil {
 		t.Fatalf("seed premium plan: %v", err)
 	}
-	userID := uuid.New()
+	userID := webhookTestUserID
+	ensureWebhookUser(t, dbConn, userID, "webhook-int-user", "webhook-int-user@example.com")
 	sub := &entities.UserSubscription{UserID: userID, SubscriptionPlanID: freePlan.ID, CurrentPlanCode: freePlan.Slug, CurrentPlanKind: plankind.DefaultFree, StartedAt: time.Now().UTC()}
 	if err := subRepo.Create(ctx, sub); err != nil {
 		t.Fatalf("seed subscription: %v", err)
@@ -158,7 +276,7 @@ func seedWebhookScenario(t *testing.T, dbConn *gorm.DB) uuid.UUID {
 		Status:                depositstatus.Pending,
 		TransactionType:       deposittransactiontype.DirectPurchase,
 		SubscriptionPlanID:    &premiumPlan.ID,
-		PlanCode:              webhookPtr("premium-webhook"),
+		PlanCode:              webhookPtr(webhookPremiumPlanSlug),
 		PlanName:              webhookPtr("Premium Webhook"),
 		TierRank:              webhookPtr(1),
 		PlanKind:              webhookPtr(plankind.Finite),
@@ -316,8 +434,8 @@ func TestIntegrationProcessWebhookAppliesDirectPurchaseIdempotently(t *testing.T
 	if err != nil || sub == nil {
 		t.Fatalf("reload subscription: %v", err)
 	}
-	if sub.CurrentPlanCode != "premium-webhook" {
-		t.Fatalf("expected subscription upgraded to premium-webhook, got %q", sub.CurrentPlanCode)
+	if sub.CurrentPlanCode != webhookPremiumPlanSlug {
+		t.Fatalf("expected subscription upgraded to %q, got %q", webhookPremiumPlanSlug, sub.CurrentPlanCode)
 	}
 
 	// Idempotency: replaying the same webhook must not double-apply.
@@ -374,13 +492,12 @@ func TestIntegrationProcessWebhookAcksUnknownOrderCode(t *testing.T) {
 	ctx := context.Background()
 
 	// Mirrors the payOS webhook-URL test sample: orderCode 123 is never ours.
-	const unknownOrderCode = int64(123)
-	if err := uc.ProcessWebhook(ctx, buildWebhookPayload(unknownOrderCode, "3000"), "sig"); err != nil {
+	if err := uc.ProcessWebhook(ctx, buildWebhookPayload(webhookUnknownOrderCode, "3000"), "sig"); err != nil {
 		t.Fatalf("webhook for an unknown orderCode must be acknowledged, got %v", err)
 	}
 
 	var inbox entities.ProviderWebhookInbox
-	if err := dbConn.Where("order_code = ?", unknownOrderCode).First(&inbox).Error; err != nil {
+	if err := dbConn.Where("order_code = ?", webhookUnknownOrderCode).First(&inbox).Error; err != nil {
 		t.Fatalf("expected an inbox row for the unknown orderCode: %v", err)
 	}
 	if inbox.ProcessingStatus != string(webhookprocessingstatus.InvestigationRequired) {
@@ -437,8 +554,8 @@ func TestIntegrationPayOSSettlementPublishesExactlyOnePlanChangeEvent(t *testing
 	if err != nil || sub == nil {
 		t.Fatalf("reload subscription: %v", err)
 	}
-	if sub.CurrentPlanCode != "premium-webhook" {
-		t.Fatalf("expected subscription upgraded to premium-webhook, got %q", sub.CurrentPlanCode)
+	if sub.CurrentPlanCode != webhookPremiumPlanSlug {
+		t.Fatalf("expected subscription upgraded to %q, got %q", webhookPremiumPlanSlug, sub.CurrentPlanCode)
 	}
 
 	// FR-095, history half: exactly one row, carrying the transition this
@@ -488,5 +605,47 @@ func TestIntegrationPayOSSettlementPublishesExactlyOnePlanChangeEvent(t *testing
 	}
 	if len(publisher.events) != 1 {
 		t.Fatalf("FR-095: a replayed settlement must not publish again, got %d messages", len(publisher.events))
+	}
+}
+
+// TestIntegrationCleanupLeavesForeignRowsUntouched is the regression guard for
+// 025 D-02: cleanup must never delete a row this file did not create. The old
+// `WHERE 1 = 1` sweep would have removed the sentinel below, which is exactly
+// how a shared database could be emptied by a test run.
+func TestIntegrationCleanupLeavesForeignRowsUntouched(t *testing.T) {
+	dbConn := openWebhookTestDB(t)
+	cleanupWebhookTables(t, dbConn)
+
+	otherUser := uuid.MustParse("a0000000-0000-4000-8000-000000000031")
+	ensureWebhookUser(t, dbConn, otherUser, "webhook-sentinel", "webhook-sentinel@example.com")
+
+	// Reuse the seeded default free plan: a second active free plan is rejected by
+	// ux_single_active_default_free_plan (see seedWebhookScenario).
+	freePlan, err := persistence.NewSubscriptionPlanRepository(dbConn).GetDefaultPlan(context.Background())
+	if err != nil || freePlan == nil {
+		t.Fatalf("default free plan missing from test database (apply database/init/03-seed.sql): %v", err)
+	}
+	sentinelSub := &entities.UserSubscription{
+		UserID: otherUser, SubscriptionPlanID: freePlan.ID,
+		CurrentPlanCode: freePlan.Slug, CurrentPlanKind: plankind.DefaultFree,
+		StartedAt: time.Now().UTC(),
+	}
+	if err := persistence.NewUserSubscriptionRepository(dbConn).Create(context.Background(), sentinelSub); err != nil {
+		t.Fatalf("seed sentinel subscription: %v", err)
+	}
+
+	cleanupWebhookTables(t, dbConn)
+
+	var count int64
+	if err := dbConn.Model(&entities.UserSubscription{}).
+		Where("user_id = ?", otherUser).Count(&count).Error; err != nil {
+		t.Fatalf("count sentinel subscription: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("cleanup deleted a row it did not create: sentinel subscription count = %d, want 1", count)
+	}
+
+	if err := dbConn.Exec("DELETE FROM subscription.user_subscriptions WHERE user_id = ?", otherUser).Error; err != nil {
+		t.Fatalf("teardown sentinel subscription: %v", err)
 	}
 }

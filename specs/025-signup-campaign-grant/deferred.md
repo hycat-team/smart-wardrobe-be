@@ -53,6 +53,14 @@ unfinished — which it is not.
   Not checked: whether the auto-built schema diverges in any way that would change
   this path's outcome. Establishing that is exactly what fixing D-01 would show.
 
+- **TRẠNG THÁI (2026-10-20, đợt quick-win — RESOLVED)**: `openWebhookTestDB` không còn
+  `AutoMigrate`. Harness nay **yêu cầu** database do `database/init/*.sql` + Account
+  migrations dựng (đúng shape production) và fail-fast với thông điệp actionable nếu
+  sai; thêm guard kiểm tra `subscription_plans_slug_key` để chặn DB mang shape
+  AutoMigrate (`uni_subscription_plans_slug`). Bằng chứng: `go test -race -count=3`
+  xanh trên DB dựng bằng init + `make migrate-up svc=account`. Caveat của T116 vì vậy
+  được gỡ — bằng chứng PayOS nay thu trên schema migration-built.
+
 ---
 
 ## D-02 — `cleanupWebhookTables` truncates without a WHERE clause, against a table with a bare FK
@@ -83,3 +91,11 @@ unfinished — which it is not.
 - **Ảnh hưởng tới task đã tick**: none. T116 ran on a disposable schema, so the
   unrestricted delete destroyed only schema-local data. The hazard is to the
   next run that points this harness at a shared database.
+
+- **TRẠNG THÁI (2026-10-20, đợt quick-win — RESOLVED)**: `cleanupWebhookTables` không
+  còn `WHERE 1 = 1`. Mọi lệnh xoá nay scope theo khoá của chính fixture: user id cố
+  định (`webhookTestUserID`), slug gói fixture, và các `order_code` fixture; user
+  fixture được tạo tường minh trong `identity.users` (schema migration-built có FK).
+  Đã thêm `subscription_renewal_attempts` vào danh sách xoá, thứ tự con→cha. Có
+  regression test `TestIntegrationCleanupLeavesForeignRowsUntouched` (chèn hàng của
+  user khác, chạy cleanup, assert hàng đó còn nguyên).
