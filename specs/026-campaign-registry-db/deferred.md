@@ -293,3 +293,14 @@ lời là **có**, và không tầng nào trong chuỗi cấu hình production t
   khỏi máy) và đã **revert** `.env` sau đó. Nhưng sự cần thiết phải biết trước mặc định này chính là
   dấu hiệu khoảng trống đang tồn tại — người chạy kịch bản không có cách nào phát hiện nó nếu không
   đọc source.
+
+- **TRẠNG THÁI (2026-10-20, đợt quick-win — RESOLVED)**: đã làm đủ 3 bước gỡ:
+  1. `configs/config.production.yaml` khai `enabled: true` tường minh trong section `email` kèm
+     comment giải thích "missing key = send" và cách tắt.
+  2. `EMAIL_ENABLED=true` (kèm comment tiếng Anh) đã có trong **cả ba** template:
+     `.env.production.example`, `.env.example`, `.env.aws.example` — không chỉ file production.
+  3. Test tĩnh mới: `TestProductionConfigStatesTheEmailSwitchExplicitly` (production phải khai key)
+     và `TestEveryEnvExampleMentionsTheEmailSwitch` (mọi `.env*.example` phải nhắc switch, fail nếu
+     không tìm thấy template nào để tránh pass rỗng). `TestEmailEnabledDefaultsToTrueWhenTheKeyIsAbsent`
+     được chỉnh để vẫn chứng minh default trên chính file production sau khi thêm key (dùng bản copy
+     đã bỏ block `email:`).

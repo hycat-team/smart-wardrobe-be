@@ -1,10 +1,13 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 // configWithoutEmailBlock copies a config file with the top-level `email:`
@@ -78,7 +81,7 @@ func TestEmailEnabledDefaultsToTrueWhenTheKeyIsAbsent(t *testing.T) {
 		name   string
 		config string
 	}{
-		{"production config file, untouched", prod},
+		{"production config file with the whole email block removed", configWithoutEmailBlock(t, prod)},
 		{"local config file with the whole email block removed", configWithoutEmailBlock(t, local)},
 	}
 
@@ -187,4 +190,72 @@ func TestShippedLocalConfigKeepsEmailEnabled(t *testing.T) {
 	if !cfg.Email.Enabled {
 		t.Error("configs/config.yaml must ship email.enabled: true")
 	}
+}
+
+// TestProductionConfigStatesTheEmailSwitchExplicitly is 026 D-05's guard. The
+// production file used to inherit the loader default (missing key = send), which
+// is correct behaviour but invisible configuration: an operator reading the file
+// could not see that production sends real email by default, and the production
+// template did not mention the switch at all. Both are now stated.
+func TestProductionConfigStatesTheEmailSwitchExplicitly(t *testing.T) {
+	_, prod := repoConfigs(t)
+
+	raw, err := os.ReadFile(prod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := newYamlReader(t, raw)
+	if !v.IsSet("email.enabled") {
+		t.Fatal("configs/config.production.yaml must declare `email.enabled` explicitly; " +
+			"a missing key means send, which is the answer a reader cannot see")
+	}
+	if !v.GetBool("email.enabled") {
+		t.Fatal("configs/config.production.yaml must ship `email.enabled: true`")
+	}
+}
+
+// TestEveryEnvExampleMentionsTheEmailSwitch keeps the switch discoverable from
+// the templates an operator actually copies. .env.production.example is the one
+// that matters: without the line, a bulk verification run on production has no
+// visible way to turn sending off.
+func TestEveryEnvExampleMentionsTheEmailSwitch(t *testing.T) {
+	root := repoRoot(t)
+
+	templates, err := filepath.Glob(filepath.Join(root, ".env*.example"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(templates) == 0 {
+		t.Fatal("no .env*.example templates found; the guard would pass vacuously")
+	}
+
+	for _, path := range templates {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), "EMAIL_ENABLED") {
+			t.Errorf("%s must mention EMAIL_ENABLED: the production default is `send`, "+
+				"so the switch has to be visible without reading source", filepath.Base(path))
+		}
+	}
+}
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func newYamlReader(t *testing.T, raw []byte) *viper.Viper {
+	t.Helper()
+	v := viper.New()
+	v.SetConfigType("yaml")
+	if err := v.ReadConfig(bytes.NewBuffer(raw)); err != nil {
+		t.Fatalf("must parse as YAML: %v", err)
+	}
+	return v
 }

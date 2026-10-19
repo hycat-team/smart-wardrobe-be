@@ -128,6 +128,12 @@ cloudinary:
     outfit_folder: closy/outfits
     post_folder: closy/posts
 email:
+    # Stated explicitly instead of inherited. A missing key means "send" (see
+    # shared/config/loader.go), so production must say the answer out loud rather
+    # than rely on that default: this is the switch an operator has to find, and
+    # an absent line reads as "nothing to decide". Set EMAIL_ENABLED=false in
+    # .env.production for a bulk verification run.
+    enabled: true
     host: smtp-relay.brevo.com
     port: 587
     sender_name: HYCAT Support
