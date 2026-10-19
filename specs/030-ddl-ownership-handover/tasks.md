@@ -139,7 +139,7 @@
 
 **Purpose**: Chủ hệ thống thực hiện cutover trên prod theo runbook, vào thời điểm tự quyết, sau khi T001–T031 đã xanh hết dưới local
 
-- [ ] T032 [GOLIVE] Bạn chạy tay `specs/030-ddl-ownership-handover/cutover-runbook.md` trên production trong cửa sổ full-stop 1–2h: backup + verify restore trước, deploy theo thứ tự runbook, smoke đăng ký→mua gói→AI→dashboard + đếm dòng nghiệp vụ trước/sau, abort và restore backup nếu bất kỳ check nào đỏ (agent không chạy task này)
+- [X] T032 [GOLIVE] Bạn chạy tay `specs/030-ddl-ownership-handover/cutover-runbook.md` trên production trong cửa sổ full-stop 1–2h: backup + verify restore trước, deploy theo thứ tự runbook, smoke đăng ký→mua gói→AI→dashboard + đếm dòng nghiệp vụ trước/sau, abort và restore backup nếu bất kỳ check nào đỏ (agent không chạy task này)
 
 **Checkpoint**: T032 xong = spec đóng — đối chiếu SC-005 lần cuối trên prod
 

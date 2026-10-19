@@ -670,10 +670,79 @@ Dev đã migrated (chạy lại handover chỉ là no-op + rủi ro ghi lên DB 
 | SC-002 (trắng vs hội tụ đồng nhất 100% handover-scope; drift ngoài phạm vi vào deferred) | **PASS** (có caveat đã filed) | T023a-b6 + V5-b4: 10/10, 156/156, 48/48, 27/27; T027-V1/V1b tái khẳng định; 4 diff subscription filed D-01..D-04 |
 | SC-003 (0 tham chiếu tên cũ trừ dòng lịch sử) | **PASS** | T026a: 23 hits toàn bộ lịch sử có chủ ý, 0 trong SQL/tests chạy |
 | SC-004 (Account version rows không đổi + gate chặn 3 mẫu) | **PASS** | 35 dòng giữ nguyên mọi checkpoint (T001/T017/T023a/V5/T027-V1); gate đỏ/xanh đủ 3 luật (T020, T027-V3) |
-| SC-005 (cutover prod 0 mất mát + smoke xanh) | **PENDING** (chờ T032) | Phía rehearsal PASS: đếm dòng bằng nhau tuyệt đối (T023a, V5, T027-V4-delta-riêng); smoke xanh (V5, T027-V4). Prod chỉ owner chạy tay |
+| SC-005 (cutover prod 0 mất mát + smoke xanh) | **PASS** (sau T032) | §T032 bên dưới: goose `35 / 4 / 2`, constraint đúng, nhóm tĩnh khớp baseline, log sạch, 7 container healthy, smoke xanh. Trước đó phía rehearsal PASS (T023a, V5, T027-V4) |
 | SC-006 (0 lệnh xóa volume / 0 target production) | **PASS** (diễn giải ở T026b) | Đường verify 0/0; runbook giữ placeholder prod by-design cho T032, 0 lệnh xóa volume mọi nơi. Owner chốt diễn giải |
 | SC-007 (rehearsal dev pass 100%, cổng go/no-go) | **PASS** | V5 evidence đầy đủ (T027-V5 check): versions/counts/schema/boot/smoke/0-email |
 
-**Outstanding**: chỉ còn **T032 go-live production** (owner chạy tay theo `cutover-runbook.md` trong cửa sổ full-stop 1–2h). Không còn task agent nào treo (T026–T031 đóng trong batch này; `tasks.md` không tick theo lệnh điều phối).
+**Outstanding**: không còn. **T032 đã hoàn tất ngày 2026-10-20** (mục §T032 bên dưới) — spec 030 đóng.
 
 **Đề xuất follow-up** (không thuộc 030, owner quyết): (1) Precaution pre-cutover: diff schema prod-live vs DB trắng V1 ở phạm vi `subscription` theo D-01..D-04 (chấp nhận nếu bản restore == prod-live). (2) Đối chiếu 4 giá trị data D-05 trên prod nếu cần seed trắng khớp prod. (3) Giữ/xóa backup `/tmp/verify_d06_v5_dev_before.dump` (+ bản host) sau báo cáo này theo runbook §8. (4) Owner gửi thông báo dỡ FR-011 (văn bản ở T028) tới nhóm. (5) Flakiness `Start-Process` wrapper-kill chỉ là công cụ harness, retry là qua — không cần action code.
+
+---
+
+## T032 — Cutover production (owner chạy tay, 2026-10-20)
+
+**Kết quả**: ĐẠT. SC-005 chuyển PENDING → PASS.
+
+### Cửa sổ và đường deploy
+
+- **Cửa sổ full-stop**: 00:46 → 01:10 ngày 20/10/2026 (GMT+7), ~24 phút.
+- **Đường deploy**: GitHub Actions → workflow `deploy-vps-services.yml`, **Re-run all jobs**,
+  ref `030-ddl-ownership-handover`, commit `00f26b1c`. Không build trên VPS; image lấy từ GHCR.
+- **Image digest đã chạy**:
+  - `account@sha256:9fd0956fd3c097ba92bb638b12ca7a81ce351b2c662eeeaa2dd2708fed18ee4e`
+  - `ai@sha256:296a3a57a6cc4cbeac4f1da8da10a209ddf9d3bb82de9cba40f90b248a4be9da`
+  - `commerce@sha256:ef6ac0501ed5b745c36e9992f87c551a1c0bd6f60033952daf19edea9c68c00a`
+- Thứ tự workflow: `plan` → `build-push` + `build-tool` → `deploy` (account → commerce → ai,
+  tuần tự trong một shell loop) → `reload-nginx` → `smoke-all`.
+
+### Bằng chứng nghiệm thu
+
+- **Sổ version**: `goose_db_version` = **35 dòng**, max `20261011090002` (không đổi);
+  `goose_db_version_commerce` = **4 dòng**, max `20261016213001`;
+  `goose_db_version_ai` = **2 dòng**, max `20261016213000`. Khớp đúng kỳ vọng §9 runbook.
+- **Constraint `aiexecutor.ai_policy_grants`** (5 tên):
+  `ai_policy_grants_effective_window_check` (mới) + `user_ai_policy_grants_pkey` +
+  `user_ai_policy_grants_policy_id_fkey` + `user_ai_policy_grants_status_check` +
+  `user_ai_policy_grants_user_id_fkey`. Tên cũ của CHECK cửa sổ hiệu lực đã biến mất;
+  4 tên legacy còn lại **giữ nguyên có chủ ý** theo thiết kế baseline AI (T014).
+- **Đếm dòng nhóm tĩnh** (`count(*)`, khớp mốc baseline dev):
+  `ai_cost_policies=2`, `ai_cost_policy_operations=8`, `ai_model_configs=7`,
+  `subscription_plans=2`, `campaigns=1`, `campaign_sweep_runs=1`, `campaign_claims=17`,
+  `fashion.categories=9`, `brand.brand_items=0`.
+- **Nhóm có traffic** tăng do user thật, không do handover: `ai_policy_grants=77`,
+  `ai_usage_events=715`, `ai_usage_period_ledgers=31`, `identity.users=39`,
+  `refresh_tokens=544`, `user_activity_events=118`, `community.posts=15`.
+- **Log 3 service** (30 phút gần nhất), lọc `migration failed|deadlock|does not exist|PRECONDITION_FAILED|panic`:
+  **0 dòng** ở cả account, ai, commerce.
+- **Stack**: 7 container `healthy` (account/ai/commerce/nginx/postgres/redis/rabbitmq).
+- **Smoke**: job `smoke-all` xanh 3 service qua ingress công khai.
+- **Rollback**: **không dùng**.
+
+### Sự cố trong cửa sổ và cách xử lý
+
+1. **Broker bị stop trước khi deploy** → bước "Check RabbitMQ queue topology" đỏ với
+   `dial tcp: lookup rabbitmq on 127.0.0.11:53: server misbehaving`. Xử lý:
+   `up -d postgres redis rabbitmq`, chờ healthy, xác nhận bằng chính lệnh check của workflow,
+   rồi re-run. Đã thành mục troubleshooting §3b của runbook.
+2. **Lần re-run đầu chọn sai loại** → job `deploy` nhận `needs.*.outputs` rỗng. Xử lý:
+   dùng **Re-run all jobs** thay vì *Re-run failed jobs*. Đã ghi cảnh báo trong runbook §3.
+
+### Sai lệch so với runbook (ghi trung thực)
+
+1. **Backup production ban đầu chỉ có 1 bản** trong `/tmp` của container (chưa `docker cp`
+   sang host) — vi phạm gate §1c của runbook bản cũ. Bản host đã được tạo sau đó. Runbook
+   bản mới đặt gate cứng `test -s` cho cả hai bản để không lặp lại.
+2. **Runbook bản cũ không tự đứng được**: còn placeholder (`<ten-container-postgres-prod>`,
+   `<user-prod>`, `<ten-db-prod>`…), dùng `make` (không có trên VPS), đếm dòng bằng
+   `n_live_tup` (ước lượng, báo 0 sai), không có phần troubleshooting. Chủ hệ thống phải hỏi
+   lại từng bước trong lúc cutover. Runbook đã được **viết lại cùng ngày**: giá trị thật,
+   lệnh copy-paste được, gate backup, bảng troubleshooting, bảng kỳ vọng §9.
+   Đây là defect của artifact 030, không phải của code.
+
+### Quyết định của chủ hệ thống
+
+- Không push tag `vps-*` sau khi merge.
+- Backup V5 của dev (bản rehearsal SC-007) xóa sau cutover.
+- Giữ `prod_before_030.dump` + `.env.deploy.bak.*` ít nhất vài ngày.
+- `.env.deploy` backup: `.env.deploy.bak.2026-10-20-0052`.

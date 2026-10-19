@@ -56,3 +56,7 @@ exit condition into being falsified.
 - **Vì sao ngoài phạm vi**: Đây là drift *dữ liệu*, không phải *schema* — SC-002 (đồng nhất schema) không bị ảnh hưởng; đếm dòng pre/post handover bằng nhau tuyệt đối (T023a, V5) nên SC-005 không bị ảnh hưởng. Đối chiếu/sửa dữ liệu seed thuộc về quản trị dữ liệu, không phải spec bàn giao ownership DDL.
 - **Gỡ bằng cách nào**: Trước giờ G, đối chiếu 4 giá trị trên giữa prod-live và chain seed; nếu prod mang giá trị sửa-tay có chủ ý thì giữ (baseline không ghi đè DB cũ nên an toàn), nếu cần seed trắng khớp prod thì sửa ở spec dữ liệu riêng, không sửa baseline 030 sau khi đã hội tụ.
 - **Ảnh hưởng tới task đã tick**: T014 (baseline seed theo chain — quyết định đã ghi nhận) và T023-đếm-dòng (pre/post bằng nhau nên kết luận 0-mất-mát giữ nguyên).
+- **Cập nhật 2026-10-20 (sau cutover prod)**: prod xác nhận `ai_model_configs = 7` (cùng drift dev,
+  tức cũng có `gemini-3.5-flash-lite`); giá trị data trên prod là sửa tay có chủ ý. Chủ hệ thống
+  **chấp nhận drift, không sửa** — baseline không ghi đè DB cũ nên prod/dev giữ nguyên, còn môi
+  trường dựng trắng sẽ theo chain seed. Ghi nhận là drift đã chấp nhận, không còn chờ xử lý.

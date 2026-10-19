@@ -1,228 +1,370 @@
-# Runbook cắt over (cutover) production — bàn giao quyền sở hữu DDL (030)
+# Runbook cutover production — bàn giao quyền sở hữu DDL (030)
 
-**Spec**: [spec.md](spec.md) | **Kiểm chứng đã xong**: [verification-log.md](verification-log.md)
-(T023 V2 + V5, T025 — đọc trước khi đặt giờ G)
+**Spec**: [spec.md](spec.md) | **Bằng chứng kiểm chứng**: [verification-log.md](verification-log.md)
 
 Tài liệu này DÀNH CHO THAO TÁC TAY của chủ hệ thống trên production.
-Agent không chạy các bước dưới đây (xem tasks.md T032).
-Mọi lệnh mẫu trong tài liệu là tiếng Anh nguyên văn (tên lệnh, tên bảng, tên cột);
-phần diễn giải là tiếng Việt.
+Agent không chạy các bước dưới đây (tasks.md T032).
 
-> Nguyên tắc cao nhất: rollback khi hỏng = khôi phục từ backup.
-> KHÔNG BAO GIỜ chạy `Down` trên database có dữ liệu
-> (`Down` của 2 baseline là `DROP TABLE` toàn bộ 7+3 bảng — destructive,
-> đã chứng minh ở T025 chỉ an toàn trên database dựng trắng).
-> Không sửa chữa thủ công trên dữ liệu sống (no fix-forward on live data).
+**Không còn placeholder.** Mọi giá trị dưới đây là giá trị thật của hệ thống này.
+Mọi lệnh copy-paste được nguyên khối vào shell trên VPS.
 
----
-
-## 0. Điều kiện tiên quyết (preconditions) — thiếu 1 điều là chưa được đặt giờ G
-
-1. **Rehearsal dev xanh 100% (cổng go/no-go SC-007)**: T023 V5 đã pass trên
-   database dev (schema y chang production): versions `35 / 4 / 2`, chỉ còn
-   constraint tên mới, đếm dòng nghiệp vụ trước/sau bằng nhau, 3 service boot
-   xanh, smoke V4 xanh. Không có V5 xanh thì không có giờ G.
-2. **Backup mới nhất + đã kiểm chứng khôi phục được**: xem §1.
-3. **Cửa sổ full-stop 1–2h không có user truy cập**, thời điểm do chủ hệ thống
-   tự quyết (spec Clarifications). Trong cửa sổ: dừng traffic vào cả 3 service
-   (gateway + worker), không yêu cầu cơ chế chặn read-only tự động.
-4. **Lệnh ngừng bắn migration FR-011 vẫn hiệu lực cho tới T028**: không tạo
-   migration mới chạm `aiexecutor.*` / `dashboard.*` trước và trong cutover.
-5. **Mọi lần boot binary kiểm chứng đều tắt đường mail thật**:
-   `EMAIL_ENABLED=false` cho MỌI binary khởi động ngoài production containers
-   (V1b từng lọt 1 mail tới địa chỉ seed vì thiếu bước này — trong ngưỡng hiến
-   pháp nhưng không được lặp lại). Production containers giữ cấu hình mail
-   hiện hành của production, không đổi.
-6. **Ngưỡng abort đã chốt**: `lock_timeout = 10 giây` (đo rename thật 0.415ms,
-   cả file baseline ~7–40ms — xem verification-log T023; 10s lớn hơn 20000 lần
-   thời gian rename nhưng đủ nhanh để abort khi kẹt lock thật).
-7. **Precaution pre-giờ G trên prod (chỉ đọc, xem chi tiết ở §0b)**: diff 4 điểm
-   schema D-01..D-04 + đối chiếu 4 giá trị data D-05 giữa prod-live và chain
-   seed. Khớp drift đã biết trên dev thì đi tiếp; lệch kiểu khác thì dừng điều
-   tra, chưa đặt giờ G.
+> **Nguyên tắc cao nhất**: rollback khi hỏng = khôi phục từ backup.
+> KHÔNG BAO GIỜ chạy `Down` trên database có dữ liệu (`Down` của 2 baseline là
+> `DROP TABLE` toàn bộ 7+3 bảng — destructive; chỉ an toàn trên DB dựng trắng,
+> đã chứng minh ở T025).
+> KHÔNG bao giờ chạy `docker compose down` / `down -v` trên production.
+> Không sửa chữa thủ công trên dữ liệu sống.
 
 ---
 
-## 0b. Precaution pre-giờ G: đối chiếu prod với drift đã biết (chỉ đọc)
+## 0. Giá trị thật của môi trường (không cần suy luận thêm)
 
-Chạy trên prod-live, toàn bộ là `SELECT` (không lock, không đổi dữ liệu).
-Ghi kết quả vào sổ giờ G trước khi quyết cutover.
+| Thành phần | Giá trị |
+|---|---|
+| Thư mục làm việc trên VPS | `/opt/closy` |
+| Compose file | `deployments/docker-compose.prod.yml` (project name `closy-prod`) |
+| Env files (luôn kèm cả hai) | `.env.production`, `.env.deploy` |
+| Container PostgreSQL | `closy-prod-postgres-1` |
+| Database | `closy_db` |
+| DB user | `closy` (mật khẩu: `DB_PASSWORD` trong `.env.production`) |
+| Container dịch vụ | `closy-prod-account-1`, `closy-prod-ai-1`, `closy-prod-commerce-1` |
+| Container gateway | `closy-prod-nginx-1` |
+| Smoke URL | `https://api.closy.hycat.online/api/v1/<svc>/health` |
+| Cửa sổ | 1–2 giờ full-stop, chủ hệ thống tự chọn thời điểm |
 
-```sql
--- D-01: DEFAULT của plan_kind / tier_rank (dev-drift: KHÔNG có default)
-SELECT column_name, column_default
-FROM information_schema.columns
-WHERE table_schema = 'subscription' AND table_name = 'subscription_plans'
-  AND column_name IN ('plan_kind', 'tier_rank');
--- D-02: UNIQUE gateway_reference (dev-drift: CÓ constraint
--- deposit_transactions_gateway_reference_key)
-SELECT conname FROM pg_constraint
-WHERE conrelid = 'subscription.deposit_transactions'::regclass AND contype = 'u';
--- D-03: index webhook inbox (dev-drift: KHÔNG có idx_webhook_inbox_processing)
-SELECT indexname FROM pg_indexes
-WHERE schemaname = 'subscription' AND tablename = 'provider_webhook_inbox';
--- D-04: DEFAULT của started_at (dev-drift: KHÔNG có default)
-SELECT column_name, column_default
-FROM information_schema.columns
-WHERE table_schema = 'subscription' AND table_name = 'user_subscriptions'
-  AND column_name = 'started_at';
--- D-05: 4 giá trị data (so với chain seed: premium hard_cost_micro_vnd 25000000000,
--- KHÔNG có model gemini-3.5-flash-lite, embedding output 0.20/0.15)
-SELECT code, hard_cost_micro_vnd FROM aiexecutor.ai_cost_policies;
-SELECT provider, model FROM aiexecutor.ai_model_configs ORDER BY 1, 2;
-SELECT operation, max_paid_attempts_per_day FROM aiexecutor.ai_cost_policy_operations
-WHERE policy_id = (SELECT id FROM aiexecutor.ai_cost_policies WHERE code = 'premium-default')
-ORDER BY 1;
-SELECT count(*) FROM aiexecutor.ai_cost_policy_audit_logs;
+Nếu tên container khác (ví dụ dùng `-p` khác), lấy lại bằng:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Image}}' | grep -E 'closy-prod|postgres|rabbitmq|redis'
+```
+
+**Khởi tạo biến cho toàn bộ runbook** (chạy 1 lần, dùng cho mọi bước sau):
+
+```bash
+cd /opt/closy
+DC="docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml"
+set -a; . ./.env.production; set +a
+export PGPASSWORD="$DB_PASSWORD"
+CT=closy-prod-postgres-1
+U="$DB_USER"
+D="$DB_NAME"
+P="docker exec -e PGPASSWORD=$PGPASSWORD $CT psql -U $U -d $D -t -A -c"
+```
+
+---
+
+## 0b. Điều kiện tiên quyết — thiếu 1 điều là chưa được bắt đầu
+
+1. **Rehearsal dev xanh 100% (cổng SC-007)**: V5 đã pass trên database dev
+   (versions `35 / 4 / 2`, chỉ còn constraint tên mới, đếm dòng trước/sau bằng
+   nhau, 3 service boot xanh, smoke xanh).
+2. **Backup production có 2 bản**: 1 trong container, 1 trên host
+   (`/opt/closy/prod_before_030.dump`), đã verify `pg_restore --list` đọc được.
+   Thiếu bản host là **chưa đủ điều kiện** — xem §1.
+3. **Backup `.env.deploy`** (đường về image cũ): có file `.env.deploy.bak.<ngày-giờ>`.
+4. **Hạ tầng phụ đang healthy**: `postgres`, `redis`, `rabbitmq` — nếu broker
+   stop, bước check topology của workflow sẽ đỏ (xem §3b).
+5. **Cửa sổ full-stop** đã chọn, không có user truy cập.
+6. **Ngưỡng abort**: `lock_timeout = 10s` (đo rename thật 0.415 ms; cả file
+   baseline ~7–40 ms).
+7. **Precaution pre-giờ G** đã chạy (§0c) và kết quả khớp kỳ vọng.
+
+---
+
+## 0c. Precaution pre-giờ G — đối chiếu prod với drift đã biết (chỉ đọc)
+
+```bash
+# D-01: default của plan_kind / tier_rank (kỳ vọng: KHÔNG có default)
+$P "SELECT column_name||'='||coalesce(column_default,'NULL') FROM information_schema.columns
+    WHERE table_schema='subscription' AND table_name='subscription_plans'
+      AND column_name IN ('plan_kind','tier_rank') ORDER BY 1;"
+
+# D-02: UNIQUE trên gateway_reference (kỳ vọng: CÓ deposit_transactions_gateway_reference_key)
+$P "SELECT conname FROM pg_constraint
+    WHERE conrelid='subscription.deposit_transactions'::regclass AND contype='u' ORDER BY 1;"
+
+# D-03: index của webhook inbox (kỳ vọng: KHÔNG có idx_webhook_inbox_processing)
+$P "SELECT indexname FROM pg_indexes
+    WHERE schemaname='subscription' AND tablename='provider_webhook_inbox' ORDER BY 1;"
+
+# D-04: default của started_at (kỳ vọng: KHÔNG có default)
+$P "SELECT column_name||'='||coalesce(column_default,'NULL') FROM information_schema.columns
+    WHERE table_schema='subscription' AND table_name='user_subscriptions'
+      AND column_name='started_at';"
 ```
 
 | Kết quả | Hành động |
 |---|---|
-| Khớp drift dev đã biết (D-01..D-04 như deferred, D-05 là sửa-tay có chủ ý) | Đi tiếp (baseline không ghi đè DB cũ nên an toàn) |
-| Lệch kiểu khác (object lạ, thiếu object baseline cần) | DỪNG, điều tra, chưa đặt giờ G |
+| Khớp drift đã biết (D-01..D-04 như trên) | Đi tiếp |
+| Lệch kiểu khác (object lạ, thiếu object baseline cần) | DỪNG, điều tra, chưa bắt đầu |
+
+**D-05 (data)**: owner đã xác nhận giá trị trên prod là giá trị đúng (sửa tay có
+chủ ý), baseline seed dùng `ON CONFLICT DO NOTHING` / `WHERE NOT EXISTS` nên
+không ghi đè. Không cần đối chiếu thêm.
 
 ---
 
-## 1. Backup + kiểm chứng restore (đường về duy nhất)
+## 1. Backup production + kiểm chứng (đường về duy nhất)
 
-```powershell
-# 1a. Backup đầy đủ production (custom format).
-docker exec -e PGPASSWORD=<mat-khau-prod> <ten-container-postgres-prod> pg_dump -U <user-prod> -Fc -f /tmp/prod_before_030.dump <ten-db-prod>
-# 1b. Xác minh file backup đọc được (bắt buộc trước khi đi tiếp).
-docker exec <ten-container-postgres-prod> pg_restore --list /tmp/prod_before_030.dump
-# Kỳ vọng: đọc được, ~399 TOC entries (mốc dev; prod theo số thực tế).
-# 1c. Giữ 1 bản sao thứ hai ngoài container (host/VPS hoặc object storage).
-docker cp <ten-container-postgres-prod>:/tmp/prod_before_030.dump /duong-dan-an-toan/prod_before_030.dump
+```bash
+# 1a. Backup đầy đủ, custom format.
+docker exec -e PGPASSWORD="$PGPASSWORD" $CT pg_dump -U "$U" -Fc -f /tmp/prod_before_030.dump "$D"
+
+# 1b. Xác minh file đọc được (BẮT BUỘC trước khi đi tiếp).
+docker exec $CT pg_restore --list /tmp/prod_before_030.dump | head -10
+
+# 1c. Bản thứ hai trên HOST — bắt buộc, vì /tmp nằm trong container.
+docker cp $CT:/tmp/prod_before_030.dump /opt/closy/prod_before_030.dump
+ls -lh /opt/closy/prod_before_030.dump
 ```
 
-Chỉ đi tiếp khi `pg_restore --list` đọc được và 2 bản backup đã nằm 2 nơi.
-Ghi số bytes + số TOC entries vào sổ giờ G.
+**Gate cứng** — chỉ đi tiếp khi cả 3 đúng:
+
+```bash
+test -s /opt/closy/prod_before_030.dump && echo "HOST-BACKUP-OK"
+docker exec $CT test -s /tmp/prod_before_030.dump && echo "CONTAINER-BACKUP-OK"
+docker exec $CT pg_restore --list /tmp/prod_before_030.dump | grep -c . # > 0
+```
+
+Mốc tham chiếu lần chạy 2026-10-20: ~1.5 MB, **399 TOC entries**, dbname `closy_db`.
+
+```bash
+# 1d. Backup .env.deploy (đường về image cũ).
+cp -p .env.deploy ".env.deploy.bak.$(date +%F-%H%M)"
+grep _IMAGE .env.deploy
+```
 
 ---
 
 ## 2. Chụp số liệu trước cutover (để đối chiếu §5)
 
-```powershell
-# 2a. Sổ version (mốc dev: 35 / 3 / chưa có bảng AI; prod đối chiếu điểm cắt T001).
-docker exec -e PGPASSWORD=<mat-khau-prod> <ten-container-postgres-prod> psql -U <user-prod> -d <ten-db-prod> -t -c "SELECT count(*), max(version_id) FROM goose_db_version;"
-docker exec -e PGPASSWORD=<mat-khau-prod> <ten-container-postgres-prod> psql -U <user-prod> -d <ten-db-prod> -t -c "SELECT count(*), max(version_id) FROM goose_db_version_commerce;"
-docker exec -e PGPASSWORD=<mat-khau-prod> <ten-container-postgres-prod> psql -U <user-prod> -d <ten-db-prod> -t -c "SELECT to_regclass('public.goose_db_version_ai');"
-# 2b. Tên constraint grant hiện tại (kỳ vọng: còn tên cũ user_ai_policy_grants_check).
-docker exec -e PGPASSWORD=<mat-khau-prod> <ten-container-postgres-prod> psql -U <user-prod> -d <ten-db-prod> -t -c "SELECT conname FROM pg_constraint WHERE conname IN ('user_ai_policy_grants_check','ai_policy_grants_effective_window_check');"
-# 2c. Đếm dòng toàn bộ bảng nghiệp vụ 8 schema module
-# (identity, subscription, wardrobe, fashion, brand, community, dashboard, aiexecutor)
-# — danh sách 55 bảng và kết quả mẫu xem verification-log T023.
+```bash
+# 2a. Sổ version. Kỳ vọng trước cutover: 35 / 3 / chưa có bảng AI.
+$P "SELECT 'account='||count(*)||' max='||max(version_id) FROM goose_db_version;"
+$P "SELECT 'commerce='||count(*)||' max='||max(version_id) FROM goose_db_version_commerce;"
+$P "SELECT 'ai_table='||coalesce(to_regclass('public.goose_db_version_ai')::text,'NULL');"
+
+# 2b. Tên constraint grant. Kỳ vọng: còn tên cũ user_ai_policy_grants_check.
+$P "SELECT conname FROM pg_constraint
+    WHERE conrelid='aiexecutor.ai_policy_grants'::regclass ORDER BY 1;"
+
+# 2c. Đếm dòng CHÍNH XÁC toàn bộ 56 bảng nghiệp vụ.
+$P "SELECT schemaname||'.'||tablename||'='||
+      (xpath('/row/c/text()', query_to_xml(
+        format('SELECT count(*) AS c FROM %I.%I', schemaname, tablename), false, true, '')))[1]::text
+    FROM pg_tables
+    WHERE schemaname IN ('identity','subscription','wardrobe','fashion','brand','community','dashboard','aiexecutor')
+    ORDER BY 1;"
+```
+
+> **Không dùng `pg_stat_user_tables.n_live_tup`**: đó là ước lượng, chỉ cập nhật
+> khi autovacuum/ANALYZE, nên nhiều bảng báo `0` sai (đã gặp thực tế với
+> `ai_cost_policies`, `subscription_plans`). Luôn dùng `count(*)` như trên.
+
+Lưu output vào sổ giờ G. **Quy tắc so sánh**:
+
+| Nhóm | Bảng | Quy tắc |
+|---|---|---|
+| Tĩnh/cấu hình | `aiexecutor.ai_cost_policies`, `ai_cost_policy_operations`, `ai_model_configs`, `subscription.subscription_plans`, `campaigns`, `campaign_sweep_runs`, `campaign_claims`, `fashion.categories`, toàn bộ `brand.*` | **bằng nhau tuyệt đối** |
+| Có traffic | `identity.users`, `refresh_tokens`, `user_activity_events`, `aiexecutor.ai_policy_grants`, `ai_usage_events`, `ai_usage_period_ledgers`, `subscription.*` (user/deposit/wallet/event), `shared.outbox_records`, `admin_audit_logs`, `wardrobe.*`, `community.*` | bằng hoặc **tăng** (user thật/smoke) — tăng là bình thường, ghi riêng |
+
+---
+
+## 3. Deploy: Account → AI → Commerce
+
+### Cách chuẩn (dùng CI, không build trên VPS)
+
+GitHub → **Actions** → workflow **Deploy VPS Services** → **Re-run all jobs**.
+
+> **Bắt buộc chọn "Re-run all jobs", KHÔNG chọn "Re-run failed jobs".**
+> Job `deploy` dùng `needs.plan.outputs.matrix` và `needs.build-tool.outputs.ref`;
+> khi chỉ re-run job lỗi, các output này rỗng → `docker pull ''` hoặc matrix rỗng.
+
+Hoặc bằng CLI:
+
+```bash
+gh workflow run deploy-vps-services.yml \
+  -R hycat-team/smart-wardrobe-be \
+  --ref 030-ddl-ownership-handover \
+  -f services=all
+```
+
+Phải **approve** environment `vps-production` (job `deploy` và `reload-nginx`),
+nếu không run đứng im.
+
+Thứ tự job thực tế: `plan` → `build-push` + `build-tool` → `deploy` →
+`reload-nginx` → `smoke-all`.
+
+`deploy` chạy tuần tự **account → commerce → ai**. Khác thứ tự lý thuyết
+`account → ai → commerce`, nhưng **an toàn trên prod**: baseline Commerce chỉ
+chạm schema `dashboard`, baseline AI chỉ chạm `aiexecutor`, hai schema độc lập
+và cả hai đều idempotent; Account (giữ toàn bộ lịch sử cũ) vẫn chạy đầu tiên.
+
+### Kiểm tra sau khi deploy
+
+```bash
+$DC ps
+docker logs --tail 40 closy-prod-account-1   # "no migrations to run", current 20261011090002
+docker logs --tail 40 closy-prod-ai-1        # OK 20261016213000_adopt_aiexecutor_ownership.sql
+docker logs --tail 40 closy-prod-commerce-1  # OK 20261016213001_adopt_dashboard_ownership.sql
+
+# Boot lần 2 phải no-op ở cả 3 cây (chứng minh hội tụ — không bắt buộc nếu log đã sạch)
 ```
 
 ---
 
-## 3. Thứ tự deploy: Account → AI → Commerce
+## 3b. Sự cố đã gặp thật — tra nhanh
 
-1. Dừng traffic (full-stop): dừng gateway và 3 service cũ.
-2. Deploy image mới của **Account** trước, chờ boot xanh
-   (`service listening` + `/api/v1/health` 200). Kỳ vọng migration: `Up ~0`
-   (`goose: no migrations to run`, version Account giữ nguyên).
-3. Deploy **AI**, chờ boot xanh. Kỳ vọng: baseline `20261016213000` applied
-   1 lần (rename constraint cũ → tên mới diễn ra tại đây, metadata-only).
-4. Deploy **Commerce**, chờ boot xanh. Kỳ vọng: baseline `20261016213001`
-   applied 1 lần.
-5. Boot lại lần nữa (hoặc quan sát log): cả 3 cây phải no-op
-   (`no migrations to run`) — chứng minh hội tụ.
+| Triệu chứng | Nguyên nhân | Cách xử lý |
+|---|---|---|
+| `read queue types: ... dial tcp: lookup rabbitmq on 127.0.0.11:53: server misbehaving` ở bước check topology | Container `rabbitmq` đang stop → hostname `rabbitmq` không resolve trong network `closy-prod_data` | `$DC up -d postgres redis rabbitmq`, chờ healthy, rồi re-run **all jobs** |
+| `docker pull ''` / matrix rỗng ở job deploy | Đã bấm "Re-run failed jobs" thay vì "Re-run all jobs" | Re-run **all jobs** |
+| Deploy xong nhưng không truy cập được | `nginx` bị stop tay và chưa được recreate | `$DC up -d --force-recreate nginx` (workflow cũng tự làm ở job `reload-nginx`) |
+| Job `deploy` báo `deploy failed for: <svc>` | Pull/up service đó lỗi | Xem log job, sửa nguyên nhân rồi re-run; nếu không cứu được → rollback §6 |
+| `lookup rabbitmq ...` lặp lại dù broker đã up | Broker chưa healthy (start_period 30s) | Chờ `docker exec closy-prod-rabbitmq-1 rabbitmq-diagnostics -q ping` trả OK |
 
-Không đảo thứ tự (Account giữ toàn bộ lịch sử cũ nên phải xong trước).
+Chạy lại đúng bước check bằng tay (cùng lệnh workflow dùng):
+
+```bash
+docker run --rm --network closy-prod_data --env-file .env.production \
+  ghcr.io/hycat-team/rabbitmq-topology@sha256:389a16df95c6f1c4811a30a3d662e93d035490a9ecf510591efb5a7f3e273718 \
+  --mode check
+```
 
 ---
 
 ## 4. Giám sát lock trong lúc rename + ngưỡng abort
 
-Rename giữ lock độc quyền (AccessExclusive) trên bảng grant trong chốc lát.
-Mở 1 session monitor riêng, chạy trước khi deploy AI:
+Rename giữ `AccessExclusive` trên `aiexecutor.ai_policy_grants` trong chốc lát.
+Mở session riêng trước khi deploy AI:
 
 ```sql
--- 4a. Session nào đang giữ/chờ lock trên bảng grant.
-SELECT pid, usename, wait_event_type, wait_event, query
+-- 4a. Session đang giữ/chờ lock.
+SELECT pid, usename, wait_event_type, wait_event, left(query, 80)
 FROM pg_stat_activity WHERE query ILIKE '%ai_policy_grants%';
 SELECT locktype, mode, granted, pid
 FROM pg_locks WHERE relation = 'aiexecutor.ai_policy_grants'::regclass;
--- 4b. Abort an toàn nếu chờ lock quá ngưỡng: đặt trước mỗi câu DDL tay
--- (migration baseline đã idempotent nên boot lại sau abort là an toàn).
+-- 4b. Ngưỡng abort.
 SET lock_timeout = '10s';
 ```
 
-**Tiêu chí abort (1 điều đỏ là dừng + restore §6, không sửa tiếp):**
+Chạy nhanh bằng CLI:
 
-- Bất kỳ service nào boot đỏ (migration failed, không listening, health ≠ 200).
-- Đếm dòng trước/sau lệch ở bất kỳ bảng nghiệp vụ nào.
-- Schema sau hội tụ lệch phạm vi handover so với V1 (so 10 bảng / 156 cột /
-  48 constraint / 27 index — xem §5).
+```bash
+$P "SELECT pid, state, wait_event_type, left(query,80) FROM pg_stat_activity
+    WHERE query ILIKE '%ai_policy_grants%';"
+```
+
+**Tiêu chí abort (1 điều đỏ = dừng + rollback §6, không sửa tiếp):**
+
+- Service boot đỏ (migration failed, không listening, health ≠ 200).
+- Đếm dòng nhóm tĩnh lệch so với §2.
+- Constraint không đúng kỳ vọng §9.
 - Smoke §5 đỏ.
-- Lock chờ vượt `lock_timeout = 10s` hoặc xuất hiện deadlock.
-- Bất kỳ lệnh nào trỏ nhầm database / xóa volume (dừng ngay lập tức).
+- Lock chờ vượt `10s` hoặc có deadlock.
+- Bất kỳ lệnh nào trỏ nhầm database hoặc xóa volume.
 
 ---
 
-## 5. Smoke sau cutover (V4) + checklist nghiệm thu
+## 5. Smoke sau cutover + checklist nghiệm thu
 
-Smoke trên production sau khi 3 service đã xanh (dùng tài khoản kiểm chứng
-đánh dấu rõ, KHÔNG dùng tài khoản người thật):
+Smoke qua đúng ingress công khai (container là distroless, **không** curl được
+vào `:8080` từ host):
 
-1. Đăng ký → confirm OTP → login được (identity viết/xác thực xanh).
-2. Xem danh sách gói cước — đủ gói đang bán (subscription đọc xanh).
-3. Tạo + liệt kê phiên chat AI (AI phục vụ xanh, grant ghi đúng — kiểm tra
-   `aiexecutor.ai_policy_grants` có bản ghi cho tài khoản kiểm chứng).
-4. Gọi dashboard admin bằng tài khoản kiểm chứng (không phải admin) → kỳ vọng
-   **403** (RBAC còn nguyên); dashboard đọc bằng admin → 200.
+```bash
+for s in account ai commerce; do
+  echo "== $s =="
+  curl -4 --fail --silent "https://api.closy.hycat.online/api/v1/$s/health"; echo
+done
+```
 
-**Checklist post-cutover (ghi từng dòng vào sổ giờ G):**
+Điều kiện pass: body chứa `"service":"<svc>"` (không chỉ HTTP 200).
 
-- [ ] `goose_db_version`: **35 dòng**, max giữ nguyên (không mất/không thêm).
-- [ ] `goose_db_version_commerce`: **4 dòng** (3 cũ + 1 baseline `20261016213001`).
-- [ ] `goose_db_version_ai`: **2 dòng** (dòng `0` + baseline `20261016213000`).
-- [ ] Constraint grant chỉ còn `ai_policy_grants_effective_window_check`,
-      tên cũ `user_ai_policy_grants_check` đã biến mất, không trùng.
-- [ ] Đếm dòng toàn bộ bảng nghiệp vụ trước/sau **bằng nhau tuyệt đối**
-      (ngoại trừ các dòng do chính smoke tạo ra — ghi riêng).
-- [ ] 3 service boot xanh, health 200, boot lần 2 no-op toàn bộ.
-- [ ] Smoke 4 bước trên xanh (bước 4 ghi nhận 403 đúng vai trò + 200 đúng admin).
-- [ ] Không có email lạ nào gửi ra ngoài trong cửa sổ
-      (kiểm tra log worker `Email delivery skipped` nếu có boot kiểm chứng).
+Smoke nghiệp vụ (dùng tài khoản kiểm chứng đánh dấu rõ, KHÔNG dùng tài khoản
+người thật): đăng ký → confirm OTP → login; xem danh sách gói; tạo + liệt kê
+phiên chat AI; gọi dashboard admin bằng tài khoản thường → **403** (RBAC còn
+nguyên).
+
+**Checklist (ghi từng dòng vào sổ giờ G):**
+
+- [ ] `goose_db_version`: **35 dòng**, max `20261011090002` (không đổi).
+- [ ] `goose_db_version_commerce`: **4 dòng**, max `20261016213001`.
+- [ ] `goose_db_version_ai`: **2 dòng** (dòng `0` + baseline), max `20261016213000`.
+- [ ] Constraint chỉ còn `ai_policy_grants_effective_window_check` cho CHECK cửa
+      sổ hiệu lực; 4 tên legacy (`..._pkey`, `..._policy_id_fkey`,
+      `..._status_check`, `..._user_id_fkey`) **giữ nguyên có chủ ý**.
+- [ ] Đếm dòng nhóm tĩnh bằng §2 tuyệt đối; nhóm traffic bằng hoặc tăng (ghi riêng).
+- [ ] 3 service + nginx + postgres + redis + rabbitmq đều `healthy` (`$DC ps`).
+- [ ] Smoke 3 health + nghiệp vụ xanh.
+- [ ] Log 30 phút gần nhất không có `migration failed`, `deadlock`,
+      `does not exist`, `PRECONDITION_FAILED`, `panic`:
+
+```bash
+for s in account ai commerce; do
+  echo "== $s =="
+  docker logs --since 30m closy-prod-$s-1 2>&1 \
+    | grep -iE "migration failed|deadlock|does not exist|PRECONDITION_FAILED|panic" | head -20
+done
+```
 
 ---
 
 ## 6. Rollback = restore từ backup (KHÔNG dùng Down)
 
-Nếu bất kỳ tiêu chí abort nào đỏ:
+```bash
+# 6a. Về image cũ trước (không đụng dữ liệu).
+cp -p .env.deploy.bak.<ngày-giờ> .env.deploy
+$DC pull account commerce ai nginx
+$DC up -d account commerce ai nginx
 
-```powershell
-# 6a. Dừng toàn bộ 3 service mới (giữ nguyên trạng, không sửa gì thêm).
-# 6b. Khôi phục production từ backup §1 (lệnh mẫu; thay tên theo môi trường).
-docker exec -e PGPASSWORD=<mat-khau-prod> <ten-container-postgres-prod> pg_restore -U <user-prod> -d <ten-db-prod> --clean -c /tmp/prod_before_030.dump
-# 6c. Deploy lại image cũ (trước bàn giao), boot xanh, chạy lại checklist §5
-# trên dữ liệu đã khôi phục (số liệu phải khớp §2).
+# 6b. Chỉ khi dữ liệu bị ảnh hưởng: restore DB từ bản backup TRÊN HOST.
+docker cp /opt/closy/prod_before_030.dump $CT:/tmp/prod_before_030.dump
+docker exec -e PGPASSWORD="$PGPASSWORD" $CT pg_restore -U "$U" -d "$D" --clean -c /tmp/prod_before_030.dump
+
+# 6c. Boot lại, chạy lại checklist §5 trên dữ liệu đã khôi phục (khớp §2).
 ```
 
-Nhắc lại: **không chạy `Down` trên database có dữ liệu** — `Down` của 2
-baseline là `DROP TABLE` 7+3 bảng, sẽ xóa dữ liệu chứ không "quay về tên cũ".
-`Down` chỉ an toàn trên database dựng trắng (đã chứng minh ở T025).
+Không chạy `Down` trên database có dữ liệu — `Down` của 2 baseline là
+`DROP TABLE` 7+3 bảng, sẽ xóa dữ liệu chứ không "quay về tên cũ".
 
 ---
 
 ## 7. Môi trường bị quên, sót (staging bỏ xó, laptop dev, backup cũ)
 
 Không cần phẫu thuật tay: boot bản mới tự hội tụ nhờ migration idempotent
-(`IF NOT EXISTS` + seed guard + rename có điều kiện `pg_constraint`) —
-môi trường nào boot bản mới là tự chữa lành, kẹt mới báo lỗi rõ ràng để thử
-lại. Không có runbook riêng cho từng môi trường sót.
+(`IF NOT EXISTS` + seed guard + rename có điều kiện `pg_constraint`) — môi
+trường nào boot bản mới là tự chữa lành, kẹt mới báo lỗi rõ ràng để thử lại.
 
 ---
 
 ## 8. Đóng cửa sổ
 
-- Mở lại traffic, quan sát log 15 phút (không migration-failed, không deadlock,
-  không lỗi FK/constraint mới).
-- Giữ file backup §1 ít nhất tới khi T031 (final report) xong.
-- Backup V5 của DB dev (bản rehearsal SC-007) giữ tới khi T032 xong — vừa là bằng
-  chứng rehearsal, vừa là điểm về cho dev nếu cần. Sau T032, chủ hệ thống quyết
-  giữ hay xóa; không tự động xóa.
+- Mở lại traffic (workflow tự recreate nginx); quan sát log 15 phút.
 - Ghi sổ giờ G: thời gian full-stop thực tế, số liệu §2/§5, kết quả smoke,
   mọi abort (nếu có) và cách xử lý.
+- **Giữ** `/opt/closy/prod_before_030.dump` và `.env.deploy.bak.*` ít nhất vài
+  ngày sau cutover (đường về nếu phát sinh lỗi muộn).
+- Backup V5 của dev (bản rehearsal SC-007) **xóa** sau khi cutover xong theo
+  quyết định của chủ hệ thống.
+- **Không** push tag `vps-*` sau khi merge (quyết định của chủ hệ thống).
+
+---
+
+## 9. Bảng giá trị kỳ vọng sau cutover (tra trực tiếp, không cần hỏi ai)
+
+| Hạng mục | Kỳ vọng |
+|---|---|
+| `goose_db_version` | 35 dòng, max `20261011090002` |
+| `goose_db_version_commerce` | 4 dòng, max `20261016213001` |
+| `goose_db_version_ai` | 2 dòng, max `20261016213000` |
+| Constraint `aiexecutor.ai_policy_grants` | `ai_policy_grants_effective_window_check` + `user_ai_policy_grants_pkey` + `user_ai_policy_grants_policy_id_fkey` + `user_ai_policy_grants_status_check` + `user_ai_policy_grants_user_id_fkey` |
+| Nhóm tĩnh (mốc 2026-10-20) | policies `2`, operations `8`, model_configs `7`, plans `2`, campaigns `1`, sweep_runs `1`, claims `17`, categories `9`, brand_items `0` |
+| Drift schema đã chấp nhận | D-01..D-04 (`subscription`) — không sửa trong 030 |
+| Drift data đã chấp nhận | D-05 (model_configs = 7 do có `gemini-3.5-flash-lite`) |
+
+Kiểm tra constraint:
+
+```bash
+$P "SELECT conname FROM pg_constraint
+    WHERE conrelid='aiexecutor.ai_policy_grants'::regclass ORDER BY 1;"
+```
