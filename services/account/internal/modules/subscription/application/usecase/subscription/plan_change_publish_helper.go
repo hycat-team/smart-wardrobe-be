@@ -31,15 +31,22 @@ import (
 type PlanChangePublisher struct {
 	eventRepo      repositories.IUserSubscriptionEventRepository
 	eventPublisher sharedevent.IEventPublisher
+	// 031 D1/R2: the validity-interval history is written here, at the single
+	// point every plan mutation already passes through. It runs inside the
+	// caller's transaction, so the interval and the business change commit or
+	// roll back together.
+	periodRecorder PlanPeriodRecorder
 }
 
 func NewPlanChangePublisher(
 	eventRepo repositories.IUserSubscriptionEventRepository,
 	eventPublisher sharedevent.IEventPublisher,
+	periodRecorder PlanPeriodRecorder,
 ) *PlanChangePublisher {
 	return &PlanChangePublisher{
 		eventRepo:      eventRepo,
 		eventPublisher: eventPublisher,
+		periodRecorder: periodRecorder,
 	}
 }
 
@@ -125,6 +132,16 @@ func (p *PlanChangePublisher) PublishPlanChange(
 	// call sites do not each have to remember to check.
 	if err := mapper.ValidatePlanChangedPayload(payload); err != nil {
 		return nil, fmt.Errorf("build plan-changed payload: %w", err)
+	}
+
+	// 031 D1/R2: record the validity interval AFTER the history row exists and
+	// the payload is known to be publishable. A retry never reaches this point
+	// (both early returns above return the stored event), which is the
+	// idempotency guarantee (FR-006 / research.md R9). A recorder failure rolls
+	// back the event insert with the business mutation, so no orphan interval
+	// can be committed.
+	if err := p.periodRecorder.Record(ctx, event, sub, plan); err != nil {
+		return nil, fmt.Errorf("record user plan period: %w", err)
 	}
 
 	if err := p.eventPublisher.Publish(ctx, eventconstants.TopicSubscriptionPlanChanged, payload); err != nil {

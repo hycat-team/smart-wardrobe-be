@@ -164,7 +164,7 @@ func newEagerHarness(t *testing.T) *eagerHarness {
 				plan:              plan,
 			},
 			&provisionQuotaRepo{},
-			NewPlanChangePublisher(eventRepo, publisher),
+			NewPlanChangePublisher(eventRepo, publisher, noopPlanPeriodRecorder{}),
 			uow,
 		),
 	}
@@ -222,7 +222,7 @@ func TestEnsureDefaultSubscriptionWritesHistoryInsideTheCallersTransaction(t *te
 // failure T126 fixed on the lazy door, and the eager door reaches it too.
 func TestEnsureDefaultSubscriptionPropagatesThePublishFailure(t *testing.T) {
 	h := newEagerHarness(t)
-	failing := NewPlanChangePublisher(h.eventRepo, failingEventPublisher{})
+	failing := NewPlanChangePublisher(h.eventRepo, failingEventPublisher{}, noopPlanPeriodRecorder{})
 
 	support := NewSubscriptionStateSupport(
 		h.subRepo,

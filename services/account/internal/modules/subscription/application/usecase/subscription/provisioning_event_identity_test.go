@@ -142,7 +142,7 @@ func TestProvisioningEventCarriesThePlanOfTheRowThatWasKept(t *testing.T) {
 			plan:              free,
 		},
 		&provisionQuotaRepo{},
-		NewPlanChangePublisher(eventRepo, publisher),
+		NewPlanChangePublisher(eventRepo, publisher, noopPlanPeriodRecorder{}),
 		&eagerUow{},
 	)
 

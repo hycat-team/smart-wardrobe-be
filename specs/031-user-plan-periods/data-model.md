@@ -170,8 +170,8 @@ Bound handling (applied in the repo; `$from`/`$to` become SQL `NULL` for an abse
 | Bounds | Predicate |
 |---|---|
 | both zero (snapshot) | `tstzrange(valid_from, valid_to, '[)') @> now()` |
-| `to` only | range overlaps `(-infinity, to)` **and** `valid_from <= now()` |
-| `from` only | range overlaps `[from, infinity)` |
+| `from` only | range overlaps `[from, infinity)` **and** `valid_from <= now()` |
+| `to` only | range overlaps `(-infinity, to)` |
 | both | range overlaps `[from, to)` |
 
 `COUNT(DISTINCT user_id)` implements `FR-010` (leave and return to the same plan inside the window

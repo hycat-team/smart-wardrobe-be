@@ -333,6 +333,7 @@ func newWebhookUseCase(dbConn *gorm.DB) (ucInterfaces.IPaymentWebhookUseCase, *i
 	planChangePublisher := subscription.NewPlanChangePublisher(
 		persistence.NewUserSubscriptionEventRepository(dbConn),
 		publisher,
+		noopPlanPeriodRecorder{},
 	)
 	return NewPaymentWebhookUseCase(
 		&cfg,

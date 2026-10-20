@@ -69,7 +69,7 @@ func newTestUseCase(t *testing.T, campaigns []*entities.Campaign, claims *fakeCl
 		claims,
 		h.subs,
 		h.plans,
-		subscription.NewPlanChangePublisher(h.events, h.publisher),
+		subscription.NewPlanChangePublisher(h.events, h.publisher, noopPlanPeriodRecorder{}),
 		h.audit,
 		h.notif,
 		nil,

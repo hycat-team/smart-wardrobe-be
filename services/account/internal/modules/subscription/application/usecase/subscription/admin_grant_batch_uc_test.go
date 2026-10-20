@@ -393,7 +393,7 @@ func newGrantHarness(t *testing.T, users ...*identity_dto.UserBriefContractDTO) 
 		planRepo:            plans,
 		quotaRepo:           quota,
 		eventRepo:           events,
-		planChangePublisher: NewPlanChangePublisher(events, &fakeRenewalPublisher{}),
+		planChangePublisher: NewPlanChangePublisher(events, &fakeRenewalPublisher{}, noopPlanPeriodRecorder{}),
 		adminUserResolver:   NewAdminUserResolver(identityContract),
 		notifContract:       notif,
 		auditLogContract:    audit,

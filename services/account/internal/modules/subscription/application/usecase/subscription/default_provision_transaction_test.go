@@ -207,7 +207,7 @@ func newProvisionHarness(t *testing.T, publisher sharedevent.IEventPublisher) *p
 				plan:              plan,
 			},
 			&provisionQuotaRepo{},
-			NewPlanChangePublisher(&fakeRenewalEventRepo{}, publisher),
+			NewPlanChangePublisher(&fakeRenewalEventRepo{}, publisher, noopPlanPeriodRecorder{}),
 			uow,
 		),
 	}

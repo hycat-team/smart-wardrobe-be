@@ -30,7 +30,7 @@ import (
 func TestPublishPlanChangeRefusesPayloadWithoutPlanID(t *testing.T) {
 	eventRepo := &grantTxEventRepo{}
 	publisher := &fakeRenewalPublisher{}
-	changePublisher := NewPlanChangePublisher(eventRepo, publisher)
+	changePublisher := NewPlanChangePublisher(eventRepo, publisher, noopPlanPeriodRecorder{})
 
 	userID := uuid.New()
 	planCode := "free"
@@ -78,7 +78,7 @@ func TestNilPlanProducesPayloadTheValidatorRejects(t *testing.T) {
 func TestPublishPlanChangeStillPublishesRealPlan(t *testing.T) {
 	eventRepo := &grantTxEventRepo{}
 	publisher := &fakeRenewalPublisher{}
-	changePublisher := NewPlanChangePublisher(eventRepo, publisher)
+	changePublisher := NewPlanChangePublisher(eventRepo, publisher, noopPlanPeriodRecorder{})
 
 	plan := renewalTestPlan()
 	userID := uuid.New()

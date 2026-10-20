@@ -138,7 +138,7 @@ func TestIntegrationConcurrentPlanChangePublishesOneEvent(t *testing.T) {
 	// Same reasoning as the quota test: the reads have to overlap for the writes to
 	// race, so the barrier holds every GetByKey until all racers have one.
 	publisher := &countingPublisher{}
-	changePublisher := NewPlanChangePublisher(newBarrierEventRepo(eventRepo, concurrencyRacers), publisher)
+	changePublisher := NewPlanChangePublisher(newBarrierEventRepo(eventRepo, concurrencyRacers), publisher, noopPlanPeriodRecorder{})
 
 	userID := uuid.New()
 	ensureSubscriptionUser(t, dbConn, userID, "concurrent-event")

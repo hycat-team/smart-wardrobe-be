@@ -32,6 +32,11 @@ var ProviderSet = wire.NewSet(
 	// wiring error rather than a silent production gap.
 	subscription.NewPlanChangePublisher,
 
+	// 031 T008: the validity-interval recorder the publisher calls after a new
+	// history event. Wired here so the publisher cannot be constructed without
+	// it, and a missing repository is a DI error at startup.
+	subscription.NewPlanPeriodRecorder,
+
 	// 024 T080: resolves an administrator-supplied identifier (UUID, username or
 	// email) to an account. Wired explicitly because the grant use case depends
 	// on it directly rather than through the identity contract interface.

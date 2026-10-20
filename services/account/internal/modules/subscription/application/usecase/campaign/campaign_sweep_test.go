@@ -580,7 +580,7 @@ func provisionFreePlanAtSignup(t *testing.T, h *testHarness, userID uuid.UUID) {
 
 	// The published event is what the AI service holds, and its clock reading is
 	// the PROCESSING instant — the same one the campaign grant must not precede.
-	publisher := subscription.NewPlanChangePublisher(h.events, h.publisher)
+	publisher := subscription.NewPlanChangePublisher(h.events, h.publisher, noopPlanPeriodRecorder{})
 	slug := freePlan.Slug
 	if _, err := publisher.PublishPlanChange(context.Background(), &entities.UserSubscriptionEvent{
 		EventKey:    "SIGNUP_PROVISION:" + userID.String(),

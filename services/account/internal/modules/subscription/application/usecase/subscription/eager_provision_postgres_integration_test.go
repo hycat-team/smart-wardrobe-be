@@ -362,7 +362,7 @@ func newEagerProvisionFixture(t *testing.T) *eagerProvisionFixture {
 		persistence.NewUserSubscriptionRepository(dbConn),
 		persistence.NewSubscriptionPlanRepository(dbConn),
 		persistence.NewUserDailyQuotaRepository(dbConn),
-		NewPlanChangePublisher(persistence.NewUserSubscriptionEventRepository(dbConn), publisher),
+		NewPlanChangePublisher(persistence.NewUserSubscriptionEventRepository(dbConn), publisher, noopPlanPeriodRecorder{}),
 		uow,
 	)
 

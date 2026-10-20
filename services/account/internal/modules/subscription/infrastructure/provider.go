@@ -20,6 +20,9 @@ var ProviderSet = wire.NewSet(
 	persistence.NewWebhookInboxRepository,
 	persistence.NewUserSubscriptionEventRepository,
 	persistence.NewSubscriptionRenewalAttemptRepository,
+	// 031 T008: the validity-interval history read/written by the recorder and
+	// by the distribution report.
+	persistence.NewUserPlanPeriodRepository,
 	// 025 T034: the campaign claim ledger. Read by the grant path, by the catch-up
 	// sweep and by the operator look-up, all three through the same interface.
 	persistence.NewCampaignClaimRepository,

@@ -338,7 +338,7 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 	// test able to catch a regression where the publish step is dropped.
 	publisher := &fakeRenewalPublisher{}
 	h.publisher = publisher
-	publisherHelper := NewPlanChangePublisher(h.events, publisher)
+	publisherHelper := NewPlanChangePublisher(h.events, publisher, noopPlanPeriodRecorder{})
 	h.uc = &SubscriptionUseCase{
 		uow:           &fakeRenewalUow{},
 		userSubRepo:   h.subRepo,

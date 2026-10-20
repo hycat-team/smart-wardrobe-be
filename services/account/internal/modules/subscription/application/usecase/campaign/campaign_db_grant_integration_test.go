@@ -206,7 +206,7 @@ func newDBGrantFixture(t *testing.T, dbConn *gorm.DB) *dbGrantFixture {
 		claimRepo,
 		subRepo,
 		planRepo,
-		subscription.NewPlanChangePublisher(events, publisher),
+		subscription.NewPlanChangePublisher(events, publisher, noopPlanPeriodRecorder{}),
 		&fakeAuditContract{},
 		&fakeNotifContract{},
 		nil,

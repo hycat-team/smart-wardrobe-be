@@ -67,7 +67,7 @@ func TestIntegrationScheduledRenewalRenewsPaidPlan(t *testing.T) {
 		// See the note on the other renewal test: the publisher is a real
 		// dependency of this path since 024 T048, and leaving it nil panicked only
 		// when the integration suite ran against a real database.
-		planChangePublisher: NewPlanChangePublisher(eventRepo, &recordingPublisher{}),
+		planChangePublisher: NewPlanChangePublisher(eventRepo, &recordingPublisher{}, noopPlanPeriodRecorder{}),
 		log:                 zap.NewNop(),
 	}
 
@@ -147,7 +147,7 @@ func TestIntegrationScheduledRenewalDowngradesWithoutFunds(t *testing.T) {
 		// passed in CI because `TEST_DATABASE_URL` is normally unset - the nil
 		// dependency only ever surfaced as a panic for whoever ran the integration
 		// suite locally against a real database.
-		planChangePublisher: NewPlanChangePublisher(eventRepo, &recordingPublisher{}),
+		planChangePublisher: NewPlanChangePublisher(eventRepo, &recordingPublisher{}, noopPlanPeriodRecorder{}),
 		log:                 zap.NewNop(),
 	}
 

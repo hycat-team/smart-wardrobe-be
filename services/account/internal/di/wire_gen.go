@@ -103,7 +103,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	if err != nil {
 		return nil, nil, err
 	}
-	planChangePublisher := subscription.NewPlanChangePublisher(iUserSubscriptionEventRepository, rabbitMQClient)
+	iUserPlanPeriodRepository := persistence2.NewUserPlanPeriodRepository(gormDB)
+	planPeriodRecorder := subscription.NewPlanPeriodRecorder(iUserPlanPeriodRepository)
+	planChangePublisher := subscription.NewPlanChangePublisher(iUserSubscriptionEventRepository, rabbitMQClient, planPeriodRecorder)
 	iUserQuotaUseCase := quota.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository, planChangePublisher, iUnitOfWork)
 	iSubscriptionOverviewCache := caching3.NewRedisSubscriptionOverviewCache(iCacheService, cfg, l)
 	adminGrantLookup := contract.NewAdminGrantLookup(userBriefContract)

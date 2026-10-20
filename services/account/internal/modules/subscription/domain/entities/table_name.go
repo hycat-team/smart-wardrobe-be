@@ -10,3 +10,5 @@ func (ProviderPaymentEvent) TableName() string       { return "provider_payment_
 func (ProviderWebhookInbox) TableName() string       { return "provider_webhook_inbox" }
 func (UserSubscriptionEvent) TableName() string      { return "user_subscription_events" }
 func (SubscriptionRenewalAttempt) TableName() string { return "subscription_renewal_attempts" }
+func (UserPlanPeriod) TableName() string             { return "user_plan_periods" }
+func (PlanHistoryMeta) TableName() string            { return "plan_history_meta" }

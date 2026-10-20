@@ -250,7 +250,7 @@ func newPurchaseHarness(t *testing.T) *purchaseHarness {
 		planRepo:            &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{plan.Slug: plan}, defaultPlan: free},
 		userSubRepo:         &fakeSubRepo{sub: sub},
 		eventRepo:           h.events,
-		planChangePublisher: subscription.NewPlanChangePublisher(h.events, h.publisher),
+		planChangePublisher: subscription.NewPlanChangePublisher(h.events, h.publisher, noopPlanPeriodRecorder{}),
 		uow:                 &fakeUow{},
 		cfg:                 &cfg,
 		notifContract:       h.notif,
