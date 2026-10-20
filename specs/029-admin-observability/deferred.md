@@ -24,6 +24,23 @@ Nothing here blocks closing 029; nothing here is a task of 029.
 - **Ảnh hưởng tới task đã tick**: không — T002 chính là task ghi nhận phát hiện này; các task
   truy vấn (T030, T033, T035) vẫn đúng vì truy vấn bounded theo kỳ.
 
+- **TRẠNG THÁI (2026-10-20 — RESOLVED, đo trước khi thêm)**: đã đo trên database tổng hợp
+  (200k `deposit_transactions`, 100k `subscription_renewal_attempts`, 500k `ai_usage_events`,
+  cửa sổ 30 ngày) bằng `EXPLAIN (ANALYZE, BUFFERS)`, rồi chỉ thêm index có thay đổi plan:
+  - `subscription.deposit_transactions (created_at DESC)` — list không lọc status: **17.5 → 0.10 ms**;
+    list có `status IN (...)`: **24.1 → 0.20 ms**; revenue theo kỳ: **12.9 → 4.2 ms**.
+  - `subscription.subscription_renewal_attempts (created_at)` — stats theo kỳ: **16.1 → 2.6 ms**.
+  - `aiexecutor.ai_usage_events (created_at)` — aggregate theo kỳ: **59.0 → 18.5 ms**.
+  - `aiexecutor.ai_usage_events (status, created_at)` — error-breakdown: **36.9 → 2.9 ms**
+    (Index Only Scan; bỏ composite thì trở lại 15.5 ms).
+  - **Loại có bằng chứng**: `deposit_transactions (status, created_at)` chỉ cải thiện revenue
+    aggregate từ 4.2 → 2.6 ms và không giúp gì cho list, nên không thêm để tránh chi phí ghi trên
+    đường ghi nóng nhất.
+  Migration: `services/account/.../20261020130000_add_period_indexes.sql` và
+  `services/ai/.../20261020130000_add_ai_usage_period_indexes.sql` (có `Down` drop index; đã kiểm
+  tra vòng down→up trên DB tạm). `make migration-check` xanh (27 file, 0 vi phạm),
+  `make test-db-integration` xanh.
+
 ### D-02 — Trần `limit` của list giao dịch lệch giữa repo (200) và metadata (100)
 
 - **Vấn đề**: `GET /admin/subscriptions/transactions` truyền `limit` thô xuống repo — repo cap 200 —
