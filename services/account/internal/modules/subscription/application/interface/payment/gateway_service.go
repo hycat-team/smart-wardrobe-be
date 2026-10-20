@@ -43,13 +43,20 @@ func IsDuplicateOrderCode(result *CheckoutSessionResult) bool {
 	return result != nil && result.ErrorCode == ErrCodeDuplicateOrder
 }
 
+// ProviderPaymentStatus mirrors the status values payOS returns from
+// GET /v2/payment-requests/{id} (see the official SDK PaymentLinkStatus enum).
+// They are compared as-is, so the constants must stay uppercase.
 type ProviderPaymentStatus string
 
 const (
-	ProviderPending   ProviderPaymentStatus = "pending"
-	ProviderPaid      ProviderPaymentStatus = "PAID"
-	ProviderCancelled ProviderPaymentStatus = "cancelled"
-	ProviderUnknown   ProviderPaymentStatus = "UNKNOWN"
+	ProviderPending    ProviderPaymentStatus = "PENDING"
+	ProviderProcessing ProviderPaymentStatus = "PROCESSING"
+	ProviderPaid       ProviderPaymentStatus = "PAID"
+	ProviderCancelled  ProviderPaymentStatus = "CANCELLED"
+	ProviderExpired    ProviderPaymentStatus = "EXPIRED"
+	ProviderUnderpaid  ProviderPaymentStatus = "UNDERPAID"
+	ProviderFailed     ProviderPaymentStatus = "FAILED"
+	ProviderUnknown    ProviderPaymentStatus = "UNKNOWN"
 )
 
 type PaymentLinkInfo struct {
@@ -61,6 +68,10 @@ type PaymentLinkInfo struct {
 	Currency      string
 	Status        ProviderPaymentStatus
 	CheckoutURL   string
+	// CancelledAt and CancellationReason come from payOS when Status is
+	// ProviderCancelled. Both are optional on the provider's response.
+	CancelledAt        *time.Time
+	CancellationReason string
 }
 
 type IPaymentGatewayService interface {

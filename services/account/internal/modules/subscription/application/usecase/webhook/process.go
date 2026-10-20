@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"time"
 
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/payment"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/webhookprocessingstatus"
@@ -48,6 +50,98 @@ func (uc *PaymentWebhookUseCase) logIgnoredWebhook(payload *WebhookPayload) {
 		zap.String("gateway_data_code", payload.Data.Code),
 		zap.String("result", "ignored_non_success"),
 	)
+}
+
+// resolveUnsuccessfulWebhook handles a webhook that does not report a successful
+// bank transaction. The payOS webhook payload carries no payment-link status
+// (only transaction fields), so the provider is queried and the authoritative
+// status decides the transition. Nothing is inferred from the payload itself.
+//
+// A provider lookup failure is returned to the caller so payOS retries; the
+// reconciliation worker still covers the row independently.
+func (uc *PaymentWebhookUseCase) resolveUnsuccessfulWebhook(
+	ctx context.Context,
+	payload *WebhookPayload,
+	inbox *entities.ProviderWebhookInbox,
+) error {
+	uc.logIgnoredWebhook(payload)
+	now := time.Now().UTC()
+	ack := func() error {
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkProcessed(ctx, inbox.ID, now)
+		}
+		return nil
+	}
+
+	if payload.Data.OrderCode == 0 {
+		return ack()
+	}
+
+	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
+	if err != nil {
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkRetry(ctx, inbox.ID, now, "transaction lookup failed")
+		}
+		return subscriptionerrors.ErrQueryTransactionFailed()
+	}
+	if tx == nil || isTerminalDepositStatus(tx.Status) {
+		return ack()
+	}
+
+	info, err := uc.paymentGateway.GetPaymentLinkInfo(ctx, payload.Data.OrderCode)
+	if err != nil {
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkRetry(ctx, inbox.ID, now, "provider lookup failed")
+		}
+		return err
+	}
+	if info == nil {
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkInvestigation(ctx, inbox.ID, now, "provider returned no payment link info")
+		}
+		return nil
+	}
+
+	switch info.Status {
+	case payment.ProviderPaid:
+		// A successful bank transaction may still arrive with a non-"00"
+		// webhook code (provider retry ordering); the provider is authoritative.
+		if err := uc.CompleteVerifiedPayment(ctx, info); err != nil {
+			if inbox != nil {
+				_ = uc.inboxRepo.MarkRetry(ctx, inbox.ID, now, "payment completion failed")
+			}
+			return err
+		}
+	case payment.ProviderCancelled:
+		if err := uc.MarkCancelled(ctx, info); err != nil {
+			if inbox != nil {
+				_ = uc.inboxRepo.MarkRetry(ctx, inbox.ID, now, "cancellation persistence failed")
+			}
+			return err
+		}
+	default:
+		// PENDING/PROCESSING/EXPIRED/UNDERPAID/FAILED/UNKNOWN: reconciliation owns
+		// these transitions. Record the signal and acknowledge so payOS does not
+		// retry a payload the webhook path cannot resolve.
+		message := "unsuccessful webhook; provider status " + string(info.Status)
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkInvestigation(ctx, inbox.ID, now, message)
+		}
+		return nil
+	}
+
+	return ack()
+}
+
+// isTerminalDepositStatus reports states that a late webhook must not reopen.
+func isTerminalDepositStatus(status depositstatus.DepositStatus) bool {
+	switch status {
+	case depositstatus.Success, depositstatus.FailedLegacy, depositstatus.CreationFailed,
+		depositstatus.Cancelled, depositstatus.Expired, depositstatus.Refunded:
+		return true
+	default:
+		return false
+	}
 }
 
 func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
@@ -154,12 +248,23 @@ func (uc *PaymentWebhookUseCase) persistWebhookInbox(ctx context.Context, payloa
 			return existing, nil
 		}
 	}
-	amount, err := decimal.NewFromString(payload.Data.Amount.String())
-	if err != nil {
-		return nil, subscriptionerrors.ErrInvalidAmount()
+	amount := decimal.Zero
+	if rawAmount := strings.TrimSpace(payload.Data.Amount.String()); rawAmount != "" {
+		parsed, err := decimal.NewFromString(rawAmount)
+		if err != nil {
+			return nil, subscriptionerrors.ErrInvalidAmount()
+		}
+		amount = parsed
+	}
+	// A non-payment webhook (provider test sample, cancellation notice) may omit
+	// amount/currency. Persist what we have instead of rejecting the request,
+	// otherwise payOS retries a payload we will never accept.
+	currencyText := strings.TrimSpace(payload.Data.Currency)
+	if currencyText == "" {
+		currencyText = string(currency.VND)
 	}
 	ref, link := payload.Data.Reference, payload.Data.PaymentLinkId
-	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currency.Currency(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: string(webhookprocessingstatus.Received), ReceivedAt: time.Now().UTC()}
+	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currency.Currency(currencyText), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: string(webhookprocessingstatus.Received), ReceivedAt: time.Now().UTC()}
 	if err := uc.inboxRepo.Create(ctx, inbox); err != nil {
 		return nil, err
 	}

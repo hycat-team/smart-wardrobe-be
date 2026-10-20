@@ -110,6 +110,7 @@ func (f *fakePaymentGatewayService) CancelPaymentLink(ctx context.Context, order
 
 type fakePaymentWebhookUseCase struct {
 	completeVerifiedPaymentFunc func(ctx context.Context, info *payment.PaymentLinkInfo) error
+	markCancelledFunc           func(ctx context.Context, info *payment.PaymentLinkInfo) error
 }
 
 func (f *fakePaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []byte, signature string) error {
@@ -121,6 +122,12 @@ func (f *fakePaymentWebhookUseCase) AutoRefund(ctx context.Context, orderCode in
 func (f *fakePaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, info *payment.PaymentLinkInfo) error {
 	if f.completeVerifiedPaymentFunc != nil {
 		return f.completeVerifiedPaymentFunc(ctx, info)
+	}
+	return nil
+}
+func (f *fakePaymentWebhookUseCase) MarkCancelled(ctx context.Context, info *payment.PaymentLinkInfo) error {
+	if f.markCancelledFunc != nil {
+		return f.markCancelledFunc(ctx, info)
 	}
 	return nil
 }
@@ -295,12 +302,55 @@ func TestPaymentReconciliationUseCase(t *testing.T) {
 		}
 	})
 
-	t.Run("ProviderCancelled - finishes cancelled status", func(t *testing.T) {
+	t.Run("ProviderCancelled - marks the transaction cancelled", func(t *testing.T) {
 		gateway := &fakePaymentGatewayService{
 			getPaymentLinkInfoFunc: func(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
 				return &payment.PaymentLinkInfo{
 					OrderCode: orderCode,
 					Status:    payment.ProviderCancelled,
+				}, nil
+			},
+		}
+
+		cancelledOrderCode := int64(0)
+		webhook := &fakePaymentWebhookUseCase{
+			markCancelledFunc: func(ctx context.Context, info *payment.PaymentLinkInfo) error {
+				cancelledOrderCode = info.OrderCode
+				return nil
+			},
+		}
+
+		repo := &fakeDepositTransactionRepository{}
+
+		uc := &PaymentReconciliationUseCase{
+			repo:       repo,
+			gateway:    gateway,
+			completion: webhook,
+			uow:        &fakeUnitOfWork{},
+			log:        &fakeLogger{},
+			cfg:        cfg,
+		}
+
+		claimed := &repositories.ClaimedDepositTransaction{
+			ProcessingToken: uuid.New(),
+			Transaction: &entities.DepositTransaction{
+				OrderCode: 12345,
+			},
+		}
+
+		uc.reconcile(ctx, claimed)
+
+		if cancelledOrderCode != 12345 {
+			t.Fatalf("expected MarkCancelled to be called for order 12345, got %d", cancelledOrderCode)
+		}
+	})
+
+	t.Run("ProviderExpired - finishes expired status", func(t *testing.T) {
+		gateway := &fakePaymentGatewayService{
+			getPaymentLinkInfoFunc: func(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
+				return &payment.PaymentLinkInfo{
+					OrderCode: orderCode,
+					Status:    payment.ProviderExpired,
 				}, nil
 			},
 		}
@@ -326,15 +376,102 @@ func TestPaymentReconciliationUseCase(t *testing.T) {
 
 		claimed := &repositories.ClaimedDepositTransaction{
 			ProcessingToken: uuid.New(),
-			Transaction: &entities.DepositTransaction{
-				OrderCode: 12345,
-			},
+			Transaction:     &entities.DepositTransaction{OrderCode: 12345},
 		}
 
 		uc.reconcile(ctx, claimed)
 
-		if updatedStatus != depositstatus.Cancelled {
-			t.Fatalf("expected transaction to be set to Cancelled, got %v", updatedStatus)
+		if updatedStatus != depositstatus.Expired {
+			t.Fatalf("expected transaction to be set to Expired, got %v", updatedStatus)
+		}
+	})
+
+	t.Run("ProviderUnderpaid - moves to investigation", func(t *testing.T) {
+		gateway := &fakePaymentGatewayService{
+			getPaymentLinkInfoFunc: func(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
+				return &payment.PaymentLinkInfo{
+					OrderCode: orderCode,
+					Status:    payment.ProviderUnderpaid,
+				}, nil
+			},
+		}
+
+		var updatedStatus depositstatus.DepositStatus
+		var failureReason string
+		repo := &fakeDepositTransactionRepository{
+			updateWithTokenFunc: func(ctx context.Context, orderCode int64, token uuid.UUID, updates map[string]any) (int64, error) {
+				if s, ok := updates["status"]; ok {
+					updatedStatus = s.(depositstatus.DepositStatus)
+				}
+				if r, ok := updates["failure_reason"].(*string); ok && r != nil {
+					failureReason = *r
+				}
+				return 1, nil
+			},
+		}
+
+		uc := &PaymentReconciliationUseCase{
+			repo:       repo,
+			gateway:    gateway,
+			completion: &fakePaymentWebhookUseCase{},
+			uow:        &fakeUnitOfWork{},
+			log:        &fakeLogger{},
+			cfg:        cfg,
+		}
+
+		claimed := &repositories.ClaimedDepositTransaction{
+			ProcessingToken: uuid.New(),
+			Transaction:     &entities.DepositTransaction{OrderCode: 12345},
+		}
+
+		uc.reconcile(ctx, claimed)
+
+		if updatedStatus != depositstatus.InvestigationRequired {
+			t.Fatalf("expected transaction to be set to InvestigationRequired, got %v", updatedStatus)
+		}
+		if failureReason != errCodeUnderpaid {
+			t.Fatalf("expected failure reason %q, got %q", errCodeUnderpaid, failureReason)
+		}
+	})
+
+	t.Run("ProviderFailed - moves to investigation", func(t *testing.T) {
+		gateway := &fakePaymentGatewayService{
+			getPaymentLinkInfoFunc: func(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
+				return &payment.PaymentLinkInfo{
+					OrderCode: orderCode,
+					Status:    payment.ProviderFailed,
+				}, nil
+			},
+		}
+
+		var updatedStatus depositstatus.DepositStatus
+		repo := &fakeDepositTransactionRepository{
+			updateWithTokenFunc: func(ctx context.Context, orderCode int64, token uuid.UUID, updates map[string]any) (int64, error) {
+				if s, ok := updates["status"]; ok {
+					updatedStatus = s.(depositstatus.DepositStatus)
+				}
+				return 1, nil
+			},
+		}
+
+		uc := &PaymentReconciliationUseCase{
+			repo:       repo,
+			gateway:    gateway,
+			completion: &fakePaymentWebhookUseCase{},
+			uow:        &fakeUnitOfWork{},
+			log:        &fakeLogger{},
+			cfg:        cfg,
+		}
+
+		claimed := &repositories.ClaimedDepositTransaction{
+			ProcessingToken: uuid.New(),
+			Transaction:     &entities.DepositTransaction{OrderCode: 12345},
+		}
+
+		uc.reconcile(ctx, claimed)
+
+		if updatedStatus != depositstatus.InvestigationRequired {
+			t.Fatalf("expected transaction to be set to InvestigationRequired, got %v", updatedStatus)
 		}
 	})
 

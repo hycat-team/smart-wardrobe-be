@@ -118,11 +118,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	}
 
 	if !uc.isSuccessfulWebhook(payload) {
-		uc.logIgnoredWebhook(payload)
-		if inbox != nil {
-			_ = uc.inboxRepo.MarkProcessed(ctx, inbox.ID, time.Now().UTC())
-		}
-		return nil
+		return uc.resolveUnsuccessfulWebhook(ctx, payload, inbox)
 	}
 
 	tx, webhookAmount, err := uc.loadAndValidateDepositTransaction(ctx, payload)

@@ -66,7 +66,29 @@ func (uc *WebhookInboxUseCase) ProcessInbox(ctx context.Context, run *workerlog.
 			run.AddRetry(1)
 			continue
 		}
-		if info.Status != payment.ProviderPaid {
+		switch info.Status {
+		case payment.ProviderPaid:
+			// fall through to the completion branch below
+		case payment.ProviderCancelled:
+			// The webhook path already tried to resolve this row, so a retry
+			// must still be able to record a provider-confirmed cancellation.
+			if err := uc.completion.MarkCancelled(ctx, info); err != nil {
+				_ = uc.repo.MarkRetry(ctx, row.ID, time.Now().UTC(), "cancellation persistence failed")
+				run.ChildWarn(uc.log, "Cancellation persistence failed for webhook inbox event",
+					zap.String("inboxId", row.ID.String()),
+					zap.Int64("orderCode", row.OrderCode),
+					zap.String("actionTaken", "mark_retry"),
+					zap.Error(err),
+				)
+				retryMarkedCount++
+				run.AddRetry(1)
+				continue
+			}
+			_ = uc.repo.MarkProcessed(ctx, row.ID, time.Now().UTC())
+			processedCount++
+			run.AddSuccess(1)
+			continue
+		default:
 			_ = uc.repo.MarkInvestigation(ctx, row.ID, time.Now().UTC(), "provider does not confirm paid status")
 			run.ChildWarn(uc.log, "Webhook inbox event marked for investigation",
 				zap.String("inboxId", row.ID.String()),

@@ -157,28 +157,60 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 func (s *PayOSService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
 	var response struct {
 		Code string `json:"code"`
+		Desc string `json:"desc"`
 		Data struct {
-			ID          string          `json:"id"`
-			OrderCode   int64           `json:"orderCode"`
-			Amount      decimal.Decimal `json:"amount"`
-			AmountPaid  decimal.Decimal `json:"amountPaid"`
-			Status      string          `json:"status"`
-			CheckoutURL string          `json:"checkoutUrl"`
+			ID                 string          `json:"id"`
+			OrderCode          int64           `json:"orderCode"`
+			Amount             decimal.Decimal `json:"amount"`
+			AmountPaid         decimal.Decimal `json:"amountPaid"`
+			Status             string          `json:"status"`
+			CheckoutURL        string          `json:"checkoutUrl"`
+			CanceledAt         *time.Time      `json:"canceledAt"`
+			CancellationReason string          `json:"cancellationReason"`
 		} `json:"data"`
 	}
 	if err := s.doJSON(ctx, http.MethodGet, fmt.Sprintf("%s/v2/payment-requests/%d", s.endpoint, orderCode), nil, &response); err != nil {
 		return nil, err
 	}
-	status := payment.ProviderUnknown
-	switch strings.ToUpper(response.Data.Status) {
-	case "pending":
-		status = payment.ProviderPending
-	case "PAID":
-		status = payment.ProviderPaid
-	case "cancelled":
-		status = payment.ProviderCancelled
+	if response.Code != "" && response.Code != "00" {
+		return nil, fmt.Errorf("payos returned business error code %s: %s", response.Code, response.Desc)
 	}
-	return &payment.PaymentLinkInfo{OrderCode: response.Data.OrderCode, PaymentLinkID: response.Data.ID, Amount: response.Data.Amount, AmountPaid: response.Data.AmountPaid, Currency: "vnd", Status: status, CheckoutURL: response.Data.CheckoutURL}, nil
+	return &payment.PaymentLinkInfo{
+		OrderCode:          response.Data.OrderCode,
+		PaymentLinkID:      response.Data.ID,
+		Amount:             response.Data.Amount,
+		AmountPaid:         response.Data.AmountPaid,
+		Currency:           "vnd",
+		Status:             mapProviderStatus(response.Data.Status),
+		CheckoutURL:        response.Data.CheckoutURL,
+		CancelledAt:        response.Data.CanceledAt,
+		CancellationReason: response.Data.CancellationReason,
+	}, nil
+}
+
+// mapProviderStatus normalises the payOS PaymentLinkStatus enum. PROCESSING is
+// an in-flight state and is treated as pending; every value the provider may
+// introduce later maps to ProviderUnknown so reconciliation defers instead of
+// guessing.
+func mapProviderStatus(raw string) payment.ProviderPaymentStatus {
+	switch strings.ToUpper(strings.TrimSpace(raw)) {
+	case "PENDING":
+		return payment.ProviderPending
+	case "PROCESSING":
+		return payment.ProviderProcessing
+	case "PAID":
+		return payment.ProviderPaid
+	case "CANCELLED":
+		return payment.ProviderCancelled
+	case "EXPIRED":
+		return payment.ProviderExpired
+	case "UNDERPAID":
+		return payment.ProviderUnderpaid
+	case "FAILED":
+		return payment.ProviderFailed
+	default:
+		return payment.ProviderUnknown
+	}
 }
 
 func (s *PayOSService) CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error {

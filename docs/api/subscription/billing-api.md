@@ -79,5 +79,20 @@ Người dùng nạp tiền vào ví cá nhân và theo dõi lịch sử biến 
 *   **Tác nhân (Actor):** Cổng thanh toán trung gian PayOS.
 *   **Đối tượng ảnh hưởng:** Cập nhật trạng thái các giao dịch nạp tiền/mua gói tương ứng, cộng số dư ví hoặc kích hoạt gói Premium cho người dùng.
 *   **Mô tả:** Điểm nhận thông báo IPN tự động từ cổng PayOS khi khách hàng chuyển khoản thành công. Phía backend thực hiện xác thực chữ ký (validate signature) bảo mật và đảm bảo tính idempotent của giao dịch.
+*   **Lưu ý về trạng thái:** Payload webhook của PayOS **không chứa trạng thái payment link** (chỉ có `orderCode`, `amount`, `reference`, `paymentLinkId`, `data.code`, `data.desc`). Vì vậy:
+    *   Webhook thành công (`code = "00"`) được áp dụng trực tiếp.
+    *   Webhook không thành công: backend gọi `GET /v2/payment-requests/{orderCode}` để lấy trạng thái thật và xử lý theo bảng dưới đây. Nếu gọi provider lỗi, backend trả lỗi để PayOS retry.
+    *   Hủy thanh toán phía người dùng được PayOS trả về qua `cancelUrl` (không qua webhook); backend vẫn ghi nhận nhờ đối soát định kỳ gọi API lấy trạng thái link.
+
+| Trạng thái PayOS | Trạng thái nội bộ |
+| --- | --- |
+| `PENDING`, `PROCESSING` | `pending` (chờ thanh toán) |
+| `PAID` | `success` |
+| `CANCELLED` | `cancelled` (kèm `cancelledAt`, lý do hủy) |
+| `EXPIRED` | `expired` |
+| `UNDERPAID` | `investigation_required` |
+| `FAILED` | `investigation_required` |
+| Không xác định | `reconciliation_required` → đối soát lại |
+
 *   **Response:**
     *   `200 OK`: Ghi nhận xử lý webhook thành công.

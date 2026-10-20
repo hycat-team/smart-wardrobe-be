@@ -87,3 +87,76 @@ func TestCreateCheckoutSessionOtherBusinessErrorIsNotRetryable(t *testing.T) {
 		t.Fatal("expected IsDuplicateOrderCode to report false for code 20")
 	}
 }
+
+func TestGetPaymentLinkInfoMapsProviderStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		status string
+		want   payment.ProviderPaymentStatus
+	}{
+		{"pending", "PENDING", payment.ProviderPending},
+		{"processing", "PROCESSING", payment.ProviderProcessing},
+		{"processing lowercase and padded", "  processing ", payment.ProviderProcessing},
+		{"paid", "PAID", payment.ProviderPaid},
+		{"cancelled", "CANCELLED", payment.ProviderCancelled},
+		{"expired", "EXPIRED", payment.ProviderExpired},
+		{"underpaid", "UNDERPAID", payment.ProviderUnderpaid},
+		{"failed", "FAILED", payment.ProviderFailed},
+		{"unknown", "SOMETHING_NEW", payment.ProviderUnknown},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"code":"00","desc":"success","data":{"id":"link-1","orderCode":123,"amount":5000,"amountPaid":0,"status":"` + tt.status + `"}}`))
+			}))
+			defer server.Close()
+
+			svc := NewPayOSService(testConfig(server.URL))
+			info, err := svc.GetPaymentLinkInfo(context.Background(), 123)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if info.Status != tt.want {
+				t.Fatalf("status %q: expected %q, got %q", tt.status, tt.want, info.Status)
+			}
+		})
+	}
+}
+
+func TestGetPaymentLinkInfoParsesCancellationDetails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":"00","desc":"success","data":{"id":"link-1","orderCode":123,"amount":5000,"amountPaid":0,"status":"CANCELLED","canceledAt":"2026-10-20T10:00:00Z","cancellationReason":"User requested cancellation"}}`))
+	}))
+	defer server.Close()
+
+	svc := NewPayOSService(testConfig(server.URL))
+	info, err := svc.GetPaymentLinkInfo(context.Background(), 123)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if info.CancelledAt == nil {
+		t.Fatal("expected cancelledAt to be parsed")
+	}
+	if !info.CancelledAt.Equal(time.Date(2026, 10, 20, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("unexpected cancelledAt: %v", info.CancelledAt)
+	}
+	if info.CancellationReason != "User requested cancellation" {
+		t.Fatalf("unexpected cancellationReason: %q", info.CancellationReason)
+	}
+}
+
+func TestGetPaymentLinkInfoReturnsBusinessError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":"02","desc":"Mã thanh toán không tồn tại"}`))
+	}))
+	defer server.Close()
+
+	svc := NewPayOSService(testConfig(server.URL))
+	if _, err := svc.GetPaymentLinkInfo(context.Background(), 123); err == nil {
+		t.Fatal("expected a business error for code 02, got nil")
+	}
+}

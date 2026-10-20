@@ -21,10 +21,13 @@ const (
 	errCodeProviderLookup   = "PROVIDER_LOOKUP_ERROR"
 	errCodeCompletion       = "COMPLETION_ERROR"
 	errCodeCancelUnknown    = "CANCEL_UNKNOWN"
+	errCodeCancelPersist    = "CANCEL_PERSIST_ERROR"
 	errCodeCreateTimeout    = "CREATE_TIMEOUT"
 	errCodeCreateUnknown    = "CREATE_UNKNOWN"
 	errCodePendingRetry     = "PENDING_RETRY"
 	errCodeUnknownStatus    = "UNKNOWN_PROVIDER_STATUS"
+	errCodeUnderpaid        = "UNDERPAID"
+	errCodeProviderFailed   = "PROVIDER_FAILED"
 	reasonMaxPolicyExceeded = "MAX_RECONCILIATION_POLICY_EXCEEDED"
 
 	cancelReasonExpired = "Payment link expired"
@@ -104,7 +107,7 @@ func (uc *PaymentReconciliationUseCase) reconcile(ctx context.Context, claimed *
 			return
 		}
 		run.AddSuccess(1)
-	case payment.ProviderPending:
+	case payment.ProviderPending, payment.ProviderProcessing:
 		now := time.Now().UTC()
 		// If expiresAt <= now: cancel the link and mark expired
 		if tx.ExpiresAt != nil && !tx.ExpiresAt.After(now) {
@@ -164,7 +167,17 @@ func (uc *PaymentReconciliationUseCase) reconcile(ctx context.Context, claimed *
 		uc.deferRetry(ctx, orderCode, token, errCodePendingRetry, run)
 
 	case payment.ProviderCancelled:
-		uc.finish(ctx, orderCode, token, depositstatus.Cancelled, run)
+		if err := uc.completion.MarkCancelled(ctx, info); err != nil {
+			uc.deferRetry(ctx, orderCode, token, errCodeCancelPersist, run)
+			return
+		}
+		run.AddSuccess(1)
+	case payment.ProviderExpired:
+		uc.finish(ctx, orderCode, token, depositstatus.Expired, run)
+	case payment.ProviderUnderpaid:
+		uc.finishInvestigation(ctx, orderCode, token, errCodeUnderpaid, run)
+	case payment.ProviderFailed:
+		uc.finishInvestigation(ctx, orderCode, token, errCodeProviderFailed, run)
 	default:
 		uc.deferRetry(ctx, orderCode, token, errCodeUnknownStatus, run)
 	}
@@ -203,6 +216,32 @@ func (uc *PaymentReconciliationUseCase) finish(ctx context.Context, orderCode in
 	rowsAffected, err := uc.repo.UpdateWithToken(ctx, orderCode, token, updates)
 	if err != nil {
 		run.ChildError(uc.log, "Failed to update finished transaction", zap.Int64("orderCode", orderCode), zap.Error(err))
+	} else if rowsAffected == 0 {
+		uc.handleZeroRowsAffected(ctx, orderCode, token, run)
+	} else {
+		run.AddSuccess(1)
+	}
+}
+
+// finishInvestigation closes a transaction that the provider reported in a
+// state reconciliation cannot resolve automatically (underpaid, failed). It is
+// a terminal state for the worker: the row stops being retried and surfaces in
+// the admin investigation list with the provider reason attached.
+func (uc *PaymentReconciliationUseCase) finishInvestigation(ctx context.Context, orderCode int64, token uuid.UUID, reason string, run *workerlog.Run) {
+	now := time.Now().UTC()
+	updates := map[string]any{
+		"status":                   depositstatus.InvestigationRequired,
+		"processing_token":         nil,
+		"processing_lease_until":   nil,
+		"next_reconciliation_at":   nil,
+		"failure_reason":           &reason,
+		"last_provider_error_code": &reason,
+		"last_provider_error_at":   &now,
+	}
+
+	rowsAffected, err := uc.repo.UpdateWithToken(ctx, orderCode, token, updates)
+	if err != nil {
+		run.ChildError(uc.log, "Failed to move transaction to investigation", zap.Int64("orderCode", orderCode), zap.String("reason", reason), zap.Error(err))
 	} else if rowsAffected == 0 {
 		uc.handleZeroRowsAffected(ctx, orderCode, token, run)
 	} else {

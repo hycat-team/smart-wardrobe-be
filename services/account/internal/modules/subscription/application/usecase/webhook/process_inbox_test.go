@@ -13,7 +13,10 @@ import (
 )
 
 type captureInboxRepo struct {
-	created []*entities.ProviderWebhookInbox
+	created      []*entities.ProviderWebhookInbox
+	processed    int
+	retried      int
+	investigated int
 }
 
 func (f *captureInboxRepo) Create(ctx context.Context, event *entities.ProviderWebhookInbox) error {
@@ -27,12 +30,15 @@ func (f *captureInboxRepo) GetByReference(ctx context.Context, provider, referen
 	return nil, nil
 }
 func (f *captureInboxRepo) MarkProcessed(ctx context.Context, id uuid.UUID, at time.Time) error {
+	f.processed++
 	return nil
 }
 func (f *captureInboxRepo) MarkRetry(ctx context.Context, id uuid.UUID, at time.Time, message string) error {
+	f.retried++
 	return nil
 }
 func (f *captureInboxRepo) MarkInvestigation(ctx context.Context, id uuid.UUID, at time.Time, message string) error {
+	f.investigated++
 	return nil
 }
 func (f *captureInboxRepo) MarkFailed(ctx context.Context, id uuid.UUID, at time.Time, reason string) error {
@@ -91,5 +97,37 @@ func TestPersistWebhookInboxUsesLowercaseReceivedStatus(t *testing.T) {
 	}
 	if inbox == nil || inbox.ProcessingStatus != got {
 		t.Fatalf("expected returned inbox to carry status %q", got)
+	}
+}
+
+// A non-payment webhook may omit amount/currency. It must still be persisted so
+// the request is acknowledged instead of making payOS retry forever.
+func TestPersistWebhookInboxToleratesMissingAmount(t *testing.T) {
+	repo := &captureInboxRepo{}
+	uc := &PaymentWebhookUseCase{inboxRepo: repo}
+
+	payload := &WebhookPayload{
+		Code: "01",
+		Desc: "cancelled",
+		Data: WebhookPayloadData{
+			OrderCode: 123,
+			Code:      "01",
+		},
+	}
+	inbox, err := uc.persistWebhookInbox(context.Background(), payload)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repo.created) != 1 {
+		t.Fatalf("expected exactly one inbox row created, got %d", len(repo.created))
+	}
+	if !repo.created[0].Amount.IsZero() {
+		t.Fatalf("expected zero amount, got %s", repo.created[0].Amount)
+	}
+	if repo.created[0].Currency == "" {
+		t.Fatal("expected a default currency")
+	}
+	if inbox == nil {
+		t.Fatal("expected the created inbox row to be returned")
 	}
 }
