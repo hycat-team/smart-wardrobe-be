@@ -336,11 +336,13 @@ test-integration:
 # `-p 1` is deliberate (026 D-03): two test packages in services/account share the
 # one database, and running them in parallel makes the campaign fixtures race with
 # the seed/rollback tests. Serialising packages is the cheap fix; remove it only
-# together with a session-level advisory lock shared by both openers.
+# together with a session-level advisory lock shared by both openers. `-count=1`
+# disables the test cache: package order matters here, and a cached `ok` from a
+# previous run can hide a cross-package fixture leak (it did once, for D-06).
 test-db-integration:
 	@echo "Running database-backed integration tests (TEST_DATABASE_URL required)..."
-	@cd services/account && go test -race -p 1 -timeout 20m -run Integration ./...
-	@cd services/ai && go test -race -p 1 -timeout 20m -run Integration ./...
+	@cd services/account && go test -race -p 1 -count=1 -timeout 20m -run Integration ./...
+	@cd services/ai && go test -race -p 1 -count=1 -timeout 20m -run Integration ./...
 	@echo Database-backed integration tests finished.
 
 build:

@@ -395,10 +395,13 @@ func publishedWebhookEventType(t *testing.T, payload any) string {
 
 // webhookPlanChangeHistory reads back the plan-change history this file's
 // cleanup emptied, ordered so a failure message names the row it found.
-func webhookPlanChangeHistory(t *testing.T, dbConn *gorm.DB) []entities.UserSubscriptionEvent {
+func webhookPlanChangeHistory(t *testing.T, dbConn *gorm.DB, userID uuid.UUID) []entities.UserSubscriptionEvent {
 	t.Helper()
 	var rows []entities.UserSubscriptionEvent
-	if err := dbConn.Order("occurred_at asc").Find(&rows).Error; err != nil {
+	// Scoped to the fixture user: this file's cleanup is scoped, so other suites'
+	// history rows stay in the table (026 D-02 rule). A table-wide read would count
+	// their rows and the "exactly one" assertion would become a lie.
+	if err := dbConn.Where("user_id = ?", userID).Order("occurred_at asc").Find(&rows).Error; err != nil {
 		t.Fatalf("read plan-change history: %v", err)
 	}
 	return rows
@@ -443,8 +446,8 @@ func TestIntegrationProcessWebhookAppliesDirectPurchaseIdempotently(t *testing.T
 		t.Fatalf("replayed webhook must be a no-op success, got %v", err)
 	}
 	var eventCount, statementCount int64
-	dbConn.Model(&entities.ProviderPaymentEvent{}).Count(&eventCount)
-	dbConn.Model(&entities.WalletStatement{}).Count(&statementCount)
+	dbConn.Model(&entities.ProviderPaymentEvent{}).Where("order_code = ?", webhookOrderCode).Count(&eventCount)
+	dbConn.Model(&entities.WalletStatement{}).Where("user_id = ?", userID).Count(&statementCount)
 	if eventCount != 1 {
 		t.Fatalf("expected exactly one provider payment event, got %d", eventCount)
 	}
@@ -560,7 +563,7 @@ func TestIntegrationPayOSSettlementPublishesExactlyOnePlanChangeEvent(t *testing
 
 	// FR-095, history half: exactly one row, carrying the transition this
 	// settlement actually performed and pointing at the transaction that paid for it.
-	rows := webhookPlanChangeHistory(t, dbConn)
+	rows := webhookPlanChangeHistory(t, dbConn, userID)
 	if len(rows) != 1 {
 		t.Fatalf("FR-095: a settled PayOS purchase must write exactly one plan-change history row, got %d", len(rows))
 	}
@@ -600,7 +603,7 @@ func TestIntegrationPayOSSettlementPublishesExactlyOnePlanChangeEvent(t *testing
 	if err := uc.ProcessWebhook(ctx, buildWebhookPayload(webhookOrderCode, "99000"), "sig"); err != nil {
 		t.Fatalf("replayed webhook must be a no-op success, got %v", err)
 	}
-	if rows := webhookPlanChangeHistory(t, dbConn); len(rows) != 1 {
+	if rows := webhookPlanChangeHistory(t, dbConn, userID); len(rows) != 1 {
 		t.Fatalf("FR-095: a replayed settlement must not add history, got %d rows", len(rows))
 	}
 	if len(publisher.events) != 1 {
