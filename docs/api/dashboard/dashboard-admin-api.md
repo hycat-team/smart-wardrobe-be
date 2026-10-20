@@ -339,12 +339,20 @@ Trước 031, cùng request chỉ trả `distribution`/`totalUsers` và đếm t
 | Field                     | Nguồn                             | Cách tính                                                                                                       |
 | ------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `totalSubscriptionRevVnd` | `dashboard_admin_daily_snapshots` | SUM(snapshot.SubscriptionRevenueVND) trong khoảng ngày                                                          |
-| `totalAiActualCostVnd`    | Tính toán                         | `totalRev - totalMargin` (suy ngược)                                                                            |
-| `netAiMarginVnd`          | `dashboard_admin_daily_snapshots` | SUM(snapshot.NetAIMarginVND) trong khoảng ngày                                                                  |
-| `marginPercentage`        | Tính toán                         | `(totalMargin / totalRev) * 100`. `0` nếu `totalRev=0`                                                          |
-| `totalAiPaidTokens`       | `ai_usage_events`                 | `SELECT COALESCE(SUM(total_tokens),0) FROM ai_usage_events WHERE created_at IN [ngày]`                          |
-| `aiRequestsCount`         | `ai_usage_events`                 | `SELECT COUNT(*) FROM ai_usage_events WHERE created_at IN [ngày]`                                               |
-| `aiErrorCount`            | `ai_usage_events`                 | `SELECT COUNT(*) FROM ai_usage_events WHERE created_at IN [ngày] AND status IN ('FAILED','RELEASED','EXPIRED')` |
+| `totalAiActualCostVnd`    | `dashboard_admin_daily_snapshots` | `SUM(snapshot.AIActualCostMicroVND) / 1_000_000` — cùng nguồn với `usage-by-operation`                          |
+| `netAiMarginVnd`          | Tính toán                         | `totalSubscriptionRevVnd - totalAiActualCostVnd`                                                                |
+| `marginPercentage`        | Tính toán                         | `(netAiMarginVnd / totalSubscriptionRevVnd) * 100`. `0` nếu `totalRev=0`                                        |
+| `totalAiPaidTokens`       | `dashboard_admin_daily_snapshots` | SUM(snapshot.AIPaidTokens) trong khoảng ngày                                                                    |
+| `aiRequestsCount`         | `dashboard_admin_daily_snapshots` | SUM(snapshot.AIRequestsCount) trong khoảng ngày                                                                 |
+| `aiErrorCount`            | `dashboard_admin_daily_snapshots` | SUM(snapshot.AIErrorCount) trong khoảng ngày                                                                    |
+
+> Khi kỳ **không có snapshot nào**, endpoint fallback sang ledger live và tính cho **toàn bộ kỳ**
+> (`ai_usage_events` + `subscription`), không còn lấy riêng ngày cuối.
+>
+> Lưu ý dữ liệu: event `logical_route='free'` ghi trước 2026-10-11 (commit 028) có
+> `actual_cost_micro_vnd = 0` nên không thể khôi phục; `embedding` luôn ghi 0 vì provider không
+> trả token usage. Hai API sẽ khớp nhau trên dữ liệu thực tế đã ghi nhận, không phải trên chi phí
+> lý thuyết của các lượt đó.
 
 ### PayOS Reconciliation (`GET /api/v1/admin/dashboard/payos-reconciliation`)
 

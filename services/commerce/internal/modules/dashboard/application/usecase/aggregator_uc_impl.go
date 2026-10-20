@@ -103,7 +103,9 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 	}
 
 	snapshot := &entities.DashboardAdminDailySnapshot{
-		SnapshotDate:         today,
+		// A DATE column is cast with the DB session timezone; on Supabase that
+		// session is UTC, so VN midnight would land on the previous day.
+		SnapshotDate:         timeutils.CalendarDateAtNoonUTC(today),
 		TotalUsers:           userStats.TotalUsers,
 		NewUsers:             userStats.NewUsers,
 		ActiveUsersDau:       userStats.ActiveUsersDau,
@@ -150,7 +152,7 @@ func (uc *DashboardAggregatorUseCase) AggregateBrandSnapshots(ctx context.Contex
 
 		snapshot := &entities.DashboardBrandDailySnapshot{
 			BrandID:                 brandID,
-			SnapshotDate:            today,
+			SnapshotDate:            timeutils.CalendarDateAtNoonUTC(today),
 			TotalMembers:            stats.TotalMembers,
 			PointsIssued:            stats.PointsIssued,
 			PointsRedeemed:          stats.PointsRedeemed,

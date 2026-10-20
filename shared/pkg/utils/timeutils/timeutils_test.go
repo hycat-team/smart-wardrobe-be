@@ -41,3 +41,33 @@ func TestTodayStartVNIsTodayMidnight(t *testing.T) {
 		t.Fatalf("today start %v does not contain now %v", start, now)
 	}
 }
+
+// TestCalendarDateAtNoonUTC pins the fix for the DATE-column write on
+// Supabase: a UTC session casts '2026-10-20 00:00+07' (= 2026-10-19 17:00Z) to
+// DATE 2026-10-19, one day earlier. The noon-UTC value must stay on 10-20 in
+// both a UTC session and a +07 session.
+func TestCalendarDateAtNoonUTC(t *testing.T) {
+	want := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name string
+		in   time.Time
+	}{
+		{"vn midnight", time.Date(2026, 10, 20, 0, 0, 0, 0, timeutils.VnLoc())},
+		{"late UTC previous day", time.Date(2026, 10, 19, 18, 30, 0, 0, time.UTC)},
+		{"vn midday", time.Date(2026, 10, 20, 12, 0, 0, 0, timeutils.VnLoc())},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := timeutils.CalendarDateAtNoonUTC(tc.in)
+			if !got.Equal(want) {
+				t.Fatalf("CalendarDateAtNoonUTC(%v) = %v, want %v", tc.in, got, want)
+			}
+			// A DATE cast in a UTC session and in a +07 session must both be 10-20.
+			if got.Format("2006-01-02") != "2026-10-20" {
+				t.Fatalf("date label = %s, want 2026-10-20", got.Format("2006-01-02"))
+			}
+		})
+	}
+}

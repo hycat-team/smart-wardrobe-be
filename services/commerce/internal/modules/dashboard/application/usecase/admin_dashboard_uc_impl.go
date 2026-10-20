@@ -145,58 +145,31 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 	}
 
 	if len(snapshots) == 0 {
-		// Fallback to live AI reader. The reader wants a single calendar day,
-		// not a half-open bound: step back just inside the last day so an
-		// EndOfDayInVN `toDate` does not roll VNDayRange over to the next day.
-		aiStats, err := uc.aiCostReader.GetAdminAIUsageStats(ctx, toDate.Add(-time.Nanosecond))
-		if err != nil {
-			return nil, err
-		}
-		if aiStats != nil {
-			actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
-			netMargin := -actualCostVND
-
-			return &dto.AIMarginAnalyticsRes{
-				FromDate:                labelFrom,
-				ToDate:                  labelTo,
-				TotalSubscriptionRevVND: 0,
-				TotalAIActualCostVND:    actualCostVND,
-				NetAIMarginVND:          netMargin,
-				MarginPercentage:        0.0,
-				TotalAIPaidTokens:       aiStats.AIPaidTokens,
-				AIRequestsCount:         int64(aiStats.AIRequestsCount),
-				AIErrorCount:            int64(aiStats.AIErrorCount),
-			}, nil
-		}
-
-		return &dto.AIMarginAnalyticsRes{
-			FromDate:                labelFrom,
-			ToDate:                  labelTo,
-			TotalSubscriptionRevVND: 0,
-			TotalAIActualCostVND:    0,
-			NetAIMarginVND:          0,
-			MarginPercentage:        0.0,
-			TotalAIPaidTokens:       0,
-			AIRequestsCount:         0,
-			AIErrorCount:            0,
-		}, nil
+		return uc.aiMarginFromLiveRange(ctx, fromDate, toDate, labelFrom, labelTo)
 	}
 
 	totalRev := 0.0
-	totalMargin := 0.0
+	var totalCostMicro int64
 	var totalTokens int64
 	var totalRequests int64
 	var totalErrors int64
 
 	for _, s := range snapshots {
 		totalRev += s.SubscriptionRevenueVND
-		totalMargin += s.NetAIMarginVND
+		totalCostMicro += s.AIActualCostMicroVND
 		totalTokens += s.AIPaidTokens
 		totalRequests += int64(s.AIRequestsCount)
 		totalErrors += int64(s.AIErrorCount)
 	}
 
-	actualCostVND := totalRev - totalMargin
+	// The cost column is the source of truth. This used to be derived as
+	// `totalRev - totalMargin`, which inherited any drift in the stored margin
+	// and made the panel disagree with `usage-by-operation` - that endpoint
+	// sums the same ledger column live. Summing the column keeps both panels on
+	// one number; the margin is recomputed from it so the two fields cannot
+	// contradict each other.
+	actualCostVND := float64(totalCostMicro) / microVNDDivisor
+	totalMargin := totalRev - actualCostVND
 
 	marginPct := 0.0
 	if totalRev > 0 {
@@ -212,6 +185,75 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 		MarginPercentage:        marginPct,
 		TotalAIPaidTokens:       totalTokens,
 		AIRequestsCount:         totalRequests,
+		AIErrorCount:            totalErrors,
+	}, nil
+}
+
+// aiMarginFromLiveRange is the fallback used when the period has no snapshot
+// row at all. It aggregates the WHOLE requested range: the previous version
+// queried only the last day (`toDate`) and reported one day's spend as the
+// period total, which is why a fresh database disagreed with
+// `usage-by-operation` by the length of the window.
+//
+// Cost, request count and tokens come from the same `ai_usage_events` ledger
+// the operation panel reads; revenue comes from the subscription reader (the
+// same half-open [from, to) contract). Two small differences are accepted for a
+// fallback whose only job is to avoid reporting zero: `GetAIErrorBreakdown`
+// counts `released` events only while the snapshot path also counts
+// `unknown_usage`/`expired_unverified`, and `GetAIUsageByOperation` does not
+// expose thinking tokens.
+func (uc *AdminDashboardUseCase) aiMarginFromLiveRange(ctx context.Context, fromDate, toDate, labelFrom, labelTo time.Time) (*dto.AIMarginAnalyticsRes, error) {
+	subStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := uc.aiCostReader.GetAIUsageByOperation(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+	requests, err := uc.aiCostReader.GetTotalAIRequestCount(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+	errorRows, err := uc.aiCostReader.GetAIErrorBreakdown(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	totalRev := 0.0
+	if subStats != nil {
+		totalRev = subStats.TotalSubscriptionRevenue.InexactFloat64()
+	}
+
+	var totalCostMicro int64
+	var totalTokens int64
+	for _, r := range rows {
+		totalCostMicro += r.TotalCostMicroVND
+		totalTokens += r.TotalPromptTokens + r.TotalOutputTokens
+	}
+
+	var totalErrors int64
+	for _, r := range errorRows {
+		totalErrors += r.ErrorCount
+	}
+
+	actualCostVND := float64(totalCostMicro) / microVNDDivisor
+	netMargin := totalRev - actualCostVND
+
+	marginPct := 0.0
+	if totalRev > 0 {
+		marginPct = (netMargin / totalRev) * 100
+	}
+
+	return &dto.AIMarginAnalyticsRes{
+		FromDate:                labelFrom,
+		ToDate:                  labelTo,
+		TotalSubscriptionRevVND: totalRev,
+		TotalAIActualCostVND:    actualCostVND,
+		NetAIMarginVND:          netMargin,
+		MarginPercentage:        marginPct,
+		TotalAIPaidTokens:       totalTokens,
+		AIRequestsCount:         requests,
 		AIErrorCount:            totalErrors,
 	}, nil
 }

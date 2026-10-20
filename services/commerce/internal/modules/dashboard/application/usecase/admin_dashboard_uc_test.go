@@ -337,6 +337,7 @@ func TestAdminGetAIMarginAnalytics_FromSnapshots(t *testing.T) {
 			SnapshotDate:           now.AddDate(0, 0, -2),
 			SubscriptionRevenueVND: 1000000,
 			NetAIMarginVND:         600000,
+			AIActualCostMicroVND:   400000000000,
 			AIPaidTokens:           5000,
 			AIRequestsCount:        100,
 			AIErrorCount:           2,
@@ -345,6 +346,7 @@ func TestAdminGetAIMarginAnalytics_FromSnapshots(t *testing.T) {
 			SnapshotDate:           now.AddDate(0, 0, -1),
 			SubscriptionRevenueVND: 2000000,
 			NetAIMarginVND:         1200000,
+			AIActualCostMicroVND:   800000000000,
 			AIPaidTokens:           8000,
 			AIRequestsCount:        150,
 			AIErrorCount:           3,
@@ -367,6 +369,91 @@ func TestAdminGetAIMarginAnalytics_FromSnapshots(t *testing.T) {
 	}
 	if res.MarginPercentage != 60.0 {
 		t.Errorf("expected MarginPercentage=60, got %v", res.MarginPercentage)
+	}
+}
+
+// TestAdminGetAIMarginAnalytics_CostComesFromTheSnapshotColumn pins the fix for
+// the mismatch with `usage-by-operation`: that endpoint sums
+// `ai_usage_events.actual_cost_micro_vnd`, so the margin panel must sum the
+// snapshot's copy of the same figure. Deriving it from
+// `totalRev - totalMargin` would let a stale/rounded margin silently change the
+// reported spend.
+func TestAdminGetAIMarginAnalytics_CostComesFromTheSnapshotColumn(t *testing.T) {
+	now := time.Now()
+	snapshots := []*entities.DashboardAdminDailySnapshot{
+		{
+			SnapshotDate:           now.AddDate(0, 0, -1),
+			SubscriptionRevenueVND: 1000000,
+			// Deliberately inconsistent with the cost column: the panel must
+			// trust the cost, not this value.
+			NetAIMarginVND:       999999,
+			AIActualCostMicroVND: 250000000,
+			AIRequestsCount:      10,
+		},
+	}
+	uc := NewAdminDashboardUseCase(
+		&mockAdminDashboardRepo{snapshots: snapshots},
+		&mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{},
+	)
+
+	res, err := uc.GetAIMarginAnalytics(context.Background(), now.AddDate(0, 0, -2), now)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.TotalAIActualCostVND != 250 {
+		t.Errorf("TotalAIActualCostVND = %v, want 250 (from the cost column)", res.TotalAIActualCostVND)
+	}
+	if res.NetAIMarginVND != 999750 {
+		t.Errorf("NetAIMarginVND = %v, want 999750 (revenue - cost)", res.NetAIMarginVND)
+	}
+}
+
+// TestAdminGetAIMarginAnalytics_NoSnapshotsAggregatesWholeRange covers the
+// no-snapshot fallback. The old code queried only the LAST day of the period,
+// so an empty snapshot table reported one day's spend as the window total -
+// exactly the shape of the disagreement with `usage-by-operation`.
+func TestAdminGetAIMarginAnalytics_NoSnapshotsAggregatesWholeRange(t *testing.T) {
+	aiReader := &mockAICostReader{
+		usageByOperation: []aiDTO.AIUsageByOperationDTO{
+			{Operation: "outfit", LogicalRoute: "paid", RequestCount: 100, TotalCostMicroVND: 1000000, TotalPromptTokens: 10, TotalOutputTokens: 20},
+			{Operation: "vision", LogicalRoute: "free", RequestCount: 150, TotalCostMicroVND: 2000000, TotalPromptTokens: 30, TotalOutputTokens: 40},
+		},
+		totalRequests:  250,
+		errorBreakdown: []aiDTO.AIErrorBreakdownDTO{{ErrorCount: 5}, {ErrorCount: 2}},
+	}
+	subscriptionReader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{
+			TotalSubscriptionRevenue: decimal.NewFromFloat(10000000),
+		},
+	}
+	uc := NewAdminDashboardUseCase(
+		&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, aiReader, subscriptionReader,
+	)
+
+	from := time.Date(2026, time.October, 1, 0, 0, 0, 0, timeutils.VnLoc())
+	to := time.Date(2026, time.October, 31, 0, 0, 0, 0, timeutils.VnLoc())
+
+	res, err := uc.GetAIMarginAnalytics(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.TotalAIActualCostVND != 3 {
+		t.Errorf("TotalAIActualCostVND = %v, want 3 (sum over the whole range)", res.TotalAIActualCostVND)
+	}
+	if res.TotalSubscriptionRevVND != 10000000 {
+		t.Errorf("TotalSubscriptionRevVND = %v, want 10000000", res.TotalSubscriptionRevVND)
+	}
+	if res.TotalAIPaidTokens != 100 {
+		t.Errorf("TotalAIPaidTokens = %v, want 100", res.TotalAIPaidTokens)
+	}
+	if res.AIRequestsCount != 250 {
+		t.Errorf("AIRequestsCount = %v, want 250", res.AIRequestsCount)
+	}
+	if res.AIErrorCount != 7 {
+		t.Errorf("AIErrorCount = %v, want 7", res.AIErrorCount)
+	}
+	if !aiReader.lastUsageFrom.Equal(from) || !aiReader.lastUsageTo.Equal(to) {
+		t.Errorf("live fallback queried [%v, %v), want [%v, %v)", aiReader.lastUsageFrom, aiReader.lastUsageTo, from, to)
 	}
 }
 
