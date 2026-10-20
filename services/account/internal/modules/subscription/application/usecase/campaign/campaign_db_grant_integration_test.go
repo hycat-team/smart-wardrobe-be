@@ -77,6 +77,15 @@ func openGrantTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("connect test database: %v", err)
 	}
+	// `gorm.Open` creates a new pool per call. Without this cleanup, a re-run
+	// (`-count=3`) and the other integration package running in parallel pile
+	// pools up until Postgres answers `too many clients`. Registered before the
+	// fixture cleanups and the advisory lock so LIFO closes the pool last.
+	t.Cleanup(func() {
+		if sqlDB, dbErr := dbConn.DB(); dbErr == nil {
+			_ = sqlDB.Close()
+		}
+	})
 	// The migrations, not `AutoMigrate`: the CHECK constraints and the immutability
 	// trigger are part of what 026 changed, and a schema built from the structs would
 	// not have them (see the header).

@@ -221,6 +221,13 @@ func openSubscriptionTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("connect test database: %v", err)
 	}
+	// One pool per `gorm.Open`; close it when the test ends, or repeated runs and
+	// parallel packages exhaust Postgres connections.
+	t.Cleanup(func() {
+		if sqlDB, dbErr := dbConn.DB(); dbErr == nil {
+			_ = sqlDB.Close()
+		}
+	})
 
 	var schemaReady bool
 	if err := dbConn.Raw(`
