@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	brandDTO "smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
 	brandContract "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/contract"
+	dashboardDTO "smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/dto"
 
 	identityContract "smart-wardrobe-be/services/account/contract/identity"
 	identityDTO "smart-wardrobe-be/services/account/dto/identity"
@@ -199,7 +201,7 @@ type mockSubscriptionReader struct {
 	subscriptionContract.ISubscriptionDashboardReader
 	stats        *subscriptionDTO.AdminSubscriptionStatsDTO
 	renewal      *subscriptionDTO.RenewalStatsDTO
-	distribution []subscriptionDTO.SubscriptionDistributionDTO
+	distribution *subscriptionDTO.SubscriptionDistributionResultDTO
 	revenue      []subscriptionDTO.RevenueBreakdownDTO
 	err          error
 
@@ -220,7 +222,7 @@ func (m *mockSubscriptionReader) GetAdminSubscriptionStats(ctx context.Context, 
 	return m.stats, m.err
 }
 
-func (m *mockSubscriptionReader) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]subscriptionDTO.SubscriptionDistributionDTO, error) {
+func (m *mockSubscriptionReader) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*subscriptionDTO.SubscriptionDistributionResultDTO, error) {
 	m.lastDistributionFrom, m.lastDistributionTo = from, to
 	return m.distribution, m.err
 }
@@ -631,13 +633,17 @@ func TestAdminGetPayOSReconciliationUsesTheRequestedPeriod(t *testing.T) {
 
 // TestAdminGetSubscriptionDistributionPassesThePeriodThrough covers the
 // distribution signature: the payload semantics live in the account service
-// (R7), so commerce must forward the bounds untouched — including zero for an
-// absent period.
+// (031 D4), so commerce must forward the bounds untouched — including zero for
+// an absent period — and keep the percentage/totalUsers formulas on the bucket
+// sum (FR-011).
 func TestAdminGetSubscriptionDistributionPassesThePeriodThrough(t *testing.T) {
 	reader := &mockSubscriptionReader{
-		distribution: []subscriptionDTO.SubscriptionDistributionDTO{
-			{PlanCode: "FREE", UserCount: 3},
-			{PlanCode: "PREMIUM_MONTHLY", UserCount: 1},
+		distribution: &subscriptionDTO.SubscriptionDistributionResultDTO{
+			Items: []subscriptionDTO.SubscriptionDistributionDTO{
+				{PlanCode: "FREE", UserCount: 3},
+				{PlanCode: "PREMIUM_MONTHLY", UserCount: 1},
+			},
+			DataCompleteness: "complete",
 		},
 	}
 	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
@@ -655,6 +661,12 @@ func TestAdminGetSubscriptionDistributionPassesThePeriodThrough(t *testing.T) {
 	if res.TotalUsers != 4 {
 		t.Errorf("expected TotalUsers=4, got %d", res.TotalUsers)
 	}
+	if res.DataCompleteness != "complete" {
+		t.Errorf("dataCompleteness must pass through, got %q", res.DataCompleteness)
+	}
+	if res.DataAvailableFrom != nil {
+		t.Errorf("dataAvailableFrom must stay nil when the source has none, got %v", *res.DataAvailableFrom)
+	}
 	for _, d := range res.Distribution {
 		if d.PlanCode == "PREMIUM_MONTHLY" && d.Percentage != 25 {
 			t.Errorf("expected the premium share to be 25%%, got %v", d.Percentage)
@@ -662,12 +674,120 @@ func TestAdminGetSubscriptionDistributionPassesThePeriodThrough(t *testing.T) {
 	}
 
 	// No period: both bounds stay zero so the account service keeps its
-	// current-state semantics.
+	// snapshot semantics.
 	if _, err := uc.GetSubscriptionDistribution(context.Background(), time.Time{}, time.Time{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !reader.lastDistributionFrom.IsZero() || !reader.lastDistributionTo.IsZero() {
 		t.Errorf("an absent period must stay zero, got [%s, %s)", reader.lastDistributionFrom, reader.lastDistributionTo)
+	}
+}
+
+// 031 T020: the two optional fields must reach JSON as the contract says —
+// dataAvailableFrom is a VN calendar date (not the UTC day of the instant),
+// dataCompleteness is the lowercase status — and both keys disappear when the
+// source omits them (old Account server / snapshot without a cutover row).
+func TestAdminGetSubscriptionDistributionFormatsMetadataAtTheVNEdge(t *testing.T) {
+	// 18:00 UTC is already the next calendar day in VN (+07): formatting the
+	// instant in UTC would print 2026-10-20 instead of 2026-10-21.
+	cutover := time.Date(2026, 10, 20, 18, 0, 0, 0, time.UTC)
+	reader := &mockSubscriptionReader{
+		distribution: &subscriptionDTO.SubscriptionDistributionResultDTO{
+			Items: []subscriptionDTO.SubscriptionDistributionDTO{
+				{PlanCode: "free", UserCount: 1},
+			},
+			DataAvailableFrom: &cutover,
+			DataCompleteness:  "partial",
+		},
+	}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+
+	res, err := uc.GetSubscriptionDistribution(context.Background(), time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.DataAvailableFrom == nil || *res.DataAvailableFrom != "2026-10-21" {
+		t.Fatalf("dataAvailableFrom = %v, want the VN date 2026-10-21", res.DataAvailableFrom)
+	}
+	if res.DataCompleteness != "partial" {
+		t.Fatalf("dataCompleteness = %q, want partial", res.DataCompleteness)
+	}
+
+	payload, err := json.Marshal(res)
+	if err != nil {
+		t.Fatalf("marshal response: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if decoded["dataAvailableFrom"] != "2026-10-21" || decoded["dataCompleteness"] != "partial" {
+		t.Fatalf("JSON metadata = %v / %v, want 2026-10-21 / partial",
+			decoded["dataAvailableFrom"], decoded["dataCompleteness"])
+	}
+}
+
+// 031 T016/FR-015: a client that knows only the 029 shape must still decode
+// the old payload — and, because the two new fields are optional, the same
+// struct decodes a response that does not carry them without inventing values.
+func TestSubscriptionDistributionResDecodesTheLegacyJSONShape(t *testing.T) {
+	legacy := []byte(`{
+		"distribution": [
+			{ "planCode": "free", "userCount": 8, "percentage": 40 },
+			{ "planCode": "premium-monthly", "userCount": 12, "percentage": 60 }
+		],
+		"totalUsers": 20
+	}`)
+
+	var res dashboardDTO.SubscriptionDistributionRes
+	if err := json.Unmarshal(legacy, &res); err != nil {
+		t.Fatalf("decode the old JSON shape: %v", err)
+	}
+	if res.TotalUsers != 20 || len(res.Distribution) != 2 {
+		t.Fatalf("old fields lost while decoding: %+v", res)
+	}
+	if res.Distribution[1].PlanCode != "premium-monthly" || res.Distribution[1].Percentage != 60 {
+		t.Fatalf("old distribution row lost: %+v", res.Distribution[1])
+	}
+	if res.DataAvailableFrom != nil || res.DataCompleteness != "" {
+		t.Fatalf("absent metadata must decode as empty, got %v / %q", res.DataAvailableFrom, res.DataCompleteness)
+	}
+}
+
+func TestAdminGetSubscriptionDistributionOmitsAbsentMetadata(t *testing.T) {
+	reader := &mockSubscriptionReader{
+		distribution: &subscriptionDTO.SubscriptionDistributionResultDTO{
+			Items: []subscriptionDTO.SubscriptionDistributionDTO{
+				{PlanCode: "free", UserCount: 2},
+			},
+		},
+	}
+	uc := NewAdminDashboardUseCase(&mockAdminDashboardRepo{}, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, reader)
+
+	res, err := uc.GetSubscriptionDistribution(context.Background(), time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.DataAvailableFrom != nil || res.DataCompleteness != "" {
+		t.Fatalf("absent metadata must stay empty, got %v / %q", res.DataAvailableFrom, res.DataCompleteness)
+	}
+
+	payload, err := json.Marshal(res)
+	if err != nil {
+		t.Fatalf("marshal response: %v", err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if _, ok := decoded["dataAvailableFrom"]; ok {
+		t.Errorf("dataAvailableFrom must be omitted when absent: %s", payload)
+	}
+	if _, ok := decoded["dataCompleteness"]; ok {
+		t.Errorf("dataCompleteness must be omitted when absent: %s", payload)
+	}
+	if decoded["totalUsers"] != float64(2) {
+		t.Errorf("the old fields must stay untouched, got totalUsers=%v", decoded["totalUsers"])
 	}
 }
 

@@ -130,22 +130,63 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/distribution`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
-- **Mô tả:** Thống kê số lượng người dùng đang hoạt động theo từng gói subscription (`free`, `premium-monthly`, v.v.), kèm tỷ lệ phần trăm. Chỉ đếm subscription còn hiệu lực (`expires_at IS NULL OR expires_at > now()`); gói đã hết hạn không được tính.
-- **Query Parameters (mới từ 029):**
+- **Mô tả:** Thống kê số người dùng và tỷ lệ phần trăm theo từng gói subscription (`free`, `premium-monthly`, v.v.) cho một kỳ, dựa trên **các khoảng hiệu lực gói** (`subscription.user_plan_periods`) thay vì trạng thái gói hiện tại. Nhờ đó người đã đổi/hạ gói **sau** kỳ vẫn được tính đúng gói họ đã dùng trong kỳ; người đổi gói **giữa** kỳ xuất hiện ở cả hai gói.
+- **Query Parameters (029; nguồn dữ liệu đổi từ 031):**
     - `fromDate` (string, optional) — Ngày bắt đầu kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
     - `toDate` (string, optional) — Ngày kết thúc kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
-    - Không gửi kỳ = hiện trạng (không đổi); có kỳ = đếm user có gói hiệu lực **giao** với kỳ: `started_at < to AND (expires_at IS NULL OR expires_at >= from)` (R7). Gửi một đầu thì đầu còn lại để mở; 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** endpoint không nhận kỳ.
-    - Giới hạn chấp nhận: lịch sử đổi gói không tái dựng được — user chỉ tính theo gói **hiện tại**; gói FREE (`expires_at IS NULL`) hiện diện mọi kỳ.
+    - Không gửi **cả hai** = ảnh chụp gói đang có hiệu lực tại thời điểm gọi (không đổi so với trước). Gửi một đầu thì đầu còn lại là **vô cực**, không phải mốc 0: chỉ `fromDate` = từ ngày đó **đến hiện tại** và **không tính khoảng bắt đầu trong tương lai** (`valid_from <= now()`); chỉ `toDate` = từ đầu lịch sử có dữ liệu đến hết ngày đó. 400 khi sai định dạng hoặc `fromDate > toDate` (xem "Quy ước ngày" đầu tài liệu). **Trước 029:** endpoint không nhận kỳ.
+    - **Mốc lịch sử đầy đủ (031):** lịch sử chỉ đầy đủ từ mốc `dataAvailableFrom` (lưu ở `subscription.plan_history_meta`, ghi khi deploy). Kỳ kết thúc **trước hoặc đúng** mốc trả `dataCompleteness = "unavailable"` (danh sách rỗng, `totalUsers = 0`); kỳ cắt ngang mốc trả `"partial"` và **chỉ tính phần từ mốc trở đi**; kỳ nằm hoàn toàn sau mốc trả `"complete"`. Khi bảng mốc bị thiếu, kỳ có tham số trả `"unavailable"` và **không** có `dataAvailableFrom`; ảnh chụp không kỳ vẫn `"complete"` và có thể thiếu cả hai trường.
 - **Response struct:** `SubscriptionDistributionRes`
-- **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) WHERE expires_at IS NULL OR expires_at > now() GROUP BY current_plan_code ORDER BY COUNT(*) DESC` (không kỳ); có kỳ thì thay điều kiện bằng cửa sổ giao nêu trên.
+- **Nguồn dữ liệu:** Bảng `subscription.user_plan_periods`, một dòng cho mỗi khoảng liên tục giữ một gói (snapshot `plan_code`, `valid_from`, `valid_to`; `valid_to IS NULL` = gói vô hạn). Query dùng nửa khoảng `[valid_from, valid_to)`:
+    - không kỳ: `tstzrange(valid_from, valid_to, '[)') @> now()`;
+    - có kỳ: `tstzrange(valid_from, valid_to, '[)') && tstzrange($from, $to, '[)')`, với `$from`/`$to` là `NULL` cho đầu vắng mặt; riêng kỳ chỉ có `from` thêm `valid_from <= now()`;
+    - `COUNT(DISTINCT user_id)` theo `plan_code`, nên một người rời gói rồi quay lại cùng gói trong kỳ chỉ được tính **một lần** cho gói đó (FR-010).
+- **Thay đổi 031 (trước → sau):**
 
-| Field        | JSON           | Kiểu                          | Ý nghĩa                                          |
-| ------------ | -------------- | ----------------------------- | ------------------------------------------------ |
-| Distribution | `distribution` | []SubscriptionDistributionDTO | Danh sách phân bổ theo plan_code                 |
-| ├ PlanCode   | `planCode`     | string                        | Mã gói subscription (`free`, `premium-monthly`, ...) |
-| ├ UserCount  | `userCount`    | int                           | Số người dùng thuộc gói này                      |
-| └ Percentage | `percentage`   | float64                       | Tỷ lệ phần trăm so với tổng user                 |
-| TotalUsers   | `totalUsers`   | int                           | Tổng số người dùng có subscription               |
+| Khía cạnh | Trước (029) | Sau (031) |
+| --- | --- | --- |
+| Nguồn dữ liệu | `user_subscriptions` — trạng thái gói hiện tại (bị ghi đè mỗi lần đổi gói) | `user_plan_periods` — các khoảng hiệu lực, giữ nguyên lịch sử |
+| Người hạ/đổi gói sau kỳ | Bị loại khỏi mọi nhóm | Vẫn tính theo gói đã dùng trong kỳ |
+| Người đổi gói giữa kỳ | Quy toàn bộ kỳ về gói mới | Xuất hiện ở **cả hai** nhóm |
+| Kỳ chỉ có `fromDate` | Chỉ có điều kiện `expires_at`, không chặn tương lai | Giao `[from, ∞)` **và** `valid_from <= now()` |
+| Kỳ chỉ có `toDate` | Chỉ có `started_at < to`, không có điều kiện hết hạn | Giao `(-∞, to)` |
+| `totalUsers` | Tổng số dòng hiện tại | **Tổng của các nhóm** — người đổi gói giữa kỳ được tính hai lần; không phải số người duy nhất |
+| `percentage` | `userCount / totalUsers` | Không đổi công thức; vì `totalUsers` là tổng nhóm nên các nhóm luôn cộng đúng 100% khi có ít nhất một người |
+| Trường bổ sung | Không có | `dataAvailableFrom`, `dataCompleteness` (tuỳ chọn, không phá client cũ) |
+
+| Field             | JSON                | Kiểu                          | Ý nghĩa                                                                 |
+| ----------------- | ------------------- | ----------------------------- | ----------------------------------------------------------------------- |
+| Distribution      | `distribution`      | []SubscriptionDistributionDTO | Danh sách phân bổ theo plan_code                                        |
+| ├ PlanCode        | `planCode`          | string                        | Mã gói subscription (`free`, `premium-monthly`, ...)                    |
+| ├ UserCount       | `userCount`         | int                           | Số người dùng thuộc gói này trong kỳ                                    |
+| └ Percentage      | `percentage`        | float64                       | Tỷ lệ phần trăm trên **tổng các nhóm**                                  |
+| TotalUsers        | `totalUsers`        | int                           | Tổng của các nhóm (không phải số người duy nhất)                        |
+| DataAvailableFrom | `dataAvailableFrom` | string? (`YYYY-MM-DD`, VN)    | Mốc bắt đầu lịch sử đầy đủ; **vắng** khi không xác định được mốc        |
+| DataCompleteness  | `dataCompleteness`  | string?                       | `complete` \| `partial` \| `unavailable`; **vắng** khi nguồn cũ không gửi |
+
+**Ý nghĩa `dataCompleteness`:**
+
+| Giá trị | Khi nào | Số liệu |
+| --- | --- | --- |
+| `complete` | Kỳ nằm hoàn toàn sau mốc, hoặc không gửi kỳ (ảnh chụp hiện tại) | Bình thường |
+| `partial` | Kỳ bắt đầu trước mốc và kết thúc sau mốc (hoặc mở) | Chỉ tính phần từ mốc trở đi; hiển thị kèm cảnh báo |
+| `unavailable` | Kỳ kết thúc trước/đúng mốc, hoặc không có bản ghi mốc | `distribution: []`, `totalUsers: 0` — hiển thị trạng thái trống, **không** vẽ biểu đồ 0% |
+
+**Ví dụ before → after:**
+
+```json
+{
+  "distribution": [
+    { "planCode": "premium-monthly", "userCount": 14, "percentage": 58.33 },
+    { "planCode": "free", "userCount": 10, "percentage": 41.67 }
+  ],
+  "totalUsers": 24,
+  "dataAvailableFrom": "2026-10-20",
+  "dataCompleteness": "partial"
+}
+```
+
+Trước 031, cùng request chỉ trả `distribution`/`totalUsers` và đếm theo gói hiện tại; người đã hạ gói sau kỳ biến mất khỏi kết quả. Client cũ bỏ qua hai trường mới mà không bị ảnh hưởng (FR-015).
 
 ---
 

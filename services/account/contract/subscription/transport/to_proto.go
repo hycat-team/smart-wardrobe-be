@@ -92,6 +92,43 @@ func DistributionToProto(ds []subscriptiondto.SubscriptionDistributionDTO) []*su
 	return out
 }
 
+// DistributionResultToProto converts the interval-based result into the wire
+// list (031 contract delta §3).
+//
+// The two new fields are additive (numbers 2 and 3): an old client keeps
+// reading `items`. An empty DataCompleteness (UNSPECIFIED) and a nil cutover
+// mean "an old Account server answered"; both fields stay unset so the
+// Commerce edge omits them from JSON instead of inventing a status.
+func DistributionResultToProto(d *subscriptiondto.SubscriptionDistributionResultDTO) *subscriptionv1.SubscriptionDistributionList {
+	if d == nil {
+		return nil
+	}
+	out := &subscriptionv1.SubscriptionDistributionList{
+		Items:            DistributionToProto(d.Items),
+		DataCompleteness: distributionCompletenessToProto(d.DataCompleteness),
+	}
+	if d.DataAvailableFrom != nil {
+		out.DataAvailableFrom = timestamppb.New(*d.DataAvailableFrom)
+	}
+	return out
+}
+
+// distributionCompletenessToProto maps the lowercase result string onto the
+// enum. An empty or unknown value maps to UNSPECIFIED, which the client reads
+// back as "omit the field" (old-server compatibility).
+func distributionCompletenessToProto(value string) subscriptionv1.DistributionDataCompleteness {
+	switch value {
+	case "complete":
+		return subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_COMPLETE
+	case "partial":
+		return subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_PARTIAL
+	case "unavailable":
+		return subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE
+	default:
+		return subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED
+	}
+}
+
 // RevenueBreakdownToProto converts revenue rows into wire messages.
 func RevenueBreakdownToProto(ds []subscriptiondto.RevenueBreakdownDTO) []*subscriptionv1.RevenueBreakdown {
 	out := make([]*subscriptionv1.RevenueBreakdown, 0, len(ds))

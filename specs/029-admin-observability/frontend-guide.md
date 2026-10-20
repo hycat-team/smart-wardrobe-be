@@ -607,8 +607,10 @@ Request: `?fromDate=2026-10-01&toDate=2026-10-15` (không gửi = hiện trạng
 
 <!-- đối chiếu live 2026-10-16 -->
 
-- Có kỳ: đếm user có cửa sổ gói **hiện tại** (`started_at` → `expires_at`) giao với kỳ; gói FREE (`expires_at` NULL) **hiện diện mọi kỳ**.
-- **Giới hạn chấp nhận**: không tái dựng lịch sử đổi gói — user chỉ tính theo **gói hiện tại**. Đừng kết luận "số user gói X trong quá khứ".
+- **Cập nhật 031:** nguồn dữ liệu đã chuyển từ gói hiện tại sang **khoảng hiệu lực gói**; người đổi/hạ gói sau kỳ vẫn được tính đúng gói đã dùng trong kỳ, người đổi gói giữa kỳ xuất hiện ở cả hai nhóm.
+- Có kỳ: đếm user có khoảng hiệu lực giao với kỳ; gói FREE/lifetime (`valid_to` NULL) hiện diện trong mọi kỳ mà khoảng còn hiệu lực.
+- **Mốc lịch sử:** lịch sử chỉ đầy đủ từ `dataAvailableFrom` (ngày VN `YYYY-MM-DD`). Kỳ kết thúc trước/đúng mốc trả `dataCompleteness = "unavailable"`; kỳ cắt ngang mốc trả `"partial"` và chỉ tính phần sau mốc; kỳ sau mốc trả `"complete"`. `totalUsers` là **tổng các nhóm**, không phải số người duy nhất.
+- Xem chi tiết cách render và ví dụ before→after tại [`specs/031-user-plan-periods/frontend-guide.md`](../031-user-plan-periods/frontend-guide.md).
 
 #### 4.6.5 `GET /api/v1/admin/dashboard/subscriptions/revenue-breakdown` — `[CHANGED kỳ VN + 400]`
 
@@ -833,7 +835,7 @@ const presetLast30 = { fromDate: daysAgoVN(29), toDate: todayVN() };
 | KPI cards (`kpi-cards`, `overview.kpiCards`) | Ảnh chụp ~15 phút/lần | "Ảnh chụp — cập nhật lúc `updatedAt`" + tooltip "số liệu tổng hợp định kỳ, không phải realtime" |
 | `overview.aiMargin` | 30 ngày gần nhất (cố định) | "30 ngày gần nhất" |
 | `payos-reconciliation` | Theo kỳ (mặc định hôm nay) | "Kỳ đã chọn" (hoặc "Hôm nay" khi không gửi) |
-| `distribution` (có kỳ) | Giao cửa sổ gói với kỳ | "Gói hiện tại của user giao với kỳ" + chú thích giới hạn lịch sử đổi gói |
+| `distribution` (có kỳ) | Khoảng hiệu lực giao với kỳ (031) | "Kỳ đã chọn"; thêm nhãn "Dữ liệu đầy đủ từ `dataAvailableFrom`" khi `partial`, empty state khi `unavailable` |
 | `distribution` (không kỳ) | Hiện trạng | "Hiện tại" |
 | `renewal-stats` (không kỳ) | Toàn thời gian | "Toàn thời gian" |
 | `revenue-breakdown`, `ai/error-breakdown`, `ai/usage-by-operation`, `ai-margin` | Theo kỳ (có mặc định) | "Kỳ đã chọn" |

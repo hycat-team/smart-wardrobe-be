@@ -373,10 +373,6 @@ func (f *fakeSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, 
 	return nil, nil
 }
 
-func (f *fakeSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
-	return nil, nil
-}
-
 func (f *fakeSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
 	return nil, 0, nil
 }

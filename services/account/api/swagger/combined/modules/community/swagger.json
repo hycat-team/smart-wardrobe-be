@@ -5207,6 +5207,14 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionRes": {
       "properties": {
+        "dataAvailableFrom": {
+          "example": "2026-10-20",
+          "type": "string"
+        },
+        "dataCompleteness": {
+          "example": "partial",
+          "type": "string"
+        },
         "distribution": {
           "items": {
             "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO"

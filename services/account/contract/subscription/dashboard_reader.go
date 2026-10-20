@@ -15,7 +15,11 @@ type ISubscriptionDashboardReader interface {
 	// zero the server falls back to that day's range, keeping old clients
 	// working.
 	GetAdminSubscriptionStats(ctx context.Context, from, to time.Time) (*dto.AdminSubscriptionStatsDTO, error)
-	GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]dto.SubscriptionDistributionDTO, error)
+	// GetSubscriptionDistribution returns the interval-based buckets together
+	// with the cutover date and the completeness of the requested period
+	// (031 FR-012). An old Account server leaves both metadata fields empty;
+	// the gRPC adapter maps that to "omit the optional JSON fields".
+	GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*dto.SubscriptionDistributionResultDTO, error)
 	GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error)
 	GetRenewalStats(ctx context.Context, from, to time.Time) (*dto.RenewalStatsDTO, error)
 }
@@ -32,7 +36,7 @@ func (r *SubscriptionDashboardReader) GetAdminSubscriptionStats(ctx context.Cont
 	return r.adminStatsUC.GetAdminSubscriptionStats(ctx, from, to)
 }
 
-func (r *SubscriptionDashboardReader) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]dto.SubscriptionDistributionDTO, error) {
+func (r *SubscriptionDashboardReader) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*dto.SubscriptionDistributionResultDTO, error) {
 	return r.adminStatsUC.GetSubscriptionDistribution(ctx, from, to)
 }
 

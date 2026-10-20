@@ -254,15 +254,25 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context, fro
 	}, nil
 }
 
+// GetSubscriptionDistribution forwards the period to the Account service and
+// renders its interval-based result (031 D4/D5). The Account side already
+// clipped a partial period to the cutover and decided the completeness; this
+// use case only formats the cutover instant as a VN calendar date and keeps
+// the percentage/totalUsers formulas on the bucket sum (FR-011).
 func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*dto.SubscriptionDistributionRes, error) {
-	rows, err := uc.subscriptionReader.GetSubscriptionDistribution(ctx, from, to)
+	result, err := uc.subscriptionReader.GetSubscriptionDistribution(ctx, from, to)
 	if err != nil {
 		return nil, err
 	}
+	if result == nil {
+		return &dto.SubscriptionDistributionRes{
+			Distribution: make([]dto.SubscriptionDistributionDTO, 0),
+		}, nil
+	}
 
 	totalUsers := 0
-	distribution := make([]dto.SubscriptionDistributionDTO, 0, len(rows))
-	for _, r := range rows {
+	distribution := make([]dto.SubscriptionDistributionDTO, 0, len(result.Items))
+	for _, r := range result.Items {
 		totalUsers += int(r.UserCount)
 		distribution = append(distribution, dto.SubscriptionDistributionDTO{
 			PlanCode:   r.PlanCode,
@@ -277,9 +287,20 @@ func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context
 		}
 	}
 
+	// The wire carries an instant; the response contract is the VN calendar
+	// date. vnInclusiveDayLabel is the shared formatter used by the other
+	// period responses, so the date cannot disagree with their day boundaries.
+	var dataAvailableFrom *string
+	if result.DataAvailableFrom != nil {
+		label := vnInclusiveDayLabel(*result.DataAvailableFrom)
+		dataAvailableFrom = &label
+	}
+
 	return &dto.SubscriptionDistributionRes{
-		Distribution: distribution,
-		TotalUsers:   totalUsers,
+		Distribution:      distribution,
+		TotalUsers:        totalUsers,
+		DataAvailableFrom: dataAvailableFrom,
+		DataCompleteness:  result.DataCompleteness,
 	}, nil
 }
 

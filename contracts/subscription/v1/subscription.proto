@@ -115,8 +115,27 @@ message GetSubscriptionDistributionRequest {
   google.protobuf.Timestamp to_date = 2;
 }
 
+// DistributionDataCompleteness describes the requested period against the
+// cutover date recorded in subscription.plan_history_meta (031 FR-012).
+enum DistributionDataCompleteness {
+  DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED = 0;
+  // The whole period is at or after the cutover, or no period was supplied
+  // (live snapshot).
+  DISTRIBUTION_DATA_COMPLETENESS_COMPLETE = 1;
+  // The period starts before the cutover and ends after it (or is
+  // open-ended); buckets cover only the part at/after the cutover.
+  DISTRIBUTION_DATA_COMPLETENESS_PARTIAL = 2;
+  // The period ends at or before the cutover; distribution is empty and the
+  // client must render an empty state, not a 0% chart.
+  DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE = 3;
+}
+
 message SubscriptionDistributionList {
   repeated SubscriptionDistribution items = 1;
+  // Cutover instant. The Commerce edge formats it to the VN calendar date
+  // (YYYY-MM-DD); absent when the deployment has no cutover row.
+  google.protobuf.Timestamp data_available_from = 2;
+  DistributionDataCompleteness data_completeness = 3;
 }
 
 message GetRevenueBreakdownRequest {

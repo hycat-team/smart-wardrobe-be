@@ -165,7 +165,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	identityDashboardServer := grpc.NewIdentityDashboardServer(iUserDashboardReader)
 	iUserQuotaContract := contract4.NewUserQuotaContract(iUserQuotaUseCase)
 	subscriptionServer := grpc2.NewSubscriptionServer(iUserSubscriptionContract, iUserQuotaContract)
-	iAdminStatsUseCase := admin_stats.NewAdminStatsUseCase(iDepositTransactionRepository, iUserSubscriptionRepository, iSubscriptionRenewalAttemptRepository)
+	iAdminStatsUseCase := admin_stats.NewAdminStatsUseCase(iDepositTransactionRepository, iSubscriptionRenewalAttemptRepository, iUserPlanPeriodRepository, l)
 	iSubscriptionDashboardReader := contract4.NewSubscriptionDashboardReader(iAdminStatsUseCase)
 	subscriptionDashboardServer := grpc2.NewSubscriptionDashboardServer(iSubscriptionDashboardReader)
 	adminServer := grpc3.NewAdminServer(iAuditLogContract)

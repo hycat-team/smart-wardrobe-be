@@ -42,7 +42,11 @@ func (c *SubscriptionDashboardReaderClient) GetAdminSubscriptionStats(ctx contex
 	return subscriptiontransport.AdminStatsToDTO(res)
 }
 
-func (c *SubscriptionDashboardReaderClient) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) ([]subscriptiondto.SubscriptionDistributionDTO, error) {
+// GetSubscriptionDistribution returns the interval-based buckets plus the
+// cutover date and completeness metadata (031 contract delta §3). An old
+// Account server leaves both fields unset; DistributionListToDTO turns that
+// into nil/empty values so the Commerce edge omits the optional JSON fields.
+func (c *SubscriptionDashboardReaderClient) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*subscriptiondto.SubscriptionDistributionResultDTO, error) {
 	res, err := c.svc.GetSubscriptionDistribution(ctx, &subscriptionv1.GetSubscriptionDistributionRequest{
 		FromDate: timestamppb.New(from),
 		ToDate:   timestamppb.New(to),
@@ -50,7 +54,7 @@ func (c *SubscriptionDashboardReaderClient) GetSubscriptionDistribution(ctx cont
 	if err != nil {
 		return nil, grpcx.ToAppError(err)
 	}
-	return subscriptiontransport.DistributionToDTOs(res.GetItems()), nil
+	return subscriptiontransport.DistributionListToDTO(res), nil
 }
 
 func (c *SubscriptionDashboardReaderClient) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]subscriptiondto.RevenueBreakdownDTO, error) {

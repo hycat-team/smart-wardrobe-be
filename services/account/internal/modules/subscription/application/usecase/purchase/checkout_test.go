@@ -211,9 +211,6 @@ func (f *fakeSubRepo) BulkCreate(ctx context.Context, subs []*entities.UserSubsc
 func (f *fakeSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
 }
-func (f *fakeSubRepo) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]repositories.SubscriptionDistributionDTO, error) {
-	return nil, nil
-}
 func (f *fakeSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
 	return nil, 0, nil
 }

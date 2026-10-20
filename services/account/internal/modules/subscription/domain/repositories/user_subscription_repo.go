@@ -33,14 +33,11 @@ type IUserSubscriptionRepository interface {
 	// both - no history row and no event - so it could not have satisfied FR-014
 	// even if something had called it, and nothing did.
 	ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error
-	// GetDistributionByPlanCode counts subscriptions grouped by plan code.
-	//
-	// With both bounds zero it keeps the current-state semantics: only
-	// subscriptions still active now count. With a period it counts users whose
-	// current plan window OVERLAPS the requested [from, to) — the window
-	// started before the period ends and has not expired before it starts
-	// (029 R7/data-model §5). A zero bound leaves that side of the overlap
-	// open; FREE plans (expires_at IS NULL) are present in every period.
-	GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]SubscriptionDistributionDTO, error)
+	// 031 T019: `GetDistributionByPlanCode` is GONE. The projection can only
+	// answer "what plan is this user on now", so it silently dropped users
+	// who changed plan after the reported period. The distribution report now
+	// reads `subscription.user_plan_periods` through
+	// IUserPlanPeriodRepository.GetDistribution; keeping a second, wrong
+	// counting path here would only invite someone to call it again.
 	ListAdmin(ctx context.Context, filter AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error)
 }

@@ -27,6 +27,66 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// DistributionDataCompleteness describes the requested period against the
+// cutover date recorded in subscription.plan_history_meta (031 FR-012).
+type DistributionDataCompleteness int32
+
+const (
+	DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED DistributionDataCompleteness = 0
+	// The whole period is at or after the cutover, or no period was supplied
+	// (live snapshot).
+	DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_COMPLETE DistributionDataCompleteness = 1
+	// The period starts before the cutover and ends after it (or is
+	// open-ended); buckets cover only the part at/after the cutover.
+	DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_PARTIAL DistributionDataCompleteness = 2
+	// The period ends at or before the cutover; distribution is empty and the
+	// client must render an empty state, not a 0% chart.
+	DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE DistributionDataCompleteness = 3
+)
+
+// Enum value maps for DistributionDataCompleteness.
+var (
+	DistributionDataCompleteness_name = map[int32]string{
+		0: "DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED",
+		1: "DISTRIBUTION_DATA_COMPLETENESS_COMPLETE",
+		2: "DISTRIBUTION_DATA_COMPLETENESS_PARTIAL",
+		3: "DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE",
+	}
+	DistributionDataCompleteness_value = map[string]int32{
+		"DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED": 0,
+		"DISTRIBUTION_DATA_COMPLETENESS_COMPLETE":    1,
+		"DISTRIBUTION_DATA_COMPLETENESS_PARTIAL":     2,
+		"DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE": 3,
+	}
+)
+
+func (x DistributionDataCompleteness) Enum() *DistributionDataCompleteness {
+	p := new(DistributionDataCompleteness)
+	*p = x
+	return p
+}
+
+func (x DistributionDataCompleteness) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DistributionDataCompleteness) Descriptor() protoreflect.EnumDescriptor {
+	return file_contracts_subscription_v1_subscription_proto_enumTypes[0].Descriptor()
+}
+
+func (DistributionDataCompleteness) Type() protoreflect.EnumType {
+	return &file_contracts_subscription_v1_subscription_proto_enumTypes[0]
+}
+
+func (x DistributionDataCompleteness) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DistributionDataCompleteness.Descriptor instead.
+func (DistributionDataCompleteness) EnumDescriptor() ([]byte, []int) {
+	return file_contracts_subscription_v1_subscription_proto_rawDescGZIP(), []int{0}
+}
+
 // UserSubscriptionOverview mirrors subscription.UserSubscriptionContractDTO.
 type UserSubscriptionOverview struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
@@ -939,10 +999,14 @@ func (x *GetSubscriptionDistributionRequest) GetToDate() *timestamppb.Timestamp 
 }
 
 type SubscriptionDistributionList struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Items         []*SubscriptionDistribution `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState      `protogen:"open.v1"`
+	Items []*SubscriptionDistribution `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// Cutover instant. The Commerce edge formats it to the VN calendar date
+	// (YYYY-MM-DD); absent when the deployment has no cutover row.
+	DataAvailableFrom *timestamppb.Timestamp       `protobuf:"bytes,2,opt,name=data_available_from,json=dataAvailableFrom,proto3" json:"data_available_from,omitempty"`
+	DataCompleteness  DistributionDataCompleteness `protobuf:"varint,3,opt,name=data_completeness,json=dataCompleteness,proto3,enum=closy.subscription.v1.DistributionDataCompleteness" json:"data_completeness,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SubscriptionDistributionList) Reset() {
@@ -980,6 +1044,20 @@ func (x *SubscriptionDistributionList) GetItems() []*SubscriptionDistribution {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *SubscriptionDistributionList) GetDataAvailableFrom() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DataAvailableFrom
+	}
+	return nil
+}
+
+func (x *SubscriptionDistributionList) GetDataCompleteness() DistributionDataCompleteness {
+	if x != nil {
+		return x.DataCompleteness
+	}
+	return DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED
 }
 
 type GetRevenueBreakdownRequest struct {
@@ -1207,9 +1285,11 @@ const file_contracts_subscription_v1_subscription_proto_rawDesc = "" +
 	"\ato_date\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"\x92\x01\n" +
 	"\"GetSubscriptionDistributionRequest\x127\n" +
 	"\tfrom_date\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bfromDate\x123\n" +
-	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"e\n" +
+	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"\x93\x02\n" +
 	"\x1cSubscriptionDistributionList\x12E\n" +
-	"\x05items\x18\x01 \x03(\v2/.closy.subscription.v1.SubscriptionDistributionR\x05items\"\x8a\x01\n" +
+	"\x05items\x18\x01 \x03(\v2/.closy.subscription.v1.SubscriptionDistributionR\x05items\x12J\n" +
+	"\x13data_available_from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x11dataAvailableFrom\x12`\n" +
+	"\x11data_completeness\x18\x03 \x01(\x0e23.closy.subscription.v1.DistributionDataCompletenessR\x10dataCompleteness\"\x8a\x01\n" +
 	"\x1aGetRevenueBreakdownRequest\x127\n" +
 	"\tfrom_date\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bfromDate\x123\n" +
 	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"U\n" +
@@ -1217,7 +1297,12 @@ const file_contracts_subscription_v1_subscription_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2'.closy.subscription.v1.RevenueBreakdownR\x05items\"\x86\x01\n" +
 	"\x16GetRenewalStatsRequest\x127\n" +
 	"\tfrom_date\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bfromDate\x123\n" +
-	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate2\x81\x05\n" +
+	"\ato_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate*\xd7\x01\n" +
+	"\x1cDistributionDataCompleteness\x12.\n" +
+	"*DISTRIBUTION_DATA_COMPLETENESS_UNSPECIFIED\x10\x00\x12+\n" +
+	"'DISTRIBUTION_DATA_COMPLETENESS_COMPLETE\x10\x01\x12*\n" +
+	"&DISTRIBUTION_DATA_COMPLETENESS_PARTIAL\x10\x02\x12.\n" +
+	"*DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE\x10\x032\x81\x05\n" +
 	"\x13SubscriptionService\x12\x89\x01\n" +
 	"\x1bGetUserSubscriptionOverview\x129.closy.subscription.v1.GetUserSubscriptionOverviewRequest\x1a/.closy.subscription.v1.UserSubscriptionOverview\x12\x8e\x01\n" +
 	"\x1cGetUserSubscriptionOverviews\x12:.closy.subscription.v1.GetUserSubscriptionOverviewsRequest\x1a2.closy.subscription.v1.UserSubscriptionOverviewMap\x12u\n" +
@@ -1242,70 +1327,74 @@ func file_contracts_subscription_v1_subscription_proto_rawDescGZIP() []byte {
 	return file_contracts_subscription_v1_subscription_proto_rawDescData
 }
 
+var file_contracts_subscription_v1_subscription_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_contracts_subscription_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_contracts_subscription_v1_subscription_proto_goTypes = []any{
-	(*UserSubscriptionOverview)(nil),            // 0: closy.subscription.v1.UserSubscriptionOverview
-	(*UserSubscription)(nil),                    // 1: closy.subscription.v1.UserSubscription
-	(*GetUserSubscriptionOverviewRequest)(nil),  // 2: closy.subscription.v1.GetUserSubscriptionOverviewRequest
-	(*GetUserSubscriptionOverviewsRequest)(nil), // 3: closy.subscription.v1.GetUserSubscriptionOverviewsRequest
-	(*UserSubscriptionOverviewMap)(nil),         // 4: closy.subscription.v1.UserSubscriptionOverviewMap
-	(*GetAndResetDailyQuotaRequest)(nil),        // 5: closy.subscription.v1.GetAndResetDailyQuotaRequest
-	(*UpdateQuotaRequest)(nil),                  // 6: closy.subscription.v1.UpdateQuotaRequest
-	(*UpdateQuotaResponse)(nil),                 // 7: closy.subscription.v1.UpdateQuotaResponse
-	(*AdminSubscriptionStats)(nil),              // 8: closy.subscription.v1.AdminSubscriptionStats
-	(*SubscriptionDistribution)(nil),            // 9: closy.subscription.v1.SubscriptionDistribution
-	(*RevenueBreakdown)(nil),                    // 10: closy.subscription.v1.RevenueBreakdown
-	(*RenewalStats)(nil),                        // 11: closy.subscription.v1.RenewalStats
-	(*GetAdminSubscriptionStatsRequest)(nil),    // 12: closy.subscription.v1.GetAdminSubscriptionStatsRequest
-	(*GetSubscriptionDistributionRequest)(nil),  // 13: closy.subscription.v1.GetSubscriptionDistributionRequest
-	(*SubscriptionDistributionList)(nil),        // 14: closy.subscription.v1.SubscriptionDistributionList
-	(*GetRevenueBreakdownRequest)(nil),          // 15: closy.subscription.v1.GetRevenueBreakdownRequest
-	(*RevenueBreakdownList)(nil),                // 16: closy.subscription.v1.RevenueBreakdownList
-	(*GetRenewalStatsRequest)(nil),              // 17: closy.subscription.v1.GetRenewalStatsRequest
-	nil,                                         // 18: closy.subscription.v1.UserSubscriptionOverviewMap.OverviewsEntry
-	(*timestamppb.Timestamp)(nil),               // 19: google.protobuf.Timestamp
+	(DistributionDataCompleteness)(0),           // 0: closy.subscription.v1.DistributionDataCompleteness
+	(*UserSubscriptionOverview)(nil),            // 1: closy.subscription.v1.UserSubscriptionOverview
+	(*UserSubscription)(nil),                    // 2: closy.subscription.v1.UserSubscription
+	(*GetUserSubscriptionOverviewRequest)(nil),  // 3: closy.subscription.v1.GetUserSubscriptionOverviewRequest
+	(*GetUserSubscriptionOverviewsRequest)(nil), // 4: closy.subscription.v1.GetUserSubscriptionOverviewsRequest
+	(*UserSubscriptionOverviewMap)(nil),         // 5: closy.subscription.v1.UserSubscriptionOverviewMap
+	(*GetAndResetDailyQuotaRequest)(nil),        // 6: closy.subscription.v1.GetAndResetDailyQuotaRequest
+	(*UpdateQuotaRequest)(nil),                  // 7: closy.subscription.v1.UpdateQuotaRequest
+	(*UpdateQuotaResponse)(nil),                 // 8: closy.subscription.v1.UpdateQuotaResponse
+	(*AdminSubscriptionStats)(nil),              // 9: closy.subscription.v1.AdminSubscriptionStats
+	(*SubscriptionDistribution)(nil),            // 10: closy.subscription.v1.SubscriptionDistribution
+	(*RevenueBreakdown)(nil),                    // 11: closy.subscription.v1.RevenueBreakdown
+	(*RenewalStats)(nil),                        // 12: closy.subscription.v1.RenewalStats
+	(*GetAdminSubscriptionStatsRequest)(nil),    // 13: closy.subscription.v1.GetAdminSubscriptionStatsRequest
+	(*GetSubscriptionDistributionRequest)(nil),  // 14: closy.subscription.v1.GetSubscriptionDistributionRequest
+	(*SubscriptionDistributionList)(nil),        // 15: closy.subscription.v1.SubscriptionDistributionList
+	(*GetRevenueBreakdownRequest)(nil),          // 16: closy.subscription.v1.GetRevenueBreakdownRequest
+	(*RevenueBreakdownList)(nil),                // 17: closy.subscription.v1.RevenueBreakdownList
+	(*GetRenewalStatsRequest)(nil),              // 18: closy.subscription.v1.GetRenewalStatsRequest
+	nil,                                         // 19: closy.subscription.v1.UserSubscriptionOverviewMap.OverviewsEntry
+	(*timestamppb.Timestamp)(nil),               // 20: google.protobuf.Timestamp
 }
 var file_contracts_subscription_v1_subscription_proto_depIdxs = []int32{
-	19, // 0: closy.subscription.v1.UserSubscriptionOverview.expires_at:type_name -> google.protobuf.Timestamp
-	19, // 1: closy.subscription.v1.UserSubscription.expires_at:type_name -> google.protobuf.Timestamp
-	19, // 2: closy.subscription.v1.UserSubscription.last_reset_date:type_name -> google.protobuf.Timestamp
-	18, // 3: closy.subscription.v1.UserSubscriptionOverviewMap.overviews:type_name -> closy.subscription.v1.UserSubscriptionOverviewMap.OverviewsEntry
-	19, // 4: closy.subscription.v1.RevenueBreakdown.month:type_name -> google.protobuf.Timestamp
-	19, // 5: closy.subscription.v1.GetAdminSubscriptionStatsRequest.snapshot_date:type_name -> google.protobuf.Timestamp
-	19, // 6: closy.subscription.v1.GetAdminSubscriptionStatsRequest.from_date:type_name -> google.protobuf.Timestamp
-	19, // 7: closy.subscription.v1.GetAdminSubscriptionStatsRequest.to_date:type_name -> google.protobuf.Timestamp
-	19, // 8: closy.subscription.v1.GetSubscriptionDistributionRequest.from_date:type_name -> google.protobuf.Timestamp
-	19, // 9: closy.subscription.v1.GetSubscriptionDistributionRequest.to_date:type_name -> google.protobuf.Timestamp
-	9,  // 10: closy.subscription.v1.SubscriptionDistributionList.items:type_name -> closy.subscription.v1.SubscriptionDistribution
-	19, // 11: closy.subscription.v1.GetRevenueBreakdownRequest.from_date:type_name -> google.protobuf.Timestamp
-	19, // 12: closy.subscription.v1.GetRevenueBreakdownRequest.to_date:type_name -> google.protobuf.Timestamp
-	10, // 13: closy.subscription.v1.RevenueBreakdownList.items:type_name -> closy.subscription.v1.RevenueBreakdown
-	19, // 14: closy.subscription.v1.GetRenewalStatsRequest.from_date:type_name -> google.protobuf.Timestamp
-	19, // 15: closy.subscription.v1.GetRenewalStatsRequest.to_date:type_name -> google.protobuf.Timestamp
-	0,  // 16: closy.subscription.v1.UserSubscriptionOverviewMap.OverviewsEntry.value:type_name -> closy.subscription.v1.UserSubscriptionOverview
-	2,  // 17: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverview:input_type -> closy.subscription.v1.GetUserSubscriptionOverviewRequest
-	3,  // 18: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverviews:input_type -> closy.subscription.v1.GetUserSubscriptionOverviewsRequest
-	5,  // 19: closy.subscription.v1.SubscriptionService.GetAndResetDailyQuota:input_type -> closy.subscription.v1.GetAndResetDailyQuotaRequest
-	6,  // 20: closy.subscription.v1.SubscriptionService.UpdateOutfitQuota:input_type -> closy.subscription.v1.UpdateQuotaRequest
-	6,  // 21: closy.subscription.v1.SubscriptionService.UpdateAiChatQuota:input_type -> closy.subscription.v1.UpdateQuotaRequest
-	12, // 22: closy.subscription.v1.SubscriptionDashboardService.GetAdminSubscriptionStats:input_type -> closy.subscription.v1.GetAdminSubscriptionStatsRequest
-	13, // 23: closy.subscription.v1.SubscriptionDashboardService.GetSubscriptionDistribution:input_type -> closy.subscription.v1.GetSubscriptionDistributionRequest
-	15, // 24: closy.subscription.v1.SubscriptionDashboardService.GetRevenueBreakdown:input_type -> closy.subscription.v1.GetRevenueBreakdownRequest
-	17, // 25: closy.subscription.v1.SubscriptionDashboardService.GetRenewalStats:input_type -> closy.subscription.v1.GetRenewalStatsRequest
-	0,  // 26: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverview:output_type -> closy.subscription.v1.UserSubscriptionOverview
-	4,  // 27: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverviews:output_type -> closy.subscription.v1.UserSubscriptionOverviewMap
-	1,  // 28: closy.subscription.v1.SubscriptionService.GetAndResetDailyQuota:output_type -> closy.subscription.v1.UserSubscription
-	7,  // 29: closy.subscription.v1.SubscriptionService.UpdateOutfitQuota:output_type -> closy.subscription.v1.UpdateQuotaResponse
-	7,  // 30: closy.subscription.v1.SubscriptionService.UpdateAiChatQuota:output_type -> closy.subscription.v1.UpdateQuotaResponse
-	8,  // 31: closy.subscription.v1.SubscriptionDashboardService.GetAdminSubscriptionStats:output_type -> closy.subscription.v1.AdminSubscriptionStats
-	14, // 32: closy.subscription.v1.SubscriptionDashboardService.GetSubscriptionDistribution:output_type -> closy.subscription.v1.SubscriptionDistributionList
-	16, // 33: closy.subscription.v1.SubscriptionDashboardService.GetRevenueBreakdown:output_type -> closy.subscription.v1.RevenueBreakdownList
-	11, // 34: closy.subscription.v1.SubscriptionDashboardService.GetRenewalStats:output_type -> closy.subscription.v1.RenewalStats
-	26, // [26:35] is the sub-list for method output_type
-	17, // [17:26] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	20, // 0: closy.subscription.v1.UserSubscriptionOverview.expires_at:type_name -> google.protobuf.Timestamp
+	20, // 1: closy.subscription.v1.UserSubscription.expires_at:type_name -> google.protobuf.Timestamp
+	20, // 2: closy.subscription.v1.UserSubscription.last_reset_date:type_name -> google.protobuf.Timestamp
+	19, // 3: closy.subscription.v1.UserSubscriptionOverviewMap.overviews:type_name -> closy.subscription.v1.UserSubscriptionOverviewMap.OverviewsEntry
+	20, // 4: closy.subscription.v1.RevenueBreakdown.month:type_name -> google.protobuf.Timestamp
+	20, // 5: closy.subscription.v1.GetAdminSubscriptionStatsRequest.snapshot_date:type_name -> google.protobuf.Timestamp
+	20, // 6: closy.subscription.v1.GetAdminSubscriptionStatsRequest.from_date:type_name -> google.protobuf.Timestamp
+	20, // 7: closy.subscription.v1.GetAdminSubscriptionStatsRequest.to_date:type_name -> google.protobuf.Timestamp
+	20, // 8: closy.subscription.v1.GetSubscriptionDistributionRequest.from_date:type_name -> google.protobuf.Timestamp
+	20, // 9: closy.subscription.v1.GetSubscriptionDistributionRequest.to_date:type_name -> google.protobuf.Timestamp
+	10, // 10: closy.subscription.v1.SubscriptionDistributionList.items:type_name -> closy.subscription.v1.SubscriptionDistribution
+	20, // 11: closy.subscription.v1.SubscriptionDistributionList.data_available_from:type_name -> google.protobuf.Timestamp
+	0,  // 12: closy.subscription.v1.SubscriptionDistributionList.data_completeness:type_name -> closy.subscription.v1.DistributionDataCompleteness
+	20, // 13: closy.subscription.v1.GetRevenueBreakdownRequest.from_date:type_name -> google.protobuf.Timestamp
+	20, // 14: closy.subscription.v1.GetRevenueBreakdownRequest.to_date:type_name -> google.protobuf.Timestamp
+	11, // 15: closy.subscription.v1.RevenueBreakdownList.items:type_name -> closy.subscription.v1.RevenueBreakdown
+	20, // 16: closy.subscription.v1.GetRenewalStatsRequest.from_date:type_name -> google.protobuf.Timestamp
+	20, // 17: closy.subscription.v1.GetRenewalStatsRequest.to_date:type_name -> google.protobuf.Timestamp
+	1,  // 18: closy.subscription.v1.UserSubscriptionOverviewMap.OverviewsEntry.value:type_name -> closy.subscription.v1.UserSubscriptionOverview
+	3,  // 19: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverview:input_type -> closy.subscription.v1.GetUserSubscriptionOverviewRequest
+	4,  // 20: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverviews:input_type -> closy.subscription.v1.GetUserSubscriptionOverviewsRequest
+	6,  // 21: closy.subscription.v1.SubscriptionService.GetAndResetDailyQuota:input_type -> closy.subscription.v1.GetAndResetDailyQuotaRequest
+	7,  // 22: closy.subscription.v1.SubscriptionService.UpdateOutfitQuota:input_type -> closy.subscription.v1.UpdateQuotaRequest
+	7,  // 23: closy.subscription.v1.SubscriptionService.UpdateAiChatQuota:input_type -> closy.subscription.v1.UpdateQuotaRequest
+	13, // 24: closy.subscription.v1.SubscriptionDashboardService.GetAdminSubscriptionStats:input_type -> closy.subscription.v1.GetAdminSubscriptionStatsRequest
+	14, // 25: closy.subscription.v1.SubscriptionDashboardService.GetSubscriptionDistribution:input_type -> closy.subscription.v1.GetSubscriptionDistributionRequest
+	16, // 26: closy.subscription.v1.SubscriptionDashboardService.GetRevenueBreakdown:input_type -> closy.subscription.v1.GetRevenueBreakdownRequest
+	18, // 27: closy.subscription.v1.SubscriptionDashboardService.GetRenewalStats:input_type -> closy.subscription.v1.GetRenewalStatsRequest
+	1,  // 28: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverview:output_type -> closy.subscription.v1.UserSubscriptionOverview
+	5,  // 29: closy.subscription.v1.SubscriptionService.GetUserSubscriptionOverviews:output_type -> closy.subscription.v1.UserSubscriptionOverviewMap
+	2,  // 30: closy.subscription.v1.SubscriptionService.GetAndResetDailyQuota:output_type -> closy.subscription.v1.UserSubscription
+	8,  // 31: closy.subscription.v1.SubscriptionService.UpdateOutfitQuota:output_type -> closy.subscription.v1.UpdateQuotaResponse
+	8,  // 32: closy.subscription.v1.SubscriptionService.UpdateAiChatQuota:output_type -> closy.subscription.v1.UpdateQuotaResponse
+	9,  // 33: closy.subscription.v1.SubscriptionDashboardService.GetAdminSubscriptionStats:output_type -> closy.subscription.v1.AdminSubscriptionStats
+	15, // 34: closy.subscription.v1.SubscriptionDashboardService.GetSubscriptionDistribution:output_type -> closy.subscription.v1.SubscriptionDistributionList
+	17, // 35: closy.subscription.v1.SubscriptionDashboardService.GetRevenueBreakdown:output_type -> closy.subscription.v1.RevenueBreakdownList
+	12, // 36: closy.subscription.v1.SubscriptionDashboardService.GetRenewalStats:output_type -> closy.subscription.v1.RenewalStats
+	28, // [28:37] is the sub-list for method output_type
+	19, // [19:28] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_contracts_subscription_v1_subscription_proto_init() }
@@ -1318,13 +1407,14 @@ func file_contracts_subscription_v1_subscription_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_contracts_subscription_v1_subscription_proto_rawDesc), len(file_contracts_subscription_v1_subscription_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
 		GoTypes:           file_contracts_subscription_v1_subscription_proto_goTypes,
 		DependencyIndexes: file_contracts_subscription_v1_subscription_proto_depIdxs,
+		EnumInfos:         file_contracts_subscription_v1_subscription_proto_enumTypes,
 		MessageInfos:      file_contracts_subscription_v1_subscription_proto_msgTypes,
 	}.Build()
 	File_contracts_subscription_v1_subscription_proto = out.File

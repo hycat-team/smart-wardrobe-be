@@ -1047,7 +1047,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/dashboard/subscriptions/distribution": {
             "get": {
-                "description": "Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription. Không gửi kỳ: hiện trạng (gói còn hiệu lực). Có kỳ: user có cửa sổ gói hiện tại giao với khoảng ngày (ngày lịch Việt Nam).",
+                "description": "Thống kê số người dùng và tỷ lệ phần trăm theo từng gói, dựa trên các KHOẢNG HIỆU LỰC gói (không phải gói hiện tại), nên người đã đổi/hạ gói sau kỳ vẫn được tính đúng gói đã dùng trong kỳ. Không gửi kỳ: ảnh chụp gói đang có hiệu lực tại thời điểm gọi. Có kỳ: khoảng giao với [fromDate, toDate) theo ngày lịch Việt Nam. totalUsers là TỔNG CỦA CÁC NHÓM (người đổi gói giữa kỳ xuất hiện ở hai nhóm), không phải số người duy nhất. Hai trường tuỳ chọn mô tả độ đầy đủ: dataAvailableFrom (ngày VN YYYY-MM-DD, mốc bắt đầu lịch sử đầy đủ) và dataCompleteness (complete | partial | unavailable). Kỳ kết thúc trước mốc: distribution rỗng và totalUsers = 0, client phải hiển thị trạng thái trống thay vì biểu đồ 0%; kỳ cắt ngang mốc: chỉ tính phần sau mốc và trả partial.",
                 "produces": [
                     "application/json"
                 ],
@@ -10132,6 +10132,14 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionRes": {
             "type": "object",
             "properties": {
+                "dataAvailableFrom": {
+                    "type": "string",
+                    "example": "2026-10-20"
+                },
+                "dataCompleteness": {
+                    "type": "string",
+                    "example": "partial"
+                },
                 "distribution": {
                     "type": "array",
                     "items": {

@@ -238,37 +238,78 @@ func TestAdminStatsScopesRunOnSQLite(t *testing.T) {
 	}
 }
 
-// The distribution must count active subscriptions only: the old GROUP BY
-// counted expired rows, so a lapsed premium user kept showing up in
-// "premium-monthly".
-func TestDistributionCountsActiveOnly(t *testing.T) {
-	stmt := statsStatement(t, func(dbConn *gorm.DB) error {
-		_, err := NewUserSubscriptionRepository(dbConn).GetDistributionByPlanCode(context.Background(), time.Time{}, time.Time{})
-		return err
-	})
-
-	if !strings.Contains(stmt, "expires_at IS NULL OR expires_at >") {
-		t.Fatalf("distribution must filter on active subscriptions, got: %s", stmt)
-	}
-}
-
-// 029 T026/R7: with a period, the distribution counts users whose current
-// plan window OVERLAPS the requested [from, to) — the window started before
-// the period ends and has not expired before it starts (data-model §5). The
-// no-period branch above stays as it was.
-func TestDistributionOverlapsTheRequestedPeriod(t *testing.T) {
+// 031 T012: the distribution no longer reads the current-plan projection at
+// all. It must query the validity intervals with the half-open range
+// expression, count DISTINCT users per plan (FR-010), and keep the four bound
+// shapes from D4/data-model §5.
+func TestDistributionUsesValidityIntervals(t *testing.T) {
 	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
 	stmt := statsStatement(t, func(dbConn *gorm.DB) error {
-		_, err := NewUserSubscriptionRepository(dbConn).GetDistributionByPlanCode(context.Background(), from, to)
+		_, err := NewUserPlanPeriodRepository(dbConn).GetDistribution(context.Background(), from, to)
 		return err
 	})
 
-	if !strings.Contains(stmt, "started_at < ") {
-		t.Fatalf("029 R7: the bounded distribution must drop windows that start at/after to, got: %s", stmt)
+	if !strings.Contains(stmt, "tstzrange(valid_from, valid_to, '[)') && tstzrange(") {
+		t.Fatalf("the bounded distribution must use the half-open interval overlap predicate, got: %s", stmt)
 	}
-	if !strings.Contains(stmt, "expires_at IS NULL OR expires_at >= ") {
-		t.Fatalf("029 R7: the bounded distribution must keep windows alive at or after from (NULL = never expires), got: %s", stmt)
+	if !strings.Contains(stmt, "COUNT(DISTINCT user_id)") {
+		t.Fatalf("a user who left and returned to the same plan must count once (FR-010), got: %s", stmt)
+	}
+	if strings.Contains(stmt, "current_plan_code") || strings.Contains(stmt, "user_subscriptions") {
+		t.Fatalf("the distribution must no longer read the overwritten current-plan projection, got: %s", stmt)
+	}
+}
+
+// 031 D4: the no-period snapshot asks which interval contains now(); it must
+// never fall back to the current-plan projection.
+func TestDistributionSnapshotUsesTheIntervalContainingNow(t *testing.T) {
+	stmt := statsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewUserPlanPeriodRepository(dbConn).GetDistribution(context.Background(), time.Time{}, time.Time{})
+		return err
+	})
+
+	if !strings.Contains(stmt, "tstzrange(valid_from, valid_to, '[)') @> now()") {
+		t.Fatalf("the no-period distribution must select the interval containing now(), got: %s", stmt)
+	}
+	if !strings.Contains(stmt, "COUNT(DISTINCT user_id)") {
+		t.Fatalf("the snapshot must still count DISTINCT users per plan, got: %s", stmt)
+	}
+}
+
+// 031 FR-008/A2: a `to`-only period is open-ended but must not count a
+// future-dated interval. The repository adds `valid_from <= now()` exactly
+// when `to` is absent.
+func TestDistributionFromOnlyExcludesFutureIntervals(t *testing.T) {
+	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	stmt := statsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewUserPlanPeriodRepository(dbConn).GetDistribution(context.Background(), from, time.Time{})
+		return err
+	})
+
+	if !strings.Contains(stmt, "NULL, '[)')") {
+		t.Fatalf("the absent upper bound must be SQL NULL (infinity), got: %s", stmt)
+	}
+	if !strings.Contains(stmt, "valid_from <= now()") {
+		t.Fatalf("a from-only period must exclude future-dated intervals, got: %s", stmt)
+	}
+}
+
+// 031 data-model §5: a `from`-only period (an absent lower bound) is
+// (-infinity, to); unlike the from-only case it needs no `now()` guard,
+// because the explicit upper bound already closes the window.
+func TestDistributionToOnlyLeavesTheLowerBoundOpen(t *testing.T) {
+	to := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	stmt := statsStatement(t, func(dbConn *gorm.DB) error {
+		_, err := NewUserPlanPeriodRepository(dbConn).GetDistribution(context.Background(), time.Time{}, to)
+		return err
+	})
+
+	if !strings.Contains(stmt, "tstzrange(NULL, ") {
+		t.Fatalf("an absent lower bound must be SQL NULL (infinity), got: %s", stmt)
+	}
+	if strings.Contains(stmt, "valid_from <= now()") {
+		t.Fatalf("the to-only branch must not add the from-only future guard, got: %s", stmt)
 	}
 }
 

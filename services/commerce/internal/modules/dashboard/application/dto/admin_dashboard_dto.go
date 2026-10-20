@@ -63,9 +63,19 @@ type SubscriptionDistributionDTO struct {
 	Percentage float64 `json:"percentage"`
 }
 
+// SubscriptionDistributionRes keeps the 029 shape and adds two OPTIONAL
+// fields (031 FR-012/FR-015): both are omitted when the Account service does
+// not provide them, so an old client/server pair keeps the old payload.
+//
+// DataAvailableFrom is a calendar date in VN time (YYYY-MM-DD), not a
+// timestamp; DataCompleteness is complete | partial | unavailable.
+// TotalUsers is the SUM OF BUCKETS, not a distinct-user count: a mid-period
+// switcher appears in two buckets (031 clarification 2026-10-20).
 type SubscriptionDistributionRes struct {
-	Distribution []SubscriptionDistributionDTO `json:"distribution"`
-	TotalUsers   int                           `json:"totalUsers"`
+	Distribution      []SubscriptionDistributionDTO `json:"distribution"`
+	TotalUsers        int                           `json:"totalUsers"`
+	DataAvailableFrom *string                       `json:"dataAvailableFrom,omitempty" example:"2026-10-20"`
+	DataCompleteness  string                        `json:"dataCompleteness,omitempty" example:"partial"`
 }
 
 // RevenueBreakdownDTO is a presentation projection of

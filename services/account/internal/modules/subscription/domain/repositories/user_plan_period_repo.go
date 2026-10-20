@@ -14,8 +14,8 @@ import (
 // `Items` are the plan buckets. `DataAvailableFrom` is the cutover instant when
 // complete history begins, or nil when the `plan_history_meta` row is absent.
 // `DataCompleteness` is one of `complete`, `partial`, `unavailable`; the use
-// case computes it from the requested bounds and the cutover, because the same
-// result also serves the no-period snapshot where the cutover is irrelevant.
+// case computes it from the requested bounds and the cutover. The no-period
+// snapshot stays `complete` but still carries the cutover date when it exists.
 type SubscriptionDistributionResult struct {
 	Items             []SubscriptionDistributionDTO
 	DataAvailableFrom *time.Time

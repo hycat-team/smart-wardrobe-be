@@ -126,6 +126,43 @@ func DistributionToDTOs(pb []*subscriptionv1.SubscriptionDistribution) []subscri
 	return out
 }
 
+// DistributionListToDTO converts the wire list into the interval-based result
+// (031 contract delta §3).
+//
+// An old Account server leaves the two new fields unset: the absent timestamp
+// stays nil and UNSPECIFIED becomes an empty completeness string, so the
+// Commerce DTO's `omitempty` drops both keys and the old JSON shape survives.
+func DistributionListToDTO(pb *subscriptionv1.SubscriptionDistributionList) *subscriptiondto.SubscriptionDistributionResultDTO {
+	if pb == nil {
+		return nil
+	}
+	out := &subscriptiondto.SubscriptionDistributionResultDTO{
+		Items:            DistributionToDTOs(pb.GetItems()),
+		DataCompleteness: distributionCompletenessFromProto(pb.GetDataCompleteness()),
+	}
+	if ts := pb.GetDataAvailableFrom(); ts != nil {
+		availableFrom := ts.AsTime()
+		out.DataAvailableFrom = &availableFrom
+	}
+	return out
+}
+
+// distributionCompletenessFromProto maps the enum back to the lowercase result
+// string. UNSPECIFIED and unknown values become "", which means "omit the
+// field" — never a made-up "complete".
+func distributionCompletenessFromProto(value subscriptionv1.DistributionDataCompleteness) string {
+	switch value {
+	case subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_COMPLETE:
+		return "complete"
+	case subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_PARTIAL:
+		return "partial"
+	case subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE:
+		return "unavailable"
+	default:
+		return ""
+	}
+}
+
 // RevenueBreakdownToDTOs converts the wire revenue list into contract DTOs.
 func RevenueBreakdownToDTOs(pb []*subscriptionv1.RevenueBreakdown) ([]subscriptiondto.RevenueBreakdownDTO, error) {
 	out := make([]subscriptiondto.RevenueBreakdownDTO, 0, len(pb))

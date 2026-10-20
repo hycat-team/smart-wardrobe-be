@@ -4,11 +4,14 @@ import (
 	"testing"
 	"time"
 
+	subscriptionv1 "smart-wardrobe-be/contracts/subscription/v1"
 	subscriptiontransport "smart-wardrobe-be/services/account/contract/subscription/transport"
 	subscriptiondto "smart-wardrobe-be/services/account/dto/subscription"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestOverviewRoundTrip(t *testing.T) {
@@ -85,6 +88,105 @@ func TestAdminStatsDecimalRoundTrip(t *testing.T) {
 	}
 	if back.PayOSPendingCount != 1 || back.PayOSFailedCount != 1 || back.PayOSVoidedCount != 1 {
 		t.Fatalf("status breakdown lost across the wire: %+v", back)
+	}
+}
+
+// 031 T016: the two additive fields must survive both directions, while an old
+// server that leaves them unset must keep the old shape (no invented status).
+func TestDistributionResultRoundTrip(t *testing.T) {
+	cutover := time.Date(2026, 10, 20, 5, 30, 0, 0, time.UTC)
+	cases := []struct {
+		name         string
+		completeness string
+		wantEnum     subscriptionv1.DistributionDataCompleteness
+	}{
+		{"complete", "complete", subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_COMPLETE},
+		{"partial", "partial", subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_PARTIAL},
+		{"unavailable", "unavailable", subscriptionv1.DistributionDataCompleteness_DISTRIBUTION_DATA_COMPLETENESS_UNAVAILABLE},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			original := &subscriptiondto.SubscriptionDistributionResultDTO{
+				Items: []subscriptiondto.SubscriptionDistributionDTO{
+					{PlanCode: "free", UserCount: 3},
+					{PlanCode: "premium-monthly", UserCount: 2},
+				},
+				DataAvailableFrom: &cutover,
+				DataCompleteness:  tc.completeness,
+			}
+
+			wire := subscriptiontransport.DistributionResultToProto(original)
+			if wire.GetDataCompleteness() != tc.wantEnum {
+				t.Fatalf("wire completeness = %v, want %v", wire.GetDataCompleteness(), tc.wantEnum)
+			}
+			if wire.GetDataAvailableFrom() == nil || !wire.GetDataAvailableFrom().AsTime().Equal(cutover) {
+				t.Fatalf("wire cutover = %v, want %s", wire.GetDataAvailableFrom(), cutover)
+			}
+
+			back := subscriptiontransport.DistributionListToDTO(wire)
+			if back.DataCompleteness != tc.completeness {
+				t.Fatalf("completeness round-trip = %q, want %q", back.DataCompleteness, tc.completeness)
+			}
+			if back.DataAvailableFrom == nil || !back.DataAvailableFrom.Equal(cutover) {
+				t.Fatalf("cutover round-trip = %v, want %s", back.DataAvailableFrom, cutover)
+			}
+			if len(back.Items) != 2 || back.Items[1].PlanCode != "premium-monthly" || back.Items[1].UserCount != 2 {
+				t.Fatalf("items round-trip mismatch: %+v", back.Items)
+			}
+		})
+	}
+}
+
+func TestDistributionListWithoutMetadataOmitsBothFields(t *testing.T) {
+	// This is what an old Account server sends: items only, so fields 2 and 3
+	// are unset. The Commerce edge must omit both JSON keys rather than claim
+	// the period is complete or invent a cutover date.
+	wire := &subscriptionv1.SubscriptionDistributionList{
+		Items: []*subscriptionv1.SubscriptionDistribution{
+			{PlanCode: "free", UserCount: 5},
+		},
+	}
+
+	back := subscriptiontransport.DistributionListToDTO(wire)
+	if back == nil {
+		t.Fatal("expected a result for a non-nil wire list")
+	}
+	if back.DataAvailableFrom != nil {
+		t.Fatalf("dataAvailableFrom = %v, want nil (absent on the wire)", back.DataAvailableFrom)
+	}
+	if back.DataCompleteness != "" {
+		t.Fatalf("dataCompleteness = %q, want the empty string for UNSPECIFIED", back.DataCompleteness)
+	}
+	if len(back.Items) != 1 || back.Items[0].PlanCode != "free" {
+		t.Fatalf("items = %+v, want the old payload preserved", back.Items)
+	}
+}
+
+func TestDistributionListIgnoresUnknownProtoFields(t *testing.T) {
+	// A newer Account server may add fields this client does not know. Proto3
+	// decoding must preserve the known fields and drop the unknown one.
+	item, err := proto.Marshal(&subscriptionv1.SubscriptionDistribution{PlanCode: "free", UserCount: 7})
+	if err != nil {
+		t.Fatalf("marshal item: %v", err)
+	}
+
+	raw := protowire.AppendTag(nil, 1, protowire.BytesType)
+	raw = protowire.AppendBytes(raw, item)
+	raw = protowire.AppendTag(raw, 99, protowire.VarintType)
+	raw = protowire.AppendVarint(raw, 123)
+
+	var wire subscriptionv1.SubscriptionDistributionList
+	if err := proto.Unmarshal(raw, &wire); err != nil {
+		t.Fatalf("decode a list with an unknown field: %v", err)
+	}
+
+	back := subscriptiontransport.DistributionListToDTO(&wire)
+	if len(back.Items) != 1 || back.Items[0].UserCount != 7 {
+		t.Fatalf("known fields were lost while ignoring the unknown one: %+v", back.Items)
+	}
+	if back.DataCompleteness != "" || back.DataAvailableFrom != nil {
+		t.Fatalf("unknown/absent metadata must stay omitted, got %+v", back)
 	}
 }
 

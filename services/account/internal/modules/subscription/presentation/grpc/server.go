@@ -136,7 +136,9 @@ func (s *SubscriptionDashboardServer) GetAdminSubscriptionStats(ctx context.Cont
 }
 
 // GetSubscriptionDistribution passes the request's day pair through; absent
-// fields stay zero and the repository keeps its current-state semantics.
+// fields stay zero (unbounded, meaning the live snapshot when both are zero).
+// The response carries the interval-based buckets plus the cutover date and
+// completeness of the requested period (031 contract delta §3).
 func (s *SubscriptionDashboardServer) GetSubscriptionDistribution(ctx context.Context, req *subscriptionv1.GetSubscriptionDistributionRequest) (*subscriptionv1.SubscriptionDistributionList, error) {
 	var from, to time.Time
 	if ts := req.GetFromDate(); ts != nil {
@@ -149,9 +151,7 @@ func (s *SubscriptionDashboardServer) GetSubscriptionDistribution(ctx context.Co
 	if err != nil {
 		return nil, grpcx.ToGRPCError(err)
 	}
-	return &subscriptionv1.SubscriptionDistributionList{
-		Items: subscriptiontransport.DistributionToProto(out),
-	}, nil
+	return subscriptiontransport.DistributionResultToProto(out), nil
 }
 
 func (s *SubscriptionDashboardServer) GetRevenueBreakdown(ctx context.Context, req *subscriptionv1.GetRevenueBreakdownRequest) (*subscriptionv1.RevenueBreakdownList, error) {

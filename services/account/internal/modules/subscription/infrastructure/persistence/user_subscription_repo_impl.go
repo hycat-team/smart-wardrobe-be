@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/usersubscriptionstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
@@ -133,39 +132,6 @@ func (r *UserSubscriptionRepository) GetSubscriptionsExpiringWithin(ctx context.
 
 func (r *UserSubscriptionRepository) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return r.GetDB(ctx).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true}).Create(sub).Error
-}
-
-// GetDistributionByPlanCode counts subscriptions by plan code.
-//
-// Two semantics, selected by the bounds (029 R7/data-model §5):
-//   - no period (both bounds zero): only subscriptions still active now count
-//     (free plans never expire, so a NULL expires_at is treated as active);
-//   - with a period: the user's current plan window overlaps [from, to) — it
-//     started before the period ends and has not expired before it starts.
-//     A zero bound leaves that side of the overlap open, and FREE
-//     (expires_at IS NULL) is present in every period.
-func (r *UserSubscriptionRepository) GetDistributionByPlanCode(ctx context.Context, from, to time.Time) ([]dto.SubscriptionDistributionDTO, error) {
-	var rows []dto.SubscriptionDistributionDTO
-	query := r.GetDB(ctx).Model(&entities.UserSubscription{})
-	if from.IsZero() && to.IsZero() {
-		query = query.Where("expires_at IS NULL OR expires_at > ?", time.Now())
-	} else {
-		if !to.IsZero() {
-			query = query.Where("started_at < ?", to)
-		}
-		if !from.IsZero() {
-			query = query.Where("expires_at IS NULL OR expires_at >= ?", from)
-		}
-	}
-	err := query.
-		Select("current_plan_code AS plan_code, COUNT(*) AS user_count").
-		Group("current_plan_code").
-		Order("user_count DESC").
-		Scan(&rows).Error
-	if err != nil {
-		return nil, err
-	}
-	return rows, nil
 }
 
 func (r *UserSubscriptionRepository) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {

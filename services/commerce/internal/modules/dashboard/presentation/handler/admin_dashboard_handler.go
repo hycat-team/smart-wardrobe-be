@@ -110,7 +110,7 @@ func (h *AdminDashboardHandler) GetPayOSReconciliation(c *gin.Context) error {
 
 // GetSubscriptionDistribution lấy phân bổ user theo gói subscription
 // @Summary Phân bổ người dùng theo gói subscription
-// @Description Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription. Không gửi kỳ: hiện trạng (gói còn hiệu lực). Có kỳ: user có cửa sổ gói hiện tại giao với khoảng ngày (ngày lịch Việt Nam).
+// @Description Thống kê số người dùng và tỷ lệ phần trăm theo từng gói, dựa trên các KHOẢNG HIỆU LỰC gói (không phải gói hiện tại), nên người đã đổi/hạ gói sau kỳ vẫn được tính đúng gói đã dùng trong kỳ. Không gửi kỳ: ảnh chụp gói đang có hiệu lực tại thời điểm gọi. Có kỳ: khoảng giao với [fromDate, toDate) theo ngày lịch Việt Nam. totalUsers là TỔNG CỦA CÁC NHÓM (người đổi gói giữa kỳ xuất hiện ở hai nhóm), không phải số người duy nhất. Hai trường tuỳ chọn mô tả độ đầy đủ: dataAvailableFrom (ngày VN YYYY-MM-DD, mốc bắt đầu lịch sử đầy đủ) và dataCompleteness (complete | partial | unavailable). Kỳ kết thúc trước mốc: distribution rỗng và totalUsers = 0, client phải hiển thị trạng thái trống thay vì biểu đồ 0%; kỳ cắt ngang mốc: chỉ tính phần sau mốc và trả partial.
 // @Tags Dashboard Admin
 // @Produce json
 // @Param fromDate query string false "Ngày bắt đầu, ngày lịch Việt Nam (YYYY-MM-DD); bắt buộc ≤ toDate, sai định dạng hoặc đảo chiều trả 400"
