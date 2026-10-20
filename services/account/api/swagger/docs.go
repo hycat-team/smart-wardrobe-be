@@ -3141,10 +3141,20 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "deviceIp": {
+                    "type": "string"
+                },
+                "deviceName": {
+                    "description": "029 D-07: where the event came from. Absent for rows written before the\nmigration (no source to backfill) and whenever the client sent nothing, so\n\"not recorded\" stays distinguishable from an empty string.",
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "occurredAt": {
+                    "type": "string"
+                },
+                "userAgent": {
                     "type": "string"
                 },
                 "userEmail": {
