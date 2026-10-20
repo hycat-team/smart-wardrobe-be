@@ -207,4 +207,5 @@ cutover — the earlier part is not silently included.
 - Down migration drops both tables and their indexes. It deliberately does **not** drop `btree_gist`,
   which is shared infrastructure and may pre-exist.
 - Rollback loses history. This is not routine: a down/up cycle in production discards every interval and
-  re-backfills only the current window, moving the cutover forward. Release notes must say so.
+  re-backfills only the current window, moving the cutover forward. The PR description / deployment note must say so; there is no
+release-notes artifact in this repository.

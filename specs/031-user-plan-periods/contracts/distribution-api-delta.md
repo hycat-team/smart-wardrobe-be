@@ -119,4 +119,4 @@ to `SubscriptionDistributionRes` with `omitempty`.
 3. Period before the cutover: `unavailable`, empty buckets; render an empty state, not a zero chart.
 4. No period: current snapshot; `complete` (and `dataAvailableFrom` if the row exists).
 5. Cutover row missing: period request is `unavailable` with `dataAvailableFrom` omitted; snapshot
-   remains `complete` with both fields omitted.
+   remains `complete` (the completeness field is emitted) and omits only `dataAvailableFrom`.
