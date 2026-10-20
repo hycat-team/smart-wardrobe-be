@@ -200,3 +200,9 @@ bịa ra sai.
     (`TestRegrantingALiveSamePlanKeepsAutoRenewAndStartsAFreshPeriod`), admin idempotency
     (`TestAdminGrantBatchDifferentKeyGrantsAgain` sửa kỳ vọng: khoá khác cấp lại nhưng không cộng
     ngày).
+- **TRẠNG THÁI (2026-10-20 — RESOLVED, docs-only)**: bất biến đã được viết thành tài liệu chuẩn tại
+  [policy-grant-window.md](../../docs/system-design/policy-grant-window.md): predicate
+  `effective_from <= t AND (effective_to IS NULL OR effective_to > t)`, **không lọc `status`**; bảng
+  status × cửa sổ; hai consumer (reader `GetCurrentGrant` và checker
+  `database/scripts/07-verify_policy_grants.sql` §4/§4b); quy tắc sửa đồng bộ hai bên. Link từ
+  `ai-cost-control.md` và `grant-restore-runbook.md`. Không đổi code.

@@ -6,6 +6,11 @@
 Bối cảnh kiến trúc và lý do không tự động hoá nằm ở
 [ADR 013](../decisions/013-deferred-lazy-grant-self-heal.md).
 
+Định nghĩa "grant đang có hiệu lực" mà reader và script kiểm tra dùng chung — cửa sổ
+`effective_from <= t < effective_to`, **không lọc `status`** — nằm ở
+[Policy grant windows](../system-design/policy-grant-window.md). Đọc tài liệu đó trước khi sửa
+script hoặc truy vấn grant.
+
 ---
 
 ## ⚠ ĐỌC TRƯỚC KHI CHẠY — hai giới hạn đã biết của công cụ này

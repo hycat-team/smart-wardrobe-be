@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	shareddb "smart-wardrobe-be/shared/infrastructure/db"
+	campaigndb "smart-wardrobe-be/shared/testing/campaigndb"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -66,6 +67,7 @@ func openRegistryTestDB(t *testing.T) *gorm.DB {
 	if err := shareddb.RunMigrations(context.Background(), dbConn, accountmigrations.EmbedFS, "goose_db_version", true, zap.NewNop()); err != nil {
 		t.Fatalf("run migrations: %v", err)
 	}
+	campaigndb.LockAndPurge(t, dbConn)
 	t.Cleanup(func() {
 		dbConn.Exec("DELETE FROM subscription.campaign_claims WHERE campaign_code LIKE ?", integrationCampaignPrefix+"%")
 		dbConn.Exec("DELETE FROM subscription.campaigns WHERE code LIKE ?", integrationCampaignPrefix+"%")

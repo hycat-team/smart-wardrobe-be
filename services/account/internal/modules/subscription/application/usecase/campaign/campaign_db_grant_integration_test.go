@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 	shareddb "smart-wardrobe-be/shared/infrastructure/db"
+	campaigndb "smart-wardrobe-be/shared/testing/campaigndb"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -85,6 +86,7 @@ func openGrantTestDB(t *testing.T) *gorm.DB {
 	// Before the cleanup below is registered, so the seed comes back LAST: cleanups run
 	// last-in-first-out, and a database left without `launch-2026-10` would fail
 	// another package's tests for every later run (026 T081).
+	campaigndb.LockAndPurge(t, dbConn)
 	isolateSeededCampaign(t, dbConn)
 	t.Cleanup(func() {
 		// Claims first: the ledger names the campaign as text and has no foreign key,

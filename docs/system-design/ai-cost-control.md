@@ -9,6 +9,8 @@ This document is for developers (Developer Guide) to understand the structure, p
 The AI cost management system is designed independently of subscription plan identifiers (no hard-coded `plan_slug`). It operates based on a dynamic **Policy Engine** mechanism:
 
 1. **Dynamic Policy Resolution**: When a user sends an AI request, the system will determine the active **Policy Grant** of that user to apply constraints.
+
+   "Active" is defined by the validity window, not by the `status` column: a grant is readable at `t` when `effective_from <= t AND (effective_to IS NULL OR effective_to > t)`, with no status filter. The reader and the database verification script share that definition — see [Policy grant windows](policy-grant-window.md).
 2. **Reservation-First**: Every AI request using a paid model must reserve a budget (Reserved Cost) based on the actual input Tokens and maximum output Tokens before sending the request to the AI provider.
 3. **Graceful Fallback**: When financial limits are exceeded or technical issues occur from the paid model, the system automatically downgrades to a free model (Gemma/local) or switches to local processing algorithms (local algorithms).
 

@@ -12,6 +12,7 @@ import (
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	shareddb "smart-wardrobe-be/shared/infrastructure/db"
+	campaigndb "smart-wardrobe-be/shared/testing/campaigndb"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -72,6 +73,7 @@ func openCloseTestDB(t *testing.T, prefix string) *gorm.DB {
 	}
 	// Registered before the prefix cleanup below, so the seeded campaign is restored
 	// LAST (cleanups are last-in-first-out) — 026 T081.
+	campaigndb.LockAndPurge(t, dbConn)
 	isolateSeededCampaign(t, dbConn)
 	t.Cleanup(func() {
 		// Claims first: the ledger names the campaign as text and has no foreign key,

@@ -19,6 +19,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 	"smart-wardrobe-be/shared/domain/constants/adminaudit"
 	shareddb "smart-wardrobe-be/shared/infrastructure/db"
+	campaigndb "smart-wardrobe-be/shared/testing/campaigndb"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -90,6 +91,7 @@ func openAuditTestDB(t *testing.T) *gorm.DB {
 	// added to this file later would otherwise meet a row this file never created, and
 	// `TestIntegrationAnUnknownCampaignCodeNeverAnswersAnEmptyTrail` in particular
 	// would be asserting against a registry it had not isolated.
+	campaigndb.LockAndPurge(t, dbConn)
 	isolateSeededCampaign(t, dbConn)
 	t.Cleanup(func() {
 		dbConn.Exec("DELETE FROM subscription.campaign_claims WHERE campaign_code LIKE ?", dbAuditPrefix+"%")

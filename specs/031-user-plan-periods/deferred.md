@@ -33,3 +33,22 @@ Các mục dưới đây nằm ngoài phạm vi feature và **không** phải ta
   lệch so với DB thật trước 031 (thiếu `identity.user_activity_events` và 3 bảng campaign của 025,
   thiếu 1 FK `subscription.campaign_claims → identity.users`) — đã cập nhật đúng số thật trong T032.
 - Không sửa `subscription.user_subscriptions` và không thêm job/endpoint ngoài phạm vi 031.
+## TRẠNG THÁI (2026-10-20 — RESOLVED)
+
+Nguyên nhân đầy đủ hơn mô tả ban đầu: ngoài row rác từ lần chạy lỗi, `go test
+./internal/modules/subscription/...` chạy package `application/usecase/campaign` và
+`infrastructure/persistence` **song song** trên cùng `TEST_DATABASE_URL`; cả hai seed `verify-026-*`
+và `requireRegistryIsolatedTo` thấy row của bên kia là "foreign".
+
+Cách gỡ:
+- Helper test-only `shared/testing/campaigndb` lấy session advisory lock
+  `pg_advisory_lock(hashtextextended('closy.campaign-registry-fixtures', 0))` trên một connection
+  cố định (`lock_timeout` 60s), rồi dọn `verify-026-%` (claims trước, campaigns sau).
+- Bốn opener của fixture campaign (audit, grant, close, persistence repo) gọi `LockAndPurge` sau
+  migrate và trước khi seed/assert isolation.
+- Regression test `TestIntegrationCampaignOpenerPurgesStaleFixturesUnderTheLock` chèn sẵn row
+  `verify-026-stale-*` rồi mở fixture bình thường, chứng minh row bị dọn và registry sạch.
+- `requireRegistryIsolatedTo` giữ nguyên độ chặt, không nới lỏng assertion.
+
+Kiểm chứng: chạy subtree `./internal/modules/subscription/...` không `-p 1`, hai lần liên tiếp trên
+cùng DB, đều xanh.
