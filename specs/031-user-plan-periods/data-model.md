@@ -92,6 +92,9 @@ cutoff or claims complete history.
 `source=admin_restore` is checked FIRST and overrides every row below: such an event is an absolute
 no-op — it repairs AI grants, not the subscription window, and must never overwrite a newer interval.
 
+For every writing branch the recorder first takes `pg_advisory_xact_lock(hashtext(user_id))` inside the
+caller's transaction. This is the PRIMARY per-user serialization (it works in the partial-unique
+fallback too); the `FOR UPDATE` read of the current row is the second guard.
 `current` = the user's latest row by `valid_from` (tie-break `created_at DESC, id DESC`) - it may be
 finite with a future `valid_to` or open-ended - read `FOR UPDATE` inside the caller's transaction.
 It is NOT only the `valid_to IS NULL` row: a paid interval already has its expiry set. `effective = event.EffectiveAt`. `closeAt = min(current.valid_to, effective)` when
@@ -104,8 +107,10 @@ It is NOT only the `valid_to IS NULL` row: a paid interval already has its expir
 | `ACTIVATED`, `UPGRADED`, `OVERLAID` | otherwise | close at `closeAt`; insert new row from `effective` with `valid_to = sub.ExpiresAt` |
 | `EXTENDED` | current row exists | `valid_to = sub.ExpiresAt`; no new row |
 | `EXTENDED` | no current row | insert the current window from `sub.StartedAt` |
-| `SUBSCRIPTION_DOWNGRADED_TO_FREE` | any | close at `closeAt`; insert free row from `closeAt`, `valid_to NULL` |
-| `LIFETIME_FALLBACK_RESTORED` | any | close at `closeAt`; insert lifetime row from `closeAt`, `valid_to NULL` |
+| `SUBSCRIPTION_DOWNGRADED_TO_FREE` | `closeAt > current.valid_from` | close at `closeAt`; insert free row from `closeAt`, `valid_to NULL` |
+| `SUBSCRIPTION_DOWNGRADED_TO_FREE` | `closeAt <= current.valid_from` | replace the current row with the free snapshot; no zero-length row |
+| `LIFETIME_FALLBACK_RESTORED` | `closeAt > current.valid_from` | close at `closeAt`; insert lifetime row from `closeAt`, `valid_to NULL` |
+| `LIFETIME_FALLBACK_RESTORED` | `closeAt <= current.valid_from` | replace the current row with the lifetime snapshot |
 | `AUTO_RENEW_UPDATED` | any | no-op |
 
 Rules that follow:

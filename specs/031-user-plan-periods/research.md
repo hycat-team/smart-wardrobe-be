@@ -52,7 +52,9 @@ constraint in a subtransaction. If either fails, it creates a partial unique ind
 `(user_id) WHERE valid_to IS NULL` instead and raises a notice.
 
 **Rationale**: a validity history is wrong the moment two intervals for one user overlap; a database
-constraint keeps that true even if a future code path bypasses the recorder. `tstzrange` treats a NULL
+constraint keeps that true even if a future code path bypasses the recorder. In the fallback the
+recorder's per-user advisory lock serializes writers before they read the current row, so the two
+concurrent switches cannot create overlapping closed intervals even without the exclusion constraint. `tstzrange` treats a NULL
 upper bound as infinity, matching free/lifetime plans. Adjacent intervals (`end == start`) do not
 overlap under `[)`. The adaptive form keeps the schema portable across self-hosted and managed
 PostgreSQL (constitution VIII) without a code/config fork; the full exclusion constraint is used
@@ -60,8 +62,8 @@ wherever `btree_gist` is available.
 
 **Alternatives considered**:
 - *Partial unique only*: guarantees at most one open-ended interval but allows two closed intervals to overlap. It is
-  the automatic fallback, not the preferred shape; the recorder's `FOR UPDATE` on the current row is the
-  primary control there.
+  the automatic fallback, not the preferred shape; the recorder's per-user `pg_advisory_xact_lock` is the primary control there,
+  with the `FOR UPDATE` row lock as the second guard.
 - *Hard-fail when the extension is missing*: turns a schema portability problem into a deploy failure
   and forces a per-environment code/config change. Rejected.
 - *Application-only check*: loses the invariant on the first concurrent writer. Rejected.
@@ -97,7 +99,9 @@ run time and leave a gap (drops the user from every bucket). Both rejected.
 `EffectiveAt = sub.StartedAt` for the plan the user already holds. Closing at that instant would produce
 `valid_to == valid_from` and violate the check constraint. The recorder therefore no-ops when the
 target plan equals the current interval and replaces the current row (rather than closing it) whenever
-`closeAt <= current.valid_from`. This also covers provisioning + first grant in the same transaction.
+`closeAt <= current.valid_from`. This also covers provisioning + first grant in the same transaction. ecordFallback applies the same
+replacement rule when closeAt <= current.valid_from, so a downgrade/restore at a boundary cannot emit a
+zero-length interval.
 
 ## R6 — Backfill location and form
 

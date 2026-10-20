@@ -178,8 +178,10 @@ Rules that follow:
 - A lapse (paid interval expired before a later purchase) leaves a gap between `valid_to` and the new
   `valid_from`. `FR-002` only requires contiguity for continuous switches; a lapse is not a switch, and
   a gap is the honest answer.
-- The recorder reads the current row `FOR UPDATE`. The admin-restore path does not take the subscription
-row lock, so the interval row lock plus the non-overlap constraint serializes writes. Additionally,
+- The recorder takes pg_advisory_xact_lock(hashtext(user_id)) and then reads the current row FOR UPDATE.
+The advisory lock is the primary per-user serialization and is what keeps the fallback variant safe;
+the row lock and non-overlap constraint are the second guard. The admin-restore path does not take the
+subscription row lock, but it is an absolute no-op before this point, so it cannot race a write. Additionally,
 any event whose metadata carries `source=admin_restore` is an absolute no-op in the recorder: a repair
 changes AI grants, not the subscription window, and must not overwrite a newer interval that a
 concurrent purchase created between the restore's read and its write.
