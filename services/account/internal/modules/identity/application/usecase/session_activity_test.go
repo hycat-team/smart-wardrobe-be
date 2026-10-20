@@ -51,7 +51,10 @@ func newActivityFixtureDB(t *testing.T) *gorm.DB {
 			user_id TEXT NOT NULL,
 			activity_type TEXT NOT NULL,
 			occurred_at DATETIME NOT NULL,
-			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+			created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+			device_name TEXT,
+			device_ip TEXT,
+			user_agent TEXT
 		)`).Error)
 	t.Cleanup(func() {
 		_ = dbConn.Exec(`DROP TABLE IF EXISTS user_activity_events`).Error
@@ -100,18 +103,35 @@ func TestIssueSessionRecordsLoginActivity(t *testing.T) {
 		nil,
 	)
 
-	res, err := uc.IssueSession(context.Background(), user, usecase.SessionDevice{})
+	deviceName := "iPhone 15"
+	deviceIP := "203.0.113.7"
+	userAgent := "Closy/1.0 (iOS 18)"
+	res, err := uc.IssueSession(context.Background(), user, usecase.SessionDevice{
+		Name: &deviceName, IP: &deviceIP, UserAgent: &userAgent,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
 	var rows []struct {
 		ActivityType string
 		UserID       string
+		DeviceName   *string
+		DeviceIP     *string
+		UserAgent    *string
 	}
 	require.NoError(t, dbConn.Raw(
-		`SELECT activity_type, user_id FROM user_activity_events`,
+		`SELECT activity_type, user_id, device_name, device_ip, user_agent FROM user_activity_events`,
 	).Scan(&rows).Error)
 	require.Len(t, rows, 1, "one login must write exactly one activity event")
 	assert.Equal(t, "login", rows[0].ActivityType)
 	assert.Equal(t, user.ID.String(), rows[0].UserID)
+
+	// 029 D-07: the event must carry where the login came from, or the admin list
+	// cannot answer the question the columns exist for.
+	require.NotNil(t, rows[0].DeviceName)
+	require.NotNil(t, rows[0].DeviceIP)
+	require.NotNil(t, rows[0].UserAgent)
+	assert.Equal(t, deviceName, *rows[0].DeviceName)
+	assert.Equal(t, deviceIP, *rows[0].DeviceIP)
+	assert.Equal(t, userAgent, *rows[0].UserAgent)
 }

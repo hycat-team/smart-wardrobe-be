@@ -18,5 +18,8 @@ func MapToActivityEventRes(row repositories.AdminActivityEventRow) *dto.Activity
 		UserEmail:     row.Email,
 		UserFirstName: row.FirstName,
 		UserLastName:  row.LastName,
+		DeviceName:    row.DeviceName,
+		DeviceIP:      row.DeviceIP,
+		UserAgent:     row.UserAgent,
 	}
 }

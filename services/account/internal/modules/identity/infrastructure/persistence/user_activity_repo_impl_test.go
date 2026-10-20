@@ -116,7 +116,10 @@ func openActivitySQLite(t *testing.T, capture gormlogger.Interface) *gorm.DB {
 			user_id TEXT NOT NULL,
 			activity_type TEXT NOT NULL,
 			occurred_at DATETIME NOT NULL,
-			created_at DATETIME NOT NULL
+			created_at DATETIME NOT NULL,
+			device_name TEXT,
+			device_ip TEXT,
+			user_agent TEXT
 		)`).Error)
 	t.Cleanup(func() {
 		_ = dbConn.Exec(`DROP TABLE IF EXISTS user_activity_events`).Error
@@ -231,6 +234,7 @@ func TestListAdminActivityEventsSQLPinsJoinOrderAndMatchingCount(t *testing.T) {
 	}
 	for _, column := range []string{
 		"e.id", "e.user_id", "e.activity_type", "e.occurred_at", "e.created_at",
+		"e.device_name", "e.device_ip", "e.user_agent",
 		"u.email", "u.first_name", "u.last_name",
 	} {
 		if !strings.Contains(selectStmt, column) {

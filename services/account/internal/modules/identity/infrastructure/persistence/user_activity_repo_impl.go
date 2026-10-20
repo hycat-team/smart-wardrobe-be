@@ -65,6 +65,7 @@ func (r *UserActivityRepository) ListAdmin(
 	var rows []repositories.AdminActivityEventRow
 	query := db.
 		Select("e.id, e.user_id, e.activity_type, e.occurred_at, e.created_at, " +
+			"e.device_name, e.device_ip, e.user_agent, " +
 			"u.email, u.first_name, u.last_name").
 		Joins("LEFT JOIN users u ON u.id = e.user_id").
 		Order("e.occurred_at DESC, e.id DESC")

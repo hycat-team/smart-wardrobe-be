@@ -41,7 +41,10 @@ Hợp đồng chi tiết: `specs/029-admin-observability/contracts/admin-api-del
         "createdAt": "2026-10-15T08:31:02+07:00",
         "userEmail": "user@example.com",
         "userFirstName": "An",
-        "userLastName": "Nguyễn"
+        "userLastName": "Nguyễn",
+        "deviceName": "iPhone 15",
+        "deviceIp": "203.0.113.7",
+        "userAgent": "Closy/1.0 (iOS 18)"
       }
     ],
     "metadata": { "page": 1, "limit": 20, "totalItems": 1, "totalPages": 1 }
@@ -53,6 +56,7 @@ Hợp đồng chi tiết: `specs/029-admin-observability/contracts/admin-api-del
     *   Sắp xếp `occurredAt` giảm dần (tie-break `id`).
     *   `userFirstName`/`userLastName` có thể vắng mặt khi người dùng chưa đặt tên (NULL); `userEmail` luôn có.
     *   Sự kiện của tài khoản đã bị vô hiệu hoá (soft delete) vẫn hiển thị kèm danh tính.
+    *   **Thay đổi 029/D-07 — `deviceName`, `deviceIp`, `userAgent`:** trước đây response chỉ có danh tính và thời điểm, admin phải ghép với bảng session để biết đăng nhập từ đâu. Nay 3 trường này được ghi cùng sự kiện (lấy từ session tương ứng: input khi login, token/input khi refresh). Chúng **vắng mặt** khi: (a) sự kiện được ghi trước migration này (không có nguồn để backfill), hoặc (b) client không gửi thông tin thiết bị. Không có giá trị mặc định thay thế — vắng mặt nghĩa là "không ghi nhận". Dữ liệu được lưu đầy đủ và hiển thị nguyên văn cho admin; không có job purge riêng, vòng đời bằng vòng đời bản ghi activity.
 *   **Mã lỗi:**
     *   `400 Bad Request`: filter/kỳ ngày sai định dạng hoặc `fromDate > toDate` (thông báo tiếng Việt).
     *   `401 Unauthorized`: thiếu/sai token.

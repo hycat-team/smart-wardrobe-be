@@ -18,6 +18,14 @@ type UserActivityEvent struct {
 	ActivityType useractivitytype.UserActivityType `gorm:"type:varchar(20);not null"`
 	OccurredAt   time.Time                         `gorm:"type:timestamp with time zone;not null;default:now()"`
 	CreatedAt    time.Time                         `gorm:"type:timestamp with time zone;not null;default:now()"`
+
+	// 029 D-07: copied from the session this event belongs to, so an admin can
+	// answer "which device/IP did this login come from" without a timestamp join.
+	// Pointers because the columns are nullable: rows written before the migration
+	// have no source, and "not recorded" must stay distinguishable from "empty".
+	DeviceName *string `gorm:"type:varchar(255)"`
+	DeviceIP   *string `gorm:"type:varchar(45)"`
+	UserAgent  *string `gorm:"type:varchar(512)"`
 }
 
 func (UserActivityEvent) TableName() string {

@@ -125,7 +125,7 @@ func (uc *SessionUseCase) IssueSession(ctx context.Context, user *entities.User,
 		return nil, err
 	}
 
-	uc.recordActivity(ctx, user.ID, useractivitytype.Login)
+	uc.recordActivity(ctx, user.ID, useractivitytype.Login, rt.DeviceName, rt.DeviceIP, rt.UserAgent)
 
 	return &dto.TokenRes{
 		AccessToken:  accessToken,
@@ -136,7 +136,16 @@ func (uc *SessionUseCase) IssueSession(ctx context.Context, user *entities.User,
 // recordActivity appends one row to the activity log that feeds the admin
 // dashboard DAU. Best-effort on purpose: the log exists for statistics, and
 // failing a login or a refresh over a metrics row would be the wrong trade.
-func (uc *SessionUseCase) recordActivity(ctx context.Context, userID uuid.UUID, activityType useractivitytype.UserActivityType) {
+//
+// 029 D-07: the device fields come from the session this event belongs to, so the
+// admin list can answer "from where" without joining sessions by timestamp. They
+// are pointers and may be nil when the client sent nothing.
+func (uc *SessionUseCase) recordActivity(
+	ctx context.Context,
+	userID uuid.UUID,
+	activityType useractivitytype.UserActivityType,
+	deviceName, deviceIP, userAgent *string,
+) {
 	if uc.activityRepo == nil {
 		return
 	}
@@ -144,6 +153,9 @@ func (uc *SessionUseCase) recordActivity(ctx context.Context, userID uuid.UUID, 
 		UserID:       userID,
 		ActivityType: activityType,
 		OccurredAt:   time.Now(),
+		DeviceName:   deviceName,
+		DeviceIP:     deviceIP,
+		UserAgent:    userAgent,
 	})
 }
 
@@ -250,7 +262,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 
 	// Recorded after the transaction on purpose: the token rotation must not
 	// fail because a metrics row could not be written.
-	uc.recordActivity(ctx, userID, useractivitytype.Refresh)
+	uc.recordActivity(ctx, userID, useractivitytype.Refresh, deviceName, deviceIP, userAgent)
 
 	return &dto.TokenRes{
 		AccessToken:  newAccessToken,

@@ -25,6 +25,11 @@ type AdminActivityEventRow struct {
 	Email        string
 	FirstName    *string
 	LastName     *string
+	// 029 D-07: recorded from the session that produced the event. Nil for rows
+	// written before the migration (there is no source to backfill from).
+	DeviceName *string
+	DeviceIP   *string
+	UserAgent  *string
 }
 
 type UserAdminStatsDTO struct {

@@ -112,6 +112,27 @@ Nothing here blocks closing 029; nothing here is a task of 029.
   sessions theo thời điểm) kèm cân nhắc PII.
 - **Ảnh hưởng tới task đã tick**: không.
 
+- **TRẠNG THÁI (2026-10-20 — RESOLVED)**: chọn hướng "ghi cùng sự kiện" (không join session
+  theo thời điểm):
+  - Migration `services/account/.../20261020131000_add_activity_device_columns.sql` thêm
+    `device_name varchar(255)`, `device_ip varchar(45)`, `user_agent varchar(512)` vào
+    `identity.user_activity_events` (cùng kiểu `identity.refresh_tokens`), có `Down`; đã kiểm tra
+    vòng up→down→up.
+  - Write path: `SessionUseCase.recordActivity` nhận device; login lấy từ input, refresh lấy từ
+    token cũ hoặc input ghi đè (đúng nguồn session đang dùng).
+  - Read path: entity → repo SELECT/`AdminActivityEventRow` → `ActivityEventRes` → mapper; cả ba
+    field là con trỏ nên JSON **vắng mặt** với hàng ghi trước migration hoặc khi client không gửi.
+  - Tài liệu client-facing: `docs/api/identity/admin-activity-api.md` đã thêm 3 field + mục
+    before→after, nêu rõ "vắng mặt = không ghi nhận".
+  - Test khoá: login ghi đủ 3 field (`TestIssueSessionRecordsLoginActivity`), mapper giữ field và
+    giữ `nil` cho hàng cũ (`activity_mapper_test.go`), SQL pin cột mới
+    (`TestListAdminActivityEventsSQLPinsJoinOrderAndMatchingCount`).
+  - **Quyết định PII (owner)**: lưu đầy đủ, admin thấy nguyên văn, **không purge** — vòng đời
+    bằng vòng đời bản ghi activity. Ghi ở đây để lần sau không phải suy lại.
+  - Phụ: harness `usecase/subscription` được làm cho **rerunnable** (email user theo id, dọn slug
+    fixture trước khi seed) vì lần chạy lại trên cùng DB đã lộ va chạm unique key; suite nay chạy
+    hai lần liên tiếp trên cùng DB đều xanh.
+
 ### D-08 — `GET /admin/ai/usage` (feature 012) vẫn dùng cận `created_at <=`
 
 - **Vấn đề**: endpoint usage cũ (`ai_cost_repo_impl.go`, feature 012) so `created_at <= toDate` với

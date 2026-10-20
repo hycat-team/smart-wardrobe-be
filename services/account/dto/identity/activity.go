@@ -39,6 +39,13 @@ type ActivityEventRes struct {
 	// event visible even for a soft-deleted account.
 	UserFirstName *string `json:"userFirstName,omitempty"`
 	UserLastName  *string `json:"userLastName,omitempty"`
+
+	// 029 D-07: where the event came from. Absent for rows written before the
+	// migration (no source to backfill) and whenever the client sent nothing, so
+	// "not recorded" stays distinguishable from an empty string.
+	DeviceName *string `json:"deviceName,omitempty"`
+	DeviceIP   *string `json:"deviceIp,omitempty"`
+	UserAgent  *string `json:"userAgent,omitempty"`
 }
 
 // ActivityEventListRes is the paginated envelope: same shape as every other

@@ -243,7 +243,10 @@ func openSubscriptionTestDB(t *testing.T) *gorm.DB {
 // migrated schema, so a bare uuid.New() would be refused.
 func ensureSubscriptionUser(t *testing.T, dbConn *gorm.DB, id uuid.UUID, label string) {
 	t.Helper()
-	handle := "renewal-int-" + label
+	// The handle carries the id so a second run against the same database cannot
+	// collide on `idx_users_email_lower`: these fixtures are keyed by a fresh uuid
+	// each run, so a fixed email would make the harness single-use.
+	handle := "renewal-int-" + label + "-" + id.String()
 	if err := dbConn.Exec(`
 		INSERT INTO identity.users (id, username, email, password_hash, role_slug)
 		VALUES (?, ?, ?, 'fixture-not-a-real-hash', 'user')

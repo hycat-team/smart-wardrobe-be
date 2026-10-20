@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // slugQueryBatchSize exercises the batch lookup against a table big enough that a
@@ -26,9 +27,22 @@ const slugQueryBatchSize = 50
 // query returns what the caller expects - notably that it does not filter on
 // `is_active`, which is what keeps `plan_inactive` distinguishable from
 // `plan_not_found`.
+// clearPlanFixtures makes the file rerunnable against a database that already carries
+// a previous run's rows: these slugs are deterministic (they are the lookup keys the
+// assertions name), so the second run would otherwise fail on the unique slug index.
+// Scoped to this file's own prefixes; the seeded default plans are untouched.
+func clearPlanFixtures(t *testing.T, dbConn *gorm.DB) {
+	t.Helper()
+	if err := dbConn.Exec(
+		`DELETE FROM subscription.subscription_plans
+		 WHERE slug LIKE 'batch-%' OR slug IN ('case-plan', 'findable')`).Error; err != nil {
+		t.Fatalf("clear plan fixtures: %v", err)
+	}
+}
 func TestIntegrationGetBySlugsAnyStatusResolvesTheWholeSetInOneQuery(t *testing.T) {
 	dbConn := openSubscriptionTestDB(t)
 	cleanupSubscriptionTables(t, dbConn)
+	clearPlanFixtures(t, dbConn)
 
 	ctx := context.Background()
 	planRepo := persistence.NewSubscriptionPlanRepository(dbConn)
@@ -129,6 +143,7 @@ func TestIntegrationGetBySlugsAnyStatusResolvesTheWholeSetInOneQuery(t *testing.
 func TestIntegrationGetBySlugsAnyStatusIsCaseSensitiveAgainstTheColumn(t *testing.T) {
 	dbConn := openSubscriptionTestDB(t)
 	cleanupSubscriptionTables(t, dbConn)
+	clearPlanFixtures(t, dbConn)
 
 	ctx := context.Background()
 	planRepo := persistence.NewSubscriptionPlanRepository(dbConn)
@@ -161,6 +176,7 @@ func TestIntegrationGetBySlugsAnyStatusIsCaseSensitiveAgainstTheColumn(t *testin
 func TestIntegrationGetBySlugsAnyStatusIgnoresUnindexableSlugWithoutErroring(t *testing.T) {
 	dbConn := openSubscriptionTestDB(t)
 	cleanupSubscriptionTables(t, dbConn)
+	clearPlanFixtures(t, dbConn)
 
 	ctx := context.Background()
 	planRepo := persistence.NewSubscriptionPlanRepository(dbConn)
