@@ -243,6 +243,75 @@ biến thể fallback (không có `EXCLUDE`/`btree_gist`), đây là index **duy
 lọc được theo `user_id` — GiST range không dùng được cho điều kiện `user_id =` —
 nên truy vấn vận hành phải giữ `WHERE user_id = ...`.
 
+### Đo báo cáo phân bố trên 200k khoảng (SC-004, 2026-10-20)
+
+Đo trên database tạm `verify_plan031` (PostgreSQL 17.10, đã migrate tới 031).
+Cấu hình planner mặc định của môi trường local: `random_page_cost = 4`,
+`enable_bitmapscan = on`, `work_mem = 4MB`, `shared_buffers = 128MB`.
+
+Dữ liệu đo nằm trong schema dùng một lần `perf031`, không đụng bảng thật:
+bảng cùng shape với `subscription.user_plan_periods` nhưng **không** có
+`EXCLUDE` constraint — mục đích là cô lập đúng `idx_user_plan_periods_range`
+(GiST range index có mặt ở **cả hai** biến thể migration; index của EXCLUDE chỉ
+có khi `btree_gist` khả dụng). Seed 200.000 khoảng của 200.000 user tổng hợp,
+`valid_from` rải trong 365 ngày gần nhất, mỗi khoảng đóng dài 30 ngày, cứ 25
+dòng thì một dòng `valid_to IS NULL` (free/lifetime), sau đó `ANALYZE`.
+Mỗi truy vấn chạy **50 lần** trong một session; p95 lấy bằng
+`percentile_cont(0.95) WITHIN GROUP (ORDER BY ms)`.
+
+Kỳ đo là cửa sổ 30 ngày `[now() - 30 days, now())`; "snapshot" là
+`tstzrange(valid_from, valid_to, '[)') @> now()`. Kết quả 200k:
+
+| Shape | Interval khớp | p50 (ms) | **p95 (ms)** | max (ms) |
+|---|---:|---:|---:|---:|
+| cả hai bound (kỳ 30 ngày) | 39.565 | 34,58 | **37,47** | 43,46 |
+| chỉ `from` | 39.565 | 35,41 | **36,14** | 36,65 |
+| snapshot (`@> now()`) | 23.782 | 20,43 | **21,31** | 21,53 |
+| chỉ `to` (toàn bảng) | 200.000 | 195,36 | **199,63** | 201,70 |
+
+`EXPLAIN (ANALYZE, BUFFERS)` của kỳ 30 ngày xác nhận GiST range index:
+
+```text
+GroupAggregate  (actual time=39.891..43.193 rows=4 loops=1)
+  ->  Sort  (actual time=38.708..40.108 rows=39565 loops=1)
+        Sort Key: plan_code, user_id
+        ->  Bitmap Heap Scan on user_plan_periods  (actual time=5.808..14.408 rows=39565 loops=1)
+              Recheck Cond: (tstzrange(valid_from, valid_to, '[)'::text)
+                             && tstzrange((now() - '30 days'::interval), now(), '[)'::text))
+              ->  Bitmap Index Scan on idx_user_plan_periods_range  (actual time=5.380..5.380 rows=39565 loops=1)
+                    Index Cond: (tstzrange(valid_from, valid_to, '[)'::text)
+                                 && tstzrange((now() - '30 days'::interval), now(), '[)'::text))
+Execution Time: 43.477 ms
+```
+
+Snapshot cũng dùng đúng index này (`Bitmap Index Scan on
+idx_user_plan_periods_range`, 23.782 dòng, `Execution Time: 24.944 ms`).
+Riêng shape "chỉ `to`" cố ý **không** dùng index: predicate `(-∞, now())`
+khớp toàn bộ 200.000 dòng nên planner chọn `Seq Scan` (227 ms) — index không
+thể thu hẹp khi mọi dòng đều thoả.
+
+**Bố cục worst-case lúc deploy** (200.000 khoảng của 200.000 user, *tất cả*
+giao kỳ 30 ngày): p50 223,43 ms, **p95 229,09 ms**, max 235,57 ms; snapshot p95
+194,07 ms. `EXPLAIN` cho thấy `Seq Scan` + `GroupAggregate` + `Sort` (predicate
+khớp 100% bảng nên index không thể thu hẹp); `Execution Time: 236.498 ms`. Dù
+vậy vẫn thấp hơn ngưỡng 1 giây hơn 4 lần. Đây là hình dạng đúng của lần deploy
+đầu (mỗi user đúng một cửa sổ hiện tại), nên SC-004 không chỉ đạt ở layout
+"rải 365 ngày" mà cả ở worst-case.
+
+**1 triệu khoảng (tham khảo)**: thêm 800.000 dòng cùng layout rồi đo lại 50
+lần. Kỳ 30 ngày khớp 197.823 khoảng: p50 236,93 ms, **p95 395,59 ms**, max
+533,64 ms; snapshot p95 164,73 ms. `EXPLAIN` vẫn là
+`Bitmap Index Scan on idx_user_plan_periods_range` (211.902 dòng index,
+`Execution Time: 252.158 ms`, có đọc đĩa lần đầu). Không có dấu hiệu plan
+"xẹp" sang sequential scan khi dữ liệu tăng 5 lần.
+
+**Kết luận SC-004: ĐẠT.** Với 200.000 khoảng, p95 của báo cáo kỳ 30 ngày là
+**37,47 ms**, thấp hơn ngưỡng 1.000 ms khoảng 26 lần; ngay cả worst-case 200k
+(tất cả khoảng giao kỳ, `Seq Scan` toàn bảng) cũng chỉ **229,09 ms**. Ở 1 triệu
+khoảng, p95 vẫn dưới 1 giây (395,59 ms). Sau khi đo, schema `perf031` được
+`DROP ... CASCADE`; `subscription.user_plan_periods` trở về 0 dòng, database
+không còn dữ liệu seed.
+
 ---
 
 ## Lưu ý vận hành

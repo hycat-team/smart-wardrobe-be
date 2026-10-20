@@ -130,3 +130,72 @@ docker exec -e PGPASSWORD=123456 postgres-closy-dev psql -U admin -d smart_wardr
 ```
 
 `btree_gist` is left installed in the cluster; the down migration intentionally does not drop it.
+
+## 6. Kiểm chứng feature 031 (2026-10-20)
+
+Chạy trên database tạm `verify_plan031` (fresh, migrate tới 031). Các test
+integration tự tạo database dùng một lần rồi drop, nên `verify_plan031` không
+bị để lại fixture sau khi chạy.
+
+### 6.1 Migration up/down/up
+
+```powershell
+make SHELL=C:/Windows/System32/cmd.exe migrate-version svc=account DB_NAME=verify_plan031
+make SHELL=C:/Windows/System32/cmd.exe migrate-down   svc=account DB_NAME=verify_plan031
+make SHELL=C:/Windows/System32/cmd.exe migrate-up     svc=account DB_NAME=verify_plan031
+```
+
+Kết quả: version trước là `20261020150000`; down `OK (4.62ms)`; up
+`OK (8.98ms)`. Sau chu trình: `subscription.user_plan_periods` = 0 dòng (DB
+không có user thật), `plan_history_meta` có đúng 1 row `cutover` mới, và
+`ex_user_plan_periods_no_overlap` + `idx_user_plan_periods_range` tồn tại.
+
+### 6.2 Test đã chạy
+
+```powershell
+$env:TEST_DATABASE_URL="postgres://admin:123456@localhost:5432/verify_plan031?sslmode=disable&search_path=public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
+$env:TEST_DATABASE_ALLOW_REGISTRY_ROLLBACK="true"
+Set-Location services/account
+go test -race -count=1 -timeout 25m -run 'TestIntegrationUserPlanPeriods|TestIntegrationPlanPeriod|TestIntegrationUserPlanPeriodDistribution|TestPlan031MigrationSplitter|TestPlanPeriodRecorder' ./internal/modules/subscription/... -v
+go test -race -count=1 ./internal/modules/subscription/application/usecase/admin_stats/... ./internal/modules/subscription/infrastructure/persistence/... ./contract/subscription/...
+Set-Location ../commerce
+go test -race -count=1 ./internal/modules/dashboard/...
+```
+
+| Kịch bản | Test / bằng chứng | Kết quả |
+|---|---|---|
+| Backfill tạo đúng 1 interval/user, snapshot `plan_name`, ghi cutover | `TestIntegrationUserPlanPeriodsBackfillAndCutover` | PASS |
+| Preflight chặn row `expires_at <= started_at` và nêu `user_id` | `TestIntegrationUserPlanPeriodsPreflightAborts` | PASS (SQLSTATE `P0001`, message có user id) |
+| Biến thể EXCLUDE: chồng lấn bị chặn | `TestIntegrationUserPlanPeriodsOverlapGuard` | PASS (`23P01`) |
+| Biến thể fallback (role không có `CREATE EXTENSION`): partial unique + mở thứ hai bị chặn | `TestIntegrationUserPlanPeriodsFallbackWithoutExtensionPrivilege` | PASS (`23505`) |
+| Lifecycle activate → extend → upgrade → downgrade; downgrade muộn; thay thế khoảng 0; lifetime overlay/restore | `TestIntegrationPlanPeriodRecorderLifecycle` | PASS (4/4 subtest) |
+| Kỳ một phía: chỉ `from` loại khoảng tương lai; chỉ `to` để hở cận dưới; snapshot dùng `@> now()` | `TestDistributionFromOnlyExcludesFutureIntervals`, `TestDistributionToOnlyLeavesTheLowerBoundOpen`, `TestDistributionSnapshotUsesTheIntervalContainingNow` | PASS |
+| `partial` cắt kỳ lên cutover; `unavailable` khi kỳ kết thúc trước mốc; snapshot vẫn `complete` khi thiếu row cutover | `TestGetSubscriptionDistributionClipsAPartialPeriod`, `TestGetSubscriptionDistributionMarksPeriodUnavailableWithoutCutover`, `TestGetSubscriptionDistributionSnapshotKeepsTheCutoverDate`, `TestResolveDistributionWindow` | PASS |
+| Đồng thời hai thay đổi cùng user, EXCLUDE variant: advisory lock serialize, không chồng lấn | `TestIntegrationPlanPeriodRecorderConcurrentChanges` | PASS |
+| Đồng thời trên fallback variant (chỉ partial unique) | `TestIntegrationPlanPeriodRecorderFallbackConcurrentChanges` | PASS |
+| Idempotency khi retry cùng `event_key`; recorder lỗi rollback cả event và interval | `TestIntegrationPlanPeriodRecorderPublishIsIdempotent`, `TestPlanPeriodRecorderPublisherRetryAddsOneInterval`, `TestIntegrationPlanPeriodRecorderFailureRollsBackBothRows` | PASS |
+| Lịch sử 4 bước của một user: thứ tự, nối tiếp, lapse có khoảng hở, free/lifetime `valid_to IS NULL` | `TestIntegrationUserPlanPeriodsHistoryByUser` | PASS (3/3 subtest) |
+| Báo cáo phân bố: hạ gói sau kỳ vẫn ở gói cũ, đổi gói giữa kỳ ở cả hai bucket, kỳ cắt cutover, kỳ một phía, snapshot | `TestIntegrationUserPlanPeriodDistributionLifecycles` | PASS |
+| Tương thích client cũ: JSON cũ vẫn đọc `distribution`/`totalUsers`, client cũ bỏ qua field mới, `dataAvailableFrom` đúng `YYYY-MM-DD`, proto bỏ qua field lạ | `TestSubscriptionDistributionResDecodesTheLegacyJSONShape`, `TestLegacyDistributionClientDecodesTheNewPayload`, `TestDataAvailableFromIsAVNCalendarDate`, `TestDistributionListIgnoresUnknownProtoFields` | PASS |
+
+### 6.3 Hiệu năng (SC-004)
+
+Đo riêng trong schema dùng một lần (không phải test tự động): 200.000 khoảng,
+kỳ 30 ngày, 50 lần/bound shape. p95 = **37,47 ms** ở layout rải 365 ngày và
+**229,09 ms** ở worst-case 200k cùng giao kỳ (ngưỡng SC-004: 1.000 ms) →
+**ĐẠT**. 1 triệu khoảng (tham khảo): p95 = **395,59 ms**. Số đo và
+`EXPLAIN (ANALYZE, BUFFERS)` đầy đủ ở
+`docs/development/technical-notes.md` mục "Đo báo cáo phân bố trên 200k khoảng
+(SC-004, 2026-10-20)". Sau khi đo, schema `perf031` đã được drop;
+`subscription.user_plan_periods` trở về 0 dòng.
+
+### 6.4 Ghi chú
+
+- Test `...FallbackWithoutExtensionPrivilege` cần role hiện tại là superuser để
+  tạo role hạn chế; trên môi trường không có quyền đó, subtest **skip** chứ
+  không giả vờ đã chạy.
+- `go test` cho package `infrastructure/persistence` có thể mất ~15 giây vì mỗi
+  test migration tạo/drop database riêng; đây là chi phí harness, không phải
+  thời gian chạy migration trên database thật.
+- Không chạy `make test-db-integration` toàn bộ trong lượt này; phạm vi gate
+  đầy đủ thuộc T037.

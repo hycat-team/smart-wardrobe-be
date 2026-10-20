@@ -126,19 +126,19 @@ nhận thao tác nghiệp vụ rollback; chạy lại cùng event để xác nh�
 
 **Purpose**: Tài liệu hệ thống, deferred, đo hiệu năng, gate cuối.
 
-- [ ] T032 [P] Cập nhật inventory trong `docs/system-design/architecture.md`: dòng `subscription` 10 → 12 bảng (thêm `user_plan_periods`, `plan_history_meta`), tổng bảng 52 → 54, tổng FK và số FK của subscription tăng tương ứng (kiểm lại sau migration)
-- [ ] T033 [P] Đánh dấu `029/D-06` RESOLVED trong `specs/029-admin-observability/deferred.md`: ghi rõ chọn bảng interval thay cho snapshot định kỳ như gợi ý cũ và vì sao (chính xác theo mọi kỳ, không phụ thuộc job), hook publisher, backfill cutover, giới hạn trước cutover, task/test tương ứng
-- [ ] T034 [P] Seed 200.000 interval trên DB tạm, chạy 50 lần cho kỳ 30 ngày và snapshot để lấy p95 (kèm `EXPLAIN (ANALYZE, BUFFERS)` xác nhận GiST range index), ghi số đo (200k cho SC-004, thêm 1M để tham khảo) và kết luận đạt/không đạt vào `docs/development/technical-notes.md`; nếu trượt SC-004, thêm một task thật vào `tasks.md` cho phương án tối ưu (ví dụ pre-aggregate) và giữ SC-004 mở — không đẩy việc trong phạm vi sang `deferred.md` và không tick task khi chưa đạt
-- [ ] T035 Thêm mục "Kiểm chứng feature 031" vào `specs/031-user-plan-periods/quickstart.md` sau khi chạy hết: các kịch bản đã chạy, kết quả, và lệnh tái lập
-- [ ] T036 Chạy `make generate` để đồng bộ swagger + wire + nginx route map; xác nhận diff chỉ gồm thay đổi của feature
-- [ ] T037 Chạy gate đầy đủ: `make migration-check`, `make SHELL=C:/Windows/System32/cmd.exe lint`, `go test -race -count=3` cho `./services/account/internal/modules/subscription/...` và `./services/commerce/internal/modules/dashboard/...`, `make test-db-integration`, `make buf-lint`, kiểm tra drift bằng `make buf-gen` + `git diff --exit-code contracts/`, và cuối cùng `make check` (pre-push gate)
-- [ ] T038 Rà soát phát hiện ngoài phạm vi trong lúc làm; nếu có, ghi vào `specs/031-user-plan-periods/deferred.md` (là gì, vì sao ngoài phạm vi, gì sẽ gỡ); nếu không có, ghi rõ "không có phát hiện ngoài phạm vi"
+- [x] T032 [P] Cập nhật inventory trong `docs/system-design/architecture.md`: dòng `subscription` 10 → 12 bảng (thêm `user_plan_periods`, `plan_history_meta`), tổng bảng 52 → 54, tổng FK và số FK của subscription tăng tương ứng (kiểm lại sau migration) — *Thực tế đếm từ DB: 58 bảng, không phải 54, vì inventory cũ còn thiếu `identity.user_activity_events` (+1) và 3 bảng campaign của 025 (+3); tổng FK 85, users FK 41, subscription 17 FK (10 tới users).*
+- [x] T033 [P] Đánh dấu `029/D-06` RESOLVED trong `specs/029-admin-observability/deferred.md`: ghi rõ chọn bảng interval thay cho snapshot định kỳ như gợi ý cũ và vì sao (chính xác theo mọi kỳ, không phụ thuộc job), hook publisher, backfill cutover, giới hạn trước cutover, task/test tương ứng
+- [x] T034 [P] Seed 200.000 interval trên DB tạm, chạy 50 lần cho kỳ 30 ngày và snapshot để lấy p95 (kèm `EXPLAIN (ANALYZE, BUFFERS)` xác nhận GiST range index), ghi số đo (200k cho SC-004, thêm 1M để tham khảo) và kết luận đạt/không đạt vào `docs/development/technical-notes.md`; nếu trượt SC-004, thêm một task thật vào `tasks.md` cho phương án tối ưu (ví dụ pre-aggregate) và giữ SC-004 mở — không đẩy việc trong phạm vi sang `deferred.md` và không tick task khi chưa đạt
+- [x] T035 Thêm mục "Kiểm chứng feature 031" vào `specs/031-user-plan-periods/quickstart.md` sau khi chạy hết: các kịch bản đã chạy, kết quả, và lệnh tái lập
+- [x] T036 Chạy `make generate` để đồng bộ swagger + wire + nginx route map; xác nhận diff chỉ gồm thay đổi của feature
+- [x] T037 Chạy gate đầy đủ: `make migration-check`, `make SHELL=C:/Windows/System32/cmd.exe lint`, `go test -race -count=3` cho `./services/account/internal/modules/subscription/...` và `./services/commerce/internal/modules/dashboard/...`, `make test-db-integration`, `make buf-lint`, kiểm tra drift bằng `make buf-gen` + `git diff --exit-code contracts/`, và cuối cùng `make check` (pre-push gate)
+- [x] T038 Rà soát phát hiện ngoài phạm vi trong lúc làm; nếu có, ghi vào `specs/031-user-plan-periods/deferred.md` (là gì, vì sao ngoài phạm vi, gì sẽ gỡ); nếu không có, ghi rõ "không có phát hiện ngoài phạm vi"
 
-- [ ] T039 Thêm test tương thích client cũ tại `services/commerce/internal/modules/dashboard/application/usecase/admin_dashboard_uc_test.go`: decode JSON response cũ (không có 2 field) vẫn đọc đúng `distribution`/`totalUsers`; response mới có `dataAvailableFrom` đúng `YYYY-MM-DD`; proto decoding bỏ qua field lạ
+- [x] T039 Thêm test tương thích client cũ tại `services/commerce/internal/modules/dashboard/application/usecase/admin_dashboard_uc_test.go`: decode JSON response cũ (không có 2 field) vẫn đọc đúng `distribution`/`totalUsers`; response mới có `dataAvailableFrom` đúng `YYYY-MM-DD`; proto decoding bỏ qua field lạ
 
 ### Frontend Integration Guide *(required — hiến pháp §Governance)*
 
-- [ ] T040 **Đồng bộ guide** sau khi mã ổn định: đọc lại `frontend-guide.md` và đối chiếu với `services/commerce/internal/modules/dashboard/application/dto/admin_dashboard_dto.go` + handler, **đếm** số field JSON, số giá trị enum, số route, số HTTP status; sửa mọi lệch và ghi rõ phần nào chưa kiểm được
+- [x] T040 **Đồng bộ guide** sau khi mã ổn định: đọc lại `frontend-guide.md` và đối chiếu với `services/commerce/internal/modules/dashboard/application/dto/admin_dashboard_dto.go` + handler, **đếm** số field JSON, số giá trị enum, số route, số HTTP status; sửa mọi lệch và ghi rõ phần nào chưa kiểm được
 
 ---
 

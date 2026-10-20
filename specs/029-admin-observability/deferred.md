@@ -101,6 +101,41 @@ Nothing here blocks closing 029; nothing here is a task of 029.
 - **Gỡ bằng cách nào**: khi có yêu cầu chính xác lịch sử phân bổ, thiết kế bảng snapshot phân bổ
   định kỳ hoặc dựng lại từ `subscription_audit` + `deposit_transactions` trong một spec riêng.
 - **Ảnh hưởng tới task đã tick**: không — T027/T030/T035 khớp quyết định clarify và có test khóa.
+- **TRẠNG THÁI (2026-10-20 — RESOLVED bởi feature 031)**: chọn **bảng khoảng hiệu lực ghi cùng
+  transaction** thay cho hai gợi ý cũ (snapshot định kỳ / dựng lại từ audit + giao dịch):
+  - **Vì sao khác gợi ý cũ**: snapshot định kỳ chỉ đúng tại đúng thời điểm chụp; một kỳ bất kỳ vẫn
+    phải nội suy giữa hai lần chụp và phụ thuộc job chạy đúng giờ — job trễ hoặc chết là mất dữ liệu
+    vĩnh viễn. Dựng lại từ `subscription_audit` + `deposit_transactions` không đủ chính xác: sự kiện
+    gia hạn không ghi lại thời điểm hết hạn kết quả, còn giao dịch chỉ chứng minh việc mua, không
+    chứng minh khoảng thời gian người dùng thực sự giữ gói (spec 031 §Bối cảnh). Bảng interval trả
+    lời chính xác **mọi kỳ**, không phụ thuộc job, và không cần suy đoán.
+  - **Hook ghi**: `PlanChangePublisher.PublishPlanChange`
+    (`services/account/.../plan_change_publish_helper.go`) gọi `PlanPeriodRecorder.Record` **sau**
+    khi insert `user_subscription_events` thành công, trong **cùng transaction** của thao tác đổi
+    gói. Event trùng `event_key` return sớm nên retry không tạo khoảng thứ hai; recorder lỗi làm
+    rollback cả event lẫn khoảng. Event metadata `source=admin_restore` là no-op tuyệt đối.
+  - **Backfill + cutover**: migration `services/account/database/migrations/20261020150000_add_user_plan_periods.sql`
+    tạo `subscription.user_plan_periods` + `subscription.plan_history_meta`, backfill đúng cửa sổ
+    hiện tại của mỗi `user_subscriptions` (`source_event_key = 'BACKFILL:<user_id>'`), và ghi row
+    `plan_history_meta('cutover', now())`. Preflight `RAISE EXCEPTION` nếu có row
+    `current_plan_kind = 1 AND expires_at <= started_at`; không bỏ qua row vì sẽ làm mất user khỏi
+    báo cáo.
+  - **Giới hạn trước cutover**: lịch sử trước mốc `cutover` **không** được tái dựng (FR-013). Báo
+    cáo kỳ trước mốc trả `dataCompleteness = unavailable` (distribution rỗng, totalUsers 0); kỳ cắt
+    ngang mốc trả `partial` và chỉ tính phần từ mốc trở đi. Đây là hành vi đúng, không phải lỗi.
+  - **Task/test của 031**: T003 (migration + backfill + preflight), T006 (repo interval), T007
+    (recorder), T008 (hook publisher + DI), T010–T020 (báo cáo, DTO, proto, swagger), T027–T031
+    (transition/idempotency/rollback/concurrency). Test khóa:
+    `TestIntegrationUserPlanPeriodsBackfillAndCutover`, `...PreflightAborts`, `...OverlapGuard`,
+    `...FallbackWithoutExtensionPrivilege`, `TestIntegrationPlanPeriodRecorderLifecycle`,
+    `TestIntegrationPlanPeriodRecorderConcurrentChanges`,
+    `TestIntegrationPlanPeriodRecorderFallbackConcurrentChanges`,
+    `TestIntegrationPlanPeriodRecorderPublishIsIdempotent`,
+    `TestIntegrationPlanPeriodRecorderFailureRollsBackBothRows`,
+    `TestIntegrationUserPlanPeriodDistributionLifecycles`, và bộ unit test
+    `distribution_completeness_test.go` / `plan_period_recorder_test.go`.
+  - **Hệ quả cho 029**: D-06 đóng; không còn cảnh báo "không tái dựng được lịch sử" trong guide 029
+    — đã thay bằng "đầy đủ từ mốc cutover" và trỏ sang `specs/031-user-plan-periods/frontend-guide.md`.
 
 ### D-07 — Activity events không có thiết bị/IP
 

@@ -21,6 +21,15 @@ trường cũ nào.
 - Nếu kỳ mở rộng về phía trước mốc lịch sử, BE **chỉ tính phần từ mốc trở đi** và
   báo `partial` (hoặc `unavailable` nếu kỳ kết thúc trước mốc) — xem mục 3–4.
 
+### Mã HTTP
+
+| Status | Khi nào | FE xử lý |
+|---|---|---|
+| `200` | Request hợp lệ. Kỳ `unavailable` cũng trả `200` với `distribution: []`, `totalUsers: 0` — trạng thái nằm ở `dataCompleteness`. | Đọc `dataCompleteness` trước khi render; không coi mảng rỗng là lỗi mạng. |
+| `400` | `fromDate`/`toDate` sai định dạng, hoặc `fromDate > toDate`. Message tiếng Việt từ BE. | Hiển thị `message`, giữ nguyên bộ lọc để người dùng sửa. |
+| `401` | Thiếu/sai/hết hạn access token (middleware auth dùng chung). | Về màn đăng nhập. |
+| `403` | Đã đăng nhập nhưng không phải System Admin (`RolesAuthorize(Admin)`). | Ẩn màn hình quản trị, không phải lỗi nghiệp vụ. |
+
 ## 2. Hai trường mới trong response
 
 ```json

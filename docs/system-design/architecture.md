@@ -272,11 +272,13 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-m
 
 The system uses a PostgreSQL relational database (with pgvector) as the Single Source of Truth, integrating with GORM for entity management.
 
-> **Trạng thái hiện tại** (Sprint 2, migration `20260801000000_separate_module_schemas`; đã đối chiếu lại với DB thật): 52 bảng + 1 sequence đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`, `community`). DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
+> **Trạng thái hiện tại** (đối chiếu trực tiếp với DB thật sau migration 031 `20261020150000_add_user_plan_periods`, 2026-10-20): **58 bảng + 1 sequence** đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`, `community`). Con số này **không tính** 3 bảng `goose_db_version*` trong `public`. DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
 
-### Tables by Module (52 bảng + 1 sequence)
+> **Vì sao tăng thêm 6 bảng so với inventory Sprint 2 (52)**: 031 thêm `user_plan_periods` và `plan_history_meta` (+2); inventory cũ chưa cập nhật `identity.user_activity_events` (+1) và 3 bảng campaign của 025 `campaigns`, `campaign_claims`, `campaign_sweep_runs` (+3). Tổng FK thực tế trong DB là **85** (41 FK trỏ `identity.users`), không tính 9 FK xuyên module đã cắt.
 
-**identity** (2): `users`, `refresh_tokens`
+### Tables by Module (58 bảng + 1 sequence)
+
+**identity** (3): `users`, `refresh_tokens`, `user_activity_events`
 
 **wardrobe** (3): `wardrobe_items`, `outfits`, `outfit_items`
 
@@ -284,7 +286,7 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 **brand** (15): `brands`, `brand_members`, `brand_customers`, `brand_customer_claims`, `loyalty_programs`, `loyalty_tiers`, `loyalty_accounts`, `loyalty_point_transactions`, `loyalty_point_lots`, `brand_benefits`, `benefit_redemptions`, `brand_conversations`, `brand_conversation_messages`, `brand_items`, `digital_sample_responses`
 
-**subscription** (10 + 1 sequence): `subscription_plans`, `user_subscriptions`, `user_daily_quotas`, `user_wallets`, `deposit_transactions`, `wallet_statements`, `provider_payment_events`, `provider_webhook_inbox`, `user_subscription_events`, `subscription_renewal_attempts` (+ sequence `deposit_transactions_order_code_seq`, OWNED BY `deposit_transactions.order_code`)
+**subscription** (15 + 1 sequence): `subscription_plans`, `user_subscriptions`, `user_daily_quotas`, `user_wallets`, `deposit_transactions`, `wallet_statements`, `provider_payment_events`, `provider_webhook_inbox`, `user_subscription_events`, `subscription_renewal_attempts`, `campaigns`, `campaign_claims`, `campaign_sweep_runs`, `user_plan_periods`, `plan_history_meta` (+ sequence `deposit_transactions_order_code_seq`, OWNED BY `deposit_transactions.order_code`)
 
 **aiexecutor** (7): `ai_cost_policies`, `ai_cost_policy_operations`, `ai_cost_policy_audit_logs`, `ai_policy_grants`, `ai_usage_period_ledgers`, `ai_usage_events`, `ai_model_configs`
 
@@ -321,7 +323,8 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 ### Foreign Keys xuyên module
 
-- **GIỮ (xuyên schema tới `users`, 39 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng). Phân bố 39 FK: `brand` 14 · `subscription` 8 · `community` 6 · `aiexecutor` 4 · `wardrobe` 2 · `identity` 2 · `dashboard` 1 · `shared` 1 · `fashion` 1.
+- **GIỮ (xuyên schema tới `users`, 41 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng). Phân bố 41 FK: `brand` 14 · `subscription` 10 · `community` 6 · `aiexecutor` 4 · `wardrobe` 2 · `identity` 2 · `dashboard` 1 · `shared` 1 · `fashion` 1. Trong đó 031 thêm `user_plan_periods.user_id` (subscription 9 → 10; inventory cũ ghi 8 vì chưa tính `campaign_claims` của 025).
+- **Tổng FK toàn DB: 85** (sau 031), trong đó schema `subscription` có **17 FK**: 10 tới `identity.users` + 7 nội bộ schema. 031 thêm 2 FK: `user_plan_periods.user_id` (→ users) và `user_plan_periods.subscription_plan_id` (→ `subscription.subscription_plans`).
 - **CẮT (phi-users, enforce qua contract, 9 FK)**: `ai_policy_grants.plan_id/source_event_id/source_deposit_transaction_id` (aiexecutor→subscription), `subscription_plans.ai_cost_policy_id` (subscription→aiexecutor), `wardrobe_items.fashion_item_id` (wardrobe→fashion), `outfit_items.fashion_item_id` (wardrobe→fashion), `brand_items.fashion_item_id` (brand→fashion), `digital_sample_responses.outfit_id` (brand→wardrobe), `dashboard_brand_daily_snapshots.brand_id` (dashboard→brand). Integrity được đảm bảo qua contract reader/writer ở app layer (không có luồng hard-delete `fashion_items`/`brands` cần cascade bị mất).
 
 ### Chỉ mục vector (pgvector HNSW) — giữ nguyên sau tách schema
