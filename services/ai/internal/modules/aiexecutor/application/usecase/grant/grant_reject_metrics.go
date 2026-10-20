@@ -76,7 +76,11 @@ func NewGrantMetrics(log logger.Interface) *GrantMetrics {
 //
 // The threshold that DOES exist in this type is the duplicate exception just below —
 // and that one is enforced, not aspirational.
-func (m *GrantMetrics) RecordRejection(reason string, userID string) {
+// The optional cause is variadic so the many call sites that have nothing to
+// report stay unchanged. When present it goes on the SAME single warning line
+// (FR-011 forbids a second line per rejection), because "reason code" alone does
+// not tell an operator whether 23514 came from a data bug or a schema change.
+func (m *GrantMetrics) RecordRejection(reason string, userID string, cause ...error) {
 	m.mu.Lock()
 	m.rejected[reason]++
 	total := m.rejected[reason]
@@ -89,6 +93,9 @@ func (m *GrantMetrics) RecordRejection(reason string, userID string) {
 		zap.String("user_id", userID),
 		zap.Int64("rejected_total_for_reason", total),
 		zap.Time("at", time.Now().UTC()),
+	}
+	if len(cause) > 0 && cause[0] != nil {
+		fields = append(fields, zap.NamedError("cause", cause[0]))
 	}
 	// A duplicate is the expected consequence of at-least-once delivery, so it
 	// is logged one level below a genuine refusal.

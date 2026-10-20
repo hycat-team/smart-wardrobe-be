@@ -337,23 +337,10 @@ test-integration:
 # one database, and running them in parallel makes the campaign fixtures race with
 # the seed/rollback tests. Serialising packages is the cheap fix; remove it only
 # together with a session-level advisory lock shared by both openers.
-#
-# The package list is explicit rather than `./...`. `usecase/subscription` still
-# creates its own schema with GORM AutoMigrate, which lands unqualified tables in
-# `public` (first on the search_path) and then SHADOWS the module schemas for
-# every later package — `public.subscription_plans` empty while
-# `subscription.subscription_plans` holds the rows. That package needs the same
-# treatment 025/D-01 gave the webhook harness; until then it stays out of this
-# target and is recorded in specs/026-campaign-registry-db/deferred.md (D-06).
 test-db-integration:
 	@echo "Running database-backed integration tests (TEST_DATABASE_URL required)..."
-	@cd services/account && go test -race -p 1 -timeout 20m -run Integration \
-		./database/migrations/... \
-		./internal/modules/subscription/infrastructure/persistence/... \
-		./internal/modules/subscription/application/usecase/campaign/... \
-		./internal/modules/subscription/application/usecase/webhook/...
-	@cd services/ai && go test -race -p 1 -timeout 20m -run Integration \
-		./internal/modules/aiexecutor/application/usecase/grant/...
+	@cd services/account && go test -race -p 1 -timeout 20m -run Integration ./...
+	@cd services/ai && go test -race -p 1 -timeout 20m -run Integration ./...
 	@echo Database-backed integration tests finished.
 
 build:

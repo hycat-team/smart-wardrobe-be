@@ -55,6 +55,7 @@ func TestIntegrationConcurrentQuotaProvisioningCreatesOneRow(t *testing.T) {
 	)
 
 	userID := uuid.New()
+	ensureSubscriptionUser(t, dbConn, userID, "concurrent-quota")
 	results := make([]*entities.UserDailyQuota, concurrencyRacers)
 	errs := make([]error, concurrencyRacers)
 
@@ -140,6 +141,7 @@ func TestIntegrationConcurrentPlanChangePublishesOneEvent(t *testing.T) {
 	changePublisher := NewPlanChangePublisher(newBarrierEventRepo(eventRepo, concurrencyRacers), publisher)
 
 	userID := uuid.New()
+	ensureSubscriptionUser(t, dbConn, userID, "concurrent-event")
 	eventKey := "DEFAULT_PROVISION:" + userID.String() + ":1"
 	now := time.Now()
 	tierRank := 0
@@ -237,6 +239,7 @@ func TestIntegrationPlanChangeEventKeyIsNotOverwrittenOnRetry(t *testing.T) {
 	eventRepo := persistence.NewUserSubscriptionEventRepository(dbConn)
 	ctx := context.Background()
 	userID := uuid.New()
+	ensureSubscriptionUser(t, dbConn, userID, "concurrent-retry")
 	now := time.Now()
 	firstPlanCode := "free"
 	secondPlanCode := "premium"

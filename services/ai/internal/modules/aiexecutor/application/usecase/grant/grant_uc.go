@@ -81,9 +81,21 @@ const (
 type RejectionError struct {
 	Reason  string
 	Message string
+	// cause is the error that produced the refusal (for a CHECK violation, the
+	// *pgconn.PgError carrying SQLSTATE 23514 and the constraint name). It is
+	// reachable through Unwrap so the dead-letter trace can name the actual
+	// database detail; Error() stays the human-readable Vietnamese message that
+	// the log line already carries.
+	cause error
 }
 
 func (e *RejectionError) Error() string { return e.Message }
+
+// Unwrap exposes the underlying failure. Without it the refusal matched neither
+// broker marker and the dead letter recorded only the message — no SQLSTATE and no
+// constraint name, which is what an operator needs to tell a data bug from a
+// schema change.
+func (e *RejectionError) Unwrap() error { return e.cause }
 
 type GrantUseCase struct {
 	aiCostRepo repositories.IAICostRepository
@@ -319,8 +331,8 @@ func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecuto
 		// path untouched, which is what FR-010 requires - a real transient failure
 		// must still be retried exactly as before.
 		if isCheckViolation(err) {
-			uc.metrics.RecordRejection(ReasonConstraintViolation, event.UserID.String())
-			return uc.reject(ReasonConstraintViolation, event.UserID.String(), msgConstraintViolation)
+			uc.metrics.RecordRejection(ReasonConstraintViolation, event.UserID.String(), err)
+			return uc.reject(ReasonConstraintViolation, event.UserID.String(), msgConstraintViolation, err)
 		}
 		uc.metrics.RecordRejection(ReasonTransientFailure, event.UserID.String())
 		return uc.transient(err, ctx, event, "write grant in transaction")
@@ -372,10 +384,18 @@ func (uc *GrantUseCase) transient(err error, ctx context.Context, event *PlanCha
 // which happened to dead-letter it, the right outcome for the wrong reason. Stating
 // it means the behaviour survives a change to that switch, and it stops the
 // consumer's log claiming a message "will retry" when it is being discarded.
-func (uc *GrantUseCase) reject(reason, userID, message string) error {
+// The optional cause is variadic so the call sites that have no underlying error
+// to report (a malformed payload, a stale event) stay untouched; only the paths
+// that wrap a driver error pass it.
+func (uc *GrantUseCase) reject(reason, userID, message string, cause ...error) error {
+	var underlying error
+	if len(cause) > 0 {
+		underlying = cause[0]
+	}
 	return sharedevent.PermanentError{Err: &RejectionError{
 		Reason:  reason,
 		Message: message,
+		cause:   underlying,
 	}}
 }
 
@@ -585,8 +605,8 @@ func (uc *GrantUseCase) retireOnUnpriceableDowngrade(ctx context.Context, event 
 		// incident, and every OTHER error keeps the pre-027 transient behaviour
 		// (FR-010).
 		if isCheckViolation(err) {
-			uc.metrics.RecordRejection(ReasonConstraintViolation, event.UserID.String())
-			return uc.reject(ReasonConstraintViolation, event.UserID.String(), msgConstraintViolation)
+			uc.metrics.RecordRejection(ReasonConstraintViolation, event.UserID.String(), err)
+			return uc.reject(ReasonConstraintViolation, event.UserID.String(), msgConstraintViolation, err)
 		}
 		// Requeued rather than refused: this write did not land, so the
 		// entitlement is still there and another delivery has to try again.

@@ -143,6 +143,18 @@ bịa ra sai.
 - **Ảnh hưởng tới task đã tick**: **Có.** T018 khẳng định dấu vết thư chết có tài khoản, mã
   lý do và thông điệp; nếu SC-006 bị đọc chặt thành "phải có lỗi gốc", thì T018 chỉ đạt dấu
   vết ở mức thông điệp, không ở mức lỗi driver — `[X]` ở T018 nên được đọc kèm điều kiện này.
+
+- **TRẠNG THÁI (2026-10-20 — RESOLVED)**: đã gỡ đúng hướng mô tả ở trên:
+  - `RejectionError` có thêm `cause error` + `Unwrap() error`; `Error()` vẫn trả `Message` nên
+    chuỗi mà log/khách hàng thấy không đổi.
+  - `reject(reason, userID, message string, cause ...error)` — variadic để các đường không có
+    lỗi gốc giữ nguyên; hai nhánh vi phạm `23514` (`grant_uc.go` create + retire) truyền `err`.
+  - `RecordRejection(reason, userID string, cause ...error)` ghi `zap.NamedError("cause", …)` vào
+    **cùng một dòng** cảnh báo (FR-011 vẫn đúng: test khẳng định `len(entries) == 1`).
+  - Test khoá lại: `grant_error_class_integration_test.go` khẳng định `errors.As` tới
+    `*pgconn.PgError`, `SQLSTATE == 23514`, và `ConstraintName` không rỗng;
+    `TestGrantMetricsRejectionCarriesTheCauseOnTheSameLine` khẳng định field `cause` nằm trên
+    dòng warn duy nhất. Không cần `pg_advisory`/hạ tầng gì thêm.
 ### D-08 — Cấp lại một gói CÓ thời hạn đang còn hiệu lực không sửa được kỳ hiện tại
 
 - **Vấn đề**: Với một gói có thời hạn mà kỳ hiện tại chưa hết (tài khoản demo `user`,

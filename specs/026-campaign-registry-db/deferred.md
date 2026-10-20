@@ -359,3 +359,18 @@ lời là **có**, và không tầng nào trong chuỗi cấu hình production t
 - **Ảnh hưởng tới task đã tick**: `026/D-01` (đóng một phần — bằng chứng CSDL đã chạy cho
   campaign/webhook/migrations, chưa gồm package này); `026/D-03` (đóng bằng `-p 1`, nhưng chỉ có
   hiệu lực trên tập package đang chạy).
+
+- **TRẠNG THÁI (2026-10-20 — RESOLVED, chọn hướng 1)**: `openSubscriptionTestDB` không còn
+  `AutoMigrate`; nó yêu cầu schema do `database/init/*.sql` + migrations dựng và fail-fast nếu
+  không (cùng mẫu `openWebhookTestDB`), kèm chuẩn hoá `search_path` trong DSN. Bốn lỗi fixture mà
+  việc bỏ `AutoMigrate` làm lộ ra đã sửa trong cùng đợt:
+  1. `cleanupSubscriptionTables` đổi từ `WHERE 1 = 1` sang scope theo hai user fixture + ba slug
+     fixture (nếu không, nó xoá luôn `subscription_plans` seed mà package khác cần).
+  2. Fixture user được chèn tường minh vào `identity.users` (FK `user_subscriptions.user_id`);
+     `uuid.New()` trần bị từ chối trên schema thật.
+  3. Bốn test tạo gói `DefaultFree` đang active → chuyển sang dùng gói `free` seed sẵn
+     (`ux_single_active_default_free_plan` chỉ cho một gói).
+  4. Các gói fixture chỉ cần slug được đặt `PlanKind: Finite` để không rơi vào ràng buộc trên.
+  `make test-db-integration` nay chạy account với `./...`; toàn bộ suite (kể cả
+  `usecase/subscription`) xanh trên database dựng bằng init + migrations. Job `db-integration`
+  của CI phủ lại từ commit này.

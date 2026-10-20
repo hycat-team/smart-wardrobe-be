@@ -344,11 +344,6 @@ psql "postgres://admin:123456@localhost:5432/postgres" -c "DROP DATABASE verify_
 the one database and their fixtures race when the packages run in parallel
 (026 D-03). CI runs the same target in the `db-integration` job.
 
-The target names its packages explicitly instead of `./...`: the
-`usecase/subscription` package still builds its own schema with `AutoMigrate`,
-which creates `public.*` copies that shadow the module schemas for later packages
-(recorded as D-06 in `specs/026-campaign-registry-db/deferred.md`).
-
 The `search_path` in `TEST_DATABASE_URL` mirrors `configs/config.yaml`: migrations
 create tables in module schemas while repositories use unqualified names, so a
 DSN without it fails with "relation does not exist" even though the schema is

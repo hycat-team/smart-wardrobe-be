@@ -475,3 +475,27 @@ func TestConstraintViolationIsNotRequeued(t *testing.T) {
 		}
 	})
 }
+
+// TestGrantMetricsRejectionCarriesTheCauseOnTheSameLine is 027/D-07 stated as a
+// property: when the refusal has an underlying error it must appear on the SAME
+// warning line, not a second one. FR-011 caps a rejection at one warning line, so
+// "add another log statement" is not an available fix.
+func TestGrantMetricsRejectionCarriesTheCauseOnTheSameLine(t *testing.T) {
+	log := newCapturedLogger()
+	metrics := NewGrantMetrics(log)
+
+	cause := errors.New("SQLSTATE 23514: check constraint violated")
+	metrics.RecordRejection(ReasonConstraintViolation, "22222222-2222-2222-2222-222222222222", cause)
+
+	entries := log.observed.All()
+	if len(entries) != 1 {
+		t.Fatalf("FR-011: a rejection must emit exactly one line, got %d", len(entries))
+	}
+	fields := entries[0].ContextMap()
+	if got, ok := fields["cause"]; !ok || got != cause.Error() {
+		t.Fatalf("D-07: the warning must carry the underlying cause, got %v (present=%v)", got, ok)
+	}
+	if fields["reason"] != ReasonConstraintViolation {
+		t.Errorf("the same line must still carry the reason, got %v", fields["reason"])
+	}
+}

@@ -9,14 +9,12 @@ import (
 	"sync"
 	"testing"
 
-	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 	"smart-wardrobe-be/shared/infrastructure/db"
 	"smart-wardrobe-be/shared/infrastructure/messaging"
 
 	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -369,22 +367,13 @@ func newEagerProvisionFixture(t *testing.T) *eagerProvisionFixture {
 	)
 
 	// One default plan serves every account in the test, and it must be the row
-	// `GetDefaultPlan` finds: `plan_kind = DefaultFree AND is_active`.
-	defaultPlan := &entities.SubscriptionPlan{
-		Slug:               "free-eager-" + uuid.NewString()[:8],
-		Name:               "Free",
-		IsActive:           true,
-		Price:              decimal.Zero,
-		PlanKind:           plankind.DefaultFree,
-		TierRank:           0,
-		AICostPolicyID:     uuid.New(),
-		AiOutfitDailyQuota: 5,
-		AiChatDailyQuota:   10,
-		MaxWardrobeItems:   50,
-		MaxOutfits:         20,
-	}
-	if err := persistence.NewSubscriptionPlanRepository(dbConn).Create(context.Background(), defaultPlan); err != nil {
-		t.Fatalf("seed the default plan: %v", err)
+	// `GetDefaultPlan` finds: `plan_kind = DefaultFree AND is_active`. That row is
+	// seeded by database/init/03-seed.sql and the migrated schema carries
+	// ux_single_active_default_free_plan, so a SECOND active free plan cannot
+	// exist — reuse the seeded one instead of inserting a duplicate.
+	defaultPlan, err := persistence.NewSubscriptionPlanRepository(dbConn).GetDefaultPlan(context.Background())
+	if err != nil || defaultPlan == nil {
+		t.Fatalf("default free plan missing from test database (apply database/init/03-seed.sql): %v", err)
 	}
 	f.defaultPlan = defaultPlan
 	t.Cleanup(func() { cleanupSubscriptionTables(t, dbConn) })

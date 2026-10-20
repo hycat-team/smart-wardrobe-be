@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 
@@ -38,7 +39,7 @@ func TestIntegrationGetBySlugsAnyStatusResolvesTheWholeSetInOneQuery(t *testing.
 		slug := fmt.Sprintf("batch-active-%02d", i)
 		active = append(active, slug)
 		if err := planRepo.Create(ctx, &entities.SubscriptionPlan{
-			Slug: slug, Name: slug, IsActive: true, Price: decimal.Zero,
+			Slug: slug, Name: slug, IsActive: true, Price: decimal.Zero, PlanKind: plankind.Finite,
 		}); err != nil {
 			t.Fatalf("seed plan %s: %v", slug, err)
 		}
@@ -47,7 +48,7 @@ func TestIntegrationGetBySlugsAnyStatusResolvesTheWholeSetInOneQuery(t *testing.
 		slug := fmt.Sprintf("batch-off-%02d", i)
 		deactivated = append(deactivated, slug)
 		plan := &entities.SubscriptionPlan{
-			Slug: slug, Name: slug, IsActive: true, Price: decimal.Zero,
+			Slug: slug, Name: slug, IsActive: true, Price: decimal.Zero, PlanKind: plankind.Finite,
 		}
 		if err := planRepo.Create(ctx, plan); err != nil {
 			t.Fatalf("seed deactivated plan %s: %v", slug, err)
@@ -132,7 +133,7 @@ func TestIntegrationGetBySlugsAnyStatusIsCaseSensitiveAgainstTheColumn(t *testin
 	ctx := context.Background()
 	planRepo := persistence.NewSubscriptionPlanRepository(dbConn)
 	if err := planRepo.Create(ctx, &entities.SubscriptionPlan{
-		Slug: "case-plan", Name: "Case Plan", IsActive: true, Price: decimal.Zero,
+		Slug: "case-plan", Name: "Case Plan", IsActive: true, Price: decimal.Zero, PlanKind: plankind.Finite,
 	}); err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
@@ -164,7 +165,7 @@ func TestIntegrationGetBySlugsAnyStatusIgnoresUnindexableSlugWithoutErroring(t *
 	ctx := context.Background()
 	planRepo := persistence.NewSubscriptionPlanRepository(dbConn)
 	if err := planRepo.Create(ctx, &entities.SubscriptionPlan{
-		Slug: "findable", Name: "Findable", IsActive: true, Price: decimal.Zero,
+		Slug: "findable", Name: "Findable", IsActive: true, Price: decimal.Zero, PlanKind: plankind.Finite,
 	}); err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}

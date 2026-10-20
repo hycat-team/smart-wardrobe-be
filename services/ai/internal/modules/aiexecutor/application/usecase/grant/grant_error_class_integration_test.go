@@ -349,6 +349,21 @@ func TestIntegrationUnpriceableDowngradeConstraintViolationIsPermanent(t *testin
 	if rejection.Reason != ReasonConstraintViolation {
 		t.Errorf("FR-009: reason = %q, want %q", rejection.Reason, ReasonConstraintViolation)
 	}
+
+	// 027/D-07: the refusal must keep the driver error, not only a Vietnamese
+	// message. Without Unwrap the dead letter named no SQLSTATE and no constraint,
+	// which is exactly what an operator needs to tell a data bug from a schema
+	// change.
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		t.Fatalf("D-07: the rejection must expose the *pgconn.PgError through Unwrap, got chain %T", err)
+	}
+	if pgErr.Code != pgCheckViolationCode {
+		t.Errorf("D-07: SQLSTATE = %q, want %q", pgErr.Code, pgCheckViolationCode)
+	}
+	if pgErr.ConstraintName == "" {
+		t.Error("D-07: the driver error must carry the violated constraint name")
+	}
 	snapshot := uc.metrics.Snapshot()
 	if snapshot[ReasonConstraintViolation] != 1 {
 		t.Errorf("FR-011: %q must be counted once, got %v", ReasonConstraintViolation, snapshot)

@@ -2,7 +2,9 @@ package subscription
 
 import (
 	"context"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +15,6 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
-	shrepos "smart-wardrobe-be/shared/domain/repositories"
 	"smart-wardrobe-be/shared/infrastructure/db"
 
 	"github.com/google/uuid"
@@ -37,11 +38,13 @@ func TestIntegrationScheduledRenewalRenewsPaidPlan(t *testing.T) {
 
 	ctx := context.Background()
 	now := time.Now()
-	plan := &entities.SubscriptionPlan{Slug: "premium-renewal", Name: "Premium Renewal", IsActive: true, Price: decimal.NewFromInt(99000), TierRank: 1, PlanKind: plankind.Finite, DurationDays: durationDaysPtr2(30), AiOutfitDailyQuota: 10, AiChatDailyQuota: 20}
+	plan := &entities.SubscriptionPlan{Slug: renewalPremiumPlanSlug, Name: "Premium Renewal", IsActive: true, Price: decimal.NewFromInt(99000), TierRank: 1, PlanKind: plankind.Finite, DurationDays: durationDaysPtr2(30), AiOutfitDailyQuota: 10, AiChatDailyQuota: 20}
 	if err := planRepo.Create(ctx, plan); err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
-	userID := uuid.New()
+	userID := renewalUserID
+	ensureSubscriptionUser(t, dbConn, userID, "renewing")
+	ensureSubscriptionUser(t, dbConn, userID, "renewing")
 	expired := now.Add(-time.Hour)
 	sub := &entities.UserSubscription{UserID: userID, SubscriptionPlanID: plan.ID, CurrentPlanCode: plan.Slug, CurrentTierRank: plan.TierRank, CurrentPlanKind: plankind.Finite, IsAutoRenewEnabled: true, ExpiresAt: &expired, StartedAt: now}
 	if err := subRepo.Create(ctx, sub); err != nil {
@@ -108,15 +111,19 @@ func TestIntegrationScheduledRenewalDowngradesWithoutFunds(t *testing.T) {
 
 	ctx := context.Background()
 	now := time.Now()
-	freePlan := &entities.SubscriptionPlan{Slug: "free-downgrade", Name: "Free", IsActive: true, Price: decimal.Zero, PlanKind: plankind.DefaultFree}
-	if err := planRepo.Create(ctx, freePlan); err != nil {
-		t.Fatalf("seed free plan: %v", err)
+	// Reuse the seeded default free plan: ux_single_active_default_free_plan
+	// refuses a second active one, which the AutoMigrate schema never expressed.
+	freePlan, err := planRepo.GetDefaultPlan(ctx)
+	if err != nil || freePlan == nil {
+		t.Fatalf("default free plan missing from test database (apply database/init/03-seed.sql): %v", err)
 	}
-	plan := &entities.SubscriptionPlan{Slug: "premium-broke", Name: "Premium", IsActive: true, Price: decimal.NewFromInt(99000), TierRank: 1, PlanKind: plankind.Finite, DurationDays: durationDaysPtr2(30)}
+	plan := &entities.SubscriptionPlan{Slug: renewalBrokePlanSlug, Name: "Premium", IsActive: true, Price: decimal.NewFromInt(99000), TierRank: 1, PlanKind: plankind.Finite, DurationDays: durationDaysPtr2(30)}
 	if err := planRepo.Create(ctx, plan); err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
-	userID := uuid.New()
+	userID := renewalBrokeUserID
+	ensureSubscriptionUser(t, dbConn, userID, "broke")
+	ensureSubscriptionUser(t, dbConn, userID, "broke")
 	expired := now.Add(-time.Hour)
 	sub := &entities.UserSubscription{UserID: userID, SubscriptionPlanID: plan.ID, CurrentPlanCode: plan.Slug, CurrentTierRank: plan.TierRank, CurrentPlanKind: plankind.Finite, IsAutoRenewEnabled: true, ExpiresAt: &expired, StartedAt: now}
 	if err := subRepo.Create(ctx, sub); err != nil {
@@ -160,54 +167,127 @@ func TestIntegrationScheduledRenewalDowngradesWithoutFunds(t *testing.T) {
 	}
 }
 
+// Fixture identifiers are fixed so a crashed run's leftovers can be found and
+// removed without touching rows that are not ours (026 D-06, same rule as
+// 025/D-02 for the webhook harness).
+var (
+	renewalUserID      = uuid.MustParse("a0000000-0000-4000-8000-000000000032")
+	renewalBrokeUserID = uuid.MustParse("a0000000-0000-4000-8000-000000000033")
+)
+
+const (
+	renewalPremiumPlanSlug = "premium-renewal"
+	renewalFreePlanSlug    = "free-downgrade"
+	renewalBrokePlanSlug   = "premium-broke"
+)
+
+// subscriptionTestSearchPath mirrors configs/config.yaml. Repositories use
+// unqualified table names; without the setting every query fails with
+// "relation does not exist" even though the schema is correct.
+const subscriptionTestSearchPath = "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
+
+func subscriptionTestDSN(t *testing.T) string {
+	t.Helper()
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if strings.Contains(dsn, "search_path=") {
+		return dsn
+	}
+	if u, err := url.Parse(dsn); err == nil && u.Scheme != "" {
+		q := u.Query()
+		q.Set("search_path", subscriptionTestSearchPath)
+		u.RawQuery = q.Encode()
+		return u.String()
+	}
+	return dsn + " search_path=" + subscriptionTestSearchPath
+}
+
+// openSubscriptionTestDB requires the schema the repository builds — init scripts
+// then the per-service migrations — instead of authoring it with AutoMigrate.
+//
+// AutoMigrate used to run here, and because GORM emits unqualified table names it
+// created `public.subscription_plans`, `public.user_subscriptions`… next to the
+// real `subscription.*` tables. With `public` first on the search_path those
+// copies SHADOWED the migrated schema for every package that ran afterwards in
+// the same database: reads landed on empty `public` copies and later suites failed
+// for a reason unrelated to what they tested. Requiring the migrated schema is the
+// same fix 025/D-01 applied to the webhook harness.
 func openSubscriptionTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL not set; skipping subscription integration test")
 	}
-	dbConn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	dbConn, err := gorm.Open(postgres.Open(subscriptionTestDSN(t)), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("connect test database: %v", err)
 	}
-	if err := dbConn.AutoMigrate(
-		&entities.SubscriptionPlan{},
-		&entities.UserSubscription{},
-		&entities.UserDailyQuota{},
-		&entities.UserWallet{},
-		&entities.DepositTransaction{},
-		&entities.WalletStatement{},
-		&entities.UserSubscriptionEvent{},
-		&entities.SubscriptionRenewalAttempt{},
-		&entities.ProviderPaymentEvent{},
-		&entities.ProviderWebhookInbox{},
-		// The outbox table belongs to shared messaging, but it is written inside the
-		// account service's transaction, so the transaction-context probes need it to
-		// exist or their "live context" control fails on a missing relation instead
-		// of proving the query actually ran.
-		&shrepos.OutboxRecord{},
-	); err != nil {
-		t.Fatalf("auto migrate: %v", err)
+
+	var schemaReady bool
+	if err := dbConn.Raw(`
+		SELECT to_regclass('subscription.subscription_plans') IS NOT NULL
+		   AND to_regclass('subscription.user_subscriptions') IS NOT NULL
+		   AND to_regclass('shared.outbox_records') IS NOT NULL
+		   AND to_regclass('identity.users') IS NOT NULL
+		   AND to_regclass('public.goose_db_version') IS NOT NULL`).Scan(&schemaReady).Error; err != nil {
+		t.Fatalf("probe test schema: %v", err)
+	}
+	if !schemaReady {
+		t.Fatalf("TEST_DATABASE_URL is not a migration-built database: apply database/init/*.sql then " +
+			"`make migrate-up svc=account DB_NAME=<that database>` first (see openSubscriptionTestDB)")
 	}
 	return dbConn
 }
 
+// ensureSubscriptionUser inserts the fixture account these tests renew.
+// `user_subscriptions.user_id` is a FOREIGN KEY onto `identity.users(id)` in the
+// migrated schema, so a bare uuid.New() would be refused.
+func ensureSubscriptionUser(t *testing.T, dbConn *gorm.DB, id uuid.UUID, label string) {
+	t.Helper()
+	handle := "renewal-int-" + label
+	if err := dbConn.Exec(`
+		INSERT INTO identity.users (id, username, email, password_hash, role_slug)
+		VALUES (?, ?, ?, 'fixture-not-a-real-hash', 'user')
+		ON CONFLICT (id) DO NOTHING`, id, handle, handle+"@example.test").Error; err != nil {
+		t.Fatalf("ensure fixture user %s: %v", id, err)
+	}
+}
+
+// cleanupSubscriptionTables removes only rows this file creates: keyed on the two
+// fixture user ids and the three fixture plan slugs. The old implementation used
+// `WHERE 1 = 1`, which emptied whole tables — including the seeded default free
+// plan other suites depend on.
 func cleanupSubscriptionTables(t *testing.T, dbConn *gorm.DB) {
 	t.Helper()
-	for _, model := range []any{
-		&entities.SubscriptionRenewalAttempt{},
-		&entities.UserSubscriptionEvent{},
-		&entities.WalletStatement{},
-		&entities.DepositTransaction{},
-		&entities.ProviderPaymentEvent{},
-		&entities.ProviderWebhookInbox{},
-		&entities.UserDailyQuota{},
-		&entities.UserSubscription{},
-		&entities.UserWallet{},
-		&entities.SubscriptionPlan{},
-	} {
-		if err := dbConn.Where("1 = 1").Delete(model).Error; err != nil {
-			t.Fatalf("cleanup table: %v", err)
+	statements := []struct {
+		sql  string
+		args []any
+	}{
+		{`DELETE FROM subscription.subscription_renewal_attempts
+			WHERE user_id IN (?, ?)
+			   OR expected_plan_id IN (
+			        SELECT id FROM subscription.subscription_plans WHERE slug IN (?, ?, ?))`,
+			[]any{renewalUserID, renewalBrokeUserID, renewalPremiumPlanSlug, renewalFreePlanSlug, renewalBrokePlanSlug}},
+		{`DELETE FROM subscription.user_subscription_events WHERE user_id IN (?, ?)`,
+			[]any{renewalUserID, renewalBrokeUserID}},
+		{`DELETE FROM subscription.wallet_statements WHERE user_id IN (?, ?)`,
+			[]any{renewalUserID, renewalBrokeUserID}},
+		{`DELETE FROM subscription.deposit_transactions WHERE user_id IN (?, ?)`,
+			[]any{renewalUserID, renewalBrokeUserID}},
+		{`DELETE FROM subscription.user_daily_quotas WHERE user_id IN (?, ?)`,
+			[]any{renewalUserID, renewalBrokeUserID}},
+		{`DELETE FROM subscription.user_subscriptions
+			WHERE user_id IN (?, ?)
+			   OR subscription_plan_id IN (
+			        SELECT id FROM subscription.subscription_plans WHERE slug IN (?, ?, ?))`,
+			[]any{renewalUserID, renewalBrokeUserID, renewalPremiumPlanSlug, renewalFreePlanSlug, renewalBrokePlanSlug}},
+		{`DELETE FROM subscription.user_wallets WHERE user_id IN (?, ?)`,
+			[]any{renewalUserID, renewalBrokeUserID}},
+		{`DELETE FROM subscription.subscription_plans WHERE slug IN (?, ?, ?)`,
+			[]any{renewalPremiumPlanSlug, renewalFreePlanSlug, renewalBrokePlanSlug}},
+	}
+	for _, stmt := range statements {
+		if err := dbConn.Exec(stmt.sql, stmt.args...).Error; err != nil {
+			t.Fatalf("cleanup %q: %v", stmt.sql, err)
 		}
 	}
 }
