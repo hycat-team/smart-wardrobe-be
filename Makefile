@@ -200,7 +200,7 @@ install-tools:
 install-goose:
 	@echo Installing Goose CLI tool...
 	@go install github.com/pressly/goose/v3/cmd/goose@v3.28.0
-	@echo Goose CLI installed (pinned to v3.28.0, the version in shared/go.mod).
+	@echo "Goose CLI installed (pinned to v3.28.0, matching shared/go.mod)."
 
 wire:
 	$(SVC_REQ)
