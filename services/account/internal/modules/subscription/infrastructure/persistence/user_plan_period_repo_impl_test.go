@@ -10,6 +10,8 @@ import (
 	"time"
 
 	accountmigrations "smart-wardrobe-be/services/account/database/migrations"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 
 	"github.com/google/uuid"
@@ -401,6 +403,162 @@ func TestIntegrationUserPlanPeriodsDistributionCountsDistinct(t *testing.T) {
 	}
 }
 
+// TestIntegrationUserPlanPeriodsHistoryByUser covers US2: the documented
+// read-only per-user look-up must return what an operator needs to settle a
+// complaint. The test builds the acceptance lifecycle (activate → extend →
+// upgrade → downgrade) through the repository write methods, then reads the
+// history back and asserts chronological order, contiguous
+// continuous switches, one row per holding (EXTEND moves valid_to only), open
+// free/lifetime intervals, and an honest gap after a lapse.
+func TestIntegrationUserPlanPeriodsHistoryByUser(t *testing.T) {
+	_, db, closeScratch, closeBase := openPlan031ScratchDB(t)
+	defer closeBase()
+	defer closeScratch()
+
+	createPlan031BaseSchema(t, db)
+	if err := applyPlan031Migration(t, db); err != nil {
+		t.Fatalf("apply migration: %v", err)
+	}
+
+	repo := NewUserPlanPeriodRepository(db)
+	ctx := context.Background()
+
+	premiumPlanID := seedPlan031Plan(t, db, "Premium Monthly")
+	proPlanID := seedPlan031Plan(t, db, "Pro Yearly")
+	freePlanID := seedPlan031Plan(t, db, "Free")
+	lifetimePlanID := seedPlan031Plan(t, db, "Lifetime")
+
+	t.Run("four-step lifecycle is ordered and contiguous", func(t *testing.T) {
+		userID := seedPlan031User(t, db)
+		activatedAt := time.Date(2026, 1, 1, 8, 0, 0, 0, time.UTC)
+		firstExpiry := time.Date(2026, 2, 1, 8, 0, 0, 0, time.UTC)
+		extendedExpiry := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
+		upgradedAt := time.Date(2026, 2, 15, 8, 0, 0, 0, time.UTC)
+		downgradedAt := time.Date(2026, 4, 15, 8, 0, 0, 0, time.UTC)
+
+		// 1. Activate: one paid interval [activatedAt, firstExpiry).
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			userID, premiumPlanID, "premium-monthly", "Premium Monthly",
+			plankind.Finite, 1, activatedAt, &firstExpiry, "T024:activate",
+		))
+
+		// 2. Extend the same holding: valid_to moves, no row is inserted (FR-004).
+		current := mustCurrentPlan031Period(t, repo, ctx, userID)
+		if err := repo.UpdateValidTo(ctx, current.ID, &extendedExpiry); err != nil {
+			t.Fatalf("extend interval: %v", err)
+		}
+		afterExtend, err := repo.GetByUserID(ctx, userID)
+		if err != nil {
+			t.Fatalf("read history after extend: %v", err)
+		}
+		if len(afterExtend) != 1 {
+			t.Fatalf("EXTENDED produced %d row(s), want still 1: a renewal must not split one holding", len(afterExtend))
+		}
+		if afterExtend[0].ValidTo == nil || !afterExtend[0].ValidTo.Equal(extendedExpiry) {
+			t.Errorf("valid_to after extend = %v, want %s", afterExtend[0].ValidTo, extendedExpiry)
+		}
+
+		// 3. Upgrade at upgradedAt: close the finite current interval before its
+		// contractual expiry and open the new plan at the same instant, so the
+		// two periods connect. CloseCurrent must move the existing valid_to
+		// earlier; the recorder no longer works around it with a full-row Update.
+		mustCloseCurrentPlan031Period(t, repo, ctx, userID, upgradedAt)
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			userID, proPlanID, "pro-yearly", "Pro Yearly",
+			plankind.Finite, 2, upgradedAt, &downgradedAt, "T024:upgrade",
+		))
+
+		// 4. Downgrade at downgradedAt: close the paid plan and open free with
+		// valid_to NULL (open-ended).
+		mustCloseCurrentPlan031Period(t, repo, ctx, userID, downgradedAt)
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			userID, freePlanID, "free", "Free",
+			plankind.DefaultFree, 0, downgradedAt, nil, "T024:downgrade",
+		))
+
+		periods, err := repo.GetByUserID(ctx, userID)
+		if err != nil {
+			t.Fatalf("read lifecycle history: %v", err)
+		}
+		plan031AssertHistory(t, periods,
+			[]string{"premium-monthly", "pro-yearly", "free"},
+			[]time.Time{activatedAt, upgradedAt, downgradedAt},
+		)
+		if periods[len(periods)-1].ValidTo != nil {
+			t.Errorf("free interval valid_to = %s, want NULL after the downgrade", periods[len(periods)-1].ValidTo)
+		}
+
+		// The downgrade ends with an open-ended interval, so the FOR UPDATE
+		// look-up must find exactly that row.
+		current = mustCurrentPlan031Period(t, repo, ctx, userID)
+		if current.PlanCode != "free" || current.ValidTo != nil {
+			t.Errorf("current interval after downgrade = (%s, %v), want the open free row", current.PlanCode, current.ValidTo)
+		}
+	})
+
+	t.Run("a lapse leaves a gap", func(t *testing.T) {
+		userID := seedPlan031User(t, db)
+		firstStart := time.Date(2026, 1, 1, 8, 0, 0, 0, time.UTC)
+		firstEnd := time.Date(2026, 2, 1, 8, 0, 0, 0, time.UTC)
+		secondStart := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
+		secondEnd := time.Date(2026, 4, 1, 8, 0, 0, 0, time.UTC)
+
+		// Insert the later window first: the read must sort by valid_from,
+		// not return rows in insertion order.
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			userID, premiumPlanID, "premium-monthly", "Premium Monthly",
+			plankind.Finite, 1, secondStart, &secondEnd, "T024:lapse:second",
+		))
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			userID, premiumPlanID, "premium-monthly", "Premium Monthly",
+			plankind.Finite, 1, firstStart, &firstEnd, "T024:lapse:first",
+		))
+
+		periods, err := repo.GetByUserID(ctx, userID)
+		if err != nil {
+			t.Fatalf("read lapsed history: %v", err)
+		}
+		if len(periods) != 2 {
+			t.Fatalf("lapsed history has %d interval(s), want 2", len(periods))
+		}
+		if periods[0].ValidTo == nil {
+			t.Fatal("the first interval is open; a lapse cannot be represented")
+		}
+		if !periods[1].ValidFrom.After(*periods[0].ValidTo) {
+			t.Errorf("second interval starts at %s, want after the first ended at %s: a lapse must leave a gap, not be invented away",
+				periods[1].ValidFrom, *periods[0].ValidTo)
+		}
+	})
+
+	t.Run("free and lifetime intervals are open-ended", func(t *testing.T) {
+		freeUser := seedPlan031User(t, db)
+		lifetimeUser := seedPlan031User(t, db)
+		start := time.Date(2026, 1, 1, 8, 0, 0, 0, time.UTC)
+
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			freeUser, freePlanID, "free", "Free",
+			plankind.DefaultFree, 0, start, nil, "T024:free",
+		))
+		mustCreatePlan031Period(t, repo, ctx, newPlan031Period(
+			lifetimeUser, lifetimePlanID, "lifetime", "Lifetime",
+			plankind.Lifetime, 9, start, nil, "T024:lifetime",
+		))
+
+		for name, userID := range map[string]uuid.UUID{"free": freeUser, "lifetime": lifetimeUser} {
+			periods, err := repo.GetByUserID(ctx, userID)
+			if err != nil {
+				t.Fatalf("read %s history: %v", name, err)
+			}
+			if len(periods) != 1 {
+				t.Fatalf("%s history has %d interval(s), want 1", name, len(periods))
+			}
+			if periods[0].ValidTo != nil {
+				t.Errorf("%s interval valid_to = %s, want NULL: an unlimited plan never expires", name, periods[0].ValidTo)
+			}
+		}
+	})
+}
+
 // ---- migration harness -----------------------------------------------------
 
 // TestPlan031MigrationSplitterKeepsDollarQuotedBlocks is a no-database guard for
@@ -694,6 +852,93 @@ func assertBackfilledInterval(
 	wantKey := "BACKFILL:" + userID.String()
 	if period.SourceEventKey == nil || *period.SourceEventKey != wantKey {
 		t.Errorf("backfilled source_event_key = %v, want %q", period.SourceEventKey, wantKey)
+	}
+}
+
+func newPlan031Period(
+	userID, planID uuid.UUID,
+	planCode, planName string,
+	planKind plankind.PlanKind,
+	tierRank int,
+	validFrom time.Time,
+	validTo *time.Time,
+	sourceEventKey string,
+) *entities.UserPlanPeriod {
+	key := sourceEventKey
+	return &entities.UserPlanPeriod{
+		UserID:             userID,
+		SubscriptionPlanID: planID,
+		PlanCode:           planCode,
+		PlanName:           planName,
+		TierRank:           tierRank,
+		PlanKind:           planKind,
+		ValidFrom:          validFrom,
+		ValidTo:            validTo,
+		SourceEventKey:     &key,
+	}
+}
+
+func mustCreatePlan031Period(t *testing.T, repo repositories.IUserPlanPeriodRepository, ctx context.Context, period *entities.UserPlanPeriod) {
+	t.Helper()
+	if err := repo.Create(ctx, period); err != nil {
+		t.Fatalf("create interval starting %s: %v", period.ValidFrom, err)
+	}
+}
+
+func mustCloseCurrentPlan031Period(t *testing.T, repo repositories.IUserPlanPeriodRepository, ctx context.Context, userID uuid.UUID, closeAt time.Time) {
+	t.Helper()
+	current := mustCurrentPlan031Period(t, repo, ctx, userID)
+	if err := repo.CloseCurrent(ctx, current.ID, closeAt); err != nil {
+		t.Fatalf("close current interval %s at %s: %v", current.ID, closeAt, err)
+	}
+}
+
+// mustCurrentPlan031Period returns the interval a plan change would close or
+// extend. It uses the recorder's own look-up: the row with the greatest
+// valid_from, whether open-ended or finite. A paid window carries its
+// contractual expiry, so restricting the query to `valid_to IS NULL` would find
+// nothing.
+func mustCurrentPlan031Period(t *testing.T, repo repositories.IUserPlanPeriodRepository, ctx context.Context, userID uuid.UUID) *entities.UserPlanPeriod {
+	t.Helper()
+	current, err := repo.GetCurrentByUserIDWithLock(ctx, userID)
+	if err != nil {
+		t.Fatalf("read current interval for %s: %v", userID, err)
+	}
+	if current == nil {
+		t.Fatalf("user %s has no intervals; the lifecycle fixture is incomplete", userID)
+	}
+	return current
+}
+
+// plan031AssertHistory asserts the read the operator documents: intervals in
+// chronological order, each one a positive half-open range, and every interval
+// after the first starting exactly where the previous closed (US2).
+func plan031AssertHistory(t *testing.T, periods []*entities.UserPlanPeriod, wantCodes []string, wantStarts []time.Time) {
+	t.Helper()
+	if len(periods) != len(wantCodes) {
+		t.Fatalf("history has %d interval(s), want %d", len(periods), len(wantCodes))
+	}
+	for i, period := range periods {
+		if period.PlanCode != wantCodes[i] {
+			t.Errorf("interval %d plan_code = %q, want %q; GetByUserID must order by valid_from", i, period.PlanCode, wantCodes[i])
+		}
+		if !period.ValidFrom.Equal(wantStarts[i]) {
+			t.Errorf("interval %d valid_from = %s, want %s", i, period.ValidFrom, wantStarts[i])
+		}
+		if period.ValidTo != nil && !period.ValidTo.After(period.ValidFrom) {
+			t.Errorf("interval %d is not a positive half-open range: [%s, %s)", i, period.ValidFrom, *period.ValidTo)
+		}
+		if i == 0 {
+			continue
+		}
+		previous := periods[i-1]
+		if previous.ValidTo == nil {
+			t.Fatalf("interval %d is open-ended but interval %d follows it", i-1, i)
+		}
+		if !period.ValidFrom.Equal(*previous.ValidTo) {
+			t.Errorf("interval %d starts at %s, want the previous end %s: a continuous switch must not leave a gap or an overlap",
+				i, period.ValidFrom, *previous.ValidTo)
+		}
 	}
 }
 

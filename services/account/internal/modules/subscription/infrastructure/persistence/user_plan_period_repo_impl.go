@@ -20,7 +20,7 @@ import (
 // The report queries use the range expression rather than `valid_from`/
 // `valid_to` comparisons so PostgreSQL can serve them from
 // `idx_user_plan_periods_range` (GiST, no extension required). The recorder
-// reads the open interval FOR UPDATE, which is what serializes concurrent
+// reads the current interval FOR UPDATE, which is what serializes concurrent
 // changes of one user in the fallback (partial-unique) variant.
 type UserPlanPeriodRepository struct {
 	*shared_repos.GenericRepository[entities.UserPlanPeriod, uuid.UUID]
@@ -73,18 +73,26 @@ func (r *UserPlanPeriodRepository) GetDistribution(ctx context.Context, from, to
 	return rows, nil
 }
 
-// GetOpenByUserIDWithLock returns the user's open interval locked FOR UPDATE.
+// GetCurrentByUserIDWithLock returns the user's current interval locked FOR
+// UPDATE.
+//
+// "Current" is the row with the greatest valid_from, NOT the row whose valid_to
+// is NULL: every finite paid interval stores valid_to = expires_at, so filtering
+// on `valid_to IS NULL` made the recorder miss paid holdings entirely. created_at
+// and id make the choice deterministic when two rows share a start. The row may
+// be open-ended or finite; the caller decides whether to close or extend it.
 //
 // The row lock is the serialization point for two concurrent plan changes of
 // the same user. It is taken inside the caller's transaction (resolved from
 // ctx), so it is released at COMMIT/ROLLBACK and never leaks onto a pooled
 // connection.
-func (r *UserPlanPeriodRepository) GetOpenByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserPlanPeriod, error) {
+func (r *UserPlanPeriodRepository) GetCurrentByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserPlanPeriod, error) {
 	var period entities.UserPlanPeriod
 	err := r.GetDB(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("user_id = ? AND valid_to IS NULL", userID).
-		First(&period).Error
+		Where("user_id = ?", userID).
+		Order("valid_from DESC, created_at DESC, id DESC").
+		Take(&period).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -94,14 +102,17 @@ func (r *UserPlanPeriodRepository) GetOpenByUserIDWithLock(ctx context.Context, 
 	return &period, nil
 }
 
-// CloseOpen sets the exclusive end of an interval and moves updated_at with it.
+// CloseCurrent sets the exclusive end of an interval and moves updated_at.
 //
-// `valid_to IS NULL` in the predicate makes a repeat harmless: a retry or a
-// concurrent writer that already closed the row cannot move a historical end.
-func (r *UserPlanPeriodRepository) CloseOpen(ctx context.Context, periodID uuid.UUID, closeAt time.Time) error {
+// It updates by id without a `valid_to IS NULL` predicate. That is deliberate:
+// a finite paid interval already carries its contractual expiry, and a switch
+// must be able to move that end earlier to the actual close instant. The caller
+// holds the row lock taken by GetCurrentByUserIDWithLock, so repeating the same
+// close writes the same value and stays idempotent.
+func (r *UserPlanPeriodRepository) CloseCurrent(ctx context.Context, periodID uuid.UUID, closeAt time.Time) error {
 	return r.GetDB(ctx).
 		Model(&entities.UserPlanPeriod{}).
-		Where("id = ? AND valid_to IS NULL", periodID).
+		Where("id = ?", periodID).
 		Updates(map[string]any{
 			"valid_to":   closeAt,
 			"updated_at": time.Now().UTC(),
@@ -120,9 +131,9 @@ func (r *UserPlanPeriodRepository) Update(ctx context.Context, period *entities.
 	return r.GetDB(ctx).Omit(clause.Associations).Save(period).Error
 }
 
-// UpdateValidTo moves the open interval's exclusive end (EXTENDED, FR-004) and
-// moves updated_at with it. It NEVER inserts a row: one continuous holding must
-// stay one interval.
+// UpdateValidTo moves the current interval's exclusive end (EXTENDED, FR-004)
+// and moves updated_at with it. It NEVER inserts a row: one continuous holding
+// must stay one interval.
 func (r *UserPlanPeriodRepository) UpdateValidTo(ctx context.Context, periodID uuid.UUID, validTo *time.Time) error {
 	return r.GetDB(ctx).
 		Model(&entities.UserPlanPeriod{}).

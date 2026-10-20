@@ -36,25 +36,32 @@ type IUserPlanPeriodRepository interface {
 	// whose valid_from is in the future (FR-008/FR-012).
 	GetDistribution(ctx context.Context, from, to time.Time) ([]SubscriptionDistributionDTO, error)
 
-	// GetOpenByUserIDWithLock returns the user's open interval (valid_to IS NULL)
-	// locked FOR UPDATE, or nil when the user has none. This is the serialization
-	// point of the recorder in the fallback (partial-unique) variant.
-	GetOpenByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserPlanPeriod, error)
+	// GetCurrentByUserIDWithLock returns the user's current interval - the row
+	// with the greatest valid_from (created_at DESC, id DESC break ties) -
+	// locked FOR UPDATE, or nil when the user has no row at all. The row may be
+	// open-ended or finite with a future end: a paid interval stores
+	// valid_to = expires_at, so "current" must not be filtered on `valid_to IS
+	// NULL`. This is the serialization point of the recorder in the fallback
+	// (partial-unique) variant.
+	GetCurrentByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserPlanPeriod, error)
 
-	// CloseOpen moves the interval's exclusive end to closeAt and touches
-	// updated_at. It is a no-op for an id that is no longer open.
-	CloseOpen(ctx context.Context, periodID uuid.UUID, closeAt time.Time) error
+	// CloseCurrent moves the interval's exclusive end to closeAt and touches
+	// updated_at. It updates by id without a `valid_to IS NULL` predicate, so a
+	// finite interval's future expiry can be moved earlier to the switch
+	// instant. Callers hold the row lock taken by GetCurrentByUserIDWithLock,
+	// which makes repeating the same close idempotent.
+	CloseCurrent(ctx context.Context, periodID uuid.UUID, closeAt time.Time) error
 
 	// Create inserts one interval row.
 	Create(ctx context.Context, period *entities.UserPlanPeriod) error
 
 	// Update replaces an existing interval row in place. The recorder uses it
-	// when a change lands exactly at (or before) the open interval's start:
+	// when a change lands exactly at (or before) the current interval's start:
 	// replacing keeps one row and avoids a zero-length interval, which the
 	// CHECK constraint forbids (031 data-model §3).
 	Update(ctx context.Context, period *entities.UserPlanPeriod) error
 
-	// UpdateValidTo moves the open interval's exclusive end (EXTENDED) and
+	// UpdateValidTo moves the current interval's exclusive end (EXTENDED) and
 	// touches updated_at. A nil validTo is stored as NULL.
 	UpdateValidTo(ctx context.Context, periodID uuid.UUID, validTo *time.Time) error
 

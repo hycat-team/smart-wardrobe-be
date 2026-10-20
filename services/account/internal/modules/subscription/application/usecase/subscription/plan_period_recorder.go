@@ -43,8 +43,8 @@ func NewPlanPeriodRecorder(repo repositories.IUserPlanPeriodRepository) PlanPeri
 // Record applies the transition table in 031 data-model §3.
 //
 // Order matters. `source=admin_restore` is checked BEFORE any branch that reads
-// the open interval: the repair path does not lock the subscription row, and a
-// concurrent purchase may already have written a newer interval. Treating the
+// the current interval: the repair path does not lock the subscription row, and
+// a concurrent purchase may already have written a newer interval. Treating the
 // repair as an absolute no-op is what prevents it from overwriting that row
 // (R5). `AUTO_RENEW_UPDATED` is a no-op for the same reason: the plan and its
 // window did not change.
@@ -92,53 +92,53 @@ func (r *planPeriodRecorder) recordSwitch(
 	sub *entities.UserSubscription,
 	plan *entities.SubscriptionPlan,
 ) error {
-	open, err := r.repo.GetOpenByUserIDWithLock(ctx, sub.UserID)
+	current, err := r.repo.GetCurrentByUserIDWithLock(ctx, sub.UserID)
 	if err != nil {
-		return fmt.Errorf("read open plan period: %w", err)
+		return fmt.Errorf("read current plan period: %w", err)
 	}
 
-	if open == nil {
+	if current == nil {
 		return r.repo.Create(ctx, buildPeriod(event, sub, plan, event.EffectiveAt, sub.ExpiresAt))
 	}
 
-	// FR-003 / data-model §3: an ACTIVATED for the plan already open (the admin
-	// restore path) changes neither the plan nor the window. Without this guard
-	// the close below would land at the interval's own start and violate
+	// FR-003 / data-model §3: an ACTIVATED for the plan already current (the
+	// admin restore path) changes neither the plan nor the window. Without this
+	// guard the close below would land at the interval's own start and violate
 	// chk_user_plan_periods_valid_range.
-	if subscriptioneventtype.Type(event.EventType) == subscriptioneventtype.ACTIVATED && open.PlanCode == plan.Slug {
+	if subscriptioneventtype.Type(event.EventType) == subscriptioneventtype.ACTIVATED && current.PlanCode == plan.Slug {
 		return nil
 	}
 
-	closeAt := closeInstant(open, event.EffectiveAt)
-	if !closeAt.After(open.ValidFrom) {
-		// Same-instant (or clock skew): replace the open row instead of closing
-		// it and creating a zero-length interval. This also covers provisioning
-		// and the first grant in one transaction (R5).
-		open.SubscriptionPlanID = plan.ID
-		open.PlanCode = plan.Slug
-		open.PlanName = plan.Name
-		open.TierRank = plan.TierRank
-		open.PlanKind = plan.PlanKind
-		open.ValidFrom = laterOf(event.EffectiveAt, open.ValidFrom)
-		open.ValidTo = sub.ExpiresAt
-		open.SourceEventKey = sourceEventKey(event.EventKey)
-		open.UpdatedAt = time.Now().UTC()
-		if err := r.repo.Update(ctx, open); err != nil {
-			return fmt.Errorf("replace open plan period: %w", err)
+	closeAt := closeInstant(current, event.EffectiveAt)
+	if !closeAt.After(current.ValidFrom) {
+		// Same-instant (or clock skew): replace the current row instead of
+		// closing it and creating a zero-length interval. This also covers
+		// provisioning and the first grant in one transaction (R5).
+		current.SubscriptionPlanID = plan.ID
+		current.PlanCode = plan.Slug
+		current.PlanName = plan.Name
+		current.TierRank = plan.TierRank
+		current.PlanKind = plan.PlanKind
+		current.ValidFrom = laterOf(event.EffectiveAt, current.ValidFrom)
+		current.ValidTo = sub.ExpiresAt
+		current.SourceEventKey = sourceEventKey(event.EventKey)
+		current.UpdatedAt = time.Now().UTC()
+		if err := r.repo.Update(ctx, current); err != nil {
+			return fmt.Errorf("replace current plan period: %w", err)
 		}
 		return nil
 	}
 
-	if err := r.repo.CloseOpen(ctx, open.ID, closeAt); err != nil {
-		return fmt.Errorf("close open plan period: %w", err)
+	if err := r.repo.CloseCurrent(ctx, current.ID, closeAt); err != nil {
+		return fmt.Errorf("close current plan period: %w", err)
 	}
 
-	newFrom := laterOf(event.EffectiveAt, open.ValidFrom)
+	newFrom := laterOf(event.EffectiveAt, current.ValidFrom)
 	return r.repo.Create(ctx, buildPeriod(event, sub, plan, newFrom, sub.ExpiresAt))
 }
 
 // recordExtended handles a renewal of the same plan: it only moves valid_to
-// (FR-004 / R4). A missing open row is the legacy case - insert the current
+// (FR-004 / R4). A missing current row is the legacy case - insert the current
 // window rather than dropping the user from the history.
 func (r *planPeriodRecorder) recordExtended(
 	ctx context.Context,
@@ -146,16 +146,16 @@ func (r *planPeriodRecorder) recordExtended(
 	sub *entities.UserSubscription,
 	plan *entities.SubscriptionPlan,
 ) error {
-	open, err := r.repo.GetOpenByUserIDWithLock(ctx, sub.UserID)
+	current, err := r.repo.GetCurrentByUserIDWithLock(ctx, sub.UserID)
 	if err != nil {
-		return fmt.Errorf("read open plan period: %w", err)
+		return fmt.Errorf("read current plan period: %w", err)
 	}
 
-	if open == nil {
+	if current == nil {
 		return r.repo.Create(ctx, buildPeriod(event, sub, plan, sub.StartedAt, sub.ExpiresAt))
 	}
-	if err := r.repo.UpdateValidTo(ctx, open.ID, sub.ExpiresAt); err != nil {
-		return fmt.Errorf("extend open plan period: %w", err)
+	if err := r.repo.UpdateValidTo(ctx, current.ID, sub.ExpiresAt); err != nil {
+		return fmt.Errorf("extend current plan period: %w", err)
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func (r *planPeriodRecorder) recordExtended(
 // recordFallback handles SUBSCRIPTION_DOWNGRADED_TO_FREE and
 // LIFETIME_FALLBACK_RESTORED: close the previous interval at the contractual
 // boundary and open the free/lifetime interval at that same instant (FR-005 /
-// R5). `closeAt` uses min(open.valid_to, effective) so a late worker does not
+// R5). `closeAt` uses min(current.valid_to, effective) so a late worker does not
 // extend the paid plan past the moment it actually ended.
 func (r *planPeriodRecorder) recordFallback(
 	ctx context.Context,
@@ -171,15 +171,15 @@ func (r *planPeriodRecorder) recordFallback(
 	sub *entities.UserSubscription,
 	plan *entities.SubscriptionPlan,
 ) error {
-	open, err := r.repo.GetOpenByUserIDWithLock(ctx, sub.UserID)
+	current, err := r.repo.GetCurrentByUserIDWithLock(ctx, sub.UserID)
 	if err != nil {
-		return fmt.Errorf("read open plan period: %w", err)
+		return fmt.Errorf("read current plan period: %w", err)
 	}
 
 	closeAt := event.EffectiveAt
-	if open != nil {
-		closeAt = closeInstant(open, event.EffectiveAt)
-		if err := r.repo.CloseOpen(ctx, open.ID, closeAt); err != nil {
+	if current != nil {
+		closeAt = closeInstant(current, event.EffectiveAt)
+		if err := r.repo.CloseCurrent(ctx, current.ID, closeAt); err != nil {
 			return fmt.Errorf("close plan period on fallback: %w", err)
 		}
 	}
@@ -210,11 +210,11 @@ func buildPeriod(
 	}
 }
 
-// closeInstant is min(open.valid_to, effective) when the interval already has
-// an end that is earlier than the event, otherwise the event instant.
-func closeInstant(open *entities.UserPlanPeriod, effective time.Time) time.Time {
-	if open.ValidTo != nil && open.ValidTo.Before(effective) {
-		return *open.ValidTo
+// closeInstant is min(current.valid_to, effective) when the interval already
+// has an end that is earlier than the event, otherwise the event instant.
+func closeInstant(current *entities.UserPlanPeriod, effective time.Time) time.Time {
+	if current.ValidTo != nil && current.ValidTo.Before(effective) {
+		return *current.ValidTo
 	}
 	return effective
 }
