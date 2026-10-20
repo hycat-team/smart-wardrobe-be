@@ -122,12 +122,16 @@ func TestAdminGrantBatchDifferentKeyGrantsAgain(t *testing.T) {
 		t.Fatalf("khoá khác phải được cấp lại, có = %d", second.Succeeded)
 	}
 	after := h.subs.subs[user.ID].ExpiresAt
-	if after == nil || after.Before(before) {
-		t.Errorf("kỳ mới phải tính từ lúc cấp, không được lùi so với trước: cũ = %v mới = %v", before, after)
+	if after == nil {
+		t.Fatal("cấp lại phải để lại ngày hết hạn")
 	}
-	if after.After(before) {
-		t.Errorf("cấp hành chính không được cộng dồn hạn (027/D-08): cũ = %v mới = %v "+
-			"(chênh lệch nghĩa là đã cộng thêm ngày chưa ai trả tiền)", before, *after)
+	// The harness uses the real clock, so "restart at now" lands a few microseconds
+	// after the previous value. What must NOT happen is a whole extra duration: that
+	// would be the stacking 027/D-08 removed.
+	delta := after.Sub(before)
+	if delta < 0 || delta > time.Minute {
+		t.Errorf("cấp hành chính phải tính lại kỳ từ lúc cấp, không cộng dồn (027/D-08): "+
+			"cũ = %v mới = %v chênh = %v", before, *after, delta)
 	}
 }
 
