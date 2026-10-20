@@ -56,7 +56,12 @@ func ApplySubscriptionPlanWithEvent(
 	// 024 T166: captured before the fields are overwritten, for the same reason
 	// previousPlanID is.
 	previousExpiresAt := sub.ExpiresAt
-	expiresAt := sub.ResolveExpiryFor(plan, now)
+	// 027/D-08: both callers of this workflow are ADMINISTRATIVE (administrator batch
+	// grant and campaign grant). An administrative grant starts a fresh period at
+	// `now`; stacking it onto a running term would give away days nobody paid for and
+	// leave a `future` grant window for the AI service. Paid periods extend through
+	// ResolveExpiryFor, which purchase settlement reaches via ApplyTransition.
+	expiresAt := sub.ResolveAdminExpiryFor(plan, now)
 
 	sub.SubscriptionPlanID = plan.ID
 	sub.ExpiresAt = expiresAt

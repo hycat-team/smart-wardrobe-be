@@ -394,6 +394,12 @@ func (u *UserSubscription) expiryFor(plan *SubscriptionPlan, base time.Time) tim
 //
 // `isNewSub` is deliberately absent: a row that has never been provisioned has a
 // nil expiry, which fails the unexpired test on its own.
+//
+// 027/D-08: this is the rule for a PAID period being extended, and it currently has
+// no production caller — purchase settlement stacks through `ApplyTransition`. The
+// administrative paths used to call it too, which is what made a re-grant add 30
+// days to a customer who had not paid for them; they now use
+// `ResolveAdminExpiryFor`.
 func (u *UserSubscription) ResolveExpiryFor(plan *SubscriptionPlan, now time.Time) *time.Time {
 	if plan.DurationDays == nil {
 		return nil
@@ -401,6 +407,26 @@ func (u *UserSubscription) ResolveExpiryFor(plan *SubscriptionPlan, now time.Tim
 	if u.ExpiresAt != nil && u.ExpiresAt.After(now) && u.SubscriptionPlanID == plan.ID {
 		stacked := u.expiryFor(plan, *u.ExpiresAt)
 		return &stacked
+	}
+	fresh := u.expiryFor(plan, now)
+	return &fresh
+}
+
+// ResolveAdminExpiryFor is the expiry for an ADMINISTRATIVE grant (027/D-08).
+//
+// An administrative grant always starts a fresh period at `now`, even when the
+// account is already on this plan with time left. Nobody paid for the extension, so
+// stacking it onto the running term would hand out days that were never bought, and
+// it left the previous period as the grant window the AI service reads — which is
+// how a re-granted account ended up with a `future` grant record and degraded AI
+// access for the rest of its paid term.
+//
+// This REPLACES the remaining term rather than adding to it: 20 days left plus a
+// 30-day administrative grant is 30 days from now, not 50. Callers that extend a
+// period the customer paid for must use ResolveExpiryFor instead.
+func (u *UserSubscription) ResolveAdminExpiryFor(plan *SubscriptionPlan, now time.Time) *time.Time {
+	if plan.DurationDays == nil {
+		return nil
 	}
 	fresh := u.expiryFor(plan, now)
 	return &fresh

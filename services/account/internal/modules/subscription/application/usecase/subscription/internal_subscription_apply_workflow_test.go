@@ -91,11 +91,13 @@ func TestRegrantingTheSameExpiredPlanClearsFallbackAndAutoRenew(t *testing.T) {
 	}
 }
 
-// The guard against over-clearing: a live term on the same plan is a renewal, and a
-// renewal must leave the auto-renew flag alone. FR-053 does not ask for it to be
-// cleared here, and clearing it would silently unsubscribe paying customers every time
-// their plan was renewed early.
-func TestRenewingALiveSamePlanKeepsAutoRenew(t *testing.T) {
+// The guard against over-clearing: a live term on the same plan must not lose the
+// auto-renew flag. FR-053 does not ask for it to be cleared here, and clearing it
+// would silently unsubscribe paying customers every time a plan was re-granted early.
+//
+// 027/D-08 changed the DATE half of this test: this workflow is administrative, so
+// the period restarts at `now` instead of stacking onto the remaining term.
+func TestRegrantingALiveSamePlanKeepsAutoRenewAndStartsAFreshPeriod(t *testing.T) {
 	now := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
 	userID := uuid.New()
 	premium := premiumPlanWithTerm(30)
@@ -121,10 +123,12 @@ func TestRenewingALiveSamePlanKeepsAutoRenew(t *testing.T) {
 	if !repo.subs[userID].IsAutoRenewEnabled {
 		t.Error("renewing a plan still in force must not clear the auto-renew flag: a paying customer already consented")
 	}
-	// The renewal must stack onto the existing term, not restart it.
-	want := live.AddDate(0, 0, 30)
+	// An ADMINISTRATIVE grant replaces the remaining term: nobody paid for the extra
+	// days, and stacking them would also leave the old period as the grant window the
+	// AI service reads (027/D-08).
+	want := now.AddDate(0, 0, 30)
 	if got := repo.subs[userID].ExpiresAt; got == nil || !got.Equal(want) {
-		t.Errorf("a renewal must stack onto the running period, got = %v, want = %v", got, want)
+		t.Errorf("an administrative grant must start a fresh period at now, got = %v, want = %v", got, want)
 	}
 }
 

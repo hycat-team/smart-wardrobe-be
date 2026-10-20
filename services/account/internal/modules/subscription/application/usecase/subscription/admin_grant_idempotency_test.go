@@ -99,8 +99,11 @@ func TestAdminGrantBatchRetryDeduplicatesPerItemIndex(t *testing.T) {
 	}
 }
 
-// A DIFFERENT key is a different decision, so it grants again. Otherwise an
-// administrator could never intentionally extend a subscription twice.
+// A DIFFERENT key is a different decision, so it grants again rather than replaying
+// the first result. It does NOT add days onto the previous term: 027/D-08 made an
+// administrative grant restart the period at `now`, because nobody paid for the days
+// that stacking would hand out. Deliberate extension therefore means granting a longer
+// duration or a different plan, not calling the same grant twice.
 func TestAdminGrantBatchDifferentKeyGrantsAgain(t *testing.T) {
 	user := grantTestUser("twice", "twice@example.com", roleslug.User, false)
 	h := newGrantHarness(t, user)
@@ -118,8 +121,13 @@ func TestAdminGrantBatchDifferentKeyGrantsAgain(t *testing.T) {
 	if second.Succeeded != 1 {
 		t.Fatalf("khoá khác phải được cấp lại, có = %d", second.Succeeded)
 	}
-	if !h.subs.subs[user.ID].ExpiresAt.After(before) {
-		t.Errorf("thời hạn phải cộng dồn thêm, cũ = %v mới = %v", before, h.subs.subs[user.ID].ExpiresAt)
+	after := h.subs.subs[user.ID].ExpiresAt
+	if after == nil || after.Before(before) {
+		t.Errorf("kỳ mới phải tính từ lúc cấp, không được lùi so với trước: cũ = %v mới = %v", before, after)
+	}
+	if after.After(before) {
+		t.Errorf("cấp hành chính không được cộng dồn hạn (027/D-08): cũ = %v mới = %v "+
+			"(chênh lệch nghĩa là đã cộng thêm ngày chưa ai trả tiền)", before, *after)
 	}
 }
 

@@ -122,3 +122,58 @@ func TestOverlayLifetimeKeepsFallbackPlanPointerIndependent(t *testing.T) {
 		t.Errorf("restore event to_plan_code %q must differ from from_plan_code %q", *restoreEvent.ToPlanCode, *restoreEvent.FromPlanCode)
 	}
 }
+
+// 027/D-08: the administrative rule must never stack. These three cases are the
+// whole rule: a live term on the same plan restarts at now, a different plan starts
+// at now, and a plan with no duration has no expiry.
+func TestResolveAdminExpiryForNeverStacks(t *testing.T) {
+	now := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	thirtyDays := 30
+	plan := &SubscriptionPlan{
+		AuditableEntity: AuditableEntity{BaseEntity: BaseEntity{ID: uuid.New()}},
+		Slug:            "premium-monthly",
+		PlanKind:        plankind.Finite,
+		DurationDays:    &thirtyDays,
+	}
+	otherPlan := &SubscriptionPlan{
+		AuditableEntity: AuditableEntity{BaseEntity: BaseEntity{ID: uuid.New()}},
+		Slug:            "premium-yearly",
+		PlanKind:        plankind.Finite,
+		DurationDays:    &thirtyDays,
+	}
+	lifetime := &SubscriptionPlan{
+		AuditableEntity: AuditableEntity{BaseEntity: BaseEntity{ID: uuid.New()}},
+		Slug:            "premium-lifetime",
+		PlanKind:        plankind.Lifetime,
+	}
+
+	liveTerm := now.AddDate(0, 0, 20)
+	samePlanLive := &UserSubscription{
+		SubscriptionPlanID: plan.ID,
+		CurrentPlanCode:    plan.Slug,
+		ExpiresAt:          &liveTerm,
+	}
+
+	t.Run("same plan with a live term restarts at now", func(t *testing.T) {
+		got := samePlanLive.ResolveAdminExpiryFor(plan, now)
+		if got == nil || !got.Equal(now.AddDate(0, 0, 30)) {
+			t.Fatalf("administrative grant must start at now, got %v", got)
+		}
+		if got.Equal(liveTerm.AddDate(0, 0, 30)) {
+			t.Fatal("administrative grant must NOT stack onto the remaining term")
+		}
+	})
+
+	t.Run("different plan starts at now", func(t *testing.T) {
+		got := samePlanLive.ResolveAdminExpiryFor(otherPlan, now)
+		if got == nil || !got.Equal(now.AddDate(0, 0, 30)) {
+			t.Fatalf("different plan must start at now, got %v", got)
+		}
+	})
+
+	t.Run("no duration has no expiry", func(t *testing.T) {
+		if got := samePlanLive.ResolveAdminExpiryFor(lifetime, now); got != nil {
+			t.Fatalf("a plan with no duration must have no expiry, got %v", got)
+		}
+	})
+}

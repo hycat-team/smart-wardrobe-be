@@ -17,50 +17,52 @@ import (
 	"github.com/google/uuid"
 )
 
-// 024 T153.
+// 024 T153, re-stated by 027 D-08.
 //
 // The comment on `ResolveExpiryFor` used to claim it was "THE expiry rule for every
-// path that changes a plan", and that FR-072 requires admin grant, auto-renewal and
-// purchase to share one rule. Neither was true: it had exactly one production caller,
-// and `Activate`, `Grant`, `state_machine` and `renewal_payment` each computed an
-// expiry on their own.
+// path that changes a plan". It never was: `Activate`, `Grant`, `state_machine` and
+// `renewal_payment` each compute an expiry themselves, and purchase settlement stacks
+// through `ApplyTransition`.
 //
-// An inaccurate comment is not neutral. It told the next reader that the other paths
-// had already been migrated, so nobody went looking - and the drift it described is
-// exactly what it invited.
+// 027/D-08 removed its last production caller as well. The workflow that admin and
+// campaign grants share is ADMINISTRATIVE, so it now calls `ResolveAdminExpiryFor`
+// and starts a fresh period at `now`. `ResolveExpiryFor` stays as the documented rule
+// for a period the customer paid for, with no caller today.
 //
-// These tests assert the call graph with the parser rather than by reading the comment
-// back, because the behaviour is unchanged by this task and what needs protecting is
-// the CLAIM. If someone later consolidates the paths, this fails and the comment gets
-// rewritten in the same change - which is the entire point.
-func TestResolveExpiryForCallerSetMatchesWhatTheCommentClaims(t *testing.T) {
-	calls := resolveExpiryCallSites(t)
-
-	// The corrected comment names the shared apply workflow as the only production
-	// caller: admin grant, purchase settlement and default provisioning all reach it.
-	if !hasFile(calls, "internal_subscription_apply_workflow.go") {
-		t.Errorf("ResolveExpiryFor phải được gọi từ apply workflow, các file đang gọi: %v", calls)
+// These assertions read the call graph with the parser, because what needs protecting
+// is the CLAIM in those comments. If a path starts calling one of these methods, this
+// fails and the comment gets rewritten in the same change.
+func TestExpiryCallGraphMatchesTheComments(t *testing.T) {
+	resolveCalls := callSites(t, "ResolveExpiryFor")
+	if len(resolveCalls) != 0 {
+		t.Errorf("ResolveExpiryFor hiện không còn production caller (027/D-08): purchase đi qua "+
+			"ApplyTransition, đường hành chính dùng ResolveAdminExpiryFor. Các file đang gọi: %v", resolveCalls)
 	}
 
-	// The corrected comment lists these as NOT going through it. If one starts calling
-	// it, the "known gap" wording is stale and has to be rewritten in the same change.
+	adminCalls := callSites(t, "ResolveAdminExpiryFor")
+	// The corrected comment names the shared apply workflow as the only production
+	// caller: administrator batch grant and campaign grant both reach it.
+	if !hasFile(adminCalls, "internal_subscription_apply_workflow.go") {
+		t.Errorf("ResolveAdminExpiryFor phải được gọi từ apply workflow, các file đang gọi: %v", adminCalls)
+	}
+
+	// The comment says this is the administrative rule and that the paid paths do NOT
+	// use it. A new caller makes that wording stale.
+	if len(adminCalls) != 1 {
+		t.Errorf("ResolveAdminExpiryFor được gọi từ %d file (%v); comment nói một production "+
+			"caller, phải liệt kê lại", len(adminCalls), adminCalls)
+	}
+
 	stillHandRolled := []string{
 		"subscription_behavior.go", // Activate and Grant compute expiryFor themselves
 		"state_machine.go",         // its own AddProductDays copy
 		"renewal_payment.go",       // reads DurationDays directly
 	}
 	for _, file := range stillHandRolled {
-		if hasFile(calls, file) {
-			t.Errorf("%s đã bắt đầu gọi ResolveExpiryFor - phải cập nhật comment của hàm "+
+		if hasFile(adminCalls, file) {
+			t.Errorf("%s đã bắt đầu gọi ResolveAdminExpiryFor - phải cập nhật comment của hàm "+
 				"và bỏ nó khỏi danh sách known gap, không được để hai nơi cùng nói một đằng", file)
 		}
-	}
-
-	// The corrected comment says "one production caller". A second caller makes that
-	// enumeration incomplete even if the paths above still avoid it.
-	if len(calls) != 1 {
-		t.Errorf("ResolveExpiryFor được gọi từ %d file (%v); comment nói một production "+
-			"caller, phải liệt kê lại", len(calls), calls)
 	}
 }
 
@@ -106,13 +108,12 @@ func TestActivateKeepsItsOwnExpirySemantics(t *testing.T) {
 	}
 }
 
-// resolveExpiryCallSites returns the production files that CALL
-// ResolveExpiryFor.
+// callSites returns the production files that CALL the named method.
 //
 // The parser is used rather than a text search because the identifier also appears
 // in the declaration and its doc comment. Counting strings would either miss a real
 // call or include the file that defines the method.
-func resolveExpiryCallSites(t *testing.T) []string {
+func callSites(t *testing.T, method string) []string {
 	t.Helper()
 
 	root := moduleRoot(t)
@@ -144,7 +145,7 @@ func resolveExpiryCallSites(t *testing.T) []string {
 				return true
 			}
 			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "ResolveExpiryFor" {
+			if !ok || sel.Sel.Name != method {
 				return true
 			}
 			calls = append(calls, filepath.Base(path))

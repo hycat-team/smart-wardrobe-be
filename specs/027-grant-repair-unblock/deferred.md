@@ -180,3 +180,23 @@ bịa ra sai.
 - **Ảnh hưởng tới task đã tick**: **Có.** T040 và SC-009 kỳ vọng cả 8 tài khoản được sửa; với
   tài khoản demo `premium-monthly` còn hiệu lực thì chỉ 7 tài khoản đạt. `[X]` ở T040 nên được
   đọc kèm điều kiện này.
+
+- **TRẠNG THÁI (2026-10-20 — RESOLVED)**: tách "cấp hành chính" khỏi "kỳ đã trả tiền" đúng như
+  hướng gỡ đề xuất:
+  - `UserSubscription.ResolveAdminExpiryFor(plan, now)` mới: `DurationDays == nil` → `nil`, còn
+    lại **luôn `now + duration`**, không cộng dồn hạn cũ.
+  - `ApplySubscriptionPlanWithEvent` dùng method này (đây là workflow mà **cả hai** caller sản
+    xuất — admin batch grant và campaign grant — đi qua; purchase settlement không đi qua nó, đã
+    kiểm chứng: purchase dùng `ApplyTransition`/`Activate`).
+  - `ResolveExpiryFor` giữ nguyên làm luật cho kỳ **đã trả tiền**; comment ghi rõ hiện không còn
+    production caller. Test call-graph (`TestExpiryCallGraphMatchesTheComments`) khoá lại: 0 caller
+    cho `ResolveExpiryFor`, đúng 1 caller cho `ResolveAdminExpiryFor`.
+  - Hành vi **trước → sau**: admin cấp lại cùng gói đang còn hạn — trước `hạn_cũ + 30d` (và sinh
+    bản ghi `future` khiến quyền AI suy giảm tới hết kỳ), sau **`now + 30d`**. Cấp lại **thay** phần
+    còn lại, không cộng thêm; muốn kéo dài phải cấp gói có duration dài hơn hoặc gói khác.
+  - Campaign không đổi hành vi: condition 5 (`SkipAlreadyOnPlan`, `admission_uc.go:115`) vẫn chặn
+    ca "đã đúng gói và kỳ chưa hết" trước khi tới workflow; test condition 5 vẫn xanh.
+  - Test khoá: 3 ca entity (`TestResolveAdminExpiryForNeverStacks`), workflow
+    (`TestRegrantingALiveSamePlanKeepsAutoRenewAndStartsAFreshPeriod`), admin idempotency
+    (`TestAdminGrantBatchDifferentKeyGrantsAgain` sửa kỳ vọng: khoá khác cấp lại nhưng không cộng
+    ngày).
