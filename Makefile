@@ -1,4 +1,4 @@
-# Config and variables
+﻿# Config and variables
 export
 
 # ---- 020 multi-module workspace (FR-038) ----
@@ -106,7 +106,7 @@ else
 GOOSE_TABLE := goose_db_version
 endif
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet migration-check test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose rabbitmq-topology-check rabbitmq-topology-migrate image-build-tool image-push-tool
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet migration-check test test-workspace test-race test-integration test-db-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose rabbitmq-topology-check rabbitmq-topology-migrate image-build-tool image-push-tool
 
 help:
 	@echo "========================================================================"
@@ -150,6 +150,7 @@ quality-help:
 	@echo "  make test-workspace   : Alias of test across the go.work workspace"
 	@echo "  make test-race        : Run all Go tests with race detector enabled"
 	@echo "  make test-integration : Run messaging integration tests (needs TEST_RABBITMQ_URL / TEST_DATABASE_URL)"
+	@echo "  make test-db-integration : Run DB integration tests serially (needs TEST_DATABASE_URL on a migrated DB)"
 	@echo "  make lint             : Run fmt-check + go vet"
 	@echo "  make check            : Run all checks sequentially (workspace CI suite)"
 
@@ -198,8 +199,8 @@ install-tools:
 
 install-goose:
 	@echo Installing Goose CLI tool...
-	@go install github.com/pressly/goose/v3/cmd/goose@latest
-	@echo Goose CLI installed.
+	@go install github.com/pressly/goose/v3/cmd/goose@v3.28.0
+	@echo Goose CLI installed (pinned to v3.28.0, the version in shared/go.mod).
 
 wire:
 	$(SVC_REQ)
@@ -324,6 +325,36 @@ test-integration:
 	@cd services/account && go test -race -run Integration ./internal/modules/subscription/...
 	@cd shared && go test -race -run Integration ./infrastructure/messaging/...
 	@echo Integration tests finished.
+
+# 026 D-01: database-backed integration tests. TEST_DATABASE_URL must point at a
+# database built the documented way (database/init/*.sql, then `make migrate-up`
+# for account/commerce/ai) — the harnesses no longer create their own schema.
+# The DSN must also carry `search_path=public,identity,...,community` (mirrors
+# configs/config.yaml); without it the repositories' unqualified table names
+# cannot resolve against the module schemas.
+#
+# `-p 1` is deliberate (026 D-03): two test packages in services/account share the
+# one database, and running them in parallel makes the campaign fixtures race with
+# the seed/rollback tests. Serialising packages is the cheap fix; remove it only
+# together with a session-level advisory lock shared by both openers.
+#
+# The package list is explicit rather than `./...`. `usecase/subscription` still
+# creates its own schema with GORM AutoMigrate, which lands unqualified tables in
+# `public` (first on the search_path) and then SHADOWS the module schemas for
+# every later package — `public.subscription_plans` empty while
+# `subscription.subscription_plans` holds the rows. That package needs the same
+# treatment 025/D-01 gave the webhook harness; until then it stays out of this
+# target and is recorded in specs/026-campaign-registry-db/deferred.md (D-06).
+test-db-integration:
+	@echo "Running database-backed integration tests (TEST_DATABASE_URL required)..."
+	@cd services/account && go test -race -p 1 -timeout 20m -run Integration \
+		./database/migrations/... \
+		./internal/modules/subscription/infrastructure/persistence/... \
+		./internal/modules/subscription/application/usecase/campaign/... \
+		./internal/modules/subscription/application/usecase/webhook/...
+	@cd services/ai && go test -race -p 1 -timeout 20m -run Integration \
+		./internal/modules/aiexecutor/application/usecase/grant/...
+	@echo Database-backed integration tests finished.
 
 build:
 	$(SVC_REQ)

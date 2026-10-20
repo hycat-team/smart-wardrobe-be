@@ -29,11 +29,13 @@ import (
 // would report what the structs imply instead of what production runs.
 
 // TestIntegrationCampaignClaimsSchemaIsUnchanged pins `campaign_claims` to the
-// shape 025 T016 created — ten columns and the four indexes its migration names.
+// shape its migrations created — ten columns (026 added `campaign_code` for
+// per-campaign attribution) and the three explicit indexes the migration names.
 func TestIntegrationCampaignClaimsSchemaIsUnchanged(t *testing.T) {
 	dbConn := openRegistryTestDB(t)
 
 	assertColumns(t, dbConn, "subscription", "campaign_claims", []string{
+		"campaign_code",
 		"expires_at",
 		"fills_main_quota",
 		"grant_bucket",
@@ -44,11 +46,13 @@ func TestIntegrationCampaignClaimsSchemaIsUnchanged(t *testing.T) {
 		"registered_at",
 		"user_id",
 	})
+	// `assertIndexes` pins the bare `CREATE INDEX` statements a migration declares
+	// (constraint-backed indexes such as the primary key carry a constraint name and
+	// are filtered out by design). These three are the ones 026 declares; the pkey
+	// and the user uniqueness come from constraints, not from these statements.
 	assertIndexes(t, dbConn, "subscription", "campaign_claims", []string{
-		"campaign_claims_pkey",
 		"ix_campaign_claims_campaign_bucket",
 		"ix_campaign_claims_campaign_granted",
-		"ux_campaign_claims_user",
 		"ux_campaign_claims_watermark",
 	})
 }
@@ -67,9 +71,9 @@ func TestIntegrationCampaignSweepRunsSchemaIsUnchanged(t *testing.T) {
 		"last_sweep_at",
 		"updated_at",
 	})
-	assertIndexes(t, dbConn, "subscription", "campaign_sweep_runs", []string{
-		"campaign_sweep_runs_pkey",
-	})
+	// The sweep table declares no bare CREATE INDEX; its only index backs the
+	// campaign_code primary key, which assertIndexes filters out by design.
+	assertIndexes(t, dbConn, "subscription", "campaign_sweep_runs", nil)
 }
 
 // TestIntegrationRegistryCarriesNoForeignKey is FR-091 stated directly for the new
@@ -150,7 +154,6 @@ func TestIntegrationRegistryKeepsItsShape(t *testing.T) {
 		"version",
 	})
 	assertIndexes(t, dbConn, "subscription", "campaigns", []string{
-		"campaigns_pkey",
 		"ix_campaigns_starts_at",
 	})
 }

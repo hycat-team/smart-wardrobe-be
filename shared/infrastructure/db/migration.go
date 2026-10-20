@@ -75,10 +75,12 @@ func RunMigrations(ctx context.Context, db *gorm.DB, migrationsFS fs.FS, table s
 		return fmt.Errorf("failed to create postgres session locker: %w", err)
 	}
 
-	// 2. Set the base filesystem to the owning service's embedded migrations
-	goose.SetBaseFS(migrationsFS)
-
-	// 3. Create a Goose provider with session locking enabled
+	// 2. Create a Goose provider with session locking enabled.
+	//
+	// The filesystem is passed to the provider directly. Do NOT call goose.SetBaseFS
+	// here: that sets a package-level global, and two concurrent RunMigrations calls
+	// (the concurrency test, or any future in-process caller) then race on it. The
+	// provider API reads only its own fsys, so the global is not needed.
 	provider, err := goose.NewProvider(
 		goose.DialectPostgres,
 		sqlDB,
@@ -91,7 +93,7 @@ func RunMigrations(ctx context.Context, db *gorm.DB, migrationsFS fs.FS, table s
 		return fmt.Errorf("failed to create goose provider: %w", err)
 	}
 
-	// 4. Run up migrations
+	// 3. Run up migrations
 	log.Info("Running database migrations...")
 	results, err := provider.Up(ctx)
 	if err != nil {

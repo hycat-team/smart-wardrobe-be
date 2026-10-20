@@ -165,6 +165,69 @@ jobs:
                   path: ~/.cache/go-build
                   key: go-build-${{ runner.os }}-${{ hashFiles('**/go.sum', 'go.work.sum') }}-${{ env.GO_CACHE_SCOPE }}-${{ github.run_id }}-${{ github.run_attempt }}
 
+    # 026 D-01: the only job with a database. It builds the schema the documented
+    # way (database/init/*.sql, then the per-service migrations) and runs the
+    # `TestIntegration*` suites that every other job skips for lack of
+    # TEST_DATABASE_URL. Kept separate from `test`/`test-race` so those stay fast
+    # and integration tests are not run twice.
+    db-integration:
+        name: Database-Backed Integration Tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        services:
+            postgres:
+                image: pgvector/pgvector:pg17
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: smart_wardrobe_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U postgres -d smart_wardrobe_test"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 10
+        env:
+            # search_path mirrors configs/config.yaml: migrations place tables in
+            # module schemas while the repositories use unqualified names.
+            TEST_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/smart_wardrobe_test?sslmode=disable&search_path=public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
+            TEST_DATABASE_ALLOW_REGISTRY_ROLLBACK: "true"
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v5
+
+            - name: Set up Go 1.26
+              uses: actions/setup-go@v6
+              with:
+                  go-version: "1.26.x"
+                  cache: false
+
+            - name: Install pinned Goose CLI
+              run: |
+                  make install-goose
+                  echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+            # psql is required here (not a hand-rolled splitter): 00-init.sql
+            # defines a `$$`-quoted function, so the files must be executed by a
+            # client that understands PostgreSQL syntax.
+            - name: Build base schema from database/init
+              run: |
+                  for f in database/init/00-init.sql database/init/01-schema.sql database/init/02-indexes.sql database/init/03-seed.sql; do
+                    echo "== ${f} =="
+                    PGPASSWORD=postgres psql -h localhost -U postgres -d smart_wardrobe_test \
+                      -v ON_ERROR_STOP=1 -q -f "${f}"
+                  done
+
+            - name: Apply per-service migrations
+              run: |
+                  make migrate-up svc=account DB_HOST=localhost DB_USER=postgres DB_PASSWORD=postgres DB_NAME=smart_wardrobe_test
+                  make migrate-up svc=commerce DB_HOST=localhost DB_USER=postgres DB_PASSWORD=postgres DB_NAME=smart_wardrobe_test
+                  make migrate-up svc=ai DB_HOST=localhost DB_USER=postgres DB_PASSWORD=postgres DB_NAME=smart_wardrobe_test
+
+            - name: Run database-backed integration tests
+              run: make test-db-integration
+
     build:
         name: Build Service Binaries
         runs-on: ubuntu-latest

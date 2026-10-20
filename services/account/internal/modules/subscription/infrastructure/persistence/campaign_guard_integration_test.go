@@ -92,7 +92,7 @@ func TestIntegrationTriggerRefusesPlanSlugAndReserveToo(t *testing.T) {
 		name string
 		sql  string
 	}{
-		{"plan_slug", "UPDATE subscription.campaigns SET plan_slug = 'premium-yearly' WHERE code = ?"},
+		{"plan-slug", "UPDATE subscription.campaigns SET plan_slug = 'premium-yearly' WHERE code = ?"},
 		{"reserve", "UPDATE subscription.campaigns SET reserve = reserve + 5 WHERE code = ?"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

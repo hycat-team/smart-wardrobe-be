@@ -210,9 +210,24 @@ func TestIntegrationRegistryRollbackNeedsTwoStepsAndKeepsClaims(t *testing.T) {
 	// dropped table, so it lives in its own test ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
 	// `TestTheSeedMigrationRunsAfterTheSchemaMigration` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and is not re-checked here: a
 	// guard behind `requireRollbackConsent` would be a guard that never runs.
+	// Leave the database as it was found: without this, every other Postgres-backed
+	// test in this package would fail against a dropped registry.
+	//
+	// The two Down sections are executed as raw SQL, so goose still believes both
+	// versions are applied. Deleting those two rows is what tells it otherwise;
+	// without that, RunMigrations would report "no migrations to run" and the
+	// registry would stay dropped for the rest of the package.
+	schemaVersion, seedVersion := migrationVersions(t)
 	t.Cleanup(func() {
-		// Leave the database as it was found: without this, every other Postgres-backed
-		// test in this package would fail against a dropped registry.
+		if schemaVersion == 0 || seedVersion == 0 {
+			return
+		}
+		if err := dbConn.Exec(
+			"DELETE FROM goose_db_version WHERE version_id IN (?, ?)", schemaVersion, seedVersion,
+		).Error; err != nil {
+			t.Errorf("mark the two rolled-back versions as unapplied: %v", err)
+			return
+		}
 		if err := shareddb.RunMigrations(context.Background(), dbConn, accountmigrations.EmbedFS,
 			"goose_db_version", true, zap.NewNop()); err != nil {
 			t.Errorf("restore the schema after the rollback test: %v", err)

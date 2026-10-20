@@ -180,12 +180,15 @@ func (l *dbCampaignAuditLookup) ListByCampaignCode(
 	campaignCode string,
 	page, limit int,
 ) ([]*admindto.AdminAuditLogDTO, int64, error) {
-	scoped := l.db.WithContext(ctx).
+	// `Table` rather than `Model(&auditTrailRow{})`: that struct is a local projection
+	// with no table behind it, so GORM would derive `audit_trail_rows` and the count
+	// would fail. `Raw` below carries its own FROM clause.
+	scoped := l.db.WithContext(ctx).Table("shared.admin_audit_logs").
 		Where("target_type = ?", string(adminaudit.Campaign)).
 		Where("payload->>'campaignCode' = ?", campaignCode)
 
 	var total int64
-	if err := scoped.Model(&auditTrailRow{}).Count(&total).Error; err != nil {
+	if err := scoped.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	if page < 1 {
@@ -331,6 +334,11 @@ func insertAuditActorAccount(t *testing.T, dbConn *gorm.DB) uuid.UUID {
 		t.Fatalf("insert the administrator account: %v", err)
 	}
 	t.Cleanup(func() {
+		// Audit rows reference the actor with a plain FK, and this cleanup runs before
+		// the audit-row sweep registered in openAuditTestDB (cleanups are LIFO), so the
+		// actor's rows must go first or the user delete violates
+		// admin_audit_logs_actor_user_id_fkey.
+		dbConn.Exec("DELETE FROM shared.admin_audit_logs WHERE actor_user_id = ?", actor)
 		dbConn.Exec("DELETE FROM identity.users WHERE id = ?", actor)
 	})
 	return actor
@@ -443,9 +451,16 @@ func TestIntegrationTheCampaignTrailRecordsTheWholeLifecycle(t *testing.T) {
 	if items[0].Action != string(adminaudit.CampaignClose) {
 		t.Errorf("the trail must be newest first, got %q first", items[0].Action)
 	}
-	// `after.closedAt` is a timestamp, so it is compared for PRESENCE and shape only; the
-	// empty-string comparison is used for the fields whose absence is meaningful.
-	assertPayloadSide(t, items[0].Payload, "after", "closedAt", endsAtUTC(baseInstant()))
+	// `after.closedAt` must AGREE WITH THE ROW, not with a pinned test clock: the closure
+	// instant is written by the repository's `closed_at` statement, so comparing it to
+	// the fixture clock asserts the test's own arithmetic. What FR-062 actually requires
+	// is that a trail and the row it describes never disagree.
+	storedAfterClose, err := f.campaign.GetByCode(context.Background(), campaignCode)
+	if err != nil || storedAfterClose == nil || storedAfterClose.ClosedAt == nil {
+		t.Fatalf("re-read the closed campaign: err=%v row=%v", err, storedAfterClose)
+	}
+	assertPayloadSide(t, items[0].Payload, "after", "closedAt",
+		storedAfterClose.ClosedAt.UTC().Format(time.RFC3339))
 	if got, _ := items[0].Payload["reason"].(string); got != reason {
 		t.Errorf("contract §6.3: the closure must carry the reason that was sent, got %q", got)
 	}
