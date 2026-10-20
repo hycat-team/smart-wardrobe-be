@@ -59,15 +59,15 @@ PostgreSQL (constitution VIII) without a code/config fork; the full exclusion co
 wherever `btree_gist` is available.
 
 **Alternatives considered**:
-- *Partial unique only*: guarantees one open interval but allows two closed intervals to overlap. It is
-  the automatic fallback, not the preferred shape; the recorder's `FOR UPDATE` on the open row is the
+- *Partial unique only*: guarantees at most one open-ended interval but allows two closed intervals to overlap. It is
+  the automatic fallback, not the preferred shape; the recorder's `FOR UPDATE` on the current row is the
   primary control there.
 - *Hard-fail when the extension is missing*: turns a schema portability problem into a deploy failure
   and forces a per-environment code/config change. Rejected.
 - *Application-only check*: loses the invariant on the first concurrent writer. Rejected.
 ## R4 — Extend semantics
 
-**Decision**: an `EXTENDED` event updates `valid_to` of the open interval to the new
+**Decision**: an `EXTENDED` event updates `valid_to` of the current interval to the new
 `sub.ExpiresAt`; it never inserts a row.
 
 **Rationale**: `UserSubscription.Extend` (`domain/entities/subscription_behavior.go:72`) explicitly
@@ -81,7 +81,7 @@ Rejected: it misrepresents "same plan, continuous" as a gap/overlap and inflates
 ## R5 — Downgrade and expiry boundary
 
 **Decision**: for `SUBSCRIPTION_DOWNGRADED_TO_FREE`, close the paid interval at
-`min(open.valid_to, event.EffectiveAt)` and open the free interval at that same instant. The same
+`min(current.valid_to, event.EffectiveAt)` and open the free interval at that same instant. The same
 `min` rule closes the finite interval in `LIFETIME_FALLBACK_RESTORED`, whose `EffectiveAt` is already
 the previous expiry (`subscription_behavior.go:256`).
 
@@ -96,8 +96,8 @@ run time and leave a gap (drops the user from every bucket). Both rejected.
 **Same-instant and same-plan guard**: the admin restore path emits `ACTIVATED` with
 `EffectiveAt = sub.StartedAt` for the plan the user already holds. Closing at that instant would produce
 `valid_to == valid_from` and violate the check constraint. The recorder therefore no-ops when the
-target plan equals the open interval and replaces the open row (rather than closing it) whenever
-`closeAt <= open.valid_from`. This also covers provisioning + first grant in the same transaction.
+target plan equals the current interval and replaces the current row (rather than closing it) whenever
+`closeAt <= current.valid_from`. This also covers provisioning + first grant in the same transaction.
 
 ## R6 — Backfill location and form
 

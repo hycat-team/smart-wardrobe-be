@@ -50,8 +50,8 @@ CREATE UNIQUE INDEX ux_user_plan_periods_open
     WHERE valid_to IS NULL;
 ```
 
-Both variants keep "at most one open interval per user"; only the exclusion variant guarantees that
-two **closed** intervals cannot overlap. The recorder's `FOR UPDATE` on the open row plus the close
+Both variants keep "at most one open-ended interval per user"; only the exclusion variant guarantees that
+two **closed** intervals cannot overlap. The recorder's `FOR UPDATE` on the current row plus the close
 rules are the primary control in both cases.
 
 Indexes (always created, no extension required):
@@ -92,30 +92,31 @@ cutoff or claims complete history.
 `source=admin_restore` is checked FIRST and overrides every row below: such an event is an absolute
 no-op — it repairs AI grants, not the subscription window, and must never overwrite a newer interval.
 
-`open` = the row for the user with `valid_to IS NULL`, read `FOR UPDATE` inside the caller's
-transaction. `effective = event.EffectiveAt`. `closeAt = min(open.valid_to, effective)` when
-`open.valid_to` is set and earlier, otherwise `effective`.
+`current` = the user's latest row by `valid_from` (tie-break `created_at DESC, id DESC`) - it may be
+finite with a future `valid_to` or open-ended - read `FOR UPDATE` inside the caller's transaction.
+It is NOT only the `valid_to IS NULL` row: a paid interval already has its expiry set. `effective = event.EffectiveAt`. `closeAt = min(current.valid_to, effective)` when
+`current.valid_to` is set and earlier, otherwise `effective`.
 
 | Event | Condition | Action |
 |---|---|---|
-| `ACTIVATED` | target plan code == `open.plan_code` | no-op (admin restore; plan and window unchanged) |
-| `ACTIVATED`, `UPGRADED`, `OVERLAID` | `closeAt <= open.valid_from` | replace the open row: new plan snapshot, `valid_from = max(effective, open.valid_from)`, `valid_to = sub.ExpiresAt`, new `source_event_key` |
+| `ACTIVATED` | target plan code == `current.plan_code` | no-op (admin restore; plan and window unchanged) |
+| `ACTIVATED`, `UPGRADED`, `OVERLAID` | `closeAt <= current.valid_from` | replace the current row: new plan snapshot, `valid_from = max(effective, current.valid_from)`, `valid_to = sub.ExpiresAt`, new `source_event_key` |
 | `ACTIVATED`, `UPGRADED`, `OVERLAID` | otherwise | close at `closeAt`; insert new row from `effective` with `valid_to = sub.ExpiresAt` |
-| `EXTENDED` | open row exists | `valid_to = sub.ExpiresAt`; no new row |
-| `EXTENDED` | no open row | insert the current window from `sub.StartedAt` |
+| `EXTENDED` | current row exists | `valid_to = sub.ExpiresAt`; no new row |
+| `EXTENDED` | no current row | insert the current window from `sub.StartedAt` |
 | `SUBSCRIPTION_DOWNGRADED_TO_FREE` | any | close at `closeAt`; insert free row from `closeAt`, `valid_to NULL` |
 | `LIFETIME_FALLBACK_RESTORED` | any | close at `closeAt`; insert lifetime row from `closeAt`, `valid_to NULL` |
 | `AUTO_RENEW_UPDATED` | any | no-op |
 
 Rules that follow:
 
-- `valid_from` of a new row is `max(effective, open.valid_from)`; a zero/negative interval is never
+- `valid_from` of a new row is `max(effective, current.valid_from)`; a zero/negative interval is never
   written, and the replacement branch handles the same-instant case.
-- If there is no open interval, the recorder inserts the new interval and does not invent a close.
+- If there is no current interval, the recorder inserts the new interval and does not invent a close.
 - A lapse leaves a gap; continuous switches never do.
 - The admin restore path (`restore_policy_grants_uc.go`) emits `ACTIVATED` with
   `EffectiveAt = sub.StartedAt` for the **same** plan. Without the same-plan guard it would close the
-  open interval at its own start and violate the check constraint. That guard is required, not an
+  current interval at its own start and violate the check constraint. That guard is required, not an
   optimisation.
 - The recorder takes the target `plan` from the publisher so `plan_name` is the plan's name at that
   moment; it never re-reads the catalogue.

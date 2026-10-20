@@ -68,7 +68,7 @@ one update for extensions) per plan change; no new infrastructure.
 No constitutional violations. `Complexity Tracking` stays empty.
 
 **Post-design re-check (Phase 1)**: still PASS. The `btree_gist` path is best-effort inside one
-migration; the fallback keeps the "one open interval per user" invariant, and the report index is a
+migration; the fallback keeps the "at most one open-ended interval per user" invariant, and the report index is a
 plain GiST range index that needs no extension.
 
 ## Project Structure
@@ -153,30 +153,32 @@ collaborator and calls it **after** the event insert succeeds:
 - no production call-site changes, so no path can forget to record (the same structural argument as `024 T045`).
 
 The recorder signature is `Record(ctx, event, sub, plan)`: `plan` is needed because the subscription row
-does not carry the plan name, and `FR-001` requires a name snapshot.
+does not carry the plan name, and `FR-001` requires a name snapshot. `current` means the user's latest
+interval by `valid_from` (read `FOR UPDATE`), not only the row whose `valid_to` is NULL: a finite paid
+holding already carries its future expiry.
 
 Per event type:
 
 | Event | Interval action |
 |---|---|
-| `ACTIVATED`, `UPGRADED`, `OVERLAID` where the target plan differs from the open interval | close at `closeAt = min(open.valid_to, event.EffectiveAt)`, then open a new interval from `event.EffectiveAt` |
-| `ACTIVATED` where the target plan equals the open interval's plan (admin restore) | no-op — the plan and window did not change (`FR-003`) |
-| `ACTIVATED`, `UPGRADED`, `OVERLAID` where `closeAt <= open.valid_from` | replace the open row in place (new plan fields, `valid_from = max(event.EffectiveAt, open.valid_from)`, `valid_to = sub.ExpiresAt`) instead of creating a zero-length interval |
-| `EXTENDED` | move `valid_to` of the open interval to `sub.ExpiresAt`; no new row |
+| `ACTIVATED`, `UPGRADED`, `OVERLAID` where the target plan differs from the current interval | close at `closeAt = min(current.valid_to, event.EffectiveAt)`, then open a new interval from `event.EffectiveAt` |
+| `ACTIVATED` where the target plan equals the current interval's plan (admin restore) | no-op — the plan and window did not change (`FR-003`) |
+| `ACTIVATED`, `UPGRADED`, `OVERLAID` where `closeAt <= current.valid_from` | replace the current row in place (new plan fields, `valid_from = max(event.EffectiveAt, current.valid_from)`, `valid_to = sub.ExpiresAt`) instead of creating a zero-length interval |
+| `EXTENDED` | move `valid_to` of the current interval to `sub.ExpiresAt`; no new row |
 | `SUBSCRIPTION_DOWNGRADED_TO_FREE` | close at `closeAt`; open the free interval at that same instant (`FR-005`) |
 | `LIFETIME_FALLBACK_RESTORED` | same as downgrade; `event.EffectiveAt` is the previous expiry |
 | `AUTO_RENEW_UPDATED` | no-op — the plan did not change |
 
 Rules that follow:
 
-- `valid_from` of a new row is `max(event.EffectiveAt, open.valid_from)` — clock skew cannot produce a
+- `valid_from` of a new row is `max(event.EffectiveAt, current.valid_from)` — clock skew cannot produce a
   zero or negative interval, and the exclusion constraint rejects anything still inconsistent.
-- If there is no open interval (the user predates the cutover and the backfill did not cover them), the
+- If there is no current interval (the user predates the cutover and the backfill did not cover them), the
   recorder inserts the new interval and does not invent a close.
 - A lapse (paid interval expired before a later purchase) leaves a gap between `valid_to` and the new
   `valid_from`. `FR-002` only requires contiguity for continuous switches; a lapse is not a switch, and
   a gap is the honest answer.
-- The recorder reads the open row `FOR UPDATE`. The admin-restore path does not take the subscription
+- The recorder reads the current row `FOR UPDATE`. The admin-restore path does not take the subscription
 row lock, so the interval row lock plus the non-overlap constraint serializes writes. Additionally,
 any event whose metadata carries `source=admin_restore` is an absolute no-op in the recorder: a repair
 changes AI grants, not the subscription window, and must not overwrite a newer interval that a
@@ -194,7 +196,7 @@ and lifetime intervals are open-ended.
 constraint creation inside one `DO` block whose exception handler catches only `insufficient_privilege`,
 `undefined_file` and `feature_not_supported` (anything else is re-raised); if the extension is unavailable
 or the role lacks the privilege, it creates a partial unique index on `(user_id) WHERE valid_to IS NULL`
-instead and raises a notice. Both variants keep the "one open interval" invariant; only the exclusion
+instead and raises a notice. Both variants keep the "at most one open-ended interval" invariant; only the exclusion
 variant guarantees full non-overlap, and the write path's row lock plus the recorder's close rules are
 the primary control either way. This keeps the schema portable without a code fork (constitution VIII).
 
@@ -276,7 +278,7 @@ JSON shape (without the two fields) and by a proto test that unknown fields are 
 | `CREATE EXTENSION` privilege differs per environment | adaptive `DO` block with partial-unique fallback; both variants tested on the scratch DB |
 | Report query scans most intervals for wide windows | GiST range index on `tstzrange(valid_from, valid_to)`; measurement at 200k (SC-004) plus an informational 1M run |
 | Adding fields to the proto breaks older consumers | additive fields only; compatibility test for old JSON/proto; `make buf-gen` drift check |
-| Clock skew makes `valid_from` earlier than the currently open interval's start | recorder clamps `valid_from`; zero-length case replaces the open row; exclusion constraint rejects residual overlap |
+| Clock skew makes `valid_from` earlier than the currently current interval's start | recorder clamps `valid_from`; zero-length case replaces the current row; exclusion constraint rejects residual overlap |
 | A missing cutover row silently produces "complete" zeros | data-model defines `unavailable` + warning; integration test for the absent-row case |
 
 ## Complexity Tracking
