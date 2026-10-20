@@ -165,6 +165,22 @@ này DB dev **vĩnh viễn** có: `verify-026` ở trạng thái `closed`, và h
   `campaign_sweep_reads_registry_each_run_test.go`) — đó là bằng chứng thay thế, không phải bằng
   chứng gốc.
 
+- **TRẠNG THÁI (2026-10-20, đợt CI-database — RESOLVED cho tập bằng chứng campaign)**:
+  job `db-integration` trong `.github/workflows/ci.yml` dựng Postgres (`pgvector/pgvector:pg17`),
+  nạp `database/init/00..03`, chạy `make migrate-up` cho account/commerce/ai rồi
+  `make test-db-integration`. Bằng chứng trên CI (run `39368352014`, commit `40d79671`):
+  - `account/database/migrations` — 1.074s
+  - `account/.../subscription/infrastructure/persistence` — 2.048s
+  - `account/.../subscription/application/usecase/campaign` — 2.279s
+  - `account/.../subscription/application/usecase/webhook` — 1.287s
+  - `ai/.../aiexecutor/application/usecase/grant` — 3.113s
+  Cả 5 gói `ok`, **không có dòng `skipping`** nào trong log job: từ đây chúng chạy thật trên mỗi PR,
+  không còn `SKIP`. Lần chạy đầu còn lộ ra ba lỗi tiềm ẩn đã sửa trong cùng đợt: schema-guard
+  expectations lệch sau 026 (`campaign_code`), fixture code chứa `_` vi phạm
+  `chk_campaigns_code_format`, và cleanup của rollback test không đánh dấu version đã gỡ nên
+  goose không dựng lại bảng. Phần còn lại của D-01 (package `usecase/subscription` vẫn
+  `AutoMigrate`) được tách sang D-06.
+
 ---
 
 ## D-02 — ĐÃ GỎ: đường dẫn tệp cũ của `CampaignAuditLogRes` trong hợp đồng
@@ -206,6 +222,12 @@ này DB dev **vĩnh viễn** có: `verify-026` ở trạng thái `closed`, và h
 - **Gỡ bằng cách nào**: một helper CSDL dùng chung ở `shared/tools` cấp
   `pg_advisory_lock` theo session trên một `*sql.Conn` ghim, cùng một API cho cả hai gói. Đây là
   việc của feature hạ tầng kiểm thử. Tạm thời có thể chạy `go test -p 1` khi cần kết quả sạch.
+
+- **TRẠNG THÁI (2026-10-20, đợt CI-database — RESOLVED)**: chọn đúng phương án tạm thời ở trên và
+  biến nó thành mặc định: `make test-db-integration` chạy `go test -race -p 1` (ghi lý do ngay
+  trong Makefile), và job `db-integration` dùng chính target đó. Hai gói không còn chạy song song
+  trên cùng database nên cửa sổ flake biến mất mà không cần `pg_advisory_lock`. Nếu sau này muốn
+  bỏ `-p 1`, phải làm helper lock session-level như mô tả ở trên trước.
 
 ---
 
