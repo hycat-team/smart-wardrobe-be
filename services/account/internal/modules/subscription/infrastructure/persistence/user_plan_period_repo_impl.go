@@ -20,8 +20,10 @@ import (
 // The report queries use the range expression rather than `valid_from`/
 // `valid_to` comparisons so PostgreSQL can serve them from
 // `idx_user_plan_periods_range` (GiST, no extension required). The recorder
-// reads the current interval FOR UPDATE, which is what serializes concurrent
-// changes of one user in the fallback (partial-unique) variant.
+// first takes a per-user advisory lock (`LockUser`) and then reads the current
+// interval FOR UPDATE; the advisory lock is what serializes concurrent changes
+// of one user in the fallback (partial-unique) variant, where the exclusion
+// constraint is absent.
 type UserPlanPeriodRepository struct {
 	*shared_repos.GenericRepository[entities.UserPlanPeriod, uuid.UUID]
 }
@@ -73,6 +75,21 @@ func (r *UserPlanPeriodRepository) GetDistribution(ctx context.Context, from, to
 	return rows, nil
 }
 
+// LockUser takes a transaction-scoped PostgreSQL advisory lock for one user.
+//
+// `pg_advisory_xact_lock(hashtext($1))` is a plain PostgreSQL function: it
+// needs no extension and the server releases it automatically at COMMIT or
+// ROLLBACK. Passing the user id as text gives every transaction of that user
+// the same 64-bit key, so their writes serialize even in the fallback
+// (partial-unique) variant, where two closed intervals could otherwise overlap.
+// The lock is resolved from ctx, so without a caller transaction it attaches to
+// the implicit transaction of the statement and is useless for serialization -
+// the recorder always runs inside the unit of work.
+func (r *UserPlanPeriodRepository) LockUser(ctx context.Context, userID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Exec("SELECT pg_advisory_xact_lock(hashtext(?))", userID.String()).Error
+}
+
 // GetCurrentByUserIDWithLock returns the user's current interval locked FOR
 // UPDATE.
 //
@@ -82,10 +99,10 @@ func (r *UserPlanPeriodRepository) GetDistribution(ctx context.Context, from, to
 // and id make the choice deterministic when two rows share a start. The row may
 // be open-ended or finite; the caller decides whether to close or extend it.
 //
-// The row lock is the serialization point for two concurrent plan changes of
-// the same user. It is taken inside the caller's transaction (resolved from
-// ctx), so it is released at COMMIT/ROLLBACK and never leaks onto a pooled
-// connection.
+// The row lock is the second guard against two concurrent plan changes of the
+// same user, behind the advisory lock the recorder takes first. It is taken
+// inside the caller's transaction (resolved from ctx), so it is released at
+// COMMIT/ROLLBACK and never leaks onto a pooled connection.
 func (r *UserPlanPeriodRepository) GetCurrentByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserPlanPeriod, error) {
 	var period entities.UserPlanPeriod
 	err := r.GetDB(ctx).

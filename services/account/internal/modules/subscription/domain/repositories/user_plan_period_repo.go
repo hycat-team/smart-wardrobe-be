@@ -36,13 +36,23 @@ type IUserPlanPeriodRepository interface {
 	// whose valid_from is in the future (FR-008/FR-012).
 	GetDistribution(ctx context.Context, from, to time.Time) ([]SubscriptionDistributionDTO, error)
 
+	// LockUser serializes the recorders of one user until the caller's
+	// transaction ends. It takes a PostgreSQL transaction-scoped advisory lock
+	// keyed on the user id text, so no extension, lock table or configuration
+	// switch is required. The recorder calls it BEFORE reading the current
+	// interval: in the fallback (partial-unique) variant, where the exclusion
+	// constraint is absent, this is what prevents two concurrent plan changes
+	// from both reading the old row and opening overlapping intervals.
+	LockUser(ctx context.Context, userID uuid.UUID) error
+
 	// GetCurrentByUserIDWithLock returns the user's current interval - the row
 	// with the greatest valid_from (created_at DESC, id DESC break ties) -
 	// locked FOR UPDATE, or nil when the user has no row at all. The row may be
 	// open-ended or finite with a future end: a paid interval stores
 	// valid_to = expires_at, so "current" must not be filtered on `valid_to IS
-	// NULL`. This is the serialization point of the recorder in the fallback
-	// (partial-unique) variant.
+	// NULL`. The row lock is the second serialization guard, behind LockUser;
+	// on databases that installed btree_gist the exclusion constraint is the
+	// third.
 	GetCurrentByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserPlanPeriod, error)
 
 	// CloseCurrent moves the interval's exclusive end to closeAt and touches

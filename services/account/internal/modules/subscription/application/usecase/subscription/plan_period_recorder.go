@@ -48,6 +48,13 @@ func NewPlanPeriodRecorder(repo repositories.IUserPlanPeriodRepository) PlanPeri
 // repair as an absolute no-op is what prevents it from overwriting that row
 // (R5). `AUTO_RENEW_UPDATED` is a no-op for the same reason: the plan and its
 // window did not change.
+//
+// Every write branch then takes the per-user advisory lock BEFORE reading the
+// current interval. In the fallback (partial-unique) variant, where the
+// exclusion constraint is absent, that lock is what serializes two concurrent
+// changes of one user: the second transaction waits for the first to commit or
+// roll back and only then reads the row it wrote. The row `FOR UPDATE` read
+// remains the second guard.
 func (r *planPeriodRecorder) Record(
 	ctx context.Context,
 	event *entities.UserSubscriptionEvent,
@@ -64,24 +71,35 @@ func (r *planPeriodRecorder) Record(
 		return fmt.Errorf("plan period recorder: subscription and plan are required")
 	}
 
-	switch subscriptioneventtype.Type(event.EventType) {
+	eventType := subscriptioneventtype.Type(event.EventType)
+	switch eventType {
 	case subscriptioneventtype.AUTO_RENEW_UPDATED:
 		return nil
-	case subscriptioneventtype.EXTENDED:
-		return r.recordExtended(ctx, event, sub, plan)
-	case subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE,
-		subscriptioneventtype.LIFETIME_FALLBACK_RESTORED:
-		return r.recordFallback(ctx, event, sub, plan)
-	case subscriptioneventtype.ACTIVATED,
+	case subscriptioneventtype.EXTENDED,
+		subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE,
+		subscriptioneventtype.LIFETIME_FALLBACK_RESTORED,
+		subscriptioneventtype.ACTIVATED,
 		subscriptioneventtype.UPGRADED,
 		subscriptioneventtype.OVERLAID:
-		return r.recordSwitch(ctx, event, sub, plan)
+		if err := r.repo.LockUser(ctx, sub.UserID); err != nil {
+			return fmt.Errorf("lock user plan history: %w", err)
+		}
 	default:
 		// The shared event-type set is closed (subscriptioneventtype.All); an
 		// unknown value cannot be produced by a production path. Recording
 		// nothing is safer than inventing a window for a type this recorder
 		// does not understand.
 		return nil
+	}
+
+	switch eventType {
+	case subscriptioneventtype.EXTENDED:
+		return r.recordExtended(ctx, event, sub, plan)
+	case subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE,
+		subscriptioneventtype.LIFETIME_FALLBACK_RESTORED:
+		return r.recordFallback(ctx, event, sub, plan)
+	default:
+		return r.recordSwitch(ctx, event, sub, plan)
 	}
 }
 
@@ -114,16 +132,7 @@ func (r *planPeriodRecorder) recordSwitch(
 		// Same-instant (or clock skew): replace the current row instead of
 		// closing it and creating a zero-length interval. This also covers
 		// provisioning and the first grant in one transaction (R5).
-		current.SubscriptionPlanID = plan.ID
-		current.PlanCode = plan.Slug
-		current.PlanName = plan.Name
-		current.TierRank = plan.TierRank
-		current.PlanKind = plan.PlanKind
-		current.ValidFrom = laterOf(event.EffectiveAt, current.ValidFrom)
-		current.ValidTo = sub.ExpiresAt
-		current.SourceEventKey = sourceEventKey(event.EventKey)
-		current.UpdatedAt = time.Now().UTC()
-		if err := r.repo.Update(ctx, current); err != nil {
+		if err := r.replaceCurrent(ctx, current, event, sub, plan, sub.ExpiresAt); err != nil {
 			return fmt.Errorf("replace current plan period: %w", err)
 		}
 		return nil
@@ -179,6 +188,17 @@ func (r *planPeriodRecorder) recordFallback(
 	closeAt := event.EffectiveAt
 	if current != nil {
 		closeAt = closeInstant(current, event.EffectiveAt)
+		if !closeAt.After(current.ValidFrom) {
+			// Same-instant (clock skew, or a downgrade/restore exactly at the
+			// current interval's start): closing would write valid_to ==
+			// valid_from and violate chk_user_plan_periods_valid_range. Replace
+			// the row with the free/lifetime snapshot, using the same rule as
+			// recordSwitch.
+			if err := r.replaceCurrent(ctx, current, event, sub, plan, sub.ExpiresAt); err != nil {
+				return fmt.Errorf("replace plan period on fallback: %w", err)
+			}
+			return nil
+		}
 		if err := r.repo.CloseCurrent(ctx, current.ID, closeAt); err != nil {
 			return fmt.Errorf("close plan period on fallback: %w", err)
 		}
@@ -187,6 +207,30 @@ func (r *planPeriodRecorder) recordFallback(
 	// Free and lifetime intervals are open-ended by definition (plan kinds 0
 	// and 2), so the new row carries no upper bound.
 	return r.repo.Create(ctx, buildPeriod(event, sub, plan, closeAt, nil))
+}
+
+// replaceCurrent rewrites the current row with the new plan snapshot. Both the
+// switch and the fallback paths use it when a change lands at or before the
+// interval's start: replacing keeps one row and avoids the zero-length interval
+// that chk_user_plan_periods_valid_range rejects (031 data-model §3).
+func (r *planPeriodRecorder) replaceCurrent(
+	ctx context.Context,
+	current *entities.UserPlanPeriod,
+	event *entities.UserSubscriptionEvent,
+	sub *entities.UserSubscription,
+	plan *entities.SubscriptionPlan,
+	validTo *time.Time,
+) error {
+	current.SubscriptionPlanID = plan.ID
+	current.PlanCode = plan.Slug
+	current.PlanName = plan.Name
+	current.TierRank = plan.TierRank
+	current.PlanKind = plan.PlanKind
+	current.ValidFrom = laterOf(event.EffectiveAt, current.ValidFrom)
+	current.ValidTo = validTo
+	current.SourceEventKey = sourceEventKey(event.EventKey)
+	current.UpdatedAt = time.Now().UTC()
+	return r.repo.Update(ctx, current)
 }
 
 // buildPeriod snapshots the plan attributes into a new interval row.

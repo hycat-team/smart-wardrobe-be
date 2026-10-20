@@ -18,8 +18,8 @@ import (
 //
 // `ValidTo == nil` means open-ended (free / lifetime). With the exclusion
 // constraint installed two intervals of one user can never overlap; in the
-// fallback variant only the open interval is unique, and the recorder's row
-// lock plus close rules keep the sequence contiguous.
+// fallback variant only the open interval is unique, and the recorder's
+// per-user advisory lock, row lock and close rules keep the sequence contiguous.
 type UserPlanPeriod struct {
 	AuditableEntity
 	UserID             uuid.UUID         `gorm:"type:uuid;not null"`
