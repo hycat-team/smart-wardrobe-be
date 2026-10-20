@@ -304,3 +304,36 @@ lời là **có**, và không tầng nào trong chuỗi cấu hình production t
      không tìm thấy template nào để tránh pass rỗng). `TestEmailEnabledDefaultsToTrueWhenTheKeyIsAbsent`
      được chỉnh để vẫn chứng minh default trên chính file production sau khi thêm key (dùng bản copy
      đã bỏ block `email:`).
+
+---
+
+### D-06 — `usecase/subscription` vẫn tự dựng schema bằng `AutoMigrate`, che khuất schema module
+
+- **Vấn đề**: `services/account/.../application/usecase/subscription/renewal_integration_test.go`
+  còn gọi GORM `AutoMigrate`. Vì GORM dùng tên bảng **không có schema** và `search_path` bắt đầu
+  bằng `public`, nó tạo `public.subscription_plans`, `public.user_subscriptions`… ngay cả khi
+  `subscription.*` đã tồn tại. Từ đó `public` **che khuất** các bảng thật cho mọi package chạy sau
+  trong cùng database: truy vấn không định danh schema rơi vào bản `public` rỗng, nên
+  `GetDefaultPlan` trả `nil` và webhook test đỏ dù dữ liệu đúng.
+
+- **Vì sao ngoài phạm vi đợt này**: đây đúng lớp nợ của `025/D-01` (test tự viết schema) nhưng ở
+  package khác, và cách sửa không nhỏ: phải chuyển các test đó sang schema dựng bằng migration,
+  hoặc cho package một database trống riêng. Đợt CI-database chỉ mở đường chạy bằng chứng; nó
+  không có nhiệm vụ chuyển đổi từng harness.
+
+- **Đã làm gì để không chặn**: `make test-db-integration` chạy danh sách package tường minh
+  (migrations, persistence, campaign, webhook, ai/grant) thay vì `./...`, và ghi lý do ngay trong
+  Makefile. Package bị loại vẫn **chưa từng** chạy trên CI trước đây, nên không có hồi quy — chỉ là
+  bằng chứng của nó vẫn còn thiếu.
+
+- **Gỡ bằng cách nào**: chọn một trong hai:
+  1. Chuyển `renewal_integration_test.go` (và bất kỳ harness nào còn `AutoMigrate` trong
+     `usecase/subscription`) sang yêu cầu database dựng bằng `database/init/*.sql` + migrations,
+     như `openWebhookTestDB` đã làm ở `025/D-01`; hoặc
+  2. Cho riêng package đó một database trống (`TEST_DATABASE_URL` thứ hai) và thêm biến môi trường
+     vào Makefile/CI. Cách này giữ nguyên hành vi test nhưng phải quản lý hai schema.
+  Sau khi xong, đổi target về `./...` và xoá ghi chú loại trừ.
+
+- **Ảnh hưởng tới task đã tick**: `026/D-01` (đóng một phần — bằng chứng CSDL đã chạy cho
+  campaign/webhook/migrations, chưa gồm package này); `026/D-03` (đóng bằng `-p 1`, nhưng chỉ có
+  hiệu lực trên tập package đang chạy).

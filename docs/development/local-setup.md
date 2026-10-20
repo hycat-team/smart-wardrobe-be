@@ -308,6 +308,52 @@ make test
 ```
 Ensure all test cases pass before submitting a Pull Request.
 
+### Database-backed integration tests
+
+Tests named `TestIntegration*` skip unless `TEST_DATABASE_URL` is set. They need a
+schema built the documented way — `database/init/*.sql` first, then the
+per-service migrations — because the harnesses deliberately no longer create their
+own schema: `AutoMigrate` produced a shape that only resembled production
+(026 D-01).
+
+```bash
+# 1. disposable database
+psql "postgres://admin:123456@localhost:5432/postgres" -c "CREATE DATABASE verify_it;"
+
+# 2. base schema, in order (00 defines a $$-quoted function, so use psql)
+for f in database/init/00-init.sql database/init/01-schema.sql \
+         database/init/02-indexes.sql database/init/03-seed.sql; do
+  psql "postgres://admin:123456@localhost:5432/verify_it" -v ON_ERROR_STOP=1 -f "$f"
+done
+
+# 3. per-service migrations (Account first: it holds the historical chain)
+make migrate-up svc=account  DB_NAME=verify_it
+make migrate-up svc=commerce DB_NAME=verify_it
+make migrate-up svc=ai       DB_NAME=verify_it
+
+# 4. run the suites
+export TEST_DATABASE_URL="postgres://admin:123456@localhost:5432/verify_it?sslmode=disable&search_path=public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
+export TEST_DATABASE_ALLOW_REGISTRY_ROLLBACK=true
+make test-db-integration
+
+# 5. drop the disposable database
+psql "postgres://admin:123456@localhost:5432/postgres" -c "DROP DATABASE verify_it;"
+```
+
+`make test-db-integration` runs with `-p 1` on purpose: two test packages share
+the one database and their fixtures race when the packages run in parallel
+(026 D-03). CI runs the same target in the `db-integration` job.
+
+The target names its packages explicitly instead of `./...`: the
+`usecase/subscription` package still builds its own schema with `AutoMigrate`,
+which creates `public.*` copies that shadow the module schemas for later packages
+(recorded as D-06 in `specs/026-campaign-registry-db/deferred.md`).
+
+The `search_path` in `TEST_DATABASE_URL` mirrors `configs/config.yaml`: migrations
+create tables in module schemas while repositories use unqualified names, so a
+DSN without it fails with "relation does not exist" even though the schema is
+correct.
+
 ---
 
 ## 13. Goose database migration guide
