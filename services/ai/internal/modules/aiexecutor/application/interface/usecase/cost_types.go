@@ -39,6 +39,11 @@ type AIUsage struct {
 	FinishReason   string
 	Provider       string
 	Model          string
+	// Unbilled reports that the config that actually served the request belongs
+	// to AI_UNBILLED_CAPABILITIES, so the ledger records zero provider cost for
+	// it. The logical route is not enough: vision runs on the always-free route
+	// while still using a billed key.
+	Unbilled bool
 }
 
 type AITokenEstimationMeta struct {

@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/airoute"
 	app_ai "smart-wardrobe-be/shared/application/ai"
+	"smart-wardrobe-be/shared/config"
 
 	"github.com/google/uuid"
 )
@@ -54,6 +55,7 @@ func (uc *OrchestratorUseCase) AnalyzeImage(ctx context.Context, imageUrl string
 		FinishReason:   usage.FinishReason,
 		Provider:       plan.Provider,
 		Model:          plan.Model,
+		Unbilled:       uc.cfg.AI.IsUnbilledCapability(config.CapabilityVision),
 	})
 	return text, nil
 }
@@ -81,6 +83,7 @@ func (uc *OrchestratorUseCase) GenerateEmbeddings(ctx context.Context, chunks []
 	_ = uc.costUC.Confirm(ctx, decision.RequestID, uc_interfaces.AIUsage{
 		Provider: plan.Provider,
 		Model:    plan.Model,
+		Unbilled: uc.cfg.AI.IsUnbilledCapability(config.CapabilityEmbedding),
 	})
 	return result, nil
 }
@@ -108,12 +111,6 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 		return "", ErrLocalFallbackRoute
 	}
 
-	if decision.Route == airoute.Free {
-		prov, mod := uc.resolveProviderModel(plan.Operation, decision.Route)
-		plan.Provider = prov
-		plan.Model = mod
-	}
-
 	if err = uc.costUC.MarkInFlight(ctx, decision.RequestID); err != nil {
 		return "", err
 	}
@@ -122,6 +119,7 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 	mappedOpt := mapOptions(options, plan.RequestID, func(u app_ai.TokenUsage) {
 		usage = u
 	})
+	uc.applyTextRoute(plan, &mappedOpt, decision.Route)
 
 	result, err := uc.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, mappedOpt)
 	if err != nil {
@@ -129,13 +127,15 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 		return "", err
 	}
 
+	provider, model := usageProviderModel(plan, usage)
 	confirmUsage := uc_interfaces.AIUsage{
 		PromptTokens:   usage.PromptTokens,
 		OutputTokens:   usage.OutputTokens,
 		ThinkingTokens: usage.ThinkingTokens,
 		FinishReason:   usage.FinishReason,
-		Provider:       plan.Provider,
-		Model:          plan.Model,
+		Provider:       provider,
+		Model:          model,
+		Unbilled:       usage.Unbilled,
 	}
 	if err = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage); err != nil {
 		return "", err
@@ -166,12 +166,6 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 		return "", ErrLocalFallbackRoute
 	}
 
-	if decision.Route == airoute.Free {
-		prov, mod := uc.resolveProviderModel(plan.Operation, decision.Route)
-		plan.Provider = prov
-		plan.Model = mod
-	}
-
 	if err = uc.costUC.MarkInFlight(ctx, decision.RequestID); err != nil {
 		return "", err
 	}
@@ -180,6 +174,7 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 	mappedOpt := mapOptions(options, plan.RequestID, func(u app_ai.TokenUsage) {
 		usage = u
 	})
+	uc.applyTextRoute(plan, &mappedOpt, decision.Route)
 
 	result, err := uc.aiService.GenerateRecommendationText(ctx, systemPrompt, userPrompt, mappedOpt)
 	if err != nil {
@@ -187,13 +182,15 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 		return "", err
 	}
 
+	provider, model := usageProviderModel(plan, usage)
 	confirmUsage := uc_interfaces.AIUsage{
 		PromptTokens:   usage.PromptTokens,
 		OutputTokens:   usage.OutputTokens,
 		ThinkingTokens: usage.ThinkingTokens,
 		FinishReason:   usage.FinishReason,
-		Provider:       plan.Provider,
-		Model:          plan.Model,
+		Provider:       provider,
+		Model:          model,
+		Unbilled:       usage.Unbilled,
 	}
 	if err = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage); err != nil {
 		return "", err
@@ -239,12 +236,6 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		return textChan, errChan
 	}
 
-	if decision.Route == airoute.Free {
-		prov, mod := uc.resolveProviderModel(plan.Operation, decision.Route)
-		plan.Provider = prov
-		plan.Model = mod
-	}
-
 	if err = uc.costUC.MarkInFlight(ctx, decision.RequestID); err != nil {
 		errChan <- err
 		close(textChan)
@@ -260,6 +251,7 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		usage = u
 		mu.Unlock()
 	})
+	uc.applyTextRoute(plan, &mappedOpt, decision.Route)
 
 	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, systemPrompt, userPrompt, mappedOpt)
 
@@ -278,13 +270,15 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		}
 
 		mu.Lock()
+		provider, model := usageProviderModel(plan, usage)
 		confirmUsage := uc_interfaces.AIUsage{
 			PromptTokens:   usage.PromptTokens,
 			OutputTokens:   usage.OutputTokens,
 			ThinkingTokens: usage.ThinkingTokens,
 			FinishReason:   usage.FinishReason,
-			Provider:       plan.Provider,
-			Model:          plan.Model,
+			Provider:       provider,
+			Model:          model,
+			Unbilled:       usage.Unbilled,
 		}
 		mu.Unlock()
 
@@ -292,4 +286,18 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 	}()
 
 	return textChan, errChan
+}
+
+// usageProviderModel prefers the provider that actually served the request over
+// the one the plan predicted. They differ whenever a fallback or the free
+// failover wins, and the ledger must record what ran, not what was planned.
+func usageProviderModel(plan *uc_interfaces.ExecutionPlan, usage app_ai.TokenUsage) (string, string) {
+	provider, model := plan.Provider, plan.Model
+	if usage.Provider != "" {
+		provider = usage.Provider
+	}
+	if usage.Model != "" {
+		model = usage.Model
+	}
+	return provider, model
 }

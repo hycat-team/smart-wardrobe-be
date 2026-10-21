@@ -8,6 +8,8 @@
 
 **Organization**: Tasks nhóm theo user story để implement/test độc lập từng story.
 
+> **Cập nhật 2026-10-21**: Nhánh `Confirm` "free có pricing → actual" trong T006 được thay bằng quy tắc capability: `usage.Unbilled` (key thuộc `AI_UNBILLED_CAPABILITIES`) → actual 0 và bỏ qua pricing; key trả phí trên tuyến free (vision) vẫn tính actual. `Prepare`/reserve của route free cũng bỏ pricing. Xem `spec.md` FR-001/FR-009 và `data-model.md` §1/§5.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Chạy song song được (khác file, không phụ thuộc task chưa xong)

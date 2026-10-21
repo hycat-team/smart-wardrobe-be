@@ -153,4 +153,23 @@ func TestAnalyzeImageConfirmsRealUsage(t *testing.T) {
 	if cost.confirmUsage.FinishReason != "STOP" {
 		t.Errorf("vision Confirm must carry finish reason, got %+v", cost.confirmUsage)
 	}
+	if cost.confirmUsage.Unbilled {
+		t.Errorf("vision must stay billed unless listed in AI_UNBILLED_CAPABILITIES, got %+v", cost.confirmUsage)
+	}
+}
+
+// Embedding runs on a key the team treats as free, so the billing flag must
+// follow the configured capability list rather than the logical route.
+func TestGenerateEmbeddingsMarksUnbilledWhenConfigured(t *testing.T) {
+	ai := &stubAIService{embeddings: [][]float32{{0.1, 0.2}}}
+	cost := &confirmCaptureCostUC{}
+	uc := newEmbeddingUC(ai, cost)
+	uc.cfg.AI.Billing.UnbilledCapabilities = []string{config.CapabilityEmbedding}
+
+	if _, err := uc.GenerateEmbeddings(context.Background(), []string{"hello"}); err != nil {
+		t.Fatalf("GenerateEmbeddings: %v", err)
+	}
+	if !cost.confirmUsage.Unbilled {
+		t.Errorf("embedding must be marked unbilled when configured, got %+v", cost.confirmUsage)
+	}
 }

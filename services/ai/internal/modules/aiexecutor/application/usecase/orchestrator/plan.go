@@ -11,6 +11,8 @@ import (
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/airoute"
 	aiexecutor_entities "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
+	app_ai "smart-wardrobe-be/shared/application/ai"
+	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/aifallbackreason"
 
 	"github.com/google/uuid"
@@ -188,5 +190,51 @@ func (uc *OrchestratorUseCase) resolveProviderModel(operation aioperation.AIOper
 		return uc.cfg.AI.EmbeddingPrimary.Provider, uc.cfg.AI.EmbeddingPrimary.Model
 	default:
 		return "", ""
+	}
+}
+
+// routeProviderConfigs maps a resolved route to the provider configuration that
+// must actually serve the call. Paid keeps the operation default; free uses the
+// FREE_TEXT keys for every text operation, including outfit, because the free
+// bucket is a single config rather than one pair per operation.
+func (uc *OrchestratorUseCase) routeProviderConfigs(operation aioperation.AIOperation, route airoute.AIRoute) (app_ai.TextProviderConfig, app_ai.TextProviderConfig) {
+	if route == airoute.Free || route == airoute.Local {
+		return toTextProviderConfig(uc.cfg.AI.FreeTextPrimary, config.CapabilityFreeText),
+			toTextProviderConfig(uc.cfg.AI.FreeTextFallback, config.CapabilityFreeText)
+	}
+	switch operation {
+	case aioperation.Outfit:
+		return toTextProviderConfig(uc.cfg.AI.RecommendationTextPrimary, config.CapabilityRecommendationText),
+			toTextProviderConfig(uc.cfg.AI.RecommendationTextFallback, config.CapabilityRecommendationText)
+	default:
+		return toTextProviderConfig(uc.cfg.AI.ChatTextPrimary, config.CapabilityChatText),
+			toTextProviderConfig(uc.cfg.AI.ChatTextFallback, config.CapabilityChatText)
+	}
+}
+
+// applyTextRoute writes the resolved route into both the execution plan (for the
+// ledger's provider/model) and the call options (for the provider that actually
+// runs). Keeping them in one function is what stops the recorded model and the
+// called model from drifting apart.
+func (uc *OrchestratorUseCase) applyTextRoute(plan *uc_interfaces.ExecutionPlan, opt *app_ai.TextGenerationOptions, route airoute.AIRoute) {
+	primary, fallback := uc.routeProviderConfigs(plan.Operation, route)
+	plan.Provider = primary.Provider
+	plan.Model = primary.Model
+
+	opt.Primary = &primary
+	opt.Fallback = &fallback
+	opt.Tier = app_ai.TextTierPaid
+	if route == airoute.Free {
+		opt.Tier = app_ai.TextTierFree
+	}
+}
+
+func toTextProviderConfig(cfg config.APIProviderConfig, capability string) app_ai.TextProviderConfig {
+	return app_ai.TextProviderConfig{
+		Provider:   cfg.Provider,
+		APIKey:     cfg.ApiKey,
+		Endpoint:   cfg.Endpoint,
+		Model:      cfg.Model,
+		Capability: capability,
 	}
 }

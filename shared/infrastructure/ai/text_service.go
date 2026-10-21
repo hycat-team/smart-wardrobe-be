@@ -18,55 +18,64 @@ import (
 )
 
 func (s *AIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
-	s.logTextGeneration("GenerateChatText", systemPrompt, userPrompt, options)
-	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, app_ai.AIOperationChat)
-	if err != nil {
-		return "", err
-	}
-	if err = limiter.Wait(ctx); err != nil {
-		return "", err
-	}
-	text, err := s.tryTextProvider(ctx, client, provider, systemPrompt, userPrompt, prepared)
-	if err != nil {
-		if s.cfg.AI.ChatTextFallback.Provider != "" {
-			s.logger.Warn("Chat primary failed, attempting chat fallback", zap.Error(err))
-			text, err = s.tryTextProvider(ctx, client, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt, prepared)
-		}
-		if err != nil {
-			s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
-			if !s.isFreeProvider(provider) {
-				return s.tryFreeText(ctx, systemPrompt, userPrompt, prepared)
-			}
-			return "", err
-		}
-	}
-	return text, nil
+	return s.generateText(ctx, systemPrompt, userPrompt, options, app_ai.AIOperationChat, "GenerateChatText")
 }
 
 func (s *AIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
-	s.logTextGeneration("GenerateRecommendationText", systemPrompt, userPrompt, options)
-	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.RecommendationTextPrimary, systemPrompt, userPrompt, options, app_ai.AIOperationOutfit)
-	if err != nil {
-		return "", err
-	}
-	if err = limiter.Wait(ctx); err != nil {
-		return "", err
-	}
-	text, err := s.tryTextProvider(ctx, client, provider, systemPrompt, userPrompt, prepared)
-	if err != nil {
-		if s.cfg.AI.RecommendationTextFallback.Provider != "" {
-			s.logger.Warn("Recommendation primary failed, attempting recommendation fallback", zap.Error(err))
-			text, err = s.tryTextProvider(ctx, client, s.cfg.AI.RecommendationTextFallback, systemPrompt, userPrompt, prepared)
+	return s.generateText(ctx, systemPrompt, userPrompt, options, app_ai.AIOperationOutfit, "GenerateRecommendationText")
+}
+
+// generateText runs one non-streaming text call following the resolved tier:
+// paid primary -> paid fallback -> free failover, or free primary -> free
+// fallback. The tiers never swap implicitly in the free direction, because a
+// free key is a separate quota, not a cheaper copy of the paid one.
+func (s *AIService) generateText(
+	ctx context.Context,
+	systemPrompt string,
+	userPrompt string,
+	options app_ai.TextGenerationOptions,
+	operation string,
+	label string,
+) (string, error) {
+	s.logTextGeneration(label, systemPrompt, userPrompt, options)
+
+	plan := s.resolveTextCallPlan(options, operation)
+
+	var text string
+	var err error
+	if plan.primary.provider.Provider != "" {
+		if waitErr := plan.primary.limiter.Wait(ctx); waitErr != nil {
+			return "", waitErr
 		}
-		if err != nil {
-			s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
-			if !s.isFreeProvider(provider) {
-				return s.tryFreeText(ctx, systemPrompt, userPrompt, prepared)
+		text, err = s.tryTextProvider(ctx, plan.primary.client, plan.primary.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.primary))
+		if err == nil {
+			return text, nil
+		}
+	}
+
+	if plan.fallback.provider.Provider != "" {
+		s.logger.Warn("Primary text provider failed, attempting fallback", zap.Error(err))
+		text, err = s.tryTextProvider(ctx, plan.fallback.client, plan.fallback.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.fallback))
+		if err == nil {
+			return text, nil
+		}
+	}
+
+	if plan.freeFailover != nil && plan.freeFailover.provider.Provider != "" {
+		if waitErr := plan.freeFailover.limiter.Wait(ctx); waitErr == nil {
+			s.logger.Warn("Text providers failed, attempting free provider", zap.Error(err))
+			text, err = s.tryTextProvider(ctx, plan.freeFailover.client, plan.freeFailover.provider, systemPrompt, userPrompt, s.withUsageStamp(options, *plan.freeFailover))
+			if err == nil {
+				return text, nil
 			}
-			return "", err
 		}
 	}
-	return text, nil
+
+	if err == nil {
+		err = apperror.NewInternalError("AI provider is not configured")
+	}
+	s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, err)
+	return "", err
 }
 
 func (s *AIService) GenerateChatTextStream(
@@ -78,52 +87,63 @@ func (s *AIService) GenerateChatTextStream(
 	outTextChan := make(chan string, 100)
 	outErrChan := make(chan error, 1)
 
-	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, app_ai.AIOperationChat)
-	if err != nil {
-		outErrChan <- err
+	plan := s.resolveTextCallPlan(options, app_ai.AIOperationChat)
+	if plan.primary.provider.Provider == "" && plan.fallback.provider.Provider == "" && plan.freeFailover == nil {
+		outErrChan <- apperror.NewInternalError("AI provider is not configured")
 		close(outTextChan)
 		close(outErrChan)
 		return outTextChan, outErrChan
 	}
-	s.logTextGeneration("GenerateChatTextStream", systemPrompt, userPrompt, prepared)
-	if err := limiter.Wait(ctx); err != nil {
-		outErrChan <- err
-		close(outTextChan)
-		close(outErrChan)
-		return outTextChan, outErrChan
+	s.logTextGeneration("GenerateChatTextStream", systemPrompt, userPrompt, options)
+	if plan.primary.provider.Provider != "" {
+		if err := plan.primary.limiter.Wait(ctx); err != nil {
+			outErrChan <- err
+			close(outTextChan)
+			close(outErrChan)
+			return outTextChan, outErrChan
+		}
 	}
 
 	go func() {
 		defer close(outTextChan)
 		defer close(outErrChan)
 
-		produced, err := s.streamTextSingle(ctx, client, provider, systemPrompt, userPrompt, prepared, outTextChan)
-		if err != nil {
-			if !produced && s.cfg.AI.ChatTextFallback.Provider != "" {
-				s.logger.Warn("Chat primary stream failed before producing content, attempting chat fallback", zap.Error(err))
-				produced, err = s.streamTextSingle(ctx, client, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt, prepared, outTextChan)
-			}
-			if err != nil {
-				s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
-				if !produced && !s.isFreeProvider(provider) {
-					if fallback, prepErr := s.prepareFreeOptions(ctx, systemPrompt, userPrompt, prepared); prepErr == nil {
-						if waitErr := s.freeTextLimiter.Wait(ctx); waitErr == nil {
-							_, fallbackErr := s.streamTextSingle(ctx, s.freeTextClient, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt, fallback, outTextChan)
-							if fallbackErr == nil {
-								return
-							}
-							s.finalizeProviderError(context.WithoutCancel(ctx), fallback.RequestID, fallbackErr)
-						}
-					}
-				}
-				if !produced && ctx.Err() == nil {
-					local := "Xin lỗi, stylist AI đang tạm thời bận. Bạn hãy thử lại sau ít phút nhé."
-					outTextChan <- local
-					return
-				}
-				outErrChanSend(outErrChan, err)
+		produced := false
+		var err error
+		if plan.primary.provider.Provider != "" {
+			produced, err = s.streamTextSingle(ctx, plan.primary.client, plan.primary.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.primary), outTextChan)
+			if err == nil {
+				return
 			}
 		}
+
+		if !produced && plan.fallback.provider.Provider != "" {
+			s.logger.Warn("Chat primary stream failed before producing content, attempting fallback", zap.Error(err))
+			produced, err = s.streamTextSingle(ctx, plan.fallback.client, plan.fallback.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.fallback), outTextChan)
+			if err == nil {
+				return
+			}
+		}
+
+		if !produced && plan.freeFailover != nil && plan.freeFailover.provider.Provider != "" {
+			if waitErr := plan.freeFailover.limiter.Wait(ctx); waitErr == nil {
+				_, fallbackErr := s.streamTextSingle(ctx, plan.freeFailover.client, plan.freeFailover.provider, systemPrompt, userPrompt, s.withUsageStamp(options, *plan.freeFailover), outTextChan)
+				if fallbackErr == nil {
+					return
+				}
+				err = fallbackErr
+			}
+		}
+
+		if err == nil {
+			err = apperror.NewInternalError("AI provider is not configured")
+		}
+		s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, err)
+		if !produced && ctx.Err() == nil {
+			outTextChan <- "Xin lỗi, stylist AI đang tạm thời bận. Bạn hãy thử lại sau ít phút nhé."
+			return
+		}
+		outErrChanSend(outErrChan, err)
 	}()
 
 	return outTextChan, outErrChan
@@ -136,39 +156,6 @@ func (s *AIService) finalizeProviderError(ctx context.Context, id uuid.UUID, err
 	if definite {
 		return
 	}
-}
-
-func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, defaultOperation string) (config.APIProviderConfig, *http.Client, *rate.Limiter, app_ai.TextGenerationOptions, error) {
-	var geminiReq google.PreparedGeminiRequest
-	isGemini := paid.Provider == ProviderGemini
-	if isGemini {
-		geminiReq = google.PreparedGeminiRequest{
-			Model: paid.Model,
-			Body: google.GeminiGenerateContentBody{
-				Contents: []google.GeminiContent{
-					{
-						Role: "user",
-						Parts: []google.GeminiPart{
-							{Text: userPrompt},
-						},
-					},
-				},
-				GenerationConfig: google.GoogleGenerationConfig(options),
-			},
-		}
-		if strings.TrimSpace(systemPrompt) != "" {
-			geminiReq.Body.SystemInstruction = &google.GeminiContent{
-				Parts: []google.GeminiPart{
-					{Text: systemPrompt},
-				},
-			}
-		}
-	}
-
-	if defaultOperation == app_ai.AIOperationOutfit {
-		return paid, s.recommendationTextClient, s.recommendationTextLimiter, options, nil
-	}
-	return paid, s.chatTextClient, s.chatTextLimiter, options, nil
 }
 
 func (s *AIService) logTextGeneration(operation, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions) {
@@ -202,35 +189,6 @@ func outErrChanSend(outErr chan<- error, err error) {
 func (s *AIService) streamTextSingle(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, outText chan<- string) (bool, error) {
 	text, errs := s.tryTextProviderStream(ctx, client, provider, systemPrompt, userPrompt, options)
 	return s.forwardProviderStream(ctx, text, errs, outText)
-}
-
-func (s *AIService) isFreeProvider(provider config.APIProviderConfig) bool {
-	return provider.Provider == s.cfg.AI.FreeTextPrimary.Provider && provider.Model == s.cfg.AI.FreeTextPrimary.Model && provider.Endpoint == s.cfg.AI.FreeTextPrimary.Endpoint
-}
-func (s *AIService) tryFreeText(ctx context.Context, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
-	if s.cfg.AI.FreeTextPrimary.Provider == "" {
-		return "", apperror.NewInternalError("free AI provider is not configured")
-	}
-	prepared, err := s.prepareFreeOptions(ctx, systemPrompt, userPrompt, options)
-	if err != nil {
-		return "", err
-	}
-	if err := s.freeTextLimiter.Wait(ctx); err != nil {
-		return "", err
-	}
-	text, err := s.tryTextProvider(ctx, s.freeTextClient, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt, prepared)
-	if err != nil {
-		s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
-	}
-	return text, err
-}
-
-func (s *AIService) prepareFreeOptions(ctx context.Context, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions) (app_ai.TextGenerationOptions, error) {
-	if options.UserID == uuid.Nil {
-		options.RequestID = uuid.Nil
-		return options, nil
-	}
-	return options, nil
 }
 
 // forwardProviderStream forwards provider chunks to the caller and reports whether any content was produced.
