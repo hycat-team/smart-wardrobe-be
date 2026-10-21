@@ -96,8 +96,9 @@ func TestConfirmPaidKeepsComputedCost(t *testing.T) {
 	}
 }
 
-// (2) Free request with pricing and usage records actual > 0.
-func TestConfirmFreeWithUsageRecordsPositiveActual(t *testing.T) {
+// A free route that still runs on a billed key (vision, or a capability left out
+// of AI_UNBILLED_CAPABILITIES) keeps recording the real provider cost.
+func TestConfirmFreeRouteWithBilledKeyRecordsPositiveActual(t *testing.T) {
 	repo := &confirmCaptureRepo{}
 	pricing := &stubPricingUC{cfg: testPricing()}
 	uc := newConfirmUC(repo, pricing)
@@ -107,10 +108,46 @@ func TestConfirmFreeWithUsageRecordsPositiveActual(t *testing.T) {
 		t.Fatalf("Confirm: %v", err)
 	}
 	if repo.cost <= 0 {
-		t.Errorf("free actual cost = %d, want > 0", repo.cost)
+		t.Errorf("free route billed key actual cost = %d, want > 0", repo.cost)
 	}
 	if repo.errCode != "" {
-		t.Errorf("free error code = %q, want empty", repo.errCode)
+		t.Errorf("free route billed key error code = %q, want empty", repo.errCode)
+	}
+	if pricing.gotProvider != "google" || pricing.gotModel != "gemini-2.0-flash" {
+		t.Errorf("pricing lookup got %q/%q, want google/gemini-2.0-flash", pricing.gotProvider, pricing.gotModel)
+	}
+}
+
+// An unbilled capability records zero cost and never reaches pricing: the free
+// key is a separate quota, so a missing price must not fail or misprice it.
+func TestConfirmUnbilledSkipsPricingAndRecordsZero(t *testing.T) {
+	repo := &confirmCaptureRepo{}
+	pricing := &stubPricingUC{err: errors.New("pricing must not be consulted")}
+	uc := newConfirmUC(repo, pricing)
+
+	usage := uc_interfaces.AIUsage{
+		PromptTokens:   10,
+		OutputTokens:   5,
+		ThinkingTokens: 0,
+		FinishReason:   "STOP",
+		Provider:       "google",
+		Model:          "gemini-3.5-flash-lite",
+		Unbilled:       true,
+	}
+	if err := uc.Confirm(context.Background(), uuid.New(), usage); err != nil {
+		t.Fatalf("Confirm: %v", err)
+	}
+	if repo.cost != 0 {
+		t.Errorf("unbilled actual cost = %d, want 0", repo.cost)
+	}
+	if repo.errCode != "" {
+		t.Errorf("unbilled error code = %q, want empty", repo.errCode)
+	}
+	if repo.prompt != 10 || repo.output != 5 {
+		t.Errorf("unbilled must keep reported tokens, got prompt=%d output=%d", repo.prompt, repo.output)
+	}
+	if pricing.gotProvider != "" || pricing.gotModel != "" {
+		t.Errorf("unbilled must not hit pricing lookup, got %q/%q", pricing.gotProvider, pricing.gotModel)
 	}
 }
 

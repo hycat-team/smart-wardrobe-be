@@ -64,6 +64,9 @@ func loadConfig() (*Config, error) {
 	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("decode config file %q: %w", configPath, err)
 	}
+	if err := normalizeAIBilling(&cfg.AI.Billing); err != nil {
+		return nil, err
+	}
 	applyEnvOverrides(&cfg)
 	cfg.Server.FrontEndOrigins = splitFrontEndOrigins(cfg.Server.FrontEndOrigin)
 	cfg.Google.ClientIDs = googleAudiences(cfg.Google.ClientIDRaw, cfg.Google.WebClientID)

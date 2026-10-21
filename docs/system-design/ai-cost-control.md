@@ -87,6 +87,29 @@ When preparing to send the payload, the state is updated to `IN_FLIGHT`.
 - **When deterministic API error occurs** (e.g., HTTP 400, 401, 403, 429): The system calls `Release()`, reverting the reserved cost to 0 and changes the state to `RELEASED`.
 - **When an unexpected error or disconnection occurs**: The system changes it to `UNKNOWN_USAGE`. After 24h, the periodic cleanup Worker (`AIUsageReconciliationWorker`) will scan via cronjob to revert these unverified reserved costs to the `EXPIRED_UNVERIFIED` state.
 
+#### Step 4: Actual cost follows the key, not the route
+
+A free *route* and a free *key* are different things. Chat, summary, rewriter and outfit can be routed to `FREE_TEXT_*`, which the team does not pay for; vision and embedding run on the always-free route but may still use a billed key. Recording cost by `logical_route` alone would therefore under-report vision and over-report free text.
+
+`AI_UNBILLED_CAPABILITIES` classifies capabilities whose provider key is not billed. Anything not listed is billed, so a missing entry can only overstate cost:
+
+```yaml
+ai:
+    billing:
+        # YAML alias of AI_UNBILLED_CAPABILITIES (comma-separated).
+        unbilled_capabilities: "${AI_UNBILLED_CAPABILITIES}"
+```
+
+```dotenv
+# Allowed: vision, embedding, chat_text, recommendation_text, free_text.
+AI_UNBILLED_CAPABILITIES=free_text,embedding
+```
+
+- The orchestrator resolves the route into `(primary, fallback)` provider configs and passes them in-process to `AIService`; `AIService` reports `TokenUsage.Unbilled` from the config that actually won, including a free failover after a paid failure.
+- `Confirm` records `actual_cost_micro_vnd = 0` and skips pricing for an unbilled winner, while still storing real tokens/provider/model.
+- A billed winner keeps the existing computation even when `logical_route='free'` (vision), preserving the margin report.
+- `Prepare` does not look up pricing for a free route because it reserves nothing, so a FREE model does not need a row in `aiexecutor.ai_model_configs`.
+
 ---
 
 ## 4. Startup Validation

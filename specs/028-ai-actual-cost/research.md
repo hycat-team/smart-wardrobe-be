@@ -2,17 +2,19 @@
 
 **Ngày**: 2026-10-11 | **Spec**: [spec.md](./spec.md) | **Seed tay**: [manual-seed.md](./manual-seed.md)
 
+> **Cập nhật 2026-10-21 — billing theo capability, không theo route.** Thực tế vận hành cho thấy `FREE_TEXT_*` (và `EMBEDDING_*`) dùng key miễn phí của team, nên chi phí thật của các capability này là 0 dù `logical_route='free'`. Ngược lại vision chạy trên tuyến always-free nhưng dùng key trả phí và vẫn phải ghi chi phí thật. Vì vậy R1/R2 bên dưới được đọc kèm quy tắc mới: `actual_cost_micro_vnd` đi theo **capability/key thực tế**, không đi theo route; danh sách capability unbilled nằm ở `AI_UNBILLED_CAPABILITIES` (YAML alias `${AI_UNBILLED_CAPABILITIES}`), mặc định rỗng = tất cả billed.
+
 ## R1 — Không cần cột `billed`, không cần migration schema
 
 - **Decision**: Giữ nguyên schema `ai_usage_events` / `ai_usage_period_ledgers`. Không thêm cột `billed_cost_micro_vnd`. Số tiền tính cho user suy ra được: `SUM(actual_cost_micro_vnd) WHERE logical_route='paid'`; tuyến free luôn có billed = 0 theo logic hiện tại.
-- **Rationale**: Clarify Q1 đã chốt "không thêm cột/bảng". Logic reserve (`cost/usecase.go:107-110` chỉ reserve khi route paid), hard-cap và chuyển tuyến không đụng tới `actual` — tách biệt tự nhiên, đúng yêu cầu "không đổi cách thu tiền user".
+- **Rationale**: Clarify Q1 đã chốt "không thêm cột/bảng". Logic reserve (`cost/usecase.go:107-110` chỉ reserve khi route paid), hard-cap và chuyển tuyến không đụng tới `actual` — tách biệt tự nhiên, đúng yêu cầu "không đổi cách thu tiền user". Từ 2026-10-21, `actual` của capability unbilled = 0 ngay ở usecase, nên không cần cột mới để phân biệt.
 - **Alternatives considered**: Thêm cột billed riêng (bị loại bởi Q1 và vì suy ra được từ `logical_route`, thêm cột chỉ tạo nguồn lệch số liệu thứ hai).
 
 ## R2 — Chỗ duy nhất bóp méo số liệu là `repo.Confirm`
 
-- **Decision**: Sửa `AICostRepository.Confirm` (`services/ai/.../infrastructure/persistence/ai_cost_repo_impl.go:212-243`): bỏ dòng ép `cost = 0` khi route != paid; ledger luôn cộng `actual_cost_micro_vnd` (cả paid lẫn free); giữ nguyên phân `paid_*/free_*_tokens`.
-- **Rationale**: `costUC.Confirm` (`cost/usecase.go:283-289`) đã tính đúng `microCost` theo pricing của model thật — nhưng kết quả bị ép 0 ở tầng repo trước khi ghi. Mọi báo cáo (`GetAdminAIUsageStats`, `GetAIUsageByOperation`, snapshot commerce) đều `SUM(actual_cost_micro_vnd)` nên tự đúng theo mà **không cần sửa phía commerce**.
-- **Alternatives considered**: Sửa ở tầng usecase (không đủ — ép 0 nằm ở repo, và ledger cũng cần cộng dồn).
+- **Decision**: Giữ nguyên `AICostRepository.Confirm` (không ép `cost = 0` theo route; ledger luôn cộng `actual_cost_micro_vnd` được truyền vào; giữ phân `paid_*/free_*_tokens`). Usecase quyết định con số: `usage.Unbilled` → 0 và bỏ qua pricing; ngược lại tính `microCost` như cũ.
+- **Rationale**: `costUC.Confirm` (`cost/usecase.go`) là nơi duy nhất biết capability/key nào thực sự thắng cuộc (qua `TokenUsage.Unbilled` do `AIService` báo lên). Đặt quy tắc ở đó giữ repo là nơi lưu trữ thuần túy. Mọi báo cáo (`GetAdminAIUsageStats`, `GetAIUsageByOperation`, snapshot commerce) đều `SUM(actual_cost_micro_vnd)` nên tự đúng mà **không cần sửa phía commerce**.
+- **Alternatives considered**: Ép 0 ở repo theo `logical_route` (đã bị loại vì vision dùng key trả phí trên tuyến free); sửa ở commerce (sai tầng).
 
 ## R3 — Vision lấy token thật từ `usageMetadata`; embedding đếm inline bằng `countTokens`
 

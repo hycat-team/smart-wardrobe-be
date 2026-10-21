@@ -250,6 +250,7 @@ type AIServiceConfig struct {
 	// code here would violate constitution §VIII.
 	DefaultCostPolicyCode string                `mapstructure:"default_cost_policy_code"`
 	TokenEstimation       TokenEstimationConfig `mapstructure:"token_estimation"`
+	Billing               AIBillingConfig       `mapstructure:"billing"`
 }
 
 type RabbitMQ struct {

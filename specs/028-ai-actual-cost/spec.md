@@ -79,7 +79,7 @@ nhanh và do dev tự chạy.
 
 ### Functional Requirements
 
-- **FR-001**: Hệ thống MUST ghi nhận chi phí thật của mọi lượt gọi AI thành công dựa trên số token thực tế và giá của model trong plan đã gọi (ngoại lệ đã biết: khi provider fallback thắng, giá tính theo model primary — xem `research.md` R7), kể cả khi lượt đó miễn phí cho người dùng.
+- **FR-001**: Hệ thống MUST ghi nhận chi phí thật của mọi lượt gọi AI thành công dựa trên số token thực tế và giá của model trong plan đã gọi (ngoại lệ đã biết: khi provider fallback thắng, giá tính theo model primary — xem `research.md` R7), kể cả khi lượt đó miễn phí cho người dùng. Ngoại lệ: capability nằm trong `AI_UNBILLED_CAPABILITIES` dùng key miễn phí của team nên chi phí thật bằng 0.
 - **FR-002**: Hệ thống MUST giữ nguyên mọi quyết định tính tiền user hiện tại: tuyến nào miễn phí thì vẫn miễn phí, hạn mức/quota/cơ chế chuyển tuyến và từ chối không thay đổi.
 - **FR-003**: Báo cáo sử dụng AI theo tác vụ MUST hiển thị chi phí thật (bao gồm cả phần miễn phí cho user) cùng lượt dùng và số token.
 - **FR-004**: Báo cáo tổng quan/lợi nhuận MUST tính lợi nhuận ròng từ chi phí thật (doanh thu trừ chi phí thật).
@@ -87,7 +87,7 @@ nhanh và do dev tự chạy.
 - **FR-006**: Lượt gọi thất bại hoặc không xác minh được mức dùng MUST NOT được tính vào chi phí thật.
 - **FR-007**: Khi thiếu giá model (bao gồm cả trường hợp provider/model rỗng), hệ thống MUST vẫn phục vụ user theo chính sách cũ; lượt đó MUST được ghi nhận với status Confirmed, `error_code='pricing_config_missing'`, chi phí thật bằng 0 để admin đối soát qua báo cáo drill-down có sẵn; không thêm cột/bảng mới.
 - **FR-008**: Tài liệu của tính năng MUST kèm một đoạn SQL thủ công để bổ sung/cập nhật giá toàn bộ model đang dùng (7 model, xem `manual-seed.md`); đoạn SQL MUST có ngữ nghĩa gán đè dòng đang hiệu lực (`effective_to IS NULL`) theo cặp (nhà cung cấp, tên model) — đã tồn tại thì gán đè giá trị mới, chưa có thì thêm mới (không dùng `ON CONFLICT (provider, model)` vì unique thật là `(provider, model, effective_from)`).
-- **FR-009**: Hệ thống MUST có kiểm thử tự động cho: lượt miễn phí sinh chi phí thật lớn hơn 0 nhưng không tính tiền user; lượt trả phí giữ nguyên cách tính như cũ; phân tích ảnh/embedding lưu được token thật.
+- **FR-009**: Hệ thống MUST có kiểm thử tự động cho: capability unbilled (ví dụ `free_text`, `embedding`) ghi actual=0 nhưng vẫn giữ token thật; lượt dùng key trả phí trên tuyến free (ví dụ vision) vẫn sinh chi phí thật lớn hơn 0; lượt trả phí giữ nguyên cách tính như cũ; phân tích ảnh/embedding lưu được token thật.
 
 ### Key Entities
 

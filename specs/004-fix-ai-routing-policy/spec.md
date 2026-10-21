@@ -51,6 +51,9 @@ Khi hệ thống quyết định định tuyến là `"local"`, yêu cầu gọi
 - **FR-001**: Hệ thống MUST dịch chuyển logic chọn Model/Provider từ tĩnh sang động dựa vào `AIRoute` được phân giải từ `CostUseCase.Prepare`.
 - **FR-002**: Khi `route` phân giải là `"paid"`, hệ thống MUST ánh xạ đến các cấu hình model tương ứng của operation (ví dụ: `CHAT_TEXT_PRIMARY`).
 - **FR-003**: Khi `route` phân giải là `"free"`, hệ thống MUST ánh xạ đến mô hình `FREE_TEXT_PRIMARY` (Gemma / Gemini Flash Lite) thay vì gọi mô hình trả phí.
+
+  > **Cập nhật 2026-10-21**: FR-003 trước đây chỉ đổi `plan.Provider/Model` cho ledger, còn `AIService` vẫn gọi key paid. Nay orchestrator truyền nguyên `TextProviderConfig` (provider, endpoint, model, API key, capability) qua `TextGenerationOptions`, nên route free thực sự gọi `FREE_TEXT_PRIMARY_API_KEY`; fallback dùng `FREE_TEXT_FALLBACK`. Cost đi theo capability/key thực tế (`AI_UNBILLED_CAPABILITIES`), không theo route — xem 028.
+
 - **FR-004**: Khi `route` phân giải là `"local"`, hệ thống MUST bỏ qua việc gọi API LLM và chuyển hướng thực thi thuật toán fallback cục bộ bằng Go thuần.
 - **FR-005**: Hệ thống MUST di chuyển và sắp xếp lại các biến môi trường cấu hình model Free (`FREE_TEXT_PRIMARY_...`, `FREE_TEXT_FALLBACK_...`) xuống dưới cùng của nhóm cấu hình AI trong `.env.example`, `.env.production.example` và các file cấu hình liên quan để đồng bộ cấu trúc.
 

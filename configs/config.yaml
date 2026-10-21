@@ -313,6 +313,11 @@ ai:
         api_key: "${FREE_TEXT_FALLBACK_API_KEY}"
         endpoint: "${FREE_TEXT_FALLBACK_ENDPOINT}"
         model: "${FREE_TEXT_FALLBACK_MODEL}"
+    billing:
+        # Capabilities whose provider key is NOT billed (comma-separated env).
+        # Allowed: vision, embedding, chat_text, recommendation_text, free_text.
+        # Anything not listed is billed; empty means everything is billed.
+        unbilled_capabilities: "${AI_UNBILLED_CAPABILITIES}"
     chat_text_timeout_seconds: 30
     recommendation_text_timeout_seconds: 30
     vision_timeout_seconds: 20

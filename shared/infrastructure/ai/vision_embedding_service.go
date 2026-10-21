@@ -54,11 +54,11 @@ func (s *AIService) AnalyzeImageWithUsage(ctx context.Context, imageUrl string, 
 		s.cfg.AI.VisionFallback,
 		func() (visionWithUsageResult, error) {
 			text, usage, err := s.tryVisionProviderWithUsage(ctx, s.cfg.AI.VisionPrimary, imageUrl, prompt)
-			return visionWithUsageResult{text: text, usage: usage}, err
+			return visionWithUsageResult{text: text, usage: s.stampUsage(usage, s.cfg.AI.VisionPrimary, config.CapabilityVision)}, err
 		},
 		func() (visionWithUsageResult, error) {
 			text, usage, err := s.tryVisionProviderWithUsage(ctx, s.cfg.AI.VisionFallback, imageUrl, prompt)
-			return visionWithUsageResult{text: text, usage: usage}, err
+			return visionWithUsageResult{text: text, usage: s.stampUsage(usage, s.cfg.AI.VisionFallback, config.CapabilityVision)}, err
 		},
 	)
 	if err != nil {

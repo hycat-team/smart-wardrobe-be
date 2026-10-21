@@ -115,6 +115,7 @@ goose -dir services/<svc>/database/migrations \
 | `PAYOS_ENDPOINT` | `https://api-merchant.payos.vn` |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_API_URL` | box copy y nguyên từ VPS |
 | `VISION_*`, `EMBEDDING_*`, `CHAT_TEXT_*`, `RECOMMENDATION_TEXT_*`, `FREE_TEXT_*` | provider/model/endpoint/key; box copy y nguyên từ VPS |
+| `AI_UNBILLED_CAPABILITIES` | danh sách capability dùng key miễn phí (comma-separated, ví dụ `free_text,embedding`); thiếu biến = tất cả billed |
 
 ### 2.4 Nginx / compose (không thuộc app)
 

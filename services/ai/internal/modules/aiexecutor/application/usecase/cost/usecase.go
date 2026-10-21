@@ -98,13 +98,23 @@ func (uc *CostUseCase) reserveAgainstPolicy(
 	route := plan.Route
 	maxIn, maxOut := plan.MaxInputTokens, plan.MaxOutputTokens
 
-	pricing, err := uc.pricingUC.GetActivePricingConfig(ctx, plan.Provider, plan.Model)
-	if err != nil {
-		return nil, err
+	// A free route reserves nothing, so it does not need a pricing row. Looking
+	// one up anyway made a missing FREE model price a hard failure for a request
+	// that costs nothing, and the free config is a separate key (or a zero-cost
+	// model), not a cheaper copy of the paid one.
+	var pricing *aiexecutor_dto.PricingConfigDTO
+	if route == airoute.Paid {
+		var err error
+		pricing, err = uc.pricingUC.GetActivePricingConfig(ctx, plan.Provider, plan.Model)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	reserve := int64(0)
-	if route == airoute.Paid {
+	var pricingConfigID *uuid.UUID
+	if pricing != nil {
+		pricingConfigID = &pricing.ID
 		reserve = microCost(plan.EstimatedPromptTokens, int64(maxOut), pricing.InputUSDPerMillion, pricing.OutputUSDPerMillion, pricing.USDToVND)
 	}
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
@@ -120,16 +130,18 @@ func (uc *CostUseCase) reserveAgainstPolicy(
 		}(),
 		Operation:                plan.Operation,
 		LogicalRoute:             route,
-		PricingConfigID:          &pricing.ID,
+		PricingConfigID:          pricingConfigID,
 		Provider:                 &plan.Provider,
 		Model:                    &plan.Model,
-		InputUSDPerMillion:       &pricing.InputUSDPerMillion,
-		OutputUSDPerMillion:      &pricing.OutputUSDPerMillion,
-		USDToVND:                 &pricing.USDToVND,
 		ReservedCostMicroVND:     reserve,
 		EstimatedMaxCostMicroVND: reserve,
 		Status:                   aiusageeventstatus.Reserved,
 		UnknownExpiresAt:         &unknownExpires,
+	}
+	if pricing != nil {
+		event.InputUSDPerMillion = &pricing.InputUSDPerMillion
+		event.OutputUSDPerMillion = &pricing.OutputUSDPerMillion
+		event.USDToVND = &pricing.USDToVND
 	}
 
 	// 024 T130: the per-day cap comes from the grant SNAPSHOT when there is a
@@ -284,6 +296,14 @@ const (
 
 func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage uc_interfaces.AIUsage) error {
 	now := time.Now()
+	// (0) The request ran on an unbilled capability (FREE_TEXT_* or any other
+	// key listed in AI_UNBILLED_CAPABILITIES). The team is not charged for that
+	// key, so the ledger records zero cost and skips pricing entirely: a free
+	// config is a separate quota, not a cheaper model price. Tokens still land
+	// so the dashboard can show usage even when the cost is zero.
+	if usage.Unbilled {
+		return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, 0, usage.Provider, usage.Model, usage.FinishReason, "", now)
+	}
 	// (4) Empty provider and model: nothing to price against. Replaces the old
 	// early return, which confirmed silently with no code left to reconcile.
 	if usage.Provider == "" && usage.Model == "" {
@@ -301,9 +321,11 @@ func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage u
 	if usage.PromptTokens+usage.OutputTokens+usage.ThinkingTokens == 0 {
 		return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, 0, usage.Provider, usage.Model, usage.FinishReason, errorCodeUsageUnreported, now)
 	}
-	// (1) Paid stays exactly as before; (2) a free request with full pricing
-	// and usage now flows through the same computation — the repository no
-	// longer zeroes the free route, so the actual cost lands in the ledger.
+	// (1) Paid stays exactly as before; (2) an always-free route that still runs
+	// on a billed key (vision, and any capability not in AI_UNBILLED_CAPABILITIES)
+	// flows through the same computation, so its real provider cost lands in the
+	// ledger and the margin report stays truthful. Requests whose winning
+	// config is unbilled reach branch (0) above instead.
 	cost := microCost(usage.PromptTokens, usage.OutputTokens+usage.ThinkingTokens, pricing.InputUSDPerMillion, pricing.OutputUSDPerMillion, pricing.USDToVND)
 	return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, cost, usage.Provider, usage.Model, usage.FinishReason, "", now)
 }
