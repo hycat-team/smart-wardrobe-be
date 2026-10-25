@@ -33,6 +33,7 @@ type BrandBenefitRes struct {
 	RequiredPoints   *int       `json:"requiredPoints"`
 	RequiredTierID   *uuid.UUID `json:"requiredTierId"`
 	RequiredTierName *string    `json:"requiredTierName,omitempty"`
+	RequiredTierRank *int       `json:"requiredTierRank,omitempty"`
 	FeatureCode      *string    `json:"featureCode"`
 	FeatureConfig    any        `json:"featureConfig"`
 	Status           string     `json:"status"`

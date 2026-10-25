@@ -88,6 +88,10 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 	bType := benefittype.BenefitType(strings.ToLower(input.BenefitType))
 	uType := benefitunlocktype.BenefitUnlockType(strings.ToLower(input.UnlockType))
 
+	if bType == benefittype.FeatureAccess && uType == benefitunlocktype.PointRedemption {
+		return nil, branderrors.ErrFeatureAccessPointRedemptionUnsupported()
+	}
+
 	benefit := &entities.BrandBenefit{
 		BrandID:     brandID,
 		Name:        strings.TrimSpace(input.Name),

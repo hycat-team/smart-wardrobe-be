@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/services/commerce/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/mapper"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
 
@@ -105,15 +106,74 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyTierDetailForUser(ctx context.Context, 
 		return nil, branderrors.ErrTierNotFound()
 	}
 
-	benefits, err := uc.benefitRepo.GetActiveByBrandIDAndTierID(ctx, brandID, tierID)
+	benefits, err := uc.activeTierPrivilegeBenefits(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dto.LoyaltyTierDetailRes{
 		LoyaltyTierRes: *mapper.MapLoyaltyTier(tier),
-		Benefits:       mapper.MapBrandBenefits(benefits),
+		Benefits:       mapper.MapBrandBenefits(cumulativeTierBenefits(benefits, tier.Rank)),
 	}, nil
+}
+
+func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForUser(ctx context.Context, brandID uuid.UUID) ([]*dto.LoyaltyTierDetailRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	tiers, err := uc.tierRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+
+	benefits, err := uc.activeTierPrivilegeBenefits(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*dto.LoyaltyTierDetailRes, 0, len(tiers))
+	for _, tier := range tiers {
+		result = append(result, &dto.LoyaltyTierDetailRes{
+			LoyaltyTierRes: *mapper.MapLoyaltyTier(tier),
+			Benefits:       mapper.MapBrandBenefits(cumulativeTierBenefits(benefits, tier.Rank)),
+		})
+	}
+	return result, nil
+}
+
+// activeTierPrivilegeBenefits returns the active benefits that are unlocked by a
+// membership tier (including their required tier rank, preloaded by the repo).
+func (uc *BrandLoyaltyUseCase) activeTierPrivilegeBenefits(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error) {
+	benefits, err := uc.benefitRepo.GetActiveByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+
+	tierBenefits := make([]*entities.BrandBenefit, 0, len(benefits))
+	for _, benefit := range benefits {
+		if benefit.UnlockType != benefitunlocktype.TierPrivilege || benefit.RequiredTier == nil {
+			continue
+		}
+		tierBenefits = append(tierBenefits, benefit)
+	}
+	return tierBenefits, nil
+}
+
+// cumulativeTierBenefits keeps every tier benefit whose required rank is at or
+// below the given rank, matching the rank-based access rule.
+func cumulativeTierBenefits(benefits []*entities.BrandBenefit, maxRank int) []*entities.BrandBenefit {
+	result := make([]*entities.BrandBenefit, 0, len(benefits))
+	for _, benefit := range benefits {
+		if benefit.RequiredTier != nil && benefit.RequiredTier.Rank <= maxRank {
+			result = append(result, benefit)
+		}
+	}
+	return result
 }
 
 func (uc *BrandLoyaltyUseCase) CreateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateLoyaltyTierReq) (*dto.LoyaltyTierRes, error) {

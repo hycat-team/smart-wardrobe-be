@@ -205,3 +205,23 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForUser(c *gin.Context) error 
 	shared_pres.Success(c, msgBrandLoyaltyGetTiersSuccess, res)
 	return nil
 }
+
+// GetLoyaltyTiersForUser lists loyalty tiers with cumulative tier privileges.
+// @Summary Lấy danh sách hạng loyalty kèm quyền lợi (User)
+// @Tags Brand Loyalty
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyTierDetailRes}
+// @Router /api/v1/brands/{brandId}/loyalty/tiers [get]
+func (h *BrandLoyaltyHandler) GetLoyaltyTiersForUser(c *gin.Context) error {
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	res, err := h.loyaltyUC.GetLoyaltyTiersForUser(c.Request.Context(), brandID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandLoyaltyGetTiersSuccess, res)
+	return nil
+}

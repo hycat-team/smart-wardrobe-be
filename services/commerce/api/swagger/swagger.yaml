@@ -292,6 +292,8 @@ definitions:
         type: string
       requiredTierName:
         type: string
+      requiredTierRank:
+        type: integer
       status:
         type: string
       unlockType:
@@ -1020,6 +1022,8 @@ definitions:
         type: string
       requiredTierName:
         type: string
+      requiredTierRank:
+        type: integer
       status:
         type: string
       unlockType:
@@ -6018,6 +6022,31 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandCustomerBriefRes'
               type: object
       summary: Tham gia chương trình khách hàng thân thiết
+      tags:
+      - Brand Loyalty
+  /api/v1/brands/{brandId}/loyalty/tiers:
+    get:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierDetailRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách hạng loyalty kèm quyền lợi (User)
       tags:
       - Brand Loyalty
   /api/v1/brands/{brandId}/loyalty/tiers/{tierId}:

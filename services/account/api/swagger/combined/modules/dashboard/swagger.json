@@ -2546,6 +2546,9 @@
         "requiredTierName": {
           "type": "string"
         },
+        "requiredTierRank": {
+          "type": "integer"
+        },
         "status": {
           "type": "string"
         },
@@ -3641,6 +3644,9 @@
         },
         "requiredTierName": {
           "type": "string"
+        },
+        "requiredTierRank": {
+          "type": "integer"
         },
         "status": {
           "type": "string"

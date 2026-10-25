@@ -4978,6 +4978,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brands/{brandId}/loyalty/tiers": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Lấy danh sách hạng loyalty kèm quyền lợi (User)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierDetailRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brands/{brandId}/loyalty/tiers/{tierId}": {
             "get": {
                 "produces": [
@@ -7588,6 +7631,9 @@ const docTemplate = `{
                 "requiredTierName": {
                     "type": "string"
                 },
+                "requiredTierRank": {
+                    "type": "integer"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -8683,6 +8729,9 @@ const docTemplate = `{
                 },
                 "requiredTierName": {
                     "type": "string"
+                },
+                "requiredTierRank": {
+                    "type": "integer"
                 },
                 "status": {
                     "type": "string"

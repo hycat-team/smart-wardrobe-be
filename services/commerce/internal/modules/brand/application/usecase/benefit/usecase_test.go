@@ -418,14 +418,12 @@ func TestCreateBrandBenefit(t *testing.T) {
 		tierRepo:    &mockTierRepo{tiers: make(map[uuid.UUID]*entities.LoyaltyTier)},
 	}
 
-	featCode := "sample_mix_access"
 	input := dto.CreateBrandBenefitReq{
 		Name:           "Test Benefit",
 		Description:    ptr("Test Desc"),
-		BenefitType:    "feature_access",
+		BenefitType:    "voucher",
 		UnlockType:     "point_redemption",
 		RequiredPoints: intPtr(100),
-		FeatureCode:    &featCode,
 		FeatureConfig:  map[string]any{"validDurationDays": 30},
 	}
 
@@ -472,13 +470,11 @@ func TestCreateBrandBenefitTreatsZeroRequiredPointsAsNil(t *testing.T) {
 		tierRepo:    &mockTierRepo{tiers: make(map[uuid.UUID]*entities.LoyaltyTier)},
 	}
 
-	featCode := "sample_mix_access"
 	input := dto.CreateBrandBenefitReq{
-		Name:           "Free Feature",
-		BenefitType:    "feature_access",
+		Name:           "Free Voucher",
+		BenefitType:    "voucher",
 		UnlockType:     "point_redemption",
 		RequiredPoints: intPtr(0),
-		FeatureCode:    &featCode,
 	}
 
 	res, err := uc.CreateBrandBenefit(context.Background(), userID, brandID, input)
@@ -1414,4 +1410,28 @@ func TestListMyBenefitsRejectsInactiveBrand(t *testing.T) {
 
 	_, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
 	assertAppErrorStatus(t, err, http.StatusForbidden)
+}
+
+func TestCreateBrandBenefitRejectsFeatureAccessPointRedemption(t *testing.T) {
+	brandID := uuid.New()
+	userID := uuid.New()
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {Status: brandstatus.Active},
+	}}
+	benefitRepo := &mockBenefitRepo{benefits: make(map[uuid.UUID]*entities.BrandBenefit)}
+	uc := &BrandBenefitUseCase{
+		brandRepo:   brandRepo,
+		benefitRepo: benefitRepo,
+	}
+
+	_, err := uc.CreateBrandBenefit(context.Background(), userID, brandID, dto.CreateBrandBenefitReq{
+		Name:           "Point feature",
+		BenefitType:    "feature_access",
+		UnlockType:     "point_redemption",
+		RequiredPoints: intPtr(100),
+		FeatureCode:    ptr("sample_mix_access"),
+	})
+	if err == nil {
+		t.Fatal("expected feature_access + point_redemption to be rejected")
+	}
 }

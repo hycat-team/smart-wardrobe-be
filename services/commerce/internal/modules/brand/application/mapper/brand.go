@@ -210,8 +210,11 @@ func MapBrandBenefit(benefit *entities.BrandBenefit) *dto.BrandBenefitRes {
 		featCode = &str
 	}
 	var requiredTierName *string
+	var requiredTierRank *int
 	if benefit.RequiredTier != nil {
 		requiredTierName = &benefit.RequiredTier.Name
+		rank := benefit.RequiredTier.Rank
+		requiredTierRank = &rank
 	}
 	return &dto.BrandBenefitRes{
 		ID:               benefit.ID,
@@ -223,6 +226,7 @@ func MapBrandBenefit(benefit *entities.BrandBenefit) *dto.BrandBenefitRes {
 		RequiredPoints:   benefit.RequiredPoints,
 		RequiredTierID:   benefit.RequiredTierID,
 		RequiredTierName: requiredTierName,
+		RequiredTierRank: requiredTierRank,
 		FeatureCode:      featCode,
 		FeatureConfig:    rawConfig,
 		Status:           string(benefit.Status),

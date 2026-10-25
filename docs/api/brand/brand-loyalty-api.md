@@ -188,11 +188,21 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Endpoint:** `GET /api/v1/brands/:brandId/loyalty/tiers/:tierId`
 - **Tác nhân (Actor):** Khách hàng (Customer) hoặc công khai (Public).
 - **Đối tượng ảnh hưởng:** Đọc thông tin hạng thành viên `loyalty_tiers` và các đặc quyền `brand_benefits` gắn với hạng đó.
-- **Mô tả:** Tương tự endpoint staff (Item 6), nhưng không yêu cầu quyền brand portal. Kiểm tra brand đang active trước khi trả về.
+- **Mô tả:** Tương tự endpoint staff (Item 6), nhưng không yêu cầu quyền brand portal. Kiểm tra brand đang active trước khi trả về. Với user, danh sách `benefits` là **cộng dồn**: gồm các quyền lợi yêu cầu hạng này và mọi hạng thấp hơn (theo `rank`), đúng với quy tắc `currentTier.rank >= requiredTier.rank`.
 - **Response:**
     - `200 OK`: Trả về thông tin hạng `LoyaltyTierDetailRes` (cùng format với Item 6).
 
-### 8. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
+### 8. Khách hàng xem toàn bộ hạng thành viên kèm quyền lợi cộng dồn
+
+- **Endpoint:** `GET /api/v1/brands/:brandId/loyalty/tiers`
+- **Tác nhân (Actor):** Khách hàng (Customer) hoặc công khai (Public).
+- **Đối tượng ảnh hưởng:** Đọc danh sách `loyalty_tiers` đang cấu hình của brand và các quyền lợi `tier_privilege` đang active.
+- **Mô tả:** Trả về toàn bộ hạng theo `rank` tăng dần, kèm danh sách quyền lợi **cộng dồn** cho từng hạng (quyền lợi của hạng đó và các hạng thấp hơn). Dùng cho UI "Hạng thành viên" phía người dùng; tiến độ lên hạng lấy từ `GET /api/v1/me/brand-loyalties/:brandId` (`totalSpend`, `currentTier`).
+- **Response:**
+    - `200 OK`: Trả về mảng `LoyaltyTierDetailRes` (cùng format Item 7), mỗi phần tử gồm `rank`, `minTotalSpend` và `benefits`.
+    - `403`: Brand không ở trạng thái active (`ErrBrandNotActive`).
+
+### 9. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/loyalty/accounts/:accountId/transactions`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).
@@ -386,6 +396,8 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
     - `unlockType = point_redemption`: FE hiển thị `requiredPoints`; không hiển thị / không gửi `requiredTierId`. Nếu gửi `requiredPoints = null`, `0` hoặc số âm thì backend lưu là `null` và benefit không yêu cầu điểm khi redeem.
     - `unlockType = manual_grant`: FE không cần hiển thị `requiredPoints` hoặc `requiredTierId`; benefit được brand trao thủ công.
     - `featureCode`: bắt buộc khi `benefitType = feature_access` và phải nằm trong [constants.md:BenefitFeatureCode](constants.md#8-ma-dac-quyen-he-thong-benefitfeaturecode).
+    - `benefitType = feature_access` chỉ hỗ trợ `unlockType = tier_privilege` hoặc `manual_grant`; gửi `point_redemption` sẽ bị từ chối (`ErrFeatureAccessPointRedemptionUnsupported`). Quyền lợi loại này được backend tự áp dụng theo hạng, user không cần thao tác nhận.
+    - Với benefit `unlockType = tier_privilege`, response `BrandBenefitRes` trả thêm `requiredTierRank` để FE hiển thị mức hạng yêu cầu.
     - `featureConfig`: JSON tuỳ chọn. Backend hiện chỉ đọc `validDurationDays` để tính `expiresAt` của lượt redeem; các key khác chỉ được lưu lại và trả về, chưa dùng để check quyền.
 - **Response:**
     - `201 Created`: Trả về thông tin đặc quyền vừa tạo `BrandBenefitRes`.

@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefittype"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
@@ -285,5 +288,135 @@ func TestProcessExpiredLoyaltyPointLotsGroupsExpiredLotsAndIsIdempotent(t *testi
 	}
 	if expiredPoints != 0 || accountRepo.accounts[account.ID].CurrentPoints != 30 || len(txRepo.transactions) != 1 {
 		t.Fatalf("expected idempotent second run, got expired=%d balance=%d tx=%d", expiredPoints, accountRepo.accounts[account.ID].CurrentPoints, len(txRepo.transactions))
+	}
+}
+
+type tierTestBrandRepo struct {
+	repositories.IBrandRepository
+	brand *entities.Brand
+}
+
+func (r tierTestBrandRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.Brand, error) {
+	return r.brand, nil
+}
+
+type tierTestTierRepo struct {
+	repositories.ILoyaltyTierRepository
+	tiers []*entities.LoyaltyTier
+}
+
+func (r tierTestTierRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.LoyaltyTier, error) {
+	return r.tiers, nil
+}
+
+func (r tierTestTierRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.LoyaltyTier, error) {
+	for _, tier := range r.tiers {
+		if tier.ID == id {
+			return tier, nil
+		}
+	}
+	return nil, nil
+}
+
+type tierTestBenefitRepo struct {
+	repositories.IBrandBenefitRepository
+	benefits []*entities.BrandBenefit
+}
+
+func (r tierTestBenefitRepo) GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error) {
+	return r.benefits, nil
+}
+
+func newTierTestBenefit(name string, requiredTier *entities.LoyaltyTier) *entities.BrandBenefit {
+	return &entities.BrandBenefit{
+		Name:           name,
+		UnlockType:     benefitunlocktype.TierPrivilege,
+		BenefitType:    benefittype.Voucher,
+		RequiredTierID: &requiredTier.ID,
+		RequiredTier:   requiredTier,
+	}
+}
+
+func buildTierTestUseCase(brandStatus brandstatus.BrandStatus, tiers []*entities.LoyaltyTier, benefits []*entities.BrandBenefit) *BrandLoyaltyUseCase {
+	return &BrandLoyaltyUseCase{
+		brandRepo:   tierTestBrandRepo{brand: &entities.Brand{Status: brandStatus}},
+		tierRepo:    tierTestTierRepo{tiers: tiers},
+		benefitRepo: tierTestBenefitRepo{benefits: benefits},
+	}
+}
+
+func TestCumulativeTierBenefits(t *testing.T) {
+	brandID := uuid.New()
+	bronze := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Bronze", Rank: 1}
+	silver := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Silver", Rank: 2}
+	gold := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Gold", Rank: 3}
+
+	benefits := []*entities.BrandBenefit{
+		newTierTestBenefit("bronze-perk", bronze),
+		newTierTestBenefit("silver-perk", silver),
+		newTierTestBenefit("gold-perk", gold),
+	}
+
+	if got := len(cumulativeTierBenefits(benefits, bronze.Rank)); got != 1 {
+		t.Fatalf("expected 1 benefit at rank 1, got %d", got)
+	}
+	if got := len(cumulativeTierBenefits(benefits, silver.Rank)); got != 2 {
+		t.Fatalf("expected 2 benefits at rank 2, got %d", got)
+	}
+	if got := len(cumulativeTierBenefits(benefits, gold.Rank)); got != 3 {
+		t.Fatalf("expected 3 benefits at rank 3, got %d", got)
+	}
+}
+
+func TestGetLoyaltyTiersForUserReturnsCumulativeBenefits(t *testing.T) {
+	brandID := uuid.New()
+	bronze := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Bronze", Rank: 1, MinTotalSpend: 0}
+	silver := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Silver", Rank: 2, MinTotalSpend: 1000000}
+	gold := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Gold", Rank: 3, MinTotalSpend: 3000000}
+
+	uc := buildTierTestUseCase(
+		brandstatus.Active,
+		[]*entities.LoyaltyTier{bronze, silver, gold},
+		[]*entities.BrandBenefit{
+			newTierTestBenefit("bronze-perk", bronze),
+			newTierTestBenefit("silver-perk", silver),
+			newTierTestBenefit("gold-perk", gold),
+		},
+	)
+
+	res, err := uc.GetLoyaltyTiersForUser(context.Background(), brandID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res) != 3 {
+		t.Fatalf("expected 3 tiers, got %d", len(res))
+	}
+	for i, expected := range []int{1, 2, 3} {
+		if len(res[i].Benefits) != expected {
+			t.Fatalf("tier %s: expected %d benefits, got %d", res[i].Name, expected, len(res[i].Benefits))
+		}
+	}
+}
+
+func TestGetLoyaltyTierDetailForUserReturnsCumulativeBenefits(t *testing.T) {
+	brandID := uuid.New()
+	bronze := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Bronze", Rank: 1}
+	silver := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Silver", Rank: 2}
+
+	uc := buildTierTestUseCase(
+		brandstatus.Active,
+		[]*entities.LoyaltyTier{bronze, silver},
+		[]*entities.BrandBenefit{
+			newTierTestBenefit("bronze-perk", bronze),
+			newTierTestBenefit("silver-perk", silver),
+		},
+	)
+
+	res, err := uc.GetLoyaltyTierDetailForUser(context.Background(), brandID, silver.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Benefits) != 2 {
+		t.Fatalf("expected 2 cumulative benefits for silver, got %d", len(res.Benefits))
 	}
 }

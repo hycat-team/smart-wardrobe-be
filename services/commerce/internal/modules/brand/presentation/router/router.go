@@ -41,6 +41,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		publicBrands.GET("/:brandId", shared_pres.WrapHandler(r.brandHandler.GetActiveBrand))
 		publicBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandProducts))
 		publicBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
+		publicBrands.GET("/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTiersForUser))
 		publicBrands.GET("/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTierDetailForUser))
 	}
 
