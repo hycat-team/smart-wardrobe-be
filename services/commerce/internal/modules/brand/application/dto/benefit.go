@@ -73,7 +73,7 @@ type BenefitRedemptionRes struct {
 
 type GetBenefitRedemptionsQueryReq struct {
 	shared_dto.PaginationQuery
-	BrandID *string `form:"brandId" binding:"omitempty,uuid4" label:"mã thương hiệu"`
+	BrandID *string `form:"brandId" binding:"omitempty,uuid" label:"mã thương hiệu"`
 }
 
 type BenefitRedemptionListRes = shared_dto.PaginationResult[*BenefitRedemptionRes]
