@@ -83,6 +83,7 @@ func (r *BrandConversationMessageRepository) CountUnreadBatch(ctx context.Contex
 		CreatedAt      time.Time `gorm:"column:created_at"`
 	}
 	err := r.GetDB(ctx).
+		Model(&entities.BrandConversationMessage{}).
 		Select("conversation_id, created_at").
 		Where("conversation_id IN ? AND sender_role = ?", conversationIDs, senderRole).
 		Find(&msgs).Error
