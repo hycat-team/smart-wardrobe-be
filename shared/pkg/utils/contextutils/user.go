@@ -85,9 +85,12 @@ func GetBrandRole(c *gin.Context) (brandmemberrole.BrandMemberRole, error) {
 	if !exists {
 		return "", apperror.ErrUnauthorized()
 	}
-	role, ok := val.(string)
-	if !ok {
+	switch role := val.(type) {
+	case brandmemberrole.BrandMemberRole:
+		return role, nil
+	case string:
+		return brandmemberrole.BrandMemberRole(role), nil
+	default:
 		return "", apperror.ErrUnauthorized()
 	}
-	return brandmemberrole.BrandMemberRole(role), nil
 }
