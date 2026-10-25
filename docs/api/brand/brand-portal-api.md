@@ -207,7 +207,25 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
 - **Response:**
     - `200 OK`: Trả về thông tin thương hiệu sau cập nhật `BrandRes`.
 
-### 4. Thêm nhiều thành viên mới vào thương hiệu
+### 4. Cập nhật tên và mô tả thương hiệu
+
+- **Endpoint:** `PATCH /api/v1/brand-portal/brands/:brandId/profile`
+- **Tác nhân (Actor):** Chủ nhãn hàng (Brand owner).
+- **Đối tượng ảnh hưởng:** Cập nhật `brands.name` và `brands.description`.
+- **Mô tả:** Cập nhật thông tin hồ sơ dạng văn bản của brand. Cả 2 trường đều optional; chỉ cập nhật trường được gửi. `name` được trim và không được rỗng; gửi `description` chuỗi rỗng để xoá mô tả.
+- **Request Body:**
+    ```json
+    {
+        "name": "Closy Studio",
+        "description": "Thời trang tối giản cho người bận rộn"
+    }
+    ```
+- **Response:**
+    - `200 OK`: Trả về thông tin thương hiệu sau cập nhật `BrandRes`.
+    - `400`: `name` rỗng/toàn khoảng trắng (`ErrBrandNameRequired`).
+    - `404`: Không tìm thấy brand (`ErrBrandNotFound`).
+
+### 5. Thêm nhiều thành viên mới vào thương hiệu
 
 - **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/members`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
@@ -261,7 +279,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
     }
     ```
 
-### 5. Lấy danh sách thành viên quản lý thương hiệu
+### 6. Lấy danh sách thành viên quản lý thương hiệu
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/members`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
@@ -270,7 +288,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
 - **Response:**
     - `200 OK`: Trả về mảng danh sách thành viên `BrandMemberRes`.
 
-### 6. Đăng ký nhận thông báo phân tích sản phẩm thời gian thực qua SSE
+### 7. Đăng ký nhận thông báo phân tích sản phẩm thời gian thực qua SSE
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/items/tasks/:taskId/sse`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/manager/staff).

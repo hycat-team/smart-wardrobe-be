@@ -220,6 +220,36 @@ func (h *BrandPortalHandler) UpdateBrandImages(c *gin.Context) error {
 	return nil
 }
 
+// UpdateBrandProfile updates the brand name and description.
+// @Summary Cập nhật thông tin brand (Owner)
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param body body dto.UpdateBrandProfileReq true "Tên và mô tả thương hiệu"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/profile [patch]
+func (h *BrandPortalHandler) UpdateBrandProfile(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	var input dto.UpdateBrandProfileReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.UpdateBrandProfile(c.Request.Context(), userID, brandID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandUpdateProfileSuccess, res)
+	return nil
+}
+
 // GetBrandForPortal gets brand detail for active brand members.
 // @Summary Lấy thông tin brand portal
 // @Tags Brand Portal

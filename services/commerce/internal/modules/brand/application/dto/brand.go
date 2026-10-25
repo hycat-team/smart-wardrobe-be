@@ -32,6 +32,11 @@ type UpdateBrandImagesReq struct {
 	BackgroundPublicID *string `json:"backgroundPublicId" binding:"omitempty,max=255" label:"mã ảnh nền thương hiệu"`
 }
 
+type UpdateBrandProfileReq struct {
+	Name        *string `json:"name" binding:"omitempty,max=255" label:"tên thương hiệu"`
+	Description *string `json:"description" binding:"omitempty,max=2000" label:"mô tả thương hiệu"`
+}
+
 type UpdateBrandStatusReq struct {
 	Status brandstatus.BrandStatus `json:"status" binding:"required" label:"trạng thái thương hiệu"`
 }

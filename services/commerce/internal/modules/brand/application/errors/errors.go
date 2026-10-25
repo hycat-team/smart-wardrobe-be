@@ -10,6 +10,10 @@ func ErrBrandNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy brand.")
 }
 
+func ErrBrandNameRequired() *apperror.Error {
+	return apperror.NewBadRequest("Tên thương hiệu không được để trống.")
+}
+
 func ErrBrandSlugExists() *apperror.Error {
 	return apperror.NewConflict("Slug brand đã tồn tại.")
 }

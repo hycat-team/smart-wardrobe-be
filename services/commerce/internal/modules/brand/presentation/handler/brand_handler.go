@@ -25,6 +25,7 @@ const (
 	// Upload & Brand Portal
 	msgBrandGetUploadLogoSignatureSuccess = "Lấy chữ ký upload logo brand thành công"
 	msgBrandUpdateLogoSuccess             = "Cập nhật logo brand thành công"
+	msgBrandUpdateProfileSuccess          = "Cập nhật thông tin brand thành công"
 	msgBrandGetUploadItemSignatureSuccess = "Lấy chữ ký upload ảnh sản phẩm brand thành công"
 
 	// Brand Chat

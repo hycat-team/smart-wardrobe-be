@@ -2,6 +2,8 @@ package brand
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/apperror"
 
 	"github.com/google/uuid"
 )
@@ -242,4 +245,91 @@ func TestGetActiveBrandsFiltersPublicList(t *testing.T) {
 	if res.Metadata.TotalItems != 1 {
 		t.Errorf("Expected TotalItems to be 1, got %d", res.Metadata.TotalItems)
 	}
+}
+
+func strPtr(value string) *string {
+	return &value
+}
+
+func assertBrandAppErrorStatus(t *testing.T, err error, want int) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected error with status %d, got nil", want)
+	}
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.Error, got %T", err)
+	}
+	if appErr.Status != want {
+		t.Fatalf("expected status %d, got %d (%s)", want, appErr.Status, appErr.Message)
+	}
+}
+
+func TestUpdateBrandProfile(t *testing.T) {
+	brandID := uuid.New()
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {
+			Slug:   "closy",
+			Name:   "Old Name",
+			Status: brandstatus.Active,
+		},
+	}}
+	uc := &BrandUseCase{brandRepo: brandRepo}
+
+	res, err := uc.UpdateBrandProfile(context.Background(), uuid.New(), brandID, dto.UpdateBrandProfileReq{
+		Name:        strPtr("  Closy Studio  "),
+		Description: strPtr("  Thời trang tối giản  "),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Name != "Closy Studio" {
+		t.Fatalf("expected trimmed name 'Closy Studio', got %q", res.Name)
+	}
+	if res.Description == nil || *res.Description != "Thời trang tối giản" {
+		t.Fatalf("expected trimmed description, got %v", res.Description)
+	}
+}
+
+func TestUpdateBrandProfileKeepsNameWhenOmitted(t *testing.T) {
+	brandID := uuid.New()
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {Slug: "closy", Name: "Keep Me", Status: brandstatus.Active},
+	}}
+	uc := &BrandUseCase{brandRepo: brandRepo}
+
+	res, err := uc.UpdateBrandProfile(context.Background(), uuid.New(), brandID, dto.UpdateBrandProfileReq{
+		Description: strPtr("Chỉ đổi mô tả"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Name != "Keep Me" {
+		t.Fatalf("expected name to stay 'Keep Me', got %q", res.Name)
+	}
+	if res.Description == nil || *res.Description != "Chỉ đổi mô tả" {
+		t.Fatalf("expected description to be updated, got %v", res.Description)
+	}
+}
+
+func TestUpdateBrandProfileRejectsBlankName(t *testing.T) {
+	brandID := uuid.New()
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {Slug: "closy", Name: "Closy", Status: brandstatus.Active},
+	}}
+	uc := &BrandUseCase{brandRepo: brandRepo}
+
+	_, err := uc.UpdateBrandProfile(context.Background(), uuid.New(), brandID, dto.UpdateBrandProfileReq{
+		Name: strPtr("   "),
+	})
+	assertBrandAppErrorStatus(t, err, http.StatusBadRequest)
+}
+
+func TestUpdateBrandProfileRejectsMissingBrand(t *testing.T) {
+	uc := &BrandUseCase{brandRepo: &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{}}}
+
+	_, err := uc.UpdateBrandProfile(context.Background(), uuid.New(), uuid.New(), dto.UpdateBrandProfileReq{
+		Name: strPtr("New Name"),
+	})
+	assertBrandAppErrorStatus(t, err, http.StatusNotFound)
 }

@@ -59,6 +59,9 @@ func (m *mockBrandUseCase) GetBrandLogoUploadSignature(ctx context.Context, user
 func (m *mockBrandUseCase) UpdateBrandImages(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandImagesReq) (*dto.BrandRes, error) {
 	return nil, nil
 }
+func (m *mockBrandUseCase) UpdateBrandProfile(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandProfileReq) (*dto.BrandRes, error) {
+	return nil, nil
+}
 func (m *mockBrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMembersReq) (*dto.AddBrandMembersRes, error) {
 	return nil, nil
 }

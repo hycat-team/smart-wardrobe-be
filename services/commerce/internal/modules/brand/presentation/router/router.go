@@ -138,6 +138,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	portalOwner := group.Group("/brand-portal")
 	portalOwner.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner))
 	{
+		portalOwner.PATCH("/brands/:brandId/profile", shared_pres.WrapHandler(r.brandHandler.UpdateBrandProfile))
 		portalOwner.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))
 		portalOwner.POST("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.CreateLoyaltyTier))
 		portalOwner.PUT("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.UpdateLoyaltyTier))

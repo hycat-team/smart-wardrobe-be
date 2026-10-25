@@ -222,6 +222,32 @@ func (uc *BrandUseCase) UpdateBrandImages(ctx context.Context, userID uuid.UUID,
 	return mapper.MapBrand(brand, -1), nil
 }
 
+func (uc *BrandUseCase) UpdateBrandProfile(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandProfileReq) (*dto.BrandRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" {
+			return nil, branderrors.ErrBrandNameRequired()
+		}
+		brand.Name = name
+	}
+	if input.Description != nil {
+		description := strings.TrimSpace(*input.Description)
+		brand.Description = &description
+	}
+	brand.UpdatedAt = time.Now().UTC()
+	if err := uc.brandRepo.Update(ctx, brand); err != nil {
+		return nil, err
+	}
+	return mapper.MapBrand(brand, -1), nil
+}
+
 func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.PortalBrandRes, error) {
 	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
 	if err != nil {

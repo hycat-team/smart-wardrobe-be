@@ -3864,6 +3864,19 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandProfileReq": {
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandStatusReq": {
       "properties": {
         "status": {
@@ -12982,6 +12995,58 @@
         },
         "tags": [
           "Brand Member"
+        ]
+      }
+    },
+    "/api/v1/brand-portal/brands/{brandId}/profile": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "ID brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Tên và mô tả thương hiệu",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandProfileReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Cập nhật thông tin brand (Owner)",
+        "tags": [
+          "Brand Portal"
         ]
       }
     },
