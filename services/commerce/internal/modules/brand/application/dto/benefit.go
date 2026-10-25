@@ -77,3 +77,28 @@ type GetBenefitRedemptionsQueryReq struct {
 }
 
 type BenefitRedemptionListRes = shared_dto.PaginationResult[*BenefitRedemptionRes]
+
+type MyBenefitRedemptionRes struct {
+	ID          uuid.UUID  `json:"id"`
+	Status      string     `json:"status"`
+	PointsSpent int        `json:"pointsSpent"`
+	RedeemedAt  time.Time  `json:"redeemedAt"`
+	UsedAt      *time.Time `json:"usedAt"`
+	ExpiresAt   *time.Time `json:"expiresAt"`
+}
+
+// MyBrandBenefitRes is a brand benefit together with the caller's unlock and
+// redemption state.
+type MyBrandBenefitRes struct {
+	BrandBenefitRes
+	Unlocked   bool                    `json:"unlocked"`
+	Redemption *MyBenefitRedemptionRes `json:"redemption,omitempty"`
+}
+
+// MyBrandBenefitListRes is the caller's benefit view for one brand.
+type MyBrandBenefitListRes struct {
+	CurrentTier   *LoyaltyTierRes               `json:"currentTier"`
+	CurrentPoints int                           `json:"currentPoints"`
+	Items         []*MyBrandBenefitRes          `json:"items"`
+	Metadata      shared_dto.PaginationMetadata `json:"metadata"`
+}

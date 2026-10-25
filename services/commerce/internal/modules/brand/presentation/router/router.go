@@ -81,6 +81,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		meBrands.GET("/brand-loyalties/:brandId", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyalty))
 		meBrands.GET("/brand-loyalties/:brandId/transactions", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyaltyTransactions))
 		meBrands.GET("/brand-loyalties/:brandId/lots", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyaltyLots))
+		meBrands.GET("/brand-loyalties/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListMyBenefits))
 		meBrands.GET("/benefit-redemptions", shared_pres.WrapHandler(r.brandHandler.ListBenefitRedemptionsForUser))
 	}
 

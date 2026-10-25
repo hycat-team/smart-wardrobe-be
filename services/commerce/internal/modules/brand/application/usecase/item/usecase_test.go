@@ -520,6 +520,9 @@ func (m *mockBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, userID
 func (m *mockBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context, userID uuid.UUID, brandID *uuid.UUID, page, limit int) (*dto.BenefitRedemptionListRes, error) {
 	return nil, nil
 }
+func (m *mockBenefitUseCase) ListMyBenefits(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandBenefitsQueryReq) (*dto.MyBrandBenefitListRes, error) {
+	return nil, nil
+}
 func (m *mockBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BenefitRedemptionRes, error) {
 	return nil, nil
 }

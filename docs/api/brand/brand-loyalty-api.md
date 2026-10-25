@@ -280,7 +280,76 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `200 OK`: Trả về mảng danh sách quà tặng đã đổi `BenefitRedemptionRes`.
 
-### 5. Quản lý nhãn hàng tạo mới một đặc quyền / voucher
+### 5. Khách hàng xem danh sách quyền lợi của tôi kèm trạng thái
+
+- **Endpoint:** `GET /api/v1/me/brand-loyalties/:brandId/benefits`
+- **Tác nhân (Actor):** Khách hàng (Customer).
+- **Đối tượng ảnh hưởng:** Đọc các đặc quyền `brand_benefits` đang active của brand, hạng hiện tại của khách hàng và các lượt đổi `benefit_redemptions` của người dùng hiện tại.
+- **Mô tả:** Trả về toàn bộ quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên hoặc điểm hiện có, cùng lượt đổi gần nhất của người dùng. Đây là endpoint dành cho tab "Quyền lợi của tôi" ở phía FE; `GET /api/v1/me/benefit-redemptions` chỉ trả về lịch sử đã đổi.
+- **Query Params:**
+
+    | Param | Type | Bắt buộc | Mặc định | Mô tả |
+    |---|---|---|---|---|
+    | `page` | int | Không | `1` | Số trang |
+    | `limit` | int | Không | `20` | Số item mỗi trang (tối đa 100) |
+    | `unlockType` | string | Không | - | Lọc theo loại mở khoá: `tier_privilege`, `point_redemption`, `manual_grant` |
+    | `benefitType` | string | Không | - | Lọc theo loại quyền lợi: `voucher`, `discount`, `gift`, `free_shipping`, `early_access`, `feature_access` |
+
+- **Response:**
+    - `200 OK`: Trả về `MyBrandBenefitListRes`.
+    ```json
+    {
+        "data": {
+            "currentTier": {
+                "id": "fbf10001-0000-0000-0000-000000000002",
+                "brandId": "e7b10001-0000-0000-0000-000000000001",
+                "name": "Gold",
+                "rank": 2,
+                "minTotalSpend": 2000000,
+                "description": "Hạng Gold cho khách hàng chi tiêu từ 2 triệu.",
+                "createdAt": "2026-07-24T06:34:45Z",
+                "updatedAt": "2026-07-24T06:38:15Z"
+            },
+            "currentPoints": 500,
+            "items": [
+                {
+                    "id": "feed0009-0000-0000-0000-000000000001",
+                    "brandId": "e7b10001-0000-0000-0000-000000000001",
+                    "name": "Sample Mix Access",
+                    "description": "Allows user to try digital samples in AI outfit recommendations.",
+                    "benefitType": "feature_access",
+                    "unlockType": "tier_privilege",
+                    "requiredPoints": null,
+                    "requiredTierId": "fbf10001-0000-0000-0000-000000000002",
+                    "requiredTierName": "Gold",
+                    "featureCode": "sample_mix_access",
+                    "featureConfig": {"source": "feedback_seed"},
+                    "status": "active",
+                    "createdAt": "2026-07-24T06:34:45Z",
+                    "updatedAt": "2026-07-24T06:38:15Z",
+                    "unlocked": true,
+                    "redemption": null
+                }
+            ],
+            "metadata": {
+                "page": 1,
+                "limit": 20,
+                "totalItems": 1,
+                "totalPages": 1
+            }
+        }
+    }
+    ```
+- **Quy tắc `unlocked`:**
+    - `tier_privilege`: `true` khi `currentTier.rank >= requiredTierId.rank`; `requiredTierId = null` thì luôn `false`.
+    - `point_redemption`: `true` khi `requiredPoints` rỗng/`<= 0` hoặc `currentPoints >= requiredPoints`.
+    - `manual_grant`: luôn `false` (chỉ nhận được khi brand trao tặng; kiểm tra qua `redemption`).
+- **Lỗi:**
+    - `404`: Người dùng chưa là khách hàng loyalty active của brand (`ErrCustomerNotFound`).
+    - `404`: Khách hàng chưa có tài khoản loyalty (`ErrActiveLoyaltyProgramRequired`).
+    - `403`: Brand không ở trạng thái active (`ErrBrandNotActive`).
+
+### 6. Quản lý nhãn hàng tạo mới một đặc quyền / voucher
 
 - **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/benefits`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
@@ -321,7 +390,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `201 Created`: Trả về thông tin đặc quyền vừa tạo `BrandBenefitRes`.
 
-### 6. Quản trị viên xem danh sách đặc quyền của nhãn hàng
+### 7. Quản trị viên xem danh sách đặc quyền của nhãn hàng
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/benefits`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).
@@ -339,7 +408,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `200 OK`: Trả về danh sách đặc quyền phân trang `BrandBenefitListRes` (cùng format với Item 1).
 
-### 7. Cập nhật trạng thái hoạt động của một đặc quyền
+### 8. Cập nhật trạng thái hoạt động của một đặc quyền
 
 - **Endpoint:** `PATCH /api/v1/brand-portal/brands/:brandId/benefits/:benefitId/status`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).

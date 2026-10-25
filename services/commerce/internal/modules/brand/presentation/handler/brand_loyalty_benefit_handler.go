@@ -188,6 +188,42 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 	return nil
 }
 
+// ListMyBenefits returns every active benefit of a brand together with the
+// caller's unlock and redemption state.
+// @Summary Lấy danh sách quyền lợi của tôi kèm trạng thái
+// @Description Trả về các quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện tại.
+// @Tags Brand Benefit
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng mỗi trang"
+// @Param unlockType query string false "Loại mở khoá (tier_privilege, point_redemption, manual_grant)"
+// @Param benefitType query string false "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.MyBrandBenefitListRes}
+// @Router /api/v1/me/brand-loyalties/{brandId}/benefits [get]
+func (h *BrandLoyaltyHandler) ListMyBenefits(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+
+	var query dto.GetBrandBenefitsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	res, err := h.benefitUC.ListMyBenefits(c.Request.Context(), userID, brandID, query)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandLoyaltyListMyBenefitsSuccess, res)
+	return nil
+}
+
 // ListBenefitRedemptionsForUser lists current user's benefit redemptions.
 // @Summary Lấy danh sách quyền lợi đã nhận của tôi
 // @Description Lấy danh sách quyền lợi đã nhận của người dùng hiện tại, hỗ trợ lọc theo brand

@@ -260,6 +260,41 @@ func MapBenefitRedemption(red *entities.BenefitRedemption) *dto.BenefitRedemptio
 	}
 }
 
+func MapMyBenefitRedemption(red *entities.BenefitRedemption) *dto.MyBenefitRedemptionRes {
+	if red == nil {
+		return nil
+	}
+	return &dto.MyBenefitRedemptionRes{
+		ID:          red.ID,
+		Status:      string(red.Status),
+		PointsSpent: red.PointsSpent,
+		RedeemedAt:  red.RedeemedAt,
+		UsedAt:      red.UsedAt,
+		ExpiresAt:   red.ExpiresAt,
+	}
+}
+
+func MapMyBrandBenefit(benefit *entities.BrandBenefit, unlocked bool, redemption *entities.BenefitRedemption) *dto.MyBrandBenefitRes {
+	if benefit == nil {
+		return nil
+	}
+	return &dto.MyBrandBenefitRes{
+		BrandBenefitRes: *MapBrandBenefit(benefit),
+		Unlocked:        unlocked,
+		Redemption:      MapMyBenefitRedemption(redemption),
+	}
+}
+
+func MapMyBrandBenefits(benefits []*entities.BrandBenefit, unlockedByID map[uuid.UUID]bool, redemptionByID map[uuid.UUID]*entities.BenefitRedemption) []*dto.MyBrandBenefitRes {
+	res := make([]*dto.MyBrandBenefitRes, 0, len(benefits))
+	for _, benefit := range benefits {
+		if mapped := MapMyBrandBenefit(benefit, unlockedByID[benefit.ID], redemptionByID[benefit.ID]); mapped != nil {
+			res = append(res, mapped)
+		}
+	}
+	return res
+}
+
 func MapBrandConversation(conv *entities.BrandConversation, customerId uuid.UUID, customerName *string, userDisplayName *string) *dto.BrandConversationRes {
 	if conv == nil {
 		return nil

@@ -292,6 +292,115 @@ func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context
 	}, nil
 }
 
+func (uc *BrandBenefitUseCase) ListMyBenefits(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandBenefitsQueryReq) (*dto.MyBrandBenefitListRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+
+	account, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil {
+		return nil, branderrors.ErrActiveLoyaltyProgramRequired()
+	}
+
+	var unlockType *benefitunlocktype.BenefitUnlockType
+	if query.UnlockType != nil {
+		val := benefitunlocktype.BenefitUnlockType(strings.ToLower(*query.UnlockType))
+		unlockType = &val
+	}
+
+	var benefitType *benefittype.BenefitType
+	if query.BenefitType != nil {
+		val := benefittype.BenefitType(strings.ToLower(*query.BenefitType))
+		benefitType = &val
+	}
+
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	result, err := uc.benefitRepo.GetActiveByBrandIDPaginated(ctx, repositories.BrandBenefitFilter{
+		BrandID:     brandID,
+		UnlockType:  unlockType,
+		BenefitType: benefitType,
+		Page:        page,
+		Limit:       limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	redemptions, err := uc.redemptionRepo.GetByBrandCustomerID(ctx, customer.ID)
+	if err != nil {
+		return nil, err
+	}
+	latestRedemptionByBenefit := make(map[uuid.UUID]*entities.BenefitRedemption, len(redemptions))
+	for _, redemption := range redemptions {
+		if redemption == nil {
+			continue
+		}
+		current, ok := latestRedemptionByBenefit[redemption.BenefitID]
+		if !ok || redemption.RedeemedAt.After(current.RedeemedAt) {
+			latestRedemptionByBenefit[redemption.BenefitID] = redemption
+		}
+	}
+
+	unlockedByBenefit := make(map[uuid.UUID]bool, len(result.Benefits))
+	for _, benefit := range result.Benefits {
+		unlockedByBenefit[benefit.ID] = isBenefitUnlockedForAccount(benefit, account)
+	}
+
+	return &dto.MyBrandBenefitListRes{
+		CurrentTier:   mapper.MapLoyaltyTier(account.CurrentTier),
+		CurrentPoints: account.CurrentPoints,
+		Items:         mapper.MapMyBrandBenefits(result.Benefits, unlockedByBenefit, latestRedemptionByBenefit),
+		Metadata:      shared_dto.BuildPaginationMetadata(shared_dto.PaginationQuery{Page: page, Limit: limit}, result.TotalCount),
+	}, nil
+}
+
+// isBenefitUnlockedForAccount mirrors the unlock rules enforced by the redeem
+// strategies: tier privileges need an equal or higher tier rank, point
+// redemptions need enough points, and manual grants are never self-unlocked.
+func isBenefitUnlockedForAccount(benefit *entities.BrandBenefit, account *entities.LoyaltyAccount) bool {
+	if benefit == nil || account == nil {
+		return false
+	}
+
+	switch benefit.UnlockType {
+	case benefitunlocktype.TierPrivilege:
+		if benefit.RequiredTier == nil || account.CurrentTier == nil {
+			return false
+		}
+		return account.CurrentTier.Rank >= benefit.RequiredTier.Rank
+	case benefitunlocktype.PointRedemption:
+		if benefit.RequiredPoints == nil || *benefit.RequiredPoints <= 0 {
+			return true
+		}
+		return account.CurrentPoints >= *benefit.RequiredPoints
+	default:
+		return false
+	}
+}
+
 func (uc *BrandBenefitUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {
 	benefit, err := uc.benefitRepo.GetByID(ctx, benefitID)
 	if err != nil {

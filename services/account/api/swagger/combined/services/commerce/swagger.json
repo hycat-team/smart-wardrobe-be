@@ -1459,6 +1459,100 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBenefitRedemptionRes": {
+      "properties": {
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pointsSpent": {
+          "type": "integer"
+        },
+        "redeemedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "usedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitListRes": {
+      "properties": {
+        "currentPoints": {
+          "type": "integer"
+        },
+        "currentTier": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitRes": {
+      "properties": {
+        "benefitType": {
+          "type": "string"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "featureCode": {
+          "type": "string"
+        },
+        "featureConfig": {},
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "redemption": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBenefitRedemptionRes"
+        },
+        "requiredPoints": {
+          "type": "integer"
+        },
+        "requiredTierId": {
+          "type": "string"
+        },
+        "requiredTierName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unlockType": {
+          "type": "string"
+        },
+        "unlocked": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.PortalBrandRes": {
       "properties": {
         "approvedAt": {
@@ -9467,6 +9561,71 @@
         "summary": "Lấy chi tiết điểm loyalty của tôi theo brand",
         "tags": [
           "Brand Loyalty"
+        ]
+      }
+    },
+    "/api/v1/me/brand-loyalties/{brandId}/benefits": {
+      "get": {
+        "description": "Trả về các quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện tại.",
+        "parameters": [
+          {
+            "description": "ID brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Số trang",
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "description": "Số lượng mỗi trang",
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "description": "Loại mở khoá (tier_privilege, point_redemption, manual_grant)",
+            "in": "query",
+            "name": "unlockType",
+            "type": "string"
+          },
+          {
+            "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
+            "in": "query",
+            "name": "benefitType",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy danh sách quyền lợi của tôi kèm trạng thái",
+        "tags": [
+          "Brand Benefit"
         ]
       }
     },

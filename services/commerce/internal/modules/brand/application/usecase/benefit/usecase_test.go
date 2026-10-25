@@ -2,6 +2,8 @@ package benefit
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +23,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/apperror"
 	"smart-wardrobe-be/shared/domain/constants/brandmemberrole"
 
 	"github.com/google/uuid"
@@ -297,7 +300,13 @@ func (m *mockRedemptionRepo) Update(ctx context.Context, red *entities.BenefitRe
 }
 func (m *mockRedemptionRepo) Delete(ctx context.Context, id uuid.UUID) error { return nil }
 func (m *mockRedemptionRepo) GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BenefitRedemption, error) {
-	return nil, nil
+	var list []*entities.BenefitRedemption
+	for _, r := range m.redemptions {
+		if r.BrandCustomerID == brandCustomerID {
+			list = append(list, r)
+		}
+	}
+	return list, nil
 }
 func (m *mockRedemptionRepo) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.BenefitRedemption, error) {
 	return nil, nil
@@ -834,6 +843,11 @@ func (r *loyaltyLotsAccountRepo) Update(ctx context.Context, account *entities.L
 }
 func (r *loyaltyLotsAccountRepo) Delete(ctx context.Context, id uuid.UUID) error { return nil }
 func (r *loyaltyLotsAccountRepo) GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error) {
+	for _, account := range r.accounts {
+		if account.BrandCustomerID == brandCustomerID {
+			return account, nil
+		}
+	}
 	return nil, nil
 }
 func (r *loyaltyLotsAccountRepo) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.LoyaltyAccount, error) {
@@ -1030,4 +1044,374 @@ func (r *loyaltyLotsTxRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID,
 }
 func (r *loyaltyLotsTxRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.LoyaltyPointTransaction, error) {
 	return nil, nil
+}
+
+func newMyBenefitsUseCase(
+	brandID uuid.UUID,
+	brandStatusVal brandstatus.BrandStatus,
+	customer *entities.BrandCustomer,
+	account *entities.LoyaltyAccount,
+	benefits []*entities.BrandBenefit,
+	redemptions []*entities.BenefitRedemption,
+) *BrandBenefitUseCase {
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {
+			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: brandID}},
+			Status:          brandStatusVal,
+		},
+	}}
+
+	customerRepo := &mockCustomerRepo{customers: map[string]*entities.BrandCustomer{}}
+	if customer != nil && customer.UserID != nil {
+		customerRepo.customers[brandID.String()+"_"+customer.UserID.String()] = customer
+	}
+
+	accountRepo := &loyaltyLotsAccountRepo{accounts: map[uuid.UUID]*entities.LoyaltyAccount{}}
+	if account != nil {
+		if account.ID == uuid.Nil {
+			account.ID = uuid.New()
+		}
+		accountRepo.accounts[account.ID] = account
+	}
+
+	benefitRepo := &mockBenefitRepo{benefits: map[uuid.UUID]*entities.BrandBenefit{}}
+	for _, benefit := range benefits {
+		if benefit.ID == uuid.Nil {
+			benefit.ID = uuid.New()
+		}
+		benefitRepo.benefits[benefit.ID] = benefit
+	}
+
+	redemptionRepo := &mockRedemptionRepo{redemptions: map[uuid.UUID]*entities.BenefitRedemption{}}
+	for _, redemption := range redemptions {
+		if redemption.ID == uuid.Nil {
+			redemption.ID = uuid.New()
+		}
+		redemptionRepo.redemptions[redemption.ID] = redemption
+	}
+
+	return &BrandBenefitUseCase{
+		brandRepo:      brandRepo,
+		customerRepo:   customerRepo,
+		accountRepo:    accountRepo,
+		benefitRepo:    benefitRepo,
+		redemptionRepo: redemptionRepo,
+	}
+}
+
+func newMyBenefitsCustomer(brandID, userID, customerID uuid.UUID, status brandcustomerstatus.BrandCustomerStatus) *entities.BrandCustomer {
+	return &entities.BrandCustomer{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: customerID}},
+		BrandID:         brandID,
+		UserID:          &userID,
+		Status:          status,
+	}
+}
+
+func newMyBenefitsTier(brandID uuid.UUID, name string, rank int) *entities.LoyaltyTier {
+	return &entities.LoyaltyTier{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BrandID:         brandID,
+		Name:            name,
+		Rank:            rank,
+	}
+}
+
+func indexMyBenefitsByName(items []*dto.MyBrandBenefitRes) map[string]*dto.MyBrandBenefitRes {
+	indexed := make(map[string]*dto.MyBrandBenefitRes, len(items))
+	for _, item := range items {
+		indexed[item.Name] = item
+	}
+	return indexed
+}
+
+func assertAppErrorStatus(t *testing.T, err error, want int) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected error with status %d, got nil", want)
+	}
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.Error, got %T", err)
+	}
+	if appErr.Status != want {
+		t.Fatalf("expected status %d, got %d (%s)", want, appErr.Status, appErr.Message)
+	}
+}
+
+func TestListMyBenefitsComputesUnlockState(t *testing.T) {
+	brandID, userID, customerID := uuid.New(), uuid.New(), uuid.New()
+
+	gold := newMyBenefitsTier(brandID, "Gold", 2)
+	platinum := newMyBenefitsTier(brandID, "Platinum", 3)
+	account := &entities.LoyaltyAccount{
+		BrandID:         brandID,
+		BrandCustomerID: customerID,
+		CurrentPoints:   500,
+		CurrentTierID:   &gold.ID,
+		CurrentTier:     gold,
+	}
+	customer := newMyBenefitsCustomer(brandID, userID, customerID, brandcustomerstatus.Active)
+
+	goldPrivilege := &entities.BrandBenefit{
+		BrandID:        brandID,
+		Name:           "Gold Privilege",
+		BenefitType:    benefittype.FeatureAccess,
+		UnlockType:     benefitunlocktype.TierPrivilege,
+		RequiredTierID: &gold.ID,
+		RequiredTier:   gold,
+		Status:         benefitstatus.Active,
+	}
+	platinumPrivilege := &entities.BrandBenefit{
+		BrandID:        brandID,
+		Name:           "Platinum Privilege",
+		BenefitType:    benefittype.FeatureAccess,
+		UnlockType:     benefitunlocktype.TierPrivilege,
+		RequiredTierID: &platinum.ID,
+		RequiredTier:   platinum,
+		Status:         benefitstatus.Active,
+	}
+	cheapVoucher := &entities.BrandBenefit{
+		BrandID:        brandID,
+		Name:           "Cheap Voucher",
+		BenefitType:    benefittype.Voucher,
+		UnlockType:     benefitunlocktype.PointRedemption,
+		RequiredPoints: intPtr(300),
+		Status:         benefitstatus.Active,
+	}
+	priceyVoucher := &entities.BrandBenefit{
+		BrandID:        brandID,
+		Name:           "Pricey Voucher",
+		BenefitType:    benefittype.Voucher,
+		UnlockType:     benefitunlocktype.PointRedemption,
+		RequiredPoints: intPtr(1000),
+		Status:         benefitstatus.Active,
+	}
+	freeVoucher := &entities.BrandBenefit{
+		BrandID:     brandID,
+		Name:        "Free Voucher",
+		BenefitType: benefittype.Voucher,
+		UnlockType:  benefitunlocktype.PointRedemption,
+		Status:      benefitstatus.Active,
+	}
+	manualGift := &entities.BrandBenefit{
+		BrandID:     brandID,
+		Name:        "Manual Gift",
+		BenefitType: benefittype.Gift,
+		UnlockType:  benefitunlocktype.ManualGrant,
+		Status:      benefitstatus.Active,
+	}
+
+	uc := newMyBenefitsUseCase(
+		brandID,
+		brandstatus.Active,
+		customer,
+		account,
+		[]*entities.BrandBenefit{goldPrivilege, platinumPrivilege, cheapVoucher, priceyVoucher, freeVoucher, manualGift},
+		nil,
+	)
+
+	res, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.CurrentPoints != 500 {
+		t.Fatalf("expected 500 current points, got %d", res.CurrentPoints)
+	}
+	if res.CurrentTier == nil || res.CurrentTier.Rank != 2 || res.CurrentTier.Name != "Gold" {
+		t.Fatalf("expected Gold tier rank 2, got %+v", res.CurrentTier)
+	}
+	if res.Metadata.TotalItems != 6 {
+		t.Fatalf("expected 6 total items, got %d", res.Metadata.TotalItems)
+	}
+
+	items := indexMyBenefitsByName(res.Items)
+	cases := []struct {
+		name     string
+		unlocked bool
+	}{
+		{name: "Gold Privilege", unlocked: true},
+		{name: "Platinum Privilege", unlocked: false},
+		{name: "Cheap Voucher", unlocked: true},
+		{name: "Pricey Voucher", unlocked: false},
+		{name: "Free Voucher", unlocked: true},
+		{name: "Manual Gift", unlocked: false},
+	}
+	for _, tc := range cases {
+		item, ok := items[tc.name]
+		if !ok {
+			t.Fatalf("expected benefit %q in response", tc.name)
+		}
+		if item.Unlocked != tc.unlocked {
+			t.Fatalf("benefit %q: expected unlocked=%v, got %v", tc.name, tc.unlocked, item.Unlocked)
+		}
+	}
+}
+
+func TestListMyBenefitsReturnsLatestRedemption(t *testing.T) {
+	brandID, userID, customerID := uuid.New(), uuid.New(), uuid.New()
+
+	tier := newMyBenefitsTier(brandID, "Gold", 2)
+	account := &entities.LoyaltyAccount{
+		BrandID:         brandID,
+		BrandCustomerID: customerID,
+		CurrentTierID:   &tier.ID,
+		CurrentTier:     tier,
+	}
+	customer := newMyBenefitsCustomer(brandID, userID, customerID, brandcustomerstatus.Active)
+	benefit := &entities.BrandBenefit{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BrandID:         brandID,
+		Name:            "Gold Privilege",
+		BenefitType:     benefittype.FeatureAccess,
+		UnlockType:      benefitunlocktype.TierPrivilege,
+		RequiredTierID:  &tier.ID,
+		RequiredTier:    tier,
+		Status:          benefitstatus.Active,
+	}
+
+	now := time.Now().UTC()
+	older := &entities.BenefitRedemption{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BenefitID:       benefit.ID,
+		BrandCustomerID: customerID,
+		Status:          benefitredemptionstatus.Expired,
+		RedeemedAt:      now.Add(-72 * time.Hour),
+	}
+	newer := &entities.BenefitRedemption{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BenefitID:       benefit.ID,
+		BrandCustomerID: customerID,
+		Status:          benefitredemptionstatus.Redeemed,
+		RedeemedAt:      now.Add(-time.Hour),
+	}
+
+	uc := newMyBenefitsUseCase(brandID, brandstatus.Active, customer, account, []*entities.BrandBenefit{benefit}, []*entities.BenefitRedemption{older, newer})
+
+	res, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(res.Items))
+	}
+	redemption := res.Items[0].Redemption
+	if redemption == nil {
+		t.Fatal("expected redemption to be attached")
+	}
+	if redemption.ID != newer.ID {
+		t.Fatalf("expected latest redemption %s, got %s", newer.ID, redemption.ID)
+	}
+	if redemption.Status != string(benefitredemptionstatus.Redeemed) {
+		t.Fatalf("expected redeemed status, got %q", redemption.Status)
+	}
+}
+
+func TestListMyBenefitsLocksOrphanTierPrivilege(t *testing.T) {
+	brandID, userID, customerID := uuid.New(), uuid.New(), uuid.New()
+
+	tier := newMyBenefitsTier(brandID, "Gold", 2)
+	account := &entities.LoyaltyAccount{
+		BrandID:         brandID,
+		BrandCustomerID: customerID,
+		CurrentTierID:   &tier.ID,
+		CurrentTier:     tier,
+	}
+	customer := newMyBenefitsCustomer(brandID, userID, customerID, brandcustomerstatus.Active)
+	orphan := &entities.BrandBenefit{
+		BrandID:     brandID,
+		Name:        "Orphan Privilege",
+		BenefitType: benefittype.FeatureAccess,
+		UnlockType:  benefitunlocktype.TierPrivilege,
+		Status:      benefitstatus.Active,
+	}
+
+	uc := newMyBenefitsUseCase(brandID, brandstatus.Active, customer, account, []*entities.BrandBenefit{orphan}, nil)
+
+	res, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(res.Items))
+	}
+	if res.Items[0].Unlocked {
+		t.Fatal("expected orphan tier privilege to be locked")
+	}
+}
+
+func TestListMyBenefitsFiltersByUnlockType(t *testing.T) {
+	brandID, userID, customerID := uuid.New(), uuid.New(), uuid.New()
+
+	account := &entities.LoyaltyAccount{
+		BrandID:         brandID,
+		BrandCustomerID: customerID,
+		CurrentPoints:   5000,
+	}
+	customer := newMyBenefitsCustomer(brandID, userID, customerID, brandcustomerstatus.Active)
+	tierBenefit := &entities.BrandBenefit{
+		BrandID:     brandID,
+		Name:        "Tier Benefit",
+		BenefitType: benefittype.Gift,
+		UnlockType:  benefitunlocktype.ManualGrant,
+		Status:      benefitstatus.Active,
+	}
+	pointBenefit := &entities.BrandBenefit{
+		BrandID:        brandID,
+		Name:           "Point Benefit",
+		BenefitType:    benefittype.Voucher,
+		UnlockType:     benefitunlocktype.PointRedemption,
+		RequiredPoints: intPtr(100),
+		Status:         benefitstatus.Active,
+	}
+
+	uc := newMyBenefitsUseCase(brandID, brandstatus.Active, customer, account, []*entities.BrandBenefit{tierBenefit, pointBenefit}, nil)
+
+	unlockType := "point_redemption"
+	res, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{UnlockType: &unlockType})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Items) != 1 || res.Items[0].Name != "Point Benefit" {
+		t.Fatalf("expected only the point redemption benefit, got %+v", res.Items)
+	}
+	if res.Metadata.TotalItems != 1 {
+		t.Fatalf("expected 1 total item, got %d", res.Metadata.TotalItems)
+	}
+}
+
+func TestListMyBenefitsRejectsNonCustomer(t *testing.T) {
+	brandID, userID := uuid.New(), uuid.New()
+
+	uc := newMyBenefitsUseCase(brandID, brandstatus.Active, nil, nil, nil, nil)
+
+	_, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
+	assertAppErrorStatus(t, err, http.StatusNotFound)
+	if got := err.(*apperror.Error).Message; got != branderrors.ErrCustomerNotFound().Message {
+		t.Fatalf("expected customer-not-found error, got %q", got)
+	}
+}
+
+func TestListMyBenefitsRequiresLoyaltyAccount(t *testing.T) {
+	brandID, userID, customerID := uuid.New(), uuid.New(), uuid.New()
+
+	customer := newMyBenefitsCustomer(brandID, userID, customerID, brandcustomerstatus.Active)
+	uc := newMyBenefitsUseCase(brandID, brandstatus.Active, customer, nil, nil, nil)
+
+	_, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
+	assertAppErrorStatus(t, err, http.StatusNotFound)
+	if got := err.(*apperror.Error).Message; got != branderrors.ErrActiveLoyaltyProgramRequired().Message {
+		t.Fatalf("expected active-loyalty-program error, got %q", got)
+	}
+}
+
+func TestListMyBenefitsRejectsInactiveBrand(t *testing.T) {
+	brandID, userID, customerID := uuid.New(), uuid.New(), uuid.New()
+
+	customer := newMyBenefitsCustomer(brandID, userID, customerID, brandcustomerstatus.Active)
+	account := &entities.LoyaltyAccount{BrandID: brandID, BrandCustomerID: customerID}
+	uc := newMyBenefitsUseCase(brandID, brandstatus.PendingReview, customer, account, nil, nil)
+
+	_, err := uc.ListMyBenefits(context.Background(), userID, brandID, dto.GetBrandBenefitsQueryReq{})
+	assertAppErrorStatus(t, err, http.StatusForbidden)
 }

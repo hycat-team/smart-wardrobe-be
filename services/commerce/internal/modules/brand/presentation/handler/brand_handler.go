@@ -53,6 +53,7 @@ const (
 	msgBrandLoyaltyRedeemBenefitSuccess        = "Đổi quyền lợi thành công"
 	msgBrandLoyaltyGetBenefitDetailSuccess     = "Lấy chi tiết quyền lợi brand thành công"
 	msgBrandLoyaltyListRedeemedBenefitsSuccess = "Lấy danh sách quyền lợi đã nhận thành công"
+	msgBrandLoyaltyListMyBenefitsSuccess       = "Lấy danh sách quyền lợi của tôi thành công"
 	msgBrandLoyaltyListClaimTokensSuccess      = "Lấy danh sách mã claim thành công"
 	msgBrandLoyaltyRevokeClaimTokenSuccess     = "Thu hồi mã claim thành công"
 	msgBrandLoyaltyListPointBatchesSuccess     = "Lấy danh sách lô điểm loyalty thành công"

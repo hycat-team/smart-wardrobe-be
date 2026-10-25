@@ -5200,6 +5200,71 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/brand-loyalties/{brandId}/benefits": {
+            "get": {
+                "description": "Trả về các quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện tại.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Benefit"
+                ],
+                "summary": "Lấy danh sách quyền lợi của tôi kèm trạng thái",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng mỗi trang",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại mở khoá (tier_privilege, point_redemption, manual_grant)",
+                        "name": "unlockType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
+                        "name": "benefitType",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitListRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/brand-loyalties/{brandId}/lots": {
             "get": {
                 "produces": [
@@ -8484,6 +8549,100 @@ const docTemplate = `{
                 },
                 "metadata": {
                     "$ref": "#/definitions/dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBenefitRedemptionRes": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "pointsSpent": {
+                    "type": "integer"
+                },
+                "redeemedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "usedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitListRes": {
+            "type": "object",
+            "properties": {
+                "currentPoints": {
+                    "type": "integer"
+                },
+                "currentTier": {
+                    "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitRes": {
+            "type": "object",
+            "properties": {
+                "benefitType": {
+                    "type": "string"
+                },
+                "brandId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "featureCode": {
+                    "type": "string"
+                },
+                "featureConfig": {},
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "redemption": {
+                    "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBenefitRedemptionRes"
+                },
+                "requiredPoints": {
+                    "type": "integer"
+                },
+                "requiredTierId": {
+                    "type": "string"
+                },
+                "requiredTierName": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "unlockType": {
+                    "type": "string"
+                },
+                "unlocked": {
+                    "type": "boolean"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },

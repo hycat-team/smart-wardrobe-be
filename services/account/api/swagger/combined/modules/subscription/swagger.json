@@ -3563,6 +3563,100 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBenefitRedemptionRes": {
+      "properties": {
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pointsSpent": {
+          "type": "integer"
+        },
+        "redeemedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "usedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitListRes": {
+      "properties": {
+        "currentPoints": {
+          "type": "integer"
+        },
+        "currentTier": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBrandBenefitRes": {
+      "properties": {
+        "benefitType": {
+          "type": "string"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "featureCode": {
+          "type": "string"
+        },
+        "featureConfig": {},
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "redemption": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.MyBenefitRedemptionRes"
+        },
+        "requiredPoints": {
+          "type": "integer"
+        },
+        "requiredTierId": {
+          "type": "string"
+        },
+        "requiredTierName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unlockType": {
+          "type": "string"
+        },
+        "unlocked": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.PortalBrandRes": {
       "properties": {
         "approvedAt": {
