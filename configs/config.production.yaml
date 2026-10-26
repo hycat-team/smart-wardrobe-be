@@ -282,6 +282,7 @@ ai:
         api_key: "${CHAT_TEXT_PRIMARY_API_KEY}"
         endpoint: "${CHAT_TEXT_PRIMARY_ENDPOINT}"
         model: "${CHAT_TEXT_PRIMARY_MODEL}"
+        reasoning_effort: "${AI_OPENAI_REASONING_EFFORT}"
     chat_text_fallback:
         provider: "${CHAT_TEXT_FALLBACK_PROVIDER}"
         api_key: "${CHAT_TEXT_FALLBACK_API_KEY}"
@@ -292,6 +293,7 @@ ai:
         api_key: "${RECOMMENDATION_TEXT_PRIMARY_API_KEY}"
         endpoint: "${RECOMMENDATION_TEXT_PRIMARY_ENDPOINT}"
         model: "${RECOMMENDATION_TEXT_PRIMARY_MODEL}"
+        reasoning_effort: "${AI_OPENAI_REASONING_EFFORT}"
     recommendation_text_fallback:
         provider: "${RECOMMENDATION_TEXT_FALLBACK_PROVIDER}"
         api_key: "${RECOMMENDATION_TEXT_FALLBACK_API_KEY}"
@@ -302,6 +304,7 @@ ai:
         api_key: "${FREE_TEXT_PRIMARY_API_KEY}"
         endpoint: "${FREE_TEXT_PRIMARY_ENDPOINT}"
         model: "${FREE_TEXT_PRIMARY_MODEL}"
+        reasoning_effort: "${AI_OPENAI_REASONING_EFFORT}"
     free_text_fallback:
         provider: "${FREE_TEXT_FALLBACK_PROVIDER}"
         api_key: "${FREE_TEXT_FALLBACK_API_KEY}"
@@ -316,6 +319,15 @@ ai:
     recommendation_text_timeout_seconds: 45
     vision_timeout_seconds: 20
     embedding_timeout_seconds: 20
+    # Feature 032: per-attempt text limits. The trial overrides these through
+    # AI_TEXT_MAX_CONCURRENCY / AI_TEXT_PRIMARY_TIMEOUT_SECONDS /
+    # AI_TEXT_FALLBACK_TIMEOUT_SECONDS, so the shipped values stay 2/30/30.
+    text_max_concurrency: 2
+    text_primary_timeout_seconds: 30
+    text_fallback_timeout_seconds: 30
+    # CSV of Ollama trial hosts; empty disables the "openai endpoint points away
+    # from the trial" warning. Hostnames only.
+    openai_trial_expected_hosts: "${AI_OPENAI_TRIAL_EXPECTED_HOSTS}"
     chat_text_rpm_limit: 750
     recommendation_text_rpm_limit: 750
     vision_rpm_limit: 750

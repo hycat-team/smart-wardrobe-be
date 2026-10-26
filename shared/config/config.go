@@ -64,6 +64,17 @@ type App struct {
 // not simply the default.
 const MaxOverviewTTLSeconds = 60
 
+// AI text attempt defaults (feature 032). They are the values used when the
+// corresponding key is absent, so validation never rejects a configuration
+// written before the key existed. The trial overrides them through env.
+const (
+	DefaultTextMaxConcurrency         = 2
+	DefaultTextPrimaryTimeoutSeconds  = 30
+	DefaultTextFallbackTimeoutSeconds = 30
+	DefaultAIChatChunkDeadlineSeconds = 30
+	MaxTextAttemptTimeoutSeconds      = 120
+)
+
 // CacheConfig holds TTL configuration for application caches.
 type CacheConfig struct {
 	// OverviewTTLSeconds is the TTL of the subscription overview cache served
@@ -204,6 +215,11 @@ type APIProviderConfig struct {
 	ApiKey   string `mapstructure:"api_key"`
 	Endpoint string `mapstructure:"endpoint"`
 	Model    string `mapstructure:"model"`
+	// ReasoningEffort is forwarded as the OpenAI-compatible `reasoning_effort`
+	// request field. Empty means the field is not sent at all. It is validated
+	// against none|low|medium|high so an unsupported value fails at startup
+	// instead of being silently ignored by the provider.
+	ReasoningEffort string `mapstructure:"reasoning_effort"`
 }
 
 type AIServiceConfig struct {
@@ -241,8 +257,22 @@ type AIServiceConfig struct {
 	FreeTextFallback                       APIProviderConfig `mapstructure:"free_text_fallback"`
 	FreeTextTimeoutSeconds                 int               `mapstructure:"free_text_timeout_seconds"`
 	FreeTextRPMLimit                       int               `mapstructure:"free_text_rpm_limit"`
-	UsageReconcileCron                     string            `mapstructure:"usage_reconcile_cron"`
-	UsageReconcileBatchSize                int               `mapstructure:"usage_reconcile_batch_size"`
+	// TextMaxConcurrency caps concurrent text attempts (the shared semaphore) and
+	// mirrors OLLAMA_NUM_PARALLEL on the trial host. Zero falls back to 2.
+	TextMaxConcurrency int `mapstructure:"text_max_concurrency"`
+	// TextPrimaryTimeoutSeconds is the per-attempt deadline for the primary text
+	// provider. It is applied to openai/Ollama attempts; a google primary keeps
+	// its per-capability timeout. Zero falls back to 30.
+	TextPrimaryTimeoutSeconds int `mapstructure:"text_primary_timeout_seconds"`
+	// TextFallbackTimeoutSeconds is the per-attempt deadline for the Gemini
+	// fallback. Zero falls back to 30.
+	TextFallbackTimeoutSeconds int `mapstructure:"text_fallback_timeout_seconds"`
+	// OpenAITrialExpectedHosts lists the hostnames that are expected to serve the
+	// openai provider during the Ollama trial. Empty disables the warning that an
+	// openai endpoint points somewhere else. Hostnames only: no scheme or path.
+	OpenAITrialExpectedHosts []string `mapstructure:"openai_trial_expected_hosts"`
+	UsageReconcileCron       string   `mapstructure:"usage_reconcile_cron"`
+	UsageReconcileBatchSize  int      `mapstructure:"usage_reconcile_batch_size"`
 	// DefaultCostPolicyCode is the aiexecutor.ai_cost_policies.code used as
 	// fallback tier 1 when an account has no policy grant row (FR-006). The
 	// table has no tier_rank/is_default column, so the default policy can only

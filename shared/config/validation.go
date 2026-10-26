@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -80,6 +81,9 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.AI.ChatTextRPMLimit <= 0 || cfg.AI.RecommendationTextRPMLimit <= 0 || cfg.AI.VisionRPMLimit <= 0 || cfg.AI.EmbeddingRPMLimit <= 0 {
 		return fmt.Errorf("ai rpm limits must be greater than 0")
+	}
+	if err := validateAITrialSettings(cfg); err != nil {
+		return err
 	}
 	if cfg.AI.ChatMaxInputCharacters <= 0 || cfg.AI.ChatHistoryMessageMaxCharacters <= 0 || cfg.AI.ChatMaxOutputTokens <= 0 || cfg.AI.SummarySourceMaxCharacters <= 0 || cfg.AI.SummaryPreviousMaxCharacters <= 0 || cfg.AI.SummaryMaxOutputTokens <= 0 || cfg.AI.RewriterPromptMaxCharacters <= 0 || cfg.AI.RewriterMaxOutputTokens <= 0 || cfg.AI.RecommendationDetailsMaxCharacters <= 0 || cfg.AI.RecommendationPromptCandidateLimit <= 0 || cfg.AI.RecommendationDescriptionMaxCharacters <= 0 || cfg.AI.RecommendationTagsLimit <= 0 || cfg.AI.RecommendationPromptMaxCharacters <= 0 || cfg.AI.RecommendationMaxOutputTokens <= 0 {
 		return fmt.Errorf("ai input and output limits must be greater than 0")
@@ -188,6 +192,103 @@ func validateCampaignSweep(sweep CampaignSweepConfig) error {
 		return fmt.Errorf("campaign_sweep.interval_seconds must be at least %d seconds (FR-083), got %d", DefaultCampaignSweepIntervalSeconds, sweep.IntervalSeconds)
 	}
 	return nil
+}
+
+// validateAITrialSettings enforces the per-attempt text limits added by feature
+// 032. These are startup rules, not operational checks: a deadline that cannot
+// fit inside the server write timeout, or a primary deadline longer than the SSE
+// chunk deadline, is a configuration mistake that would only show up as a
+// truncated stream or a runtime fallback under load.
+func validateAITrialSettings(cfg *Config) error {
+	ai := cfg.AI
+	if ai.TextMaxConcurrency < 1 {
+		return fmt.Errorf("ai.text_max_concurrency must be at least 1")
+	}
+	if ai.TextPrimaryTimeoutSeconds <= 0 || ai.TextFallbackTimeoutSeconds <= 0 {
+		return fmt.Errorf("ai text attempt timeouts must be greater than 0")
+	}
+	if cfg.Server.SSE.AIChatChunkDeadlineSeconds <= 0 {
+		return fmt.Errorf("server sse ai_chat_chunk_deadline_seconds must be greater than 0")
+	}
+	if ai.TextPrimaryTimeoutSeconds+ai.TextFallbackTimeoutSeconds > MaxTextAttemptTimeoutSeconds {
+		return fmt.Errorf("ai.text_primary_timeout_seconds + ai.text_fallback_timeout_seconds must not exceed %d seconds (server write timeout)", MaxTextAttemptTimeoutSeconds)
+	}
+	if ai.TextPrimaryTimeoutSeconds > cfg.Server.SSE.AIChatChunkDeadlineSeconds {
+		return fmt.Errorf("ai.text_primary_timeout_seconds must not exceed server.sse.ai_chat_chunk_deadline_seconds")
+	}
+
+	textProviders := []struct {
+		name string
+		cfg  APIProviderConfig
+	}{
+		{"chat_text_primary", ai.ChatTextPrimary},
+		{"chat_text_fallback", ai.ChatTextFallback},
+		{"recommendation_text_primary", ai.RecommendationTextPrimary},
+		{"recommendation_text_fallback", ai.RecommendationTextFallback},
+		{"free_text_primary", ai.FreeTextPrimary},
+		{"free_text_fallback", ai.FreeTextFallback},
+	}
+	for _, provider := range textProviders {
+		if provider.cfg.Provider == "openai" {
+			if err := validateOpenAITextEndpoint(provider.name, provider.cfg.Endpoint); err != nil {
+				return err
+			}
+		}
+	}
+
+	reasoningProviders := []struct {
+		name string
+		cfg  APIProviderConfig
+	}{
+		{"vision_primary", ai.VisionPrimary},
+		{"vision_fallback", ai.VisionFallback},
+		{"embedding_primary", ai.EmbeddingPrimary},
+		{"embedding_fallback", ai.EmbeddingFallback},
+		{"chat_text_primary", ai.ChatTextPrimary},
+		{"chat_text_fallback", ai.ChatTextFallback},
+		{"recommendation_text_primary", ai.RecommendationTextPrimary},
+		{"recommendation_text_fallback", ai.RecommendationTextFallback},
+		{"free_text_primary", ai.FreeTextPrimary},
+		{"free_text_fallback", ai.FreeTextFallback},
+	}
+	for _, provider := range reasoningProviders {
+		if err := validateReasoningEffort(provider.name, provider.cfg.ReasoningEffort); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateOpenAITextEndpoint requires the full OpenAI-compatible chat URL. The
+// adapter POSTs provider.Endpoint verbatim, so joining a path later would send a
+// request to /v1/chat/completions/v1/chat/completions. Plain HTTP is accepted
+// only for a loopback local drill, and even there the path is mandatory.
+func validateOpenAITextEndpoint(name, endpoint string) error {
+	trimmed := strings.TrimSpace(endpoint)
+	u, err := url.Parse(trimmed)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("ai.%s.endpoint %q must be a full URL ending in /v1/chat/completions", name, endpoint)
+	}
+	if u.Path != "/v1/chat/completions" {
+		return fmt.Errorf("ai.%s.endpoint %q must end in /v1/chat/completions (the adapter does not append a path)", name, endpoint)
+	}
+	host := strings.ToLower(u.Hostname())
+	loopback := host == "127.0.0.1" || host == "localhost"
+	if u.Scheme == "https" || (u.Scheme == "http" && loopback) {
+		return nil
+	}
+	return fmt.Errorf("ai.%s.endpoint %q must use https (http is allowed only for 127.0.0.1 or localhost)", name, endpoint)
+}
+
+// validateReasoningEffort rejects values the OpenAI-compatible providers do not
+// define. Empty is valid and means "do not send the field".
+func validateReasoningEffort(name, value string) error {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "none", "low", "medium", "high":
+		return nil
+	default:
+		return fmt.Errorf("ai.%s.reasoning_effort %q is invalid (want none|low|medium|high or empty)", name, value)
+	}
 }
 
 // validateGoogle enforces Google OAuth config consistency when the feature is

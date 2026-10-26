@@ -99,7 +99,7 @@ func (s *AIService) withUsageStamp(options app_ai.TextGenerationOptions, call te
 	if original == nil {
 		return options
 	}
-	unbilled := s.cfg.AI.IsUnbilledCapability(call.capability)
+	unbilled := s.isUnbilled(call.provider.Provider, call.capability)
 	options.OnUsage = func(usage app_ai.TokenUsage) {
 		usage.Provider = call.provider.Provider
 		usage.Model = call.provider.Model
@@ -114,8 +114,20 @@ func (s *AIService) withUsageStamp(options app_ai.TextGenerationOptions, call te
 func (s *AIService) stampUsage(usage app_ai.TokenUsage, provider config.APIProviderConfig, capability string) app_ai.TokenUsage {
 	usage.Provider = provider.Provider
 	usage.Model = provider.Model
-	usage.Unbilled = s.cfg.AI.IsUnbilledCapability(capability)
+	usage.Unbilled = s.isUnbilled(provider.Provider, capability)
 	return usage
+}
+
+// isUnbilled classifies the winning provider BEFORE consulting the capability
+// list. provider=openai is the Ollama trial and is never charged, regardless of
+// which capability it served. Keeping the capability list for google preserves
+// AI_UNBILLED_CAPABILITIES=free_text,embedding and does not turn a Gemini
+// fallback on a text capability into free usage.
+func (s *AIService) isUnbilled(provider, capability string) bool {
+	if provider == ProviderOpenAI {
+		return true
+	}
+	return s.cfg.AI.IsUnbilledCapability(capability)
 }
 
 func overrideProvider(override *app_ai.TextProviderConfig, defaultCfg config.APIProviderConfig) config.APIProviderConfig {
@@ -123,10 +135,11 @@ func overrideProvider(override *app_ai.TextProviderConfig, defaultCfg config.API
 		return defaultCfg
 	}
 	return config.APIProviderConfig{
-		Provider: override.Provider,
-		ApiKey:   override.APIKey,
-		Endpoint: override.Endpoint,
-		Model:    override.Model,
+		Provider:        override.Provider,
+		ApiKey:          override.APIKey,
+		Endpoint:        override.Endpoint,
+		Model:           override.Model,
+		ReasoningEffort: override.ReasoningEffort,
 	}
 }
 

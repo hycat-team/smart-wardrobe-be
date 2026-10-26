@@ -74,7 +74,7 @@ func CallTextStream(
 
 		if resp.StatusCode != http.StatusOK {
 			respBytes, _ := io.ReadAll(resp.Body)
-			errChan <- apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
+			errChan <- apperror.NewUpstreamUnavailable(NewHTTPError(resp.StatusCode, fmt.Errorf("OpenAI Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes))))
 			return
 		}
 
@@ -121,7 +121,7 @@ func CallTextStream(
 				}
 			}
 			if len(openAIResp.Choices) > 0 && openAIResp.Choices[0].FinishReason == "length" {
-				return fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
+				return NewMaxTokensError(fmt.Errorf("OpenAI text generation reached MAX_TOKENS"))
 			}
 			return nil
 		})
@@ -180,7 +180,7 @@ func CallText(
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
+		return "", apperror.NewUpstreamUnavailable(NewHTTPError(resp.StatusCode, fmt.Errorf("OpenAI Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes))))
 	}
 
 	var openAIResp struct {
@@ -213,7 +213,7 @@ func CallText(
 		})
 	}
 	if openAIResp.Choices[0].FinishReason == "length" {
-		return "", fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
+		return "", NewMaxTokensError(fmt.Errorf("OpenAI text generation reached MAX_TOKENS"))
 	}
 
 	return openAIResp.Choices[0].Message.Content, nil
@@ -274,7 +274,7 @@ func CallVisionWithUsage(ctx context.Context, client *http.Client, provider conf
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", app_ai.TokenUsage{}, apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
+		return "", app_ai.TokenUsage{}, apperror.NewUpstreamUnavailable(NewHTTPError(resp.StatusCode, fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes))))
 	}
 
 	var openAIResp struct {
@@ -340,7 +340,7 @@ func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider confi
 
 		if resp.StatusCode != http.StatusOK {
 			respBytes, _ := io.ReadAll(resp.Body)
-			return nil, apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Embedding Batch API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
+			return nil, apperror.NewUpstreamUnavailable(NewHTTPError(resp.StatusCode, fmt.Errorf("OpenAI Embedding Batch API error (HTTP %d): %s", resp.StatusCode, string(respBytes))))
 		}
 
 		var openAIResp struct {

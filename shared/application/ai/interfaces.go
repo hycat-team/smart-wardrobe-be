@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"time"
 
 	"smart-wardrobe-be/shared/domain/constants/tokenestimationmethod"
 
@@ -32,6 +33,44 @@ type TextProviderConfig struct {
 	Endpoint   string
 	Model      string
 	Capability string
+	// ReasoningEffort is forwarded to the OpenAI-compatible request payload.
+	// Empty means the field is not sent.
+	ReasoningEffort string
+}
+
+// AttemptMeta describes one provider attempt before it starts. Route and
+// BillingClass are filled by the orchestrator; the text service fills the rest
+// from the resolved call.
+type AttemptMeta struct {
+	RequestID    uuid.UUID
+	AttemptIndex int
+	Provider     string
+	Model        string
+	Operation    string
+	Capability   string
+	Route        string
+	BillingClass string
+	Timeout      time.Duration
+}
+
+// AttemptResult is the outcome of one provider attempt. It deliberately carries
+// no prompt, message, credential or raw response body.
+type AttemptResult struct {
+	Outcome          string
+	HTTPStatus       int
+	Usage            TokenUsage
+	UsageReported    bool
+	FallbackEligible bool
+	LatencyMs        int64
+	TTFTMs           int64
+	Error            error
+}
+
+// AttemptHooks lets the orchestrator admit/cost the attempt that is about to
+// run. Nil hooks preserve the pre-existing behaviour.
+type AttemptHooks struct {
+	BeforeAttempt func(ctx context.Context, meta AttemptMeta) error
+	AfterAttempt  func(ctx context.Context, meta AttemptMeta, result AttemptResult)
 }
 
 type TokenUsage struct {
@@ -71,6 +110,9 @@ type TextGenerationOptions struct {
 	// caller gets without changing.
 	Primary  *TextProviderConfig
 	Fallback *TextProviderConfig
+	// Hooks, when set, is called immediately before and after every provider
+	// attempt. Nil keeps the pre-existing behaviour.
+	Hooks *AttemptHooks
 }
 
 type IAIService interface {

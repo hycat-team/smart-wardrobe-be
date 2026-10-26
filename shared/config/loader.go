@@ -60,6 +60,14 @@ func loadConfig() (*Config, error) {
 	// before this key existed would silently stop sending email.
 	v.SetDefault("email.enabled", true)
 
+	// Feature 032: AI text attempt limits. A viper default applies only when the
+	// key is absent, which keeps older configuration files loadable while still
+	// letting an explicit value (including the trial's 90/30/90) win.
+	v.SetDefault("ai.text_max_concurrency", DefaultTextMaxConcurrency)
+	v.SetDefault("ai.text_primary_timeout_seconds", DefaultTextPrimaryTimeoutSeconds)
+	v.SetDefault("ai.text_fallback_timeout_seconds", DefaultTextFallbackTimeoutSeconds)
+	v.SetDefault("server.sse.ai_chat_chunk_deadline_seconds", DefaultAIChatChunkDeadlineSeconds)
+
 	var cfg Config
 	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("decode config file %q: %w", configPath, err)
@@ -68,6 +76,7 @@ func loadConfig() (*Config, error) {
 		return nil, err
 	}
 	applyEnvOverrides(&cfg)
+	cfg.AI.OpenAITrialExpectedHosts = splitCSVList(strings.Join(cfg.AI.OpenAITrialExpectedHosts, ","))
 	cfg.Server.FrontEndOrigins = splitFrontEndOrigins(cfg.Server.FrontEndOrigin)
 	cfg.Google.ClientIDs = googleAudiences(cfg.Google.ClientIDRaw, cfg.Google.WebClientID)
 	if err := validateConfig(&cfg); err != nil {
@@ -273,6 +282,15 @@ func applyEnvOverrides(cfg *Config) {
 	// SSE replay buffer (feature 023, FR-006).
 	overrideInt("SSE_REPLAY_BUFFER_SIZE", &cfg.Server.SSE.ReplayBufferSize)
 	overrideInt("SSE_REPLAY_BUFFER_TTL_SECONDS", &cfg.Server.SSE.ReplayBufferTTLSeconds)
+
+	// Feature 032: text attempt limits and the SSE chat deadline alias. The field
+	// already exists in the YAML; the env var makes the trial value (90) a
+	// deployment concern instead of a config-file edit. Empty leaves the loaded
+	// value alone.
+	overrideInt("AI_TEXT_MAX_CONCURRENCY", &cfg.AI.TextMaxConcurrency)
+	overrideInt("AI_TEXT_PRIMARY_TIMEOUT_SECONDS", &cfg.AI.TextPrimaryTimeoutSeconds)
+	overrideInt("AI_TEXT_FALLBACK_TIMEOUT_SECONDS", &cfg.AI.TextFallbackTimeoutSeconds)
+	overrideInt("AI_CHAT_CHUNK_DEADLINE_SECONDS", &cfg.Server.SSE.AIChatChunkDeadlineSeconds)
 
 	// Community feature tuning.
 	overrideInt("COMMUNITY_HOT_WINDOW_DAYS", &cfg.Community.HotWindowDays)
