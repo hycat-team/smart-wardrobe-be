@@ -1,6 +1,7 @@
 package config
 
 import (
+	"sort"
 	"strings"
 	"testing"
 )
@@ -8,6 +9,10 @@ import (
 // clearAITrialEnv keeps the tests hermetic: the developer's shell may export
 // any of the trial variables, and an empty value means "leave the loaded value
 // alone" everywhere they are read.
+//
+// The ten provider names are cleared as well: the provider-name tests mutate one
+// block at a time, so a provider left over from the developer's .env would make
+// the "empty is allowed" case meaningless.
 func clearAITrialEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
@@ -17,6 +22,16 @@ func clearAITrialEnv(t *testing.T) {
 		"AI_CHAT_CHUNK_DEADLINE_SECONDS",
 		"AI_OPENAI_REASONING_EFFORT",
 		"AI_OPENAI_TRIAL_EXPECTED_HOSTS",
+		"VISION_PRIMARY_PROVIDER",
+		"VISION_FALLBACK_PROVIDER",
+		"EMBEDDING_PRIMARY_PROVIDER",
+		"EMBEDDING_FALLBACK_PROVIDER",
+		"CHAT_TEXT_PRIMARY_PROVIDER",
+		"CHAT_TEXT_FALLBACK_PROVIDER",
+		"RECOMMENDATION_TEXT_PRIMARY_PROVIDER",
+		"RECOMMENDATION_TEXT_FALLBACK_PROVIDER",
+		"FREE_TEXT_PRIMARY_PROVIDER",
+		"FREE_TEXT_FALLBACK_PROVIDER",
 	} {
 		t.Setenv(key, "")
 	}
@@ -262,5 +277,157 @@ func TestAIChatChunkDeadlineEnvOverride(t *testing.T) {
 	}
 	if cfg.Server.SSE.AIChatChunkDeadlineSeconds != 90 {
 		t.Fatalf("ai_chat_chunk_deadline_seconds = %d, want 90", cfg.Server.SSE.AIChatChunkDeadlineSeconds)
+	}
+}
+
+// allAPIProviderBlocks returns every block the startup provider-name check must
+// cover, keyed by the name used in the error message. The provider tests mutate
+// one block at a time so the text-endpoint rule cannot mask a name failure.
+func allAPIProviderBlocks(cfg *Config) map[string]*APIProviderConfig {
+	return map[string]*APIProviderConfig{
+		"vision_primary":               &cfg.AI.VisionPrimary,
+		"vision_fallback":              &cfg.AI.VisionFallback,
+		"embedding_primary":            &cfg.AI.EmbeddingPrimary,
+		"embedding_fallback":           &cfg.AI.EmbeddingFallback,
+		"chat_text_primary":            &cfg.AI.ChatTextPrimary,
+		"chat_text_fallback":           &cfg.AI.ChatTextFallback,
+		"recommendation_text_primary":  &cfg.AI.RecommendationTextPrimary,
+		"recommendation_text_fallback": &cfg.AI.RecommendationTextFallback,
+		"free_text_primary":            &cfg.AI.FreeTextPrimary,
+		"free_text_fallback":           &cfg.AI.FreeTextFallback,
+	}
+}
+
+func TestAIProviderNameValidation(t *testing.T) {
+	local, _ := repoConfigs(t)
+
+	cases := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{name: "empty is allowed", value: ""},
+		{name: "openai", value: "openai"},
+		{name: "google", value: "google"},
+		{name: "unknown provider", value: "anthropic", wantErr: true},
+		{name: "gemini is not a provider name", value: "gemini", wantErr: true},
+		{name: "wrong case", value: "OpenAI", wantErr: true},
+	}
+
+	blockNames := sortedAPIProviderBlockNames()
+	for _, tc := range cases {
+		for _, blockName := range blockNames {
+			t.Run(tc.name+"/"+blockName, func(t *testing.T) {
+				cfg := loadAITrialConfig(t, local)
+				block := allAPIProviderBlocks(cfg)[blockName]
+				block.Provider = tc.value
+				if tc.value == "openai" && strings.Contains(blockName, "_text_") {
+					// The openai text blocks also require a full chat endpoint;
+					// supply a valid one so this test only exercises the name.
+					block.Endpoint = "https://ollama.example.com/v1/chat/completions"
+				}
+
+				err := validateConfig(cfg)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("provider %q on %s must be rejected", tc.value, blockName)
+					}
+					if !strings.Contains(err.Error(), "provider") || !strings.Contains(err.Error(), blockName) {
+						t.Fatalf("error %q must name the invalid provider on %s", err, blockName)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatalf("provider %q on %s must be accepted: %v", tc.value, blockName, err)
+				}
+			})
+		}
+	}
+}
+
+func sortedAPIProviderBlockNames() []string {
+	names := make([]string, 0, 10)
+	for name := range allAPIProviderBlocks(&Config{}) {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func TestAITrialExpectedHostValidation(t *testing.T) {
+	local, _ := repoConfigs(t)
+
+	cases := []struct {
+		name    string
+		hosts   []string
+		wantErr bool
+	}{
+		{name: "empty list is allowed"},
+		{name: "single bare host", hosts: []string{"ollama.example.com"}},
+		{name: "several bare hosts", hosts: []string{"ollama.example.com", "edge.example.com"}},
+		{name: "scheme is rejected", hosts: []string{"https://ollama.example.com"}, wantErr: true},
+		{name: "path is rejected", hosts: []string{"ollama.example.com/v1"}, wantErr: true},
+		{
+			name:    "scheme and path are rejected",
+			hosts:   []string{"https://ollama.example.com/v1/chat/completions"},
+			wantErr: true,
+		},
+		{
+			name:    "one bad entry among valid hosts",
+			hosts:   []string{"ollama.example.com", "http://edge.example.com"},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := loadAITrialConfig(t, local)
+			cfg.AI.OpenAITrialExpectedHosts = tc.hosts
+
+			err := validateConfig(cfg)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected hosts %v to be rejected", tc.hosts)
+				}
+				if !strings.Contains(err.Error(), "openai_trial_expected_hosts") {
+					t.Fatalf("error %q must name openai_trial_expected_hosts", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected hosts %v must be accepted: %v", tc.hosts, err)
+			}
+		})
+	}
+}
+
+// TestAITrialLoadRejectsBadProviderAndHosts proves the checks run on the real
+// load path (env -> YAML -> validateConfig), not only when a test calls
+// validateConfig directly.
+func TestAITrialLoadRejectsBadProviderAndHosts(t *testing.T) {
+	local, _ := repoConfigs(t)
+
+	cases := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{name: "unknown provider", key: "CHAT_TEXT_PRIMARY_PROVIDER", value: "anthropic"},
+		{name: "expected host with scheme", key: "AI_OPENAI_TRIAL_EXPECTED_HOSTS", value: "https://ollama.example.com"},
+		{name: "expected host with path", key: "AI_OPENAI_TRIAL_EXPECTED_HOSTS", value: "ollama.example.com/v1"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			baseEnv(t)
+			clearAITrialEnv(t)
+			t.Setenv("CONFIG_FILE", local)
+			t.Setenv("SERVER_ENV", "local")
+			t.Setenv(tc.key, tc.value)
+
+			if _, err := loadConfig(); err == nil {
+				t.Fatalf("%s=%q must be rejected at load time", tc.key, tc.value)
+			}
+		})
 	}
 }

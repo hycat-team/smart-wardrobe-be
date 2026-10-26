@@ -109,9 +109,10 @@ ${indent(6, bootstrap_script)}
     content: |
 ${indent(6, nginx_template)}
 
-  # CloudWatch agent: Nginx access/error, Ollama journal and bootstrap logs plus
-  # the contract CPU/RAM/disk metrics. Metric filters and the dashboard are
-  # declared in main.tf; retention is enforced by the Terraform log group.
+  # CloudWatch agent: Nginx access/error, Ollama journal, bootstrap and
+  # cloud-init logs plus the contract CPU/RAM/disk metrics. Metric filters and the
+  # dashboard are declared in main.tf; retention is enforced by the Terraform log
+  # group (14 days).
   - path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
     permissions: "0644"
     owner: root:root
@@ -141,6 +142,12 @@ ${indent(6, nginx_template)}
                   "file_path": "/var/log/ollama-trial-bootstrap.log",
                   "log_group_name": "${cloudwatch_log_group_name}",
                   "log_stream_name": "{instance_id}/bootstrap",
+                  "retention_in_days": ${cloudwatch_log_retention_days}
+                },
+                {
+                  "file_path": "/var/log/cloud-init-output.log",
+                  "log_group_name": "${cloudwatch_log_group_name}",
+                  "log_stream_name": "{instance_id}/cloud-init",
                   "retention_in_days": ${cloudwatch_log_retention_days}
                 }
               ]

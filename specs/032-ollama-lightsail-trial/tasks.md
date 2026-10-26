@@ -281,3 +281,10 @@ cost sai, trái FR-013/FR-014.
 - Không chạy probe hay lệnh nào lên VPS.
 - Nếu phát hiện việc ngoài phạm vi, ghi vào `specs/032-ollama-lightsail-trial/deferred.md`, không
   để lại checkbox ở file này.
+
+---
+
+## Phase 8: Convergence
+
+- [x] T058 Bổ sung validation khởi động cho `provider` của mọi block AI (6 block text + vision/embedding) trong `shared/config/validation.go`: giá trị khác rỗng chỉ nhận `openai`/`google`, giá trị trống vẫn được phép để `.env.aws.example` và block chưa cấu hình tiếp tục khởi động; đồng thời từ chối entry của `AI_OPENAI_TRIAL_EXPECTED_HOSTS` chứa scheme hoặc path (chỉ host), kèm test trong `shared/config/ai_trial_config_test.go` per contracts/env-ai-trial.md §1.4 (missing)
+- [x] T059 Bổ sung `/var/log/cloud-init-output.log` vào `collect_list` của CloudWatch agent trong `deployments/terraform/ollama-ec2/templates/cloud-init.yaml.tftpl` (cùng log group và retention 14 ngày; hiện chỉ thu `/var/log/ollama-trial-bootstrap.log`) và ghi nguồn log này vào mục 6.3 của `docs/operations/ollama-trial-runbook.md` per contracts/trial-telemetry.md §3 (partial)

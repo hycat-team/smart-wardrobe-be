@@ -82,6 +82,9 @@ func validateConfig(cfg *Config) error {
 	if cfg.AI.ChatTextRPMLimit <= 0 || cfg.AI.RecommendationTextRPMLimit <= 0 || cfg.AI.VisionRPMLimit <= 0 || cfg.AI.EmbeddingRPMLimit <= 0 {
 		return fmt.Errorf("ai rpm limits must be greater than 0")
 	}
+	if err := validateAIProviderBlocks(cfg); err != nil {
+		return err
+	}
 	if err := validateAITrialSettings(cfg); err != nil {
 		return err
 	}
@@ -190,6 +193,80 @@ func validateConfig(cfg *Config) error {
 func validateCampaignSweep(sweep CampaignSweepConfig) error {
 	if sweep.IntervalSeconds < DefaultCampaignSweepIntervalSeconds {
 		return fmt.Errorf("campaign_sweep.interval_seconds must be at least %d seconds (FR-083), got %d", DefaultCampaignSweepIntervalSeconds, sweep.IntervalSeconds)
+	}
+	return nil
+}
+
+// validAIProviders mirrors contracts/env-ai-trial.md §1.4. The adapters are
+// selected by exact name (shared/infrastructure/ai switches on it), so any other
+// non-empty value would surface later as an "unsupported provider" error on a
+// live request instead of at startup.
+var validAIProviders = []string{"openai", "google"}
+
+// validateAIProviderBlocks rejects a provider name the adapters do not
+// implement on every AI block, plus an expected-host allowlist entry that can
+// never match the host it is compared with.
+//
+// Empty is allowed on purpose: the shipped .env examples leave most blocks
+// blank, and an unconfigured capability must not stop a service from booting.
+// Only a value somebody wrote down is refused, so the check cannot be dodged by
+// leaving a block out of a deployment profile.
+func validateAIProviderBlocks(cfg *Config) error {
+	ai := cfg.AI
+	providers := []struct {
+		name string
+		cfg  APIProviderConfig
+	}{
+		{"vision_primary", ai.VisionPrimary},
+		{"vision_fallback", ai.VisionFallback},
+		{"embedding_primary", ai.EmbeddingPrimary},
+		{"embedding_fallback", ai.EmbeddingFallback},
+		{"chat_text_primary", ai.ChatTextPrimary},
+		{"chat_text_fallback", ai.ChatTextFallback},
+		{"recommendation_text_primary", ai.RecommendationTextPrimary},
+		{"recommendation_text_fallback", ai.RecommendationTextFallback},
+		{"free_text_primary", ai.FreeTextPrimary},
+		{"free_text_fallback", ai.FreeTextFallback},
+	}
+	for _, provider := range providers {
+		if err := validateAIProviderName(provider.name, provider.cfg.Provider); err != nil {
+			return err
+		}
+	}
+	for _, host := range ai.OpenAITrialExpectedHosts {
+		if err := validateTrialExpectedHost(host); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateAIProviderName accepts empty (block not configured) or one of
+// validAIProviders. Surrounding whitespace is tolerated because it is invisible
+// in an env file; the name itself must still be exact, since a differently-cased
+// value would not match the adapter switch either.
+func validateAIProviderName(name, value string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	for _, valid := range validAIProviders {
+		if trimmed == valid {
+			return nil
+		}
+	}
+	return fmt.Errorf("ai.%s.provider %q is invalid (want openai|google or empty)", name, value)
+}
+
+// validateTrialExpectedHost rejects an allowlist entry the runtime can never
+// match. OpenAIEndpointHostMismatch compares the parsed URL's Hostname() — bare,
+// no scheme, no path — against each entry, so an entry carrying either would
+// leave the "openai points at the wrong host" warning permanently wrong with no
+// hint why. An empty entry is dropped by the CSV splitter and never reaches here.
+func validateTrialExpectedHost(host string) error {
+	trimmed := strings.TrimSpace(host)
+	if strings.Contains(trimmed, "://") || strings.Contains(trimmed, "/") {
+		return fmt.Errorf("ai.openai_trial_expected_hosts entry %q must be a bare host without scheme or path", host)
 	}
 	return nil
 }

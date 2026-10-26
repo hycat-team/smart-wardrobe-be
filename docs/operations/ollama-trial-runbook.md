@@ -705,6 +705,31 @@ docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-
 Ghi queue depth đã đặt (`OLLAMA_MAX_QUEUE=8`), số lần queue full/429/503 và xác nhận không có attempt
 thứ ba vào mục 6 của báo cáo.
 
+**Log nguồn EC2 (CloudWatch)** — CloudWatch agent trên EC2 gửi mọi log nguồn vào **cùng một log
+group** `/ollama-trial/ec2` (Terraform T043), retention **14 ngày**; bảng nguồn chuẩn ở
+[contracts/trial-telemetry.md](../../specs/032-ollama-lightsail-trial/contracts/trial-telemetry.md) §3:
+
+| Nguồn | Đường dẫn trên EC2 | Log stream | Nội dung |
+|-------|--------------------|------------|----------|
+| Nginx access | `/var/log/nginx/ollama-access.log` | `<instance-id>/nginx-access` | IP, status, bytes, request time; **không** body |
+| Nginx error | `/var/log/nginx/ollama-error.log` | `<instance-id>/nginx-error` | Lỗi TLS/upstream |
+| Ollama | journal `ollama.service` | `<instance-id>/ollama-journal` | Startup, model load, OOM; **không** prompt |
+| Bootstrap | `/var/log/ollama-trial-bootstrap.log` | `<instance-id>/bootstrap` | Output của `bootstrap.sh` |
+| Cloud-init | `/var/log/cloud-init-output.log` | `<instance-id>/cloud-init` | Output cloud-init: cài package, chạy `bootstrap.sh`, certbot, kiểm tra version/digest model |
+
+`/var/log/cloud-init-output.log` được thêm vào `collect_list` của agent từ T059 để giữ lại log của
+**toàn bộ lần boot đầu** (không chỉ phần `bootstrap.sh`): cài package, gọi bootstrap, certbot và đối
+chiếu digest model. Dùng nó làm bằng chứng cho §6.1 và §6.4, và để đối chiếu version/digest khi
+`bootstrap.log` thiếu dòng. Đọc bằng CLI **chỉ đọc** (thay `<instance-id>` bằng
+`terraform output instance_id`):
+
+```bash
+aws logs tail /ollama-trial/ec2 --since 7d --log-stream-name-prefix <instance-id>/cloud-init \
+  --region ap-southeast-1 --format short
+```
+
+Không cấu hình lại agent, không xoá log stream và không đổi retention trong tuần trial.
+
 ### 6.4 Thu sự cố trong tuần
 
 Tập hợp mọi sự cố đã ghi trong tuần (từ §9.2, §9.3, log và nhật ký phiên) vào mục 4 của báo cáo:
