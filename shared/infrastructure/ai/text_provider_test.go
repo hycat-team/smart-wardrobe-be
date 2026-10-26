@@ -43,23 +43,39 @@ func TestResolveTextCallPlanFreeUsesFreeConfigAndBucket(t *testing.T) {
 	if plan.fallback.provider.ApiKey != "free-fallback-key" {
 		t.Errorf("free fallback = %+v, want the FREE_TEXT fallback", plan.fallback)
 	}
-	if plan.freeFailover != nil {
-		t.Error("a free plan must not fall back to a paid key")
+	// Exactly two attempts: no third free failover exists any more (feature 032
+	// R5), and a free plan never borrows a paid key.
+	attempts := plan.textAttempts()
+	if len(attempts) != 2 {
+		t.Fatalf("free plan attempts = %d, want 2 (primary + fallback)", len(attempts))
+	}
+	for _, attempt := range attempts {
+		if attempt.provider.ApiKey == "paid-chat-key" || attempt.provider.ApiKey == "paid-chat-fallback-key" {
+			t.Errorf("free plan must not use a paid key, got %+v", attempt.provider)
+		}
 	}
 }
 
-func TestResolveTextCallPlanPaidKeepsOperationConfigPlusFreeFailover(t *testing.T) {
+func TestResolveTextCallPlanPaidKeepsOperationConfig(t *testing.T) {
 	s := billingTestService()
 
 	chat := s.resolveTextCallPlan(app_ai.TextGenerationOptions{Tier: app_ai.TextTierPaid}, app_ai.AIOperationChat)
 	if chat.primary.provider.ApiKey != "paid-chat-key" || chat.primary.client != s.chatTextClient {
 		t.Errorf("chat paid primary = %+v, want the CHAT_TEXT config and client", chat.primary)
 	}
-	if chat.freeFailover == nil || chat.freeFailover.provider.ApiKey != "free-key" {
-		t.Errorf("chat paid plan must keep the free failover, got %+v", chat.freeFailover)
+	if chat.fallback.provider.ApiKey != "paid-chat-fallback-key" {
+		t.Errorf("chat paid fallback = %+v, want the CHAT_TEXT fallback", chat.fallback)
 	}
-	if chat.freeFailover.client != s.freeTextClient {
-		t.Error("free failover must run on the free client")
+	// The paid plan keeps exactly two attempts even though a FREE_TEXT primary is
+	// configured: the synthetic third free attempt was removed.
+	attempts := chat.textAttempts()
+	if len(attempts) != 2 {
+		t.Fatalf("paid plan attempts = %d, want 2 (primary + fallback)", len(attempts))
+	}
+	for _, attempt := range attempts {
+		if attempt.provider.ApiKey == "free-key" || attempt.provider.ApiKey == "free-fallback-key" {
+			t.Errorf("paid plan must not fall through to the free key, got %+v", attempt.provider)
+		}
 	}
 
 	outfit := s.resolveTextCallPlan(app_ai.TextGenerationOptions{Tier: app_ai.TextTierPaid}, app_ai.AIOperationOutfit)

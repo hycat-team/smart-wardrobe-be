@@ -1,7 +1,7 @@
 # Runbook — Thử nghiệm Ollama trên EC2 (feature 032)
 
-**Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Trạng thái**: khung
-chờ vận hành (Phase 1 Setup)
+**Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Trạng thái**: Phase 3
+(US1) đã có mã + test; các bước hạ tầng (T025–T027) **chưa chạy** — xem mục 8.
 
 Runbook này là quy trình vận hành duy nhất cho tuần thử nghiệm Ollama: đo baseline, chạy local,
 dựng EC2, bật/tắt bằng env trên Lightsail, rollback và chốt quyết định ngày thứ 7. Hợp đồng chi
@@ -363,3 +363,140 @@ Cập nhật đường dẫn/ghi chú thật khi có bằng chứng. Không dán
 Bằng chứng tối thiểu khác (theo quickstart §4): output contract test local, Terraform plan/apply
 output không secret, log/metric provider thắng cho 3 text + vision/embedding, drill fallback và
 rollback, báo cáo go/no-go có người quyết định.
+
+## 8. Phase 3 (US1) — mã đã xong, các bước dưới đây là việc của người vận hành
+
+> **Trạng thái tại thời điểm implement (2026-10-26)**: US1 đã được implement bằng mã và
+> bằng unit/contract test chạy local. **T025, T026, T027 chưa được chạy**: môi trường
+> implement không có `ollama`, `terraform`, `nginx`, không có AWS credentials và không có
+> quyền truy cập Lightsail/EC2. Vì vậy **không có bằng chứng nào** cho SC-003, SC-005 hay
+> SC-011 được tạo ra ở bước này; mọi ô "Trạng thái" ở mục 7 vẫn là `TODO` cho tới khi người
+> vận hành chạy và điền.
+
+### 8.1 T025 — kiểm tra chức năng + latency local (thủ công, chưa chạy)
+
+Điều kiện: Ollama native đã cài và `qwen3:4b` đã pull (A1). Nếu thiếu, đó là bước thủ công;
+`deployments/ollama/local-test.ps1` **không** cài Ollama và **không** pull model — nó dừng với
+exit code 2 và thông báo rõ.
+
+```powershell
+# Bắt buộc ép CPU trước khi đo tham chiếu, rồi khởi động lại Ollama.
+$env:OLLAMA_NUM_GPU = "0"
+
+# 1) Kiểm tra chức năng (non-stream, SSE, structured JSON, thinking off) + 50 mẫu chat_text
+.\deployments\ollama\local-test.ps1 -Capability chat_text -Samples 50 -Concurrency 2
+
+# 2) free_text và recommendation_text (bỏ kiểm tra chức năng để không lặp lại)
+.\deployments\ollama\local-test.ps1 -Capability free_text -Samples 50 -Concurrency 2 -SkipFunctional
+.\deployments\ollama\local-test.ps1 -Capability recommendation_text -Samples 50 -Concurrency 2 -SkipFunctional `
+  -Prompt "<prompt recommendation thực tế>"
+```
+
+**Kết quả kỳ vọng**: exit code `0`; log có `thinking off OK`, `structured output OK`, `stream OK`;
+mỗi capability sinh `docs/temp/ollama-trial/local-latency-<capability>.csv` + `local-test-summary-<capability>.json`
+(thư mục đã gitignore) và in `ttft p50/p95`, `total p50/p95`.
+
+**Ghi bằng chứng**: dán p50/p95 + `ollama --version` + digest vào mục 1 và dòng SC-005 của mục 7,
+kèm đường dẫn file raw. Số local CPU **chỉ là tham chiếu** — không thay SC-005 trên EC2.
+
+**Nếu chưa cài Ollama/model**: ghi vào mục 7 là "chưa chạy", **không** đánh dấu đạt. Script có
+`-AllowGpu` cho phép đo tham chiếu GPU nhưng kết quả đó không được dùng thay SC-005.
+
+### 8.2 T026 — apply Terraform hai bước + DNS + SSM + kiểm tra cô lập (thủ công, chưa chạy)
+
+Chuẩn bị input (dùng biến môi trường tạm, **không** tạo file `*.tfvars` được commit):
+
+```powershell
+$env:TF_VAR_proxy_allowed_cidr = "<lightsail-static-ip>/32"
+$env:TF_VAR_proxy_hostname     = "ollama.<domain>"
+$env:TF_VAR_proxy_acme_email   = "<email>"
+$env:TF_VAR_owner              = "<owner>"
+$env:TF_VAR_ollama_version     = "<version đo ở A1>"
+$env:TF_VAR_model_digest       = "sha256:<digest đo ở A1>"
+$env:TF_VAR_budget_alert_emails = '["<email>"]'   # biến list: truyền dạng chuỗi JSON
+$env:TF_VAR_proxy_bearer_token = "<bearer-token dài, ngẫu nhiên>"
+```
+
+> `budget_alert_emails` là biến mới của module: alert 50/80/100% cần ít nhất một người nhận,
+> nếu để trống apply sẽ dừng ở precondition của AWS Budget. `TF_VAR_proxy_bearer_token` là secret:
+> chỉ đặt trong phiên shell, không dán vào file, không ghi vào log/evidence.
+
+Apply hai bước (đúng thứ tự, không đảo):
+
+```powershell
+terraform -chdir=deployments/terraform/ollama-ec2 init
+terraform -chdir=deployments/terraform/ollama-ec2 apply -target=aws_eip.ollama
+terraform -chdir=deployments/terraform/ollama-ec2 output elastic_ip
+# -> Tạo tay A record cho $env:TF_VAR_proxy_hostname trỏ tới IP vừa in (không phải domain API)
+terraform -chdir=deployments/terraform/ollama-ec2 apply
+terraform -chdir=deployments/terraform/ollama-ec2 output
+```
+
+**Kết quả kỳ vọng**: bước 1 chỉ tạo Elastic IP; bước 2 tạo host + proxy + secret + budget và in đủ
+7 output của contract §3 (`instance_id`, `elastic_ip`, `proxy_hostname`, `secret_arn`,
+`ollama_version`, `model_digest`, `security_group_id`). State là local, nằm ngoài repo.
+
+Xác minh sau apply (qua SSM, **không** mở SSH):
+
+```powershell
+aws ssm start-session --target <instance_id>
+# trong phiên SSM:
+cat /etc/ollama-trial/TRIAL_READY          # phải tồn tại khi đã trial-ready
+cat /etc/ollama-trial/TLS_PENDING          # nếu chưa có A record/cert: đọc "next_step" rồi chạy lại
+sudo /opt/ollama-trial/bootstrap.sh        # idempotent; chạy lại sau khi DNS đã trỏ đúng
+sudo ss -lntp | grep 11434                 # chỉ 127.0.0.1:11434
+sudo ollama list                           # digest khớp TF_VAR_model_digest
+sudo certbot certificates                  # còn hạn
+sudo systemctl status ollama nginx
+```
+
+Kiểm tra cô lập (B5, SC-003) — chạy từ máy **ngoài** allowlist:
+
+```powershell
+curl.exe -v https://<ollama-host>/v1/chat/completions     # kỳ vọng: timeout/bị chặn
+curl.exe -v http://<elastic-ip>:11434/api/version         # kỳ vọng: timeout/connection refused
+curl.exe -v -H "Authorization: Bearer sai" https://<ollama-host>/v1/chat/completions
+                                                          # kỳ vọng: 401 từ proxy
+```
+
+**Ứng dụng dùng** (không phải bước kiểm tra cô lập): từ Lightsail, request đúng endpoint + Bearer
+phải trả `200`. Ghi tất cả output (đã lọc token) vào SC-003 của mục 7.
+
+**Lưu ý hạ tầng**:
+- Module dùng VPC/subnet mặc định của account (không tạo VPC riêng). Account chưa có default VPC thì
+  bước 2 sẽ lỗi; xử lý ngoài phạm vi feature này và ghi vào `specs/032-ollama-lightsail-trial/deferred.md`.
+- Nếu DNS chưa trỏ đúng lúc host boot, `bootstrap.sh` **không** fail cloud-init: nó giữ config
+  ACME/HTTP, ghi `/etc/ollama-trial/TLS_PENDING` và thoát 0. Chạy lại script qua SSM sau khi DNS
+  resolve; **không** đánh dấu trial-ready trước khi `TRIAL_READY` xuất hiện.
+
+### 8.3 T027 — validate / plan / `nginx -t` (thủ công, chưa chạy)
+
+```powershell
+terraform -chdir=deployments/terraform/ollama-ec2 validate
+terraform -chdir=deployments/terraform/ollama-ec2 plan
+```
+
+**Kết quả kỳ vọng**:
+
+- `validate` → `Success! The configuration is valid.` (không cần biến nào).
+- `plan` → `15 to add, 0 to change, 0 to destroy` (security group, Elastic IP, EIP association, IAM
+  role + 2 policy attachment + 1 inline policy, instance profile, secret + version, instance, EBS
+  volume + attachment, log group, budget) và 1 data source đọc AMI Ubuntu 24.04 từ SSM.
+- `plan` **cần đủ input** ở §8.2 (kể cả `TF_VAR_proxy_bearer_token`) vì precondition fail-fast;
+  thiếu input thì plan dừng với thông báo rõ — đó là hành vi đúng, không phải lỗi cấu hình.
+- Không có `data`/`resource` nào nhắm Route53, EKS, ALB, ACM hoặc VPS.
+
+`nginx -t` với `deployments/ollama/nginx-ollama.conf.template` **không chạy được nguyên bản** vì
+file còn placeholder (`__PROXY_*__`) và đường dẫn chứng chỉ chưa tồn tại; máy dev Windows cũng không
+có `nginx`. Cách kiểm tra đúng:
+
+1. **Trên EC2 sau bootstrap** (khuyến nghị, đây là nơi template được render thật):
+   `sudo nginx -t` → kỳ vọng `syntax is ok` + `test is successful` (bootstrap.sh đã gọi lệnh này
+   trước mỗi lần reload; nếu template sai, bootstrap fail trước khi ghi `TRIAL_READY`).
+2. **Kiểm tra cú pháp local có kiểm soát** (chỉ khi máy có nginx + openssl): render template với giá
+   trị giả, tạo chứng chỉ self-signed tạm, include file đã render vào một `nginx.conf` tối thiểu rồi
+   `nginx -t -c <file> -p <prefix>`. Kết quả mong đợi cũng là `syntax is ok` / `test is successful`;
+   đây chỉ là kiểm tra cú pháp, **không** phải bằng chứng TLS/allowlist của SC-003.
+
+Không được đánh dấu T025/T026/T027 là đã chạy cho tới khi có output thật (không kèm secret) được
+dán vào mục 7.

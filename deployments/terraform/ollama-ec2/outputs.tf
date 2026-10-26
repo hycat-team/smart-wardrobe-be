@@ -3,9 +3,12 @@
 # Source of truth: specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md section 3.
 # These seven outputs are what the runbook and the Lightsail .env.aws consume.
 #
-# NOTE: main.tf (task T019) declares the resources referenced below. This file is part
-# of the Phase 1 skeleton, so `terraform validate` only becomes green once main.tf
-# exists (T019) - use T027 for the validate/plan gate.
+# No secret is exposed here: secret_arn is an identifier only. The Bearer value is
+# never printed, never in state output, never in CI logs.
+#
+# `elastic_ip` is the only output needed by the first apply step
+# (`terraform apply -target=aws_eip.ollama`); everything else appears after the
+# full apply.
 
 output "instance_id" {
   description = "EC2 instance id used by SSM Session Manager."

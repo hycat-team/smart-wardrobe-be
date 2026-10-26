@@ -119,9 +119,12 @@ variable "proxy_allowed_cidr" {
   type        = string
   default     = ""
 
+  # The empty default keeps `terraform validate` usable before the baseline is
+  # filled; main.tf enforces a real /32 at apply time through a precondition on
+  # the security group.
   validation {
-    condition     = can(cidrhost(var.proxy_allowed_cidr, 0)) && endswith(var.proxy_allowed_cidr, "/32")
-    error_message = "proxy_allowed_cidr must be a single IPv4 address in /32 form, e.g. 203.0.113.10/32."
+    condition     = var.proxy_allowed_cidr == "" || (can(cidrhost(var.proxy_allowed_cidr, 0)) && endswith(var.proxy_allowed_cidr, "/32"))
+    error_message = "proxy_allowed_cidr must be empty or a single IPv4 address in /32 form, e.g. 203.0.113.10/32."
   }
 
   validation {
@@ -271,15 +274,31 @@ variable "budget_alert_thresholds" {
   }
 }
 
+variable "budget_alert_emails" {
+  description = "Addresses that receive the 50/80/100% budget alerts. TODO(operator): fill before the full apply; an alert with no subscriber is not an alert."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for email in var.budget_alert_emails : can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", email))])
+    error_message = "budget_alert_emails must contain valid email addresses only."
+  }
+}
+
 variable "cloudwatch_log_retention_days" {
-  description = "Log retention for the trial. Contract: 14 days. TODO(T043): apply in cloud-init/agent config."
+  description = "Log retention for the trial. Contract: 14 days. The agent config in cloud-init and the log group both use this value."
   type        = number
   default     = 14
+
+  validation {
+    condition     = var.cloudwatch_log_retention_days >= 1
+    error_message = "cloudwatch_log_retention_days must be at least 1 day."
+  }
 }
 
 # ------------------------------------------------------------------------------
-# 7. Resources owned by main.tf (T019) - listed here so the Phase 1 skeleton is
-#    traceable; they are not configurable variables.
+# 7. Resources declared by main.tf - listed here so the variable set stays
+#    traceable. They are not configurable inputs.
 # ------------------------------------------------------------------------------
 # - aws_instance.ollama            : c6i.2xlarge, no key pair, IMDSv2 required, EBS gp3
 #                                    root + 50 GiB data volume, instance profile.
@@ -287,9 +306,10 @@ variable "cloudwatch_log_retention_days" {
 #                                    elastic_ip feeds the manual A record step.
 # - aws_security_group.ollama      : 443 from proxy_allowed_cidr/32, 80 only for ACME,
 #                                    11434 loopback only, no SSH.
-# - aws_iam_role / profile         : AmazonSSMManagedInstanceCore + read-only access to
-#                                    the proxy Bearer secret; no other permission.
+# - aws_iam_role / profile         : AmazonSSMManagedInstanceCore, CloudWatchAgentServerPolicy
+#                                    and read-only access to the proxy Bearer secret.
 # - aws_secretsmanager_secret      : proxy Bearer token (proxy_bearer_secret_name).
 # - aws_budgets_budget             : budget_limit_usd with 50/80/100% alerts.
 # - aws_cloudwatch_log_group       : 14-day retention (T043 completes agent/metrics).
+# - aws_ebs_volume / attachment    : gp3 model store mounted at /var/lib/ollama.
 # Nothing here may create EKS/Kubernetes, ALB, ACM, Route53 or an auto-destroy schedule.

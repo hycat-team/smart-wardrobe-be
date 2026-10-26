@@ -1,19 +1,23 @@
 #cloud-config
 # Feature 032 - EC2 bootstrap for the Ollama CPU trial host (Ubuntu 24.04 amd64).
 #
-# Rendered by Terraform templatefile(). Every ${...} placeholder is supplied by main.tf
-# (T019). No secret is rendered here: the Bearer token is fetched from Secrets Manager
-# at boot by bootstrap.sh through the instance profile.
+# Rendered by Terraform templatefile() from main.tf. No secret is rendered here:
+# the Bearer token is fetched from Secrets Manager at boot by bootstrap.sh through
+# the instance profile.
 #
-# TODO(T019): templatefile() must pass these keys:
-#   aws_region, ollama_host, ollama_model, model_digest, ollama_version,
-#   ollama_num_parallel, ollama_max_queue, ollama_keep_alive, ollama_num_gpu,
-#   proxy_https_port, proxy_acme_port, proxy_allowed_cidr, proxy_hostname,
-#   proxy_acme_email, proxy_bearer_secret_arn, data_volume_device_name,
-#   cloudwatch_log_retention_days
+# Two-step apply (operator, not cloud-init):
+#   1) terraform apply -target=aws_eip.ollama
+#   2) create the A record for ${proxy_hostname} -> output elastic_ip
+#   3) terraform apply
+# If this host boots before step 2 is done, bootstrap.sh cannot obtain a
+# certificate. That is expected: it leaves the ACME/HTTP config in place, writes
+# /etc/ollama-trial/TLS_PENDING and exits 0 so cloud-init does not fail. Re-run
+# bootstrap.sh over SSM after DNS resolves.
 #
-# TODO(T020): keep this file in sync with deployments/ollama/bootstrap.sh; the script
-# owns install/pull/certbot logic, cloud-init only prepares the host and the env file.
+# Contract: specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md section 2.
+# Runtime knobs live in /etc/ollama-trial/trial.env; bootstrap.sh owns the real
+# install/pull/certbot/nginx logic so a manual re-run and a fresh boot follow the
+# same path.
 
 package_update: true
 package_upgrade: false
@@ -26,9 +30,9 @@ packages:
   - certbot
   - python3-certbot-nginx
   - unzip
-  # TODO(T020): pin the AWS CLI v2 installer instead of the distro package if the
-  # distro build cannot call secretsmanager:GetSecretValue.
   - awscli
+  # The CloudWatch agent is not in the Ubuntu archive; runcmd installs the
+  # official .deb. T043 owns pinning the agent version and adding metric filters.
 
 write_files:
   # Runtime env contract for the host. Values come from Terraform variables; the
@@ -56,9 +60,8 @@ write_files:
       TRIAL_DATA_DEVICE=${data_volume_device_name}
       CLOUDWATCH_LOG_RETENTION_DAYS=${cloudwatch_log_retention_days}
 
-  # Ollama systemd drop-in. The bootstrap script installs the unit and reloads it.
-  # TODO(T022): the effective values are re-applied by bootstrap.sh from trial.env so
-  # a manual re-run is idempotent; keep both paths in sync.
+  # Ollama systemd drop-in. bootstrap.sh rewrites the same file from trial.env so
+  # a manual re-run and the first boot converge on identical values.
   - path: /etc/systemd/system/ollama.service.d/10-trial.conf
     permissions: "0644"
     owner: root:root
@@ -69,26 +72,111 @@ write_files:
       Environment="OLLAMA_MAX_QUEUE=${ollama_max_queue}"
       Environment="OLLAMA_KEEP_ALIVE=${ollama_keep_alive}"
       Environment="OLLAMA_NUM_GPU=${ollama_num_gpu}"
+      Environment="OLLAMA_MODELS=/var/lib/ollama/models"
 
-  # Placeholder for the CloudWatch agent configuration (metrics/logs, 14-day retention).
-  # TODO(T043): replace with the real agent config for Nginx/Ollama/CPU/RAM/disk.
-  - path: /opt/ollama-trial/todo-cloudwatch-agent.md
+  # Bootstrap expectations: the pieces it needs before it can run.
+  - path: /opt/ollama-trial/README-trial.txt
     permissions: "0644"
     owner: root:root
     content: |
-      Feature 032 - TODO(T043): CloudWatch agent, log group and metric filters are not
-      configured yet. Until then the trial runs without EC2 metrics and must not be
-      reported as SC-007 complete.
+      Feature 032 - Ollama CPU trial host.
+
+      * Ollama listens on 127.0.0.1:11434 only. Never bind a public interface.
+      * The only inference entry point is nginx on ${proxy_https_port}, allowed from
+        ${proxy_allowed_cidr} and guarded by an exact Bearer token.
+      * Port ${proxy_acme_port} serves the Let's Encrypt challenge and a redirect only.
+      * /etc/ollama-trial/trial.env is the operator-editable runtime config.
+      * /etc/ollama-trial/TRIAL_READY exists only after digest, TLS, pre-warm,
+        thinking-off and loopback checks have all passed.
+      * /etc/ollama-trial/TLS_PENDING means the certificate has not been issued yet
+        (usually the A record did not exist when the host booted). Re-run
+        /opt/ollama-trial/bootstrap.sh over SSM after DNS resolves.
+
+  # Cloud-init cannot read the repository, so the bootstrap script and the proxy
+  # template are carried in the user data. Both are plain strings passed through
+  # templatefile(); their shell/nginx variables are not re-interpolated.
+  - path: /opt/ollama-trial/bootstrap.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+${indent(6, bootstrap_script)}
+
+  - path: /opt/ollama-trial/nginx-ollama.conf.template
+    permissions: "0644"
+    owner: root:root
+    content: |
+${indent(6, nginx_template)}
+
+  # CloudWatch agent: logs for nginx + bootstrap and CPU/RAM/disk metrics.
+  # T043 adds metric filters/dashboard on top of this; retention comes from the
+  # Terraform log group and from retention_in_days below.
+  - path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    permissions: "0644"
+    owner: root:root
+    content: |
+      {
+        "agent": {
+          "metrics_collection_interval": 60,
+          "run_as_user": "root"
+        },
+        "logs": {
+          "logs_collected": {
+            "files": {
+              "collect_list": [
+                {
+                  "file_path": "/var/log/nginx/access.log",
+                  "log_group_name": "${cloudwatch_log_group_name}",
+                  "log_stream_name": "{instance_id}/nginx-access",
+                  "retention_in_days": ${cloudwatch_log_retention_days}
+                },
+                {
+                  "file_path": "/var/log/nginx/error.log",
+                  "log_group_name": "${cloudwatch_log_group_name}",
+                  "log_stream_name": "{instance_id}/nginx-error",
+                  "retention_in_days": ${cloudwatch_log_retention_days}
+                },
+                {
+                  "file_path": "/var/log/ollama-trial-bootstrap.log",
+                  "log_group_name": "${cloudwatch_log_group_name}",
+                  "log_stream_name": "{instance_id}/bootstrap",
+                  "retention_in_days": ${cloudwatch_log_retention_days}
+                }
+              ]
+            }
+          }
+        },
+        "metrics": {
+          "aggregation_dimensions": [["InstanceId"]],
+          "append_dimensions": {
+            "InstanceId": "$${aws:InstanceId}"
+          },
+          "metrics_collected": {
+            "mem": {
+              "measurement": [
+                {"name": "mem_used_percent", "rename": "ec2_memory_used_percent"}
+              ]
+            },
+            "disk": {
+              "measurement": [
+                {"name": "used_percent", "rename": "ec2_disk_used_percent"}
+              ],
+              "resources": ["/"]
+            }
+          }
+        }
+      }
 
 runcmd:
   - [ bash, "-c", "install -d -m 0700 /opt/ollama-trial" ]
-  - [ bash, "-c", "install -d -m 0755 /var/lib/ollama" ]
-  # TODO(T019): main.tf must upload deployments/ollama/bootstrap.sh and
-  # deployments/ollama/nginx-ollama.conf.template to /opt/ollama-trial/ before the
-  # next step runs. The bootstrap script aborts if either file or trial.env is missing.
-  - [ bash, "-lc", "/opt/ollama-trial/bootstrap.sh > /var/log/ollama-trial-bootstrap.log 2>&1" ]
-  # TODO(T022): make bootstrap.sh responsible for "systemctl enable --now ollama nginx"
-  # so a manual re-run and a fresh boot follow the same path.
-  - [ bash, "-lc", "systemctl enable ollama nginx || true" ]
+  - [ bash, "-c", "install -d -m 0755 /var/lib/ollama /var/lib/ollama/models /var/www/certbot" ]
+  # Bootstrap is idempotent. It exits 0 when the certificate cannot be issued yet
+  # and leaves /etc/ollama-trial/TLS_PENDING for the operator.
+  - [ bash, "-lc", "/opt/ollama-trial/bootstrap.sh >> /var/log/ollama-trial-bootstrap.log 2>&1" ]
+  - [ bash, "-lc", "systemctl enable nginx" ]
+  # CloudWatch agent (best effort: the trial must still boot if the download fails,
+  # and T043 reports the gap instead of pretending metrics exist).
+  - [ bash, "-lc", "if ! command -v amazon-cloudwatch-agent-ctl >/dev/null 2>&1; then curl -fsSL https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o /tmp/amazon-cloudwatch-agent.deb && dpkg -i /tmp/amazon-cloudwatch-agent.deb; fi || true" ]
+  - [ bash, "-lc", "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json || true" ]
+  - [ bash, "-lc", "systemctl enable amazon-cloudwatch-agent || true" ]
 
-final_message: "Feature 032 Ollama trial host bootstrap finished; verify with the runbook section B2."
+final_message: "Feature 032 Ollama trial host bootstrap finished; check /etc/ollama-trial/TRIAL_READY or TLS_PENDING, then run runbook section B2."

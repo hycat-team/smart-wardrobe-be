@@ -19,14 +19,29 @@ type textCall struct {
 	limiter    *rate.Limiter
 }
 
-// textCallPlan is the ordered set of attempts for one text request. A paid plan
-// keeps a free failover as its last resort; a free plan never falls back to a
-// paid key, because the free key is a separate quota rather than a cheaper copy.
+// textCallPlan is the ordered set of attempts for one text request: exactly one
+// primary and at most one fallback. There is no third "free failover" attempt
+// any more (feature 032 FR-023 / research.md R5); a request can never exceed two
+// provider calls.
 type textCallPlan struct {
-	primary      textCall
-	fallback     textCall
-	freeFailover *textCall
-	tier         string
+	primary  textCall
+	fallback textCall
+	tier     string
+}
+
+// textAttempts returns the attempts to run, in order, capped at two. It is the
+// single place that decides how many provider calls a request may make, so the
+// "max two attempts" invariant cannot drift between the streaming and
+// non-streaming paths.
+func (p textCallPlan) textAttempts() []textCall {
+	attempts := make([]textCall, 0, 2)
+	if p.primary.provider.Provider != "" {
+		attempts = append(attempts, p.primary)
+	}
+	if p.fallback.provider.Provider != "" {
+		attempts = append(attempts, p.fallback)
+	}
+	return attempts
 }
 
 func (s *AIService) resolveTextCallPlan(options app_ai.TextGenerationOptions, operation string) textCallPlan {
@@ -69,15 +84,6 @@ func (s *AIService) resolveTextCallPlan(options app_ai.TextGenerationOptions, op
 		},
 		tier: tier,
 	}
-	if s.cfg.AI.FreeTextPrimary.Provider != "" {
-		free := textCall{
-			provider:   s.cfg.AI.FreeTextPrimary,
-			capability: config.CapabilityFreeText,
-			client:     s.freeTextClient,
-			limiter:    s.freeTextLimiter,
-		}
-		plan.freeFailover = &free
-	}
 	return plan
 }
 
@@ -93,18 +99,18 @@ func (s *AIService) freeTextCall(override *app_ai.TextProviderConfig, defaultCfg
 // withUsageStamp makes the provider's usage callback report which config
 // actually served the call. The orchestrator needs that to record a truthful
 // provider/model and to price the request against the right billing class when a
-// fallback wins.
+// fallback wins. The wrapper is installed even when the caller has no callback,
+// because the attempt telemetry reads the stamped values as well.
 func (s *AIService) withUsageStamp(options app_ai.TextGenerationOptions, call textCall) app_ai.TextGenerationOptions {
 	original := options.OnUsage
-	if original == nil {
-		return options
-	}
 	unbilled := s.isUnbilled(call.provider.Provider, call.capability)
 	options.OnUsage = func(usage app_ai.TokenUsage) {
 		usage.Provider = call.provider.Provider
 		usage.Model = call.provider.Model
 		usage.Unbilled = unbilled
-		original(usage)
+		if original != nil {
+			original(usage)
+		}
 	}
 	return options
 }

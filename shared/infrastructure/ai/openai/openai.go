@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,42 @@ import (
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/pkg/utils/sliceutils"
 )
+
+// openAIChunk is the subset of one OpenAI-compatible chat completion chunk the
+// adapter consumes. reasoning_content / thinking deltas are deliberately absent:
+// the trial requires thinking to be off, and the adapter must never forward
+// reasoning text to the caller even if the provider emits it.
+type openAIChunk struct {
+	Choices []struct {
+		FinishReason string `json:"finish_reason"`
+		Delta        struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+	Usage struct {
+		PromptTokens     int64 `json:"prompt_tokens"`
+		CompletionTokens int64 `json:"completion_tokens"`
+		TotalTokens      int64 `json:"total_tokens"`
+	} `json:"usage"`
+}
+
+// hasUsage reports whether the chunk carried any token counter. Ollama may omit
+// usage entirely, so "no counters" must stay distinguishable from "zero
+// counters" for the caller's usage_reported flag.
+func (c openAIChunk) hasUsage() bool {
+	return c.Usage.PromptTokens > 0 || c.Usage.CompletionTokens > 0 || c.Usage.TotalTokens > 0
+}
+
+// finishReason returns the chunk's finish reason when it carries one.
+func (c openAIChunk) finishReason() string {
+	if len(c.Choices) == 0 {
+		return ""
+	}
+	return c.Choices[0].FinishReason
+}
 
 // CallTextStream generates OpenAI text response streaming.
 func CallTextStream(
@@ -31,25 +68,7 @@ func CallTextStream(
 		defer close(textChan)
 		defer close(errChan)
 
-		payload := map[string]any{
-			"model": provider.Model,
-			"messages": []map[string]string{
-				{
-					"role":    "system",
-					"content": systemPrompt,
-				},
-				{
-					"role":    "user",
-					"content": userPrompt,
-				},
-			},
-			"stream":         true,
-			"stream_options": map[string]any{"include_usage": true},
-		}
-		if options.MaxOutputTokens > 0 {
-			payload["max_tokens"] = options.MaxOutputTokens
-		}
-		applyOpenAIStructuredOutput(payload, options)
+		payload := buildChatPayload(provider, systemPrompt, userPrompt, options, true)
 
 		bodyBytes, err := json.Marshal(payload)
 		if err != nil {
@@ -78,41 +97,37 @@ func CallTextStream(
 			return
 		}
 
+		var (
+			usage      app_ai.TokenUsage
+			usageSeen  bool
+			sawContent bool
+		)
+
 		err = parseSSEStream(resp.Body, func(data string) error {
 			if data == "[DONE]" {
 				return io.EOF
 			}
 
-			var openAIResp struct {
-				Choices []struct {
-					FinishReason string `json:"finish_reason"`
-					Delta        struct {
-						Content string `json:"content"`
-					} `json:"delta"`
-				} `json:"choices"`
-				Usage struct {
-					PromptTokens     int64 `json:"prompt_tokens"`
-					CompletionTokens int64 `json:"completion_tokens"`
-					TotalTokens      int64 `json:"total_tokens"`
-				} `json:"usage"`
+			var chunk openAIChunk
+			if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+				return NewMalformedError(fmt.Errorf("malformed SSE chunk: %w", err))
 			}
 
-			if err := json.Unmarshal([]byte(data), &openAIResp); err != nil {
-				return err
-			}
-
-			if openAIResp.Usage.TotalTokens > 0 && options.OnUsage != nil {
-				options.OnUsage(app_ai.TokenUsage{
-					PromptTokens:   openAIResp.Usage.PromptTokens,
-					OutputTokens:   openAIResp.Usage.CompletionTokens,
+			if chunk.hasUsage() {
+				usage = app_ai.TokenUsage{
+					PromptTokens:   chunk.Usage.PromptTokens,
+					OutputTokens:   chunk.Usage.CompletionTokens,
 					ThinkingTokens: 0,
-					FinishReason:   "",
-				})
+				}
+				usageSeen = true
+			}
+			if reason := chunk.finishReason(); reason != "" {
+				usage.FinishReason = reason
 			}
 
-			if len(openAIResp.Choices) > 0 {
-				text := openAIResp.Choices[0].Delta.Content
-				if text != "" {
+			if len(chunk.Choices) > 0 {
+				if text := chunk.Choices[0].Delta.Content; text != "" {
+					sawContent = true
 					select {
 					case <-ctx.Done():
 						return ctx.Err()
@@ -120,12 +135,28 @@ func CallTextStream(
 					}
 				}
 			}
-			if len(openAIResp.Choices) > 0 && openAIResp.Choices[0].FinishReason == "length" {
+			if chunk.finishReason() == "length" {
 				return NewMaxTokensError(fmt.Errorf("OpenAI text generation reached MAX_TOKENS"))
 			}
 			return nil
 		})
-		if err != nil && err != io.EOF && err != context.Canceled {
+
+		canceled := errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled)
+		// [DONE] aborts the parser with io.EOF; that is a clean end, not a failure.
+		if err == io.EOF {
+			err = nil
+		}
+		// The winning provider must be reported even when Ollama sends no usage
+		// payload; the caller stamps provider/model from this callback. A canceled
+		// stream reports nothing because the attempt is not a success.
+		if !canceled && options.OnUsage != nil {
+			options.OnUsage(usage)
+		}
+
+		if err == nil && !sawContent && !usageSeen {
+			err = NewMalformedError(fmt.Errorf("empty stream: no content and no usage reported"))
+		}
+		if err != nil && !canceled {
 			errChan <- err
 		}
 	}()
@@ -142,23 +173,7 @@ func CallText(
 	userPrompt string,
 	options app_ai.TextGenerationOptions,
 ) (string, error) {
-	payload := map[string]any{
-		"model": provider.Model,
-		"messages": []map[string]string{
-			{
-				"role":    "system",
-				"content": systemPrompt,
-			},
-			{
-				"role":    "user",
-				"content": userPrompt,
-			},
-		},
-	}
-	if options.MaxOutputTokens > 0 {
-		payload["max_tokens"] = options.MaxOutputTokens
-	}
-	applyOpenAIStructuredOutput(payload, options)
+	payload := buildChatPayload(provider, systemPrompt, userPrompt, options, false)
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -183,40 +198,134 @@ func CallText(
 		return "", apperror.NewUpstreamUnavailable(NewHTTPError(resp.StatusCode, fmt.Errorf("OpenAI Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes))))
 	}
 
-	var openAIResp struct {
-		Choices []struct {
-			FinishReason string `json:"finish_reason"`
-			Message      struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Usage struct {
-			PromptTokens     int64 `json:"prompt_tokens"`
-			CompletionTokens int64 `json:"completion_tokens"`
-			TotalTokens      int64 `json:"total_tokens"`
-		} `json:"usage"`
-	}
-
+	var openAIResp openAIChunk
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
-		return "", err
+		return "", apperror.NewUpstreamUnavailable(NewMalformedError(fmt.Errorf("malformed chat completion body: %w", err)))
 	}
 
-	if len(openAIResp.Choices) == 0 {
-		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
-	}
+	// Usage is reported before the content checks so a truncated or malformed
+	// answer still carries the winning provider's token counters.
 	if options.OnUsage != nil {
 		options.OnUsage(app_ai.TokenUsage{
 			PromptTokens:   openAIResp.Usage.PromptTokens,
 			OutputTokens:   openAIResp.Usage.CompletionTokens,
 			ThinkingTokens: 0,
-			FinishReason:   openAIResp.Choices[0].FinishReason,
+			FinishReason:   openAIResp.finishReason(),
 		})
 	}
-	if openAIResp.Choices[0].FinishReason == "length" {
-		return "", NewMaxTokensError(fmt.Errorf("OpenAI text generation reached MAX_TOKENS"))
+
+	if len(openAIResp.Choices) == 0 {
+		return "", apperror.NewUpstreamUnavailable(NewMalformedError(fmt.Errorf("chat completion carries no choices")))
+	}
+	if openAIResp.finishReason() == "length" {
+		// A truncated answer must not be returned as content: it is an output
+		// failure and the single Gemini fallback may run instead.
+		return "", apperror.NewUpstreamUnavailable(NewMaxTokensError(fmt.Errorf("OpenAI text generation reached MAX_TOKENS")))
 	}
 
-	return openAIResp.Choices[0].Message.Content, nil
+	content := openAIResp.Choices[0].Message.Content
+	if strings.TrimSpace(content) == "" {
+		return "", apperror.NewUpstreamUnavailable(NewMalformedError(fmt.Errorf("chat completion content is empty")))
+	}
+	if err := validateStructuredContent(content, options); err != nil {
+		return "", apperror.NewUpstreamUnavailable(err)
+	}
+
+	return content, nil
+}
+
+// buildChatPayload assembles the OpenAI-compatible chat request shared by the
+// streaming and non-streaming calls. The contract in
+// specs/032-ollama-lightsail-trial/contracts/ollama-openai-subset.md section 2
+// requires `temperature` to be sent even when it is 0, and `reasoning_effort`
+// only when it is configured ("none" disables qwen3 thinking during the trial).
+func buildChatPayload(
+	provider config.APIProviderConfig,
+	systemPrompt string,
+	userPrompt string,
+	options app_ai.TextGenerationOptions,
+	stream bool,
+) map[string]any {
+	payload := map[string]any{
+		"model": provider.Model,
+		"messages": []map[string]string{
+			{
+				"role":    "system",
+				"content": systemPrompt,
+			},
+			{
+				"role":    "user",
+				"content": userPrompt,
+			},
+		},
+		"stream":      stream,
+		"temperature": options.Temperature,
+	}
+	if stream {
+		payload["stream_options"] = map[string]any{"include_usage": true}
+	}
+	if options.MaxOutputTokens > 0 {
+		payload["max_tokens"] = options.MaxOutputTokens
+	}
+	if effort := strings.TrimSpace(provider.ReasoningEffort); effort != "" {
+		payload["reasoning_effort"] = effort
+	}
+	applyOpenAIStructuredOutput(payload, options)
+	return payload
+}
+
+// validateStructuredContent checks a structured answer before it is returned.
+// It deliberately avoids a schema library: the trial only needs "is this valid
+// JSON" plus the top-level keys the caller marked as required. A failure is a
+// schema_invalid outcome, which is eligible for the one fallback attempt.
+func validateStructuredContent(content string, options app_ai.TextGenerationOptions) error {
+	if options.ResponseMIMEType != "application/json" {
+		return nil
+	}
+	if !json.Valid([]byte(content)) {
+		return NewSchemaInvalidError(fmt.Errorf("structured response is not valid JSON"))
+	}
+
+	schema, ok := options.ResponseSchema.(map[string]any)
+	if !ok {
+		return nil
+	}
+	required, ok := stringList(schema["required"])
+	if !ok || len(required) == 0 {
+		return nil
+	}
+
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(content), &decoded); err != nil {
+		return NewSchemaInvalidError(fmt.Errorf("structured response is not a JSON object: %w", err))
+	}
+	for _, key := range required {
+		if _, present := decoded[key]; !present {
+			return NewSchemaInvalidError(fmt.Errorf("structured response is missing required key %q", key))
+		}
+	}
+	return nil
+}
+
+// stringList accepts the shapes a JSON-schema "required" array can take once it
+// has travelled through YAML configuration: []string or []any of strings.
+func stringList(value any) ([]string, bool) {
+	switch typed := value.(type) {
+	case []string:
+		return typed, true
+	case []any:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			text, ok := item.(string)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, text)
+		}
+		return out, true
+	default:
+		return nil, false
+	}
 }
 
 // CallVision analyzes image content.

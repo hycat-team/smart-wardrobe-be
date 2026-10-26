@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -80,7 +81,6 @@ func CallTextStream(
 
 		var lastMetadata googleUsageMetadata
 		var lastFinishReason string
-		hasMetadata := false
 
 		err = parseSSEStream(resp.Body, func(data string) error {
 			var googleResp struct {
@@ -112,17 +112,21 @@ func CallTextStream(
 			}
 			if googleResp.UsageMetadata.TotalTokenCount > 0 {
 				lastMetadata = googleResp.UsageMetadata
-				hasMetadata = true
-				if len(googleResp.Candidates) > 0 {
-					lastFinishReason = googleResp.Candidates[0].FinishReason
-				}
+			}
+			if len(googleResp.Candidates) > 0 && googleResp.Candidates[0].FinishReason != "" {
+				lastFinishReason = googleResp.Candidates[0].FinishReason
 			}
 			if len(googleResp.Candidates) > 0 && googleResp.Candidates[0].FinishReason == "MAX_TOKENS" {
 				return fmt.Errorf("Google text generation reached MAX_TOKENS")
 			}
 			return nil
 		})
-		if hasMetadata && options.OnUsage != nil {
+		// Always report the winning provider, even when the stream carried no
+		// usageMetadata: the caller stamps provider/model from this callback and a
+		// missing stamp would record the wrong provider for a Gemini fallback.
+		// A canceled stream reports nothing.
+		canceled := errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled)
+		if !canceled && options.OnUsage != nil {
 			options.OnUsage(app_ai.TokenUsage{
 				PromptTokens:   lastMetadata.PromptTokenCount,
 				OutputTokens:   lastMetadata.CandidatesTokenCount,
@@ -130,7 +134,7 @@ func CallTextStream(
 				FinishReason:   lastFinishReason,
 			})
 		}
-		if err != nil && err != context.Canceled {
+		if err != nil && !canceled {
 			errChan <- err
 		}
 	}()

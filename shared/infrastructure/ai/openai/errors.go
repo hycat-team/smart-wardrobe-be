@@ -110,6 +110,17 @@ func NewMalformedError(cause error) *UpstreamError {
 	}
 }
 
+// NewSchemaInvalidError marks a 2xx response whose structured content is valid
+// JSON but does not satisfy the requested schema. The HTTP call itself
+// succeeded, so only the outcome decides the fallback.
+func NewSchemaInvalidError(cause error) *UpstreamError {
+	return &UpstreamError{
+		HTTPStatus: http.StatusOK,
+		Outcome:    OutcomeSchemaInvalid,
+		Cause:      cause,
+	}
+}
+
 // AsUpstreamError recovers the typed error from any wrapper in the chain.
 func AsUpstreamError(err error) (*UpstreamError, bool) {
 	var upstream *UpstreamError
