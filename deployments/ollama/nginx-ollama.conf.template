@@ -1,0 +1,113 @@
+# Feature 032 - Nginx TLS/Bearer proxy in front of the local Ollama runtime.
+#
+# Template contract: specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md section 2
+# Rendered by deployments/ollama/bootstrap.sh into /etc/nginx/conf.d/ollama.conf.
+#
+# Placeholders (substituted at bootstrap time, never committed filled in):
+#   __PROXY_HOSTNAME__        dedicated A record, NOT the API domain
+#   __PROXY_HTTPS_PORT__      public TLS port (443)
+#   __PROXY_ACME_PORT__       port 80, ACME challenge and redirect only
+#   __PROXY_ALLOWED_CIDR__    Lightsail static IP as /32
+#   __PROXY_TLS_CERT_PATH__   certbot fullchain path
+#   __PROXY_TLS_KEY_PATH__    certbot private key path
+#   __PROXY_BEARER_TOKEN__    proxy Bearer token read from Secrets Manager
+#
+# Invariants:
+#   - The inference port 11434 is never proxied to the public side; proxy_pass always
+#     targets 127.0.0.1:11434.
+#   - Port 80 must not proxy inference; it serves the ACME challenge and a redirect.
+#   - The Bearer token must never appear in access logs; the token is not logged.
+#
+# TODO(T021): finish the ACME bootstrap server block, the exact-match Bearer check with
+# a constant-time comparison helper if available, and header hardening (HSTS).
+
+# Workspace for the Let's Encrypt HTTP-01 challenge.
+# TODO(T021): the certbot --webroot path must match this value.
+# ACME_WEBROOT = /var/www/certbot
+
+upstream ollama_loopback {
+    # Loopback only. Ollama must bind 127.0.0.1:11434; never use a public interface here.
+    server 127.0.0.1:11434;
+    keepalive 4;
+}
+
+# Port 80: ACME challenge + redirect only. No inference path exists in this server block.
+server {
+    listen __PROXY_ACME_PORT__ default_server;
+    listen [::]:__PROXY_ACME_PORT__ default_server;
+    server_name __PROXY_HOSTNAME__;
+
+    server_tokens off;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Port 443: the only inference entry point. Guarded by allowlist AND Bearer.
+server {
+    listen __PROXY_HTTPS_PORT__ ssl http2;
+    listen [::]:__PROXY_HTTPS_PORT__ ssl http2;
+    server_name __PROXY_HOSTNAME__;
+
+    server_tokens off;
+
+    ssl_certificate     __PROXY_TLS_CERT_PATH__;
+    ssl_certificate_key __PROXY_TLS_KEY_PATH__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:ollama_tls:10m;
+    ssl_session_timeout 10m;
+
+    # Allowlist: only the Lightsail static IP /32. The security group is the outer guard;
+    # this is defence in depth and must stay in sync when the static IP changes.
+    allow __PROXY_ALLOWED_CIDR__;
+    deny all;
+
+    # Prompts are bounded; the adapter must never send arbitrary uploads here.
+    client_max_body_size 16m;
+
+    # Minimal unauthenticated health probe for the runbook (no model call, no token).
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    # The single supported inference route. The Go adapter posts the full
+    # /v1/chat/completions URL, so the proxy must preserve the path (no URI on proxy_pass).
+    location = /v1/chat/completions {
+        # Bearer auth. Exact string match; a missing or wrong header is rejected here
+        # and never reaches Ollama. The token value is injected from Secrets Manager.
+        if ($http_authorization != "Bearer __PROXY_BEARER_TOKEN__") {
+            return 401;
+        }
+
+        proxy_pass http://ollama_loopback;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Streaming: disable buffering so SSE chunks reach the Go service immediately.
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_cache off;
+        add_header X-Accel-Buffering no;
+
+        # Attempt budget: Ollama 90s + Gemini fallback 30s stays inside the 120s write
+        # timeout. Do not raise these without changing the env contract.
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 125s;
+        proxy_read_timeout 125s;
+    }
+
+    # Everything else is closed: Ollama's native /api surface stays loopback-only.
+    location / {
+        return 404;
+    }
+}

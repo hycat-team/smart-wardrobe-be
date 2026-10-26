@@ -738,6 +738,8 @@ deployments/scripts/aws-env/outcome/
 !.env.example
 !.env.production.example
 !.env.aws.example
+# Feature 032: EC2-side template for the Ollama trial. Placeholders only, no secret.
+!.env.ollama.example
 bin/
 backups/
 *.dump
@@ -745,4 +747,10 @@ backups/
 
 *.drawio.bkp
 .zcode/
+
+# Feature 032 - Terraform for the Ollama trial EC2 (local state, never commit state/vars)
+.terraform/
+*.tfstate*
+*.tfvars
+# .terraform.lock.hcl IS committed on purpose (provider lock); do not ignore it.
 
