@@ -11,15 +11,15 @@ import (
 )
 
 // IAICostAttemptUseCase is the attempt-aware admission half of the cost use
-// case introduced by feature 032. It is intentionally separate from
-// IAICostUseCase so the US2 implementation can land without changing every
-// existing caller. It has no implementation yet.
+// case introduced by feature 032. IAICostUseCase embeds it so the orchestrator
+// can call admission and cost on the same injected dependency.
 type IAICostAttemptUseCase interface {
 	AdmitUnbilledAttempt(ctx context.Context, admission UnbilledAttemptAdmission) (*AICostDecision, error)
 	PrepareBillableAttempt(ctx context.Context, admission BillableAttemptAdmission) (*AICostDecision, error)
 }
 
 type IAICostUseCase interface {
+	IAICostAttemptUseCase
 	Prepare(ctx context.Context, plan *ExecutionPlan) (*AICostDecision, error)
 	PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*AICostDecision, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID) error

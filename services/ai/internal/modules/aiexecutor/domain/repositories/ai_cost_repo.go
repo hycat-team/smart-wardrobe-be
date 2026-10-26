@@ -38,6 +38,21 @@ type IAICostRepository interface {
 	// carries none. The repository does not guess between those - it refuses the
 	// paid route, which is the safe direction, and the caller escalates to tier 2.
 	Reserve(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, operation *aiexecutor_entities.AICostPolicyOperation, maxPaidAttemptsPerDay *int, event *aiexecutor_entities.AIUsageEvent, now time.Time) (*aiexecutor_entities.AIUsagePeriodLedger, bool, error)
+	// AdmitUnbilledAttempt writes the usage event of an attempt whose provider
+	// costs nothing (provider=openai in the Ollama trial). It never touches the
+	// ledger, the pricing snapshot or a reservation; the event is upserted by
+	// request_id so a repeated BeforeAttempt produces one row and consumes the
+	// per-day attempt cap at most once.
+	//
+	// With paid logical_route and an observe_only policy the daily attempt cap is
+	// enforced exactly like Reserve does; strict policies have no attempt cap and
+	// always admit. A route that is not paid is always admitted.
+	AdmitUnbilledAttempt(ctx context.Context, policy *aiexecutor_entities.AICostPolicy, maxPaidAttemptsPerDay *int, event *aiexecutor_entities.AIUsageEvent, now time.Time) (bool, error)
+	// PrepareBillableAttempt upgrades the existing event of a trial request to a
+	// billable fallback provider. It locks the event by request_id (SELECT ...
+	// FOR UPDATE), snapshots the pricing fields, adds the reservation to the
+	// period ledger and keeps the same request_id so no second event is created.
+	PrepareBillableAttempt(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, event *aiexecutor_entities.AIUsageEvent, now time.Time) (bool, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID, at time.Time) error
 	// Confirm records the real usage of a request and its actual cost.
 	//

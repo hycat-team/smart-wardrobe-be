@@ -177,6 +177,8 @@ func (s *AIService) attemptMeta(
 		Model:        call.provider.Model,
 		Operation:    resolvedOperation,
 		Capability:   call.capability,
+		Route:        options.Route,
+		BillingClass: options.BillingClass,
 		Timeout:      timeout,
 	}
 }

@@ -231,10 +231,11 @@ func (uc *OrchestratorUseCase) applyTextRoute(plan *uc_interfaces.ExecutionPlan,
 
 func toTextProviderConfig(cfg config.APIProviderConfig, capability string) app_ai.TextProviderConfig {
 	return app_ai.TextProviderConfig{
-		Provider:   cfg.Provider,
-		APIKey:     cfg.ApiKey,
-		Endpoint:   cfg.Endpoint,
-		Model:      cfg.Model,
-		Capability: capability,
+		Provider:        cfg.Provider,
+		APIKey:          cfg.ApiKey,
+		Endpoint:        cfg.Endpoint,
+		Model:           cfg.Model,
+		Capability:      capability,
+		ReasoningEffort: cfg.ReasoningEffort,
 	}
 }

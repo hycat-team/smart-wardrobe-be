@@ -113,6 +113,11 @@ type TextGenerationOptions struct {
 	// Hooks, when set, is called immediately before and after every provider
 	// attempt. Nil keeps the pre-existing behaviour.
 	Hooks *AttemptHooks
+	// Route and BillingClass are filled by the orchestrator for attempt-aware
+	// calls so the attempt metadata is never left blank. Empty keeps the
+	// pre-existing behaviour.
+	Route        string
+	BillingClass string
 }
 
 type IAIService interface {

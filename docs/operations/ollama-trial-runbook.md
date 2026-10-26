@@ -276,7 +276,7 @@ Chỉ sửa `/opt/closy-aws/.env.aws`, không sửa artefact deployment. Giá tr
 | `CHAT_TEXT_PRIMARY_*`, `RECOMMENDATION_TEXT_PRIMARY_*`, `FREE_TEXT_PRIMARY_*` | `PROVIDER=openai`; `ENDPOINT=https://<ollama-host>/v1/chat/completions`; `MODEL=qwen3:4b`; `API_KEY=<bearer-token>` (trùng token proxy, không log) |
 | `*_TEXT_FALLBACK_*` | Giữ `google` với key/endpoint/model Gemini hiện hữu |
 | `VISION_*`, `EMBEDDING_*` | **Không đổi** (Gemini) |
-| `AI_UNBILLED_CAPABILITIES` | Giữ `free_text,embedding`; **không** dùng để miễn phí OpenAI |
+| `AI_UNBILLED_CAPABILITIES` | Giữ `free_text,embedding`; danh sách này chỉ phân loại **capability**, **không** dùng để miễn phí OpenAI. Quy tắc `provider=openai` nằm ở code và được xét theo provider trước danh sách capability |
 | `AI_TEXT_MAX_CONCURRENCY` | `2` |
 | `AI_TEXT_PRIMARY_TIMEOUT_SECONDS` | `90` |
 | `AI_TEXT_FALLBACK_TIMEOUT_SECONDS` | `30` |
