@@ -65,13 +65,26 @@ if (-not (Test-Path -LiteralPath $Template)) { Write-Host "FAIL: template not fo
 $vps = Read-EnvMap $EnvProd
 
 # Values copied verbatim from the VPS (shared quota, same issuers).
+#
+# Feature 032 (Ollama trial): the six AI keys added below must never be dropped
+# from the generated .env.aws. This script only guarantees the keys survive the
+# scaffolding - it does NOT enable the trial. The real trial values (all three
+# text PRIMARY groups pointing at provider openai, endpoint/model/bearer, and the
+# 90/30/90 timeouts) are set by the OPERATOR in /opt/closy-aws/.env.aws on the
+# box, per specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md section 1.
+# AI_OPENAI_TRIAL_EXPECTED_HOSTS is deliberately EmptyOk: the Ollama host is
+# box-specific, so the operator fills it in rather than inheriting a stale value.
 $CopyExact = @(
     'TZ','FRONT_END_ORIGIN','SWAGGER_ACCESS_CODE',
     'JWT_ALGORITHM','JWT_SECRET','JWT_PRIVATE_KEY','JWT_PUBLIC_KEY',
     'EMAIL_SENDER_EMAIL','EMAIL_SMTP_USER','EMAIL_SMTP_KEY','EMAIL_REPLY_TO',
     'CLOUDINARY_CLOUD_NAME','CLOUDINARY_API_KEY','CLOUDINARY_API_SECRET','CLOUDINARY_API_URL',
     'GOOGLE_WEB_CLIENT_ID','GOOGLE_WEB_CLIENT_SECRET','GOOGLE_CLIENT_IDS',
-    'AI_UNBILLED_CAPABILITIES'
+    'AI_UNBILLED_CAPABILITIES',
+    # Feature 032 AI attempt limits. Missing on the VPS today, so the template
+    # default (2 / 90 / 30 / none / 90) is kept; the operator owns the trial values.
+    'AI_TEXT_MAX_CONCURRENCY','AI_TEXT_PRIMARY_TIMEOUT_SECONDS','AI_TEXT_FALLBACK_TIMEOUT_SECONDS',
+    'AI_OPENAI_REASONING_EFFORT','AI_CHAT_CHUNK_DEADLINE_SECONDS'
 )
 $CopyPrefix = @('VISION_','EMBEDDING_','CHAT_TEXT_','RECOMMENDATION_TEXT_','FREE_TEXT_')
 
@@ -137,9 +150,12 @@ $TodoHint = @{
 }
 
 # Intentionally empty; no action needed.
+# AI_OPENAI_TRIAL_EXPECTED_HOSTS (feature 032) is host-specific: it stays empty
+# here and the operator sets it on the box when the Ollama trial starts.
 $EmptyOk = @(
     'PORT','INGRESS_TOKEN_AUDIENCE','DB_DRILL_SCHEMA','DATABASE_MIGRATION_TABLE',
-    'ELASTICSEARCH_ADDRESSES','ELASTICSEARCH_USER','ELASTICSEARCH_PASSWORD'
+    'ELASTICSEARCH_ADDRESSES','ELASTICSEARCH_USER','ELASTICSEARCH_PASSWORD',
+    'AI_OPENAI_TRIAL_EXPECTED_HOSTS'
 )
 
 $lines = New-Object System.Collections.Generic.List[string]

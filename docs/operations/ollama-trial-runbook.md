@@ -1,7 +1,10 @@
 # Runbook — Thử nghiệm Ollama trên EC2 (feature 032)
 
-**Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Trạng thái**: Phase 3
-(US1) đã có mã + test; các bước hạ tầng (T025–T027) **chưa chạy** — xem mục 8.
+**Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Cập nhật**: 2026-10-27
+(Phase 5 / US3: quy trình bật–rollback–allowlist ở mục 4, kiểm tra bất biến ở mục 5, checklist người
+vận hành T039–T042 ở mục 9) | **Trạng thái**: Phase 3 (US1) và Phase 4 (US2) đã có mã + test; Phase 5
+mới có **tài liệu và script env** — T037–T041 **chưa chạy** (operator step), T042 mới chạy phần
+regression local. Xem mục 8 và mục 9.
 
 Runbook này là quy trình vận hành duy nhất cho tuần thử nghiệm Ollama: đo baseline, chạy local,
 dựng EC2, bật/tắt bằng env trên Lightsail, rollback và chốt quyết định ngày thứ 7. Hợp đồng chi
@@ -236,6 +239,10 @@ Compose/Nginx/pipeline.
 - Log có `provider`, `model`, `attempt_index`, `billing_class`, `cost_micro_vnd`.
 - `ai_usage_events`: ba đường text có `actual_cost_micro_vnd = 0`.
 
+> Lệnh + output kỳ vọng chi tiết ở §4.1.3/§4.1.4. Lưu ý: `cost_micro_vnd` trong dòng log attempt
+> chưa được điền ở phase này (T044) — cost chỉ đọc từ `ai_usage_events`; vision/embedding không có
+> dòng attempt nào.
+
 ### B5. Kiểm tra cô lập truy cập
 
 Từ máy ngoài allowlist:
@@ -259,77 +266,341 @@ trả 401/403; request hợp lệ từ Lightsail trả 200. Ghi bằng chứng c
 
 ### B7. Drill rollback Gemini-only
 
-Đổi ba `*_TEXT_PRIMARY_*` về Gemini như §1.5 của env contract rồi chạy lại deploy hiện hữu.
+Đổi ba `*_TEXT_PRIMARY_*` về Gemini như §1.5 của env contract rồi chạy lại deploy hiện hữu. Quy
+trình chi tiết (từng lệnh + output kỳ vọng) ở §4.2; kịch bản drill có bấm giờ và bảng bằng chứng
+SC-006 ở §9.3. Regression API phục vụ SC-008 ở §9.4.
 
 **Đạt khi**: trong ≤15 phút, text phục vụ bằng Gemini; sáu container healthy; không mất dữ liệu đã
 xác nhận; không thao tác VPS. Ghi bằng chứng cho SC-006.
 
-## 4. Chuyển cấu hình (bật/tắt) và cập nhật allowlist
+## 4. Chuyển cấu hình (bật/tắt), rollback và cập nhật allowlist
+
+> Bật/tắt thử nghiệm **chỉ** bằng env. Không sửa Dockerfile, `deployments/docker-compose.aws.yml`,
+> `deployments/nginx/templates/aws/**`, `.github/workflows/deploy-aws.yml`, không đổi DNS của API và
+> không có lệnh nào nhắm vào VPS. Nếu một bước nào đó đòi sửa các file trên thì **dừng lại** — đó
+> không phải bước của thử nghiệm này.
+>
+> Giá trị trial do **người vận hành** đặt vào `/opt/closy-aws/.env.aws`. Script sinh env
+> (`deployments/scripts/aws-env/aws-env-bootstrap.ps1`) chỉ bảo đảm các key AI mới **không bị rơi
+> khỏi** file `.env.aws` sinh tự động; nó **không** tự bật trial và không chứa secret.
+>
+> Toàn bộ mục 4 **chưa được chạy** trong môi trường implement (không có quyền truy cập Lightsail).
+> Mọi output dưới đây là **kỳ vọng**, không phải kết quả đã đo.
 
 ### 4.1 Bật trial (Gemini-only → Ollama primary)
 
-Chỉ sửa `/opt/closy-aws/.env.aws`, không sửa artefact deployment. Giá trị theo
-[contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md) §1:
+#### 4.1.1 Sáu nhóm biến môi trường
 
-| Nhóm biến | Giá trị khi bật |
-|---|---|
-| `CHAT_TEXT_PRIMARY_*`, `RECOMMENDATION_TEXT_PRIMARY_*`, `FREE_TEXT_PRIMARY_*` | `PROVIDER=openai`; `ENDPOINT=https://<ollama-host>/v1/chat/completions`; `MODEL=qwen3:4b`; `API_KEY=<bearer-token>` (trùng token proxy, không log) |
-| `*_TEXT_FALLBACK_*` | Giữ `google` với key/endpoint/model Gemini hiện hữu |
-| `VISION_*`, `EMBEDDING_*` | **Không đổi** (Gemini) |
-| `AI_UNBILLED_CAPABILITIES` | Giữ `free_text,embedding`; danh sách này chỉ phân loại **capability**, **không** dùng để miễn phí OpenAI. Quy tắc `provider=openai` nằm ở code và được xét theo provider trước danh sách capability |
-| `AI_TEXT_MAX_CONCURRENCY` | `2` |
-| `AI_TEXT_PRIMARY_TIMEOUT_SECONDS` | `90` |
-| `AI_TEXT_FALLBACK_TIMEOUT_SECONDS` | `30` |
-| `AI_OPENAI_REASONING_EFFORT` | `none` |
-| `AI_CHAT_CHUNK_DEADLINE_SECONDS` | `90` |
-| `AI_OPENAI_TRIAL_EXPECTED_HOSTS` | `<ollama-host>` (host, không scheme/path) |
+Nguồn: [contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md)
+§1.1–§1.4 và `plan.md` §4 ("Env Lightsail"). Tổng cộng 47 key AI liên quan: 24 key trong ba nhóm
+text (8 key/nhóm), 16 key `VISION_*`/`EMBEDDING_*`, và 7 key điều khiển trial.
 
-Sau khi sửa: chạy quy trình deploy AWS hiện hữu (`docs/operations/deployment-pipeline.md`), chờ
-container AI healthy, rồi lặp lại B4 + B5.
+| # | Nhóm | Key (đủ) | Giá trị trial |
+|---|---|---|---|
+| 1 | `CHAT_TEXT` primary | `CHAT_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | `openai` / `<bearer-token>` / `https://<ollama-host>/v1/chat/completions` / `qwen3:4b` |
+| 2 | `RECOMMENDATION_TEXT` primary | `RECOMMENDATION_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | như nhóm 1 (cùng endpoint/token/model) |
+| 3 | `FREE_TEXT` primary | `FREE_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | như nhóm 1 (cùng endpoint/token/model) |
+| 4 | Ba nhóm fallback | `{CHAT,RECOMMENDATION,FREE}_TEXT_FALLBACK_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | `google` + **đúng** key/endpoint/model Gemini đang chạy (lấy từ block `*_TEXT_FALLBACK_*` hiện hữu, không đổi giá trị) |
+| 5 | Vision + embedding | `VISION_{PRIMARY,FALLBACK}_{PROVIDER,API_KEY,ENDPOINT,MODEL}`, `EMBEDDING_{PRIMARY,FALLBACK}_{PROVIDER,API_KEY,ENDPOINT,MODEL}` | **Không đổi** — giữ nguyên provider/endpoint/model hiện hữu (Gemini). Trial **không** được trỏ vision/embedding sang Ollama |
+| 6 | Điều khiển trial | `AI_UNBILLED_CAPABILITIES`, `AI_TEXT_MAX_CONCURRENCY`, `AI_TEXT_PRIMARY_TIMEOUT_SECONDS`, `AI_TEXT_FALLBACK_TIMEOUT_SECONDS`, `AI_OPENAI_REASONING_EFFORT`, `AI_CHAT_CHUNK_DEADLINE_SECONDS`, `AI_OPENAI_TRIAL_EXPECTED_HOSTS` | xem bảng dưới |
+
+Chi tiết nhóm 6 (giá trị là hợp đồng, không phải gợi ý):
+
+| Key | Giá trị trial | Ràng buộc kiểm tra lúc khởi động |
+|---|---|---|
+| `AI_UNBILLED_CAPABILITIES` | `free_text,embedding` | Giữ nguyên; danh sách này **chỉ** phân loại capability. Miễn phí `openai` là rule **theo provider** trong code, **không** dùng danh sách này |
+| `AI_TEXT_MAX_CONCURRENCY` | `2` | `>= 1` (default code 2) |
+| `AI_TEXT_PRIMARY_TIMEOUT_SECONDS` | `90` | `> 0`; `+ AI_TEXT_FALLBACK_TIMEOUT_SECONDS <= 120`; `<= AI_CHAT_CHUNK_DEADLINE_SECONDS` |
+| `AI_TEXT_FALLBACK_TIMEOUT_SECONDS` | `30` | `> 0` |
+| `AI_OPENAI_REASONING_EFFORT` | `none` | chỉ `none`/`low`/`medium`/`high` hoặc trống (trống = không gửi field) |
+| `AI_CHAT_CHUNK_DEADLINE_SECONDS` | `90` | `> 0`; override field có sẵn `server.sse.ai_chat_chunk_deadline_seconds` (default 30 ngoài trial) |
+| `AI_OPENAI_TRIAL_EXPECTED_HOSTS` | `<ollama-host>` | CSV **host** (không scheme/path); trống = tắt cảnh báo "openai trỏ sai host" |
+
+Ghi chú hợp đồng:
+
+- `ENDPOINT` của `openai` phải là URL **đầy đủ** tới `/v1/chat/completions` (adapter POST nguyên
+  chuỗi, không tự nối path) và phải là `https`. Ngoại lệ duy nhất: drill local
+  `http://127.0.0.1:<port>/v1/chat/completions` — path vẫn bắt buộc.
+- `MODEL` phải đúng `qwen3:4b` và khớp digest đã pin trên EC2 (mục 1, B2).
+- `API_KEY` của ba nhóm primary phải **trùng** Bearer token của proxy (Secrets Manager trên EC2).
+  Không log, không dán vào tài liệu.
+- `summary`/`rewriter` không có nhóm env riêng: route free dùng nhóm `free_text`, route paid dùng
+  nhóm `chat_text`; trial đặt cả hai nhóm `openai` nên cả hai đi Ollama.
+- Vision/embedding **không** được đổi. Nếu vô tình trỏ sang Ollama, đó là lỗi cấu hình: dừng và
+  hoàn nguyên ngay.
+
+#### 4.1.2 Các bước bật (người vận hành chạy trên máy dev + box Lightsail)
+
+1. **Chốt baseline** (mục 1) và lưu bản sao env chỉ để so sánh, **không** đưa vào repo:
+
+   ```bash
+   # trên box Lightsail
+   cd /opt/closy-aws
+   sudo cp -a .env.aws .env.aws.bak-$(date -u +%Y%m%dT%H%M%SZ)
+   ```
+
+2. **Sửa tại chỗ** `/opt/closy-aws/.env.aws` theo bảng §4.1.1 (dùng `vi`/`nano`; `chmod 600`).
+   Không thêm block trùng key ở cuối file — giá trị trùng key làm kết quả phụ thuộc thứ tự và
+   không kiểm chứng được. Chỉ sửa **giá trị**, không đổi tên key.
+
+3. **Kiểm tra env trước khi deploy** (che key):
+
+   ```bash
+   cd /opt/closy-aws
+   grep -E '^(CHAT_TEXT|RECOMMENDATION_TEXT|FREE_TEXT|VISION|EMBEDDING)_[A-Z_]+=' .env.aws \
+     | sed -E 's/(_API_KEY=).*/\1<redacted>/'
+   grep -E '^(AI_UNBILLED_CAPABILITIES|AI_TEXT_|AI_OPENAI_|AI_CHAT_CHUNK_)' .env.aws
+   ```
+
+   **Kỳ vọng**: 40 dòng nhóm text/vision/embedding (24 + 16) với đúng provider/endpoint/model như
+   bảng; `VISION_*`/`EMBEDDING_*` giống bản backup; 7 dòng nhóm 6 đúng giá trị trial.
+
+4. **Chạy quy trình deploy AWS hiện hữu** (`docs/operations/deployment-pipeline.md`):
+
+   ```powershell
+   gh workflow run deploy-aws.yml -R "hycat-team/smart-wardrobe-be" --ref main -f services=ai
+   gh run list --workflow=deploy-aws.yml --limit 1
+   gh run watch <run-id> -R "hycat-team/smart-wardrobe-be"
+   ```
+
+   **Kỳ vọng**: job `plan` → `build-push` → `deploy` → `smoke-all` xanh; chỉ `ai-http`/`ai-worker`
+   được tạo lại; `nginx` được recreate một lần sau khi mọi service deploy xong; smoke-all xanh cho
+   cả ba service.
+
+   Đường thay thế **chỉ khi** không có thay đổi image và chỉ đổi env (đã có sẵn
+   `deployments/` + `.env.deploy` trên box, xem block 3/3 của
+   `deployments/scripts/aws-env/aws-env-to-copyblock.ps1`):
+
+   ```bash
+   ssh -i "<key>" ubuntu@<box-ip> "cd /opt/closy-aws && docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d --force-recreate ai-http ai-worker"
+   ```
+
+   Ghi lại đường đã dùng (pipeline hay recreate) và thời lượng vào evidence T039/§9.1.
+
+5. **Xác minh** theo §4.1.3 và §4.1.4. Nếu bất kỳ mục nào lệch kỳ vọng: dừng, rollback theo §4.2,
+   không "chỉnh tiếp cho vừa".
+
+#### 4.1.3 Xác minh container + env đã nạp
+
+```bash
+cd /opt/closy-aws
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps
+# Container AI là distroless (không có shell), nên đọc env từ docker inspect, không `exec sh`.
+docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
+  "$(docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps -q ai-http)" \
+  | grep -E '^(AI_TEXT_|AI_OPENAI_|AI_CHAT_CHUNK_|AI_UNBILLED_)' | sort
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+  logs --since 5m ai-http | grep -iE 'must not exceed|must be at least 1|is invalid' || echo "no config validation error"
+```
+
+**Kỳ vọng**:
+
+- `ps`: 7 dòng — `account-http`, `account-worker`, `commerce-http`, `commerce-worker`, `ai-http`,
+  `ai-worker`, `nginx` — tất cả `Up`/`running` (container có healthcheck của image phải `healthy`).
+  Không có container nào `Restarting`.
+- Lệnh `docker inspect`: đúng 7 dòng, không thừa không thiếu:
+
+  ```text
+  AI_CHAT_CHUNK_DEADLINE_SECONDS=90
+  AI_OPENAI_REASONING_EFFORT=none
+  AI_OPENAI_TRIAL_EXPECTED_HOSTS=<ollama-host>
+  AI_TEXT_FALLBACK_TIMEOUT_SECONDS=30
+  AI_TEXT_MAX_CONCURRENCY=2
+  AI_TEXT_PRIMARY_TIMEOUT_SECONDS=90
+  AI_UNBILLED_CAPABILITIES=free_text,embedding
+  ```
+
+- Lệnh `logs | grep ...`: chỉ in `no config validation error`. Nếu thấy
+  `ai.text_primary_timeout_seconds must not exceed ...` thì env sai (thường do
+  `AI_CHAT_CHUNK_DEADLINE_SECONDS` chưa phải 90) → sửa env rồi lặp lại bước 3–5.
+
+#### 4.1.4 Xác minh provider thắng (B4) + cost
+
+Gọi thật ba capability text, `summary`, `rewriter`, vision, embedding qua API hiện hữu (dùng tài
+khoản test; không đổi endpoint/payload/DTO). Sau đó:
+
+```bash
+cd /opt/closy-aws
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+  logs --since 15m ai-http | grep '"msg":"ai provider attempt"' \
+  | jq -r '[.operation,.capability,.attempt_index,.provider,.model,.billing_class,.outcome]|@tsv' \
+  | sort | uniq -c
+```
+
+> Các lệnh trong mục này dùng `jq`. Box Ubuntu mặc định **chưa** có `jq`; cài bằng
+> `sudo apt-get install -y jq` (hoặc lọc JSON bằng `grep`/`python3`). Ghi lại nếu phải cài thêm.
+
+**Kỳ vọng** (mỗi dòng là một tổ hợp operation/capability/attempt):
+
+| operation | capability | attempt_index | provider | model | billing_class | outcome |
+|---|---|---|---|---|---|---|
+| `chat` | `chat_text` | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
+| `outfit` | `recommendation_text` | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
+| `summary` | `free_text` (route free) hoặc `chat_text` (route paid) | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
+| `rewriter` | `free_text` hoặc `chat_text` | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
+
+**Vision và embedding KHÔNG có dòng `ai provider attempt`**: hook attempt chỉ được gắn cho request
+text trial (`attachTrialHooks` chỉ chạy khi `plan.Provider == openai`). Bằng chứng cho
+vision/embedding là `ai_usage_events` ở query dưới (provider/model do code stamp) cộng log provider
+hiện hữu của service — đừng kết luận "thiếu log = fail".
+
+Bất kỳ dòng `provider=openai` + `billing_class=billed`, hoặc `provider=google` cho capability text
+(khi Ollama không lỗi), hoặc `thinking_tokens != 0` trên `openai` đều là **fail**: dừng, ghi vào
+evidence, không tiếp tục load profile. Hai field `version` và `cost_micro_vnd` trong dòng attempt
+hiện **chưa được điền** (rỗng/0) — chúng thuộc T044/Phase 6; **không** dùng chúng làm tiêu chí và
+không đọc cost từ log, chỉ đọc cost từ `ai_usage_events`.
+
+Đối chiếu usage event (Supabase; chỉ đọc, không sửa dữ liệu):
+
+```sql
+SELECT provider, operation, count(*) AS events,
+       max(actual_cost_micro_vnd) AS max_actual_cost,
+       max(reserved_cost_micro_vnd) AS max_reserved,
+       max(thinking_tokens) AS max_thinking
+FROM ai_usage_events
+WHERE created_at > now() - interval '30 minutes'
+GROUP BY provider, operation
+ORDER BY provider, operation;
+```
+
+**Kỳ vọng**: mọi dòng `provider = openai` có `max_actual_cost = 0`, `max_reserved = 0`,
+`max_thinking = 0`; `provider = google` chỉ xuất hiện cho `vision`/`embedding` (và cho attempt
+fallback nếu có), với cost theo pricing hiện hữu. Không có hai event cho cùng một `request_id`
+(`request_id` là UNIQUE).
 
 ### 4.2 Rollback về Gemini-only (mục tiêu ≤15 phút, SC-006)
 
-1. Đổi ba `*_TEXT_PRIMARY_*` về cấu hình Gemini hiện hữu: provider `google`, cùng key/endpoint/model
-   với block `*_TEXT_FALLBACK_*`.
-2. Giữ nguyên `AI_UNBILLED_CAPABILITIES`, vision, embedding; không sửa Compose/Nginx/Dockerfile.
-3. Chạy deploy hiện hữu, chờ container AI healthy.
-4. Xác minh: text trả `provider=google`; sáu container healthy; không mất dữ liệu đã xác nhận;
-   không có request nào vẫn trỏ endpoint Ollama.
-5. Ghi mốc thời gian bắt đầu/kết thúc vào evidence index (SC-006).
+Hợp đồng: [contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md)
+§1.5. Không cần đổi Compose/Nginx/Dockerfile; chỉ env + recreate container AI.
+
+1. **T0**: ghi giờ bắt đầu (UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`).
+2. Đổi ba `*_TEXT_PRIMARY_*` về cấu hình Gemini hiện hữu: provider `google`, và key/endpoint/model
+   **bằng đúng** block `*_TEXT_FALLBACK_*` tương ứng (copy từ chính file env, không gõ lại tay).
+3. **Giữ nguyên** `AI_UNBILLED_CAPABILITIES`, `VISION_*`, `EMBEDDING_*`, `AI_TEXT_*`,
+   `AI_OPENAI_*`, `AI_CHAT_CHUNK_DEADLINE_SECONDS`. Không cần hạ timeout: khi primary là `google`,
+   code dùng timeout hiện hữu của từng capability (production chat 30 / recommendation 45 / free 30),
+   không áp 90 giây của nhánh `openai`. Điều kiện validate `90 <= 90` vẫn đúng.
+4. Chạy lại deploy hiện hữu (`gh workflow run deploy-aws.yml ... -f services=ai`), hoặc đường
+   recreate env-only ở §4.1.2 bước 4 nếu không có thay đổi image.
+5. **Xác minh** (cùng lệnh §4.1.3 + §4.1.4):
+   - `ps`: 7 container `Up`, không `Restarting`.
+   - log: 100% `operation` text (`chat`/`outfit`/`summary`/`rewriter`) có `provider=google`,
+     `billing_class=billed`; **không** còn dòng nào `provider=openai` sau T1.
+   - usage event: không còn event `openai` mới; Gemini billed vẫn có reserved + actual.
+   - `.env.aws`: `grep -E '^[A-Z]+_TEXT_PRIMARY_PROVIDER=' .env.aws` → cả ba dòng `google`.
+6. **T1**: ghi giờ kết thúc; `T1 - T0 <= 15 phút` là điều kiện SC-006. Ghi cả đường đã dùng
+   (pipeline/recreate) vì thời gian build ảnh không thuộc phần rollback env.
+7. Nếu trial tiếp tục sau drill: bật lại theo §4.1 và ghi thời gian bật lại **riêng** (không tính
+   vào SC-006).
 
 ### 4.3 Cập nhật allowlist khi static IP Lightsail đổi
 
 Dấu hiệu: request từ Lightsail bị chặn/timeout trong khi EC2 và proxy vẫn sống; kiểm tra log Nginx
 trên EC2 thấy IP nguồn lạ, hoặc Lightsail Console báo static IP mới.
 
+Allowlist tồn tại ở **hai** lớp và phải khớp nhau: security group (lớp ngoài, chặn gói tin) và
+`allow`/`deny all` trong Nginx (lớp trong, trả 403). Cập nhật một lớp mà quên lớp kia sẽ ra trạng
+thái "chặn nhưng không rõ vì sao", hoặc tệ hơn là mở rộng quá mức.
+
 1. Lấy static IP mới từ Lightsail Console → Instances → Networking → Static IP.
-2. Cập nhật biến Terraform `proxy_allowed_cidr` = `<ip-mới>/32` (truyền qua `-var` hoặc file tfvars
-   **không commit**), rồi `terraform -chdir=deployments/terraform/ollama-ec2 apply`. Đây là nguồn
-   chuẩn của security group; nếu hotfix tay bằng AWS Console/CLI thì phải reconcile lại Terraform
-   ngay sau đó.
-3. Cập nhật `PROXY_ALLOWED_CIDR` trong `/etc/ollama-trial/trial.env` trên EC2 và render lại
-   `nginx-ollama.conf.template`, rồi `nginx -t && systemctl reload nginx` qua SSM.
-4. Xác minh lại: request từ IP mới trả 200; IP ngoài allowlist vẫn bị chặn; `11434` vẫn không public.
+2. **Lớp security group**: cập nhật biến Terraform `proxy_allowed_cidr` = `<ip-mới>/32` (qua
+   `$env:TF_VAR_proxy_allowed_cidr` hoặc file tfvars **không commit**), rồi:
+
+   ```powershell
+   terraform -chdir=deployments/terraform/ollama-ec2 plan
+   terraform -chdir=deployments/terraform/ollama-ec2 apply
+   ```
+
+   **Kỳ vọng**: plan chỉ đổi `aws_security_group.ollama` (1 to change, 0 to add/destroy); apply mở
+   `443` cho đúng `<ip-mới>/32` và **không** mở `11434`. Nếu hotfix tay bằng AWS Console/CLI thì phải
+   reconcile lại Terraform ngay sau đó (nếu không, lần apply sau sẽ ghi đè ngược).
+
+3. **Lớp Nginx**: qua SSM sửa `/etc/ollama-trial/trial.env` (file runtime do cloud-init render,
+   người vận hành được phép sửa) — chỉ đổi dòng `PROXY_ALLOWED_CIDR=` sang `<ip-mới>/32`, rồi render
+   lại cấu hình bằng script idempotent:
+
+   ```bash
+   sudo sed -i 's|^PROXY_ALLOWED_CIDR=.*|PROXY_ALLOWED_CIDR=<ip-mới>/32|' /etc/ollama-trial/trial.env
+   sudo grep -E '^PROXY_ALLOWED_CIDR=' /etc/ollama-trial/trial.env
+   sudo /opt/ollama-trial/bootstrap.sh     # idempotent: render lại nginx-ollama.conf + nginx -t + reload
+   sudo nginx -T 2>/dev/null | grep -nE 'allow [0-9]|deny all|listen .*443'
+   ```
+
+   **Kỳ vọng**: `grep` in đúng một dòng `<ip-mới>/32`; `bootstrap.sh` exit `0` (nếu chỉ đổi allowlist
+   thì model/cert đã có sẵn nên không cần pull lại); `nginx -T` cho thấy `allow <ip-mới>/32;` và
+   `deny all;` trong block `listen ... 443`. Nếu `nginx -t` fail, bootstrap dừng trước khi reload —
+   đó là hành vi đúng, không được bỏ qua.
+
+4. **Xác minh sau khi đổi** (lặp lại §9.2 ở mức tối thiểu):
+   - Từ box Lightsail: `POST /v1/chat/completions` với Bearer đúng → `200`.
+   - Từ máy ngoài allowlist: timeout/bị chặn (hoặc `403` nếu tới được Nginx).
+   - `http://<elastic-ip>:11434/api/version` → timeout/refused.
 5. Nếu Bearer token bị rotate cùng lúc: cập nhật Secrets Manager và `.env.aws` trên Lightsail, rồi
    tạo lại container AI; không log token.
 
-> Static IP chỉ đổi khi box bị tạo lại hoặc gỡ/gán lại static IP. Ghi mọi lần đổi IP vào mục 7.
+> Static IP chỉ đổi khi box bị tạo lại hoặc gỡ/gán lại static IP. Ghi mọi lần đổi IP (IP cũ → IP
+> mới, thời điểm, ai làm) vào mục 7. Nếu IP đổi mà chưa cập nhật allowlist, triệu chứng là **mọi**
+> request text bị timeout rồi rơi vào fallback Gemini (provider `google`, `fallback_reason` là
+> lỗi transport) — đừng nhầm với lỗi Ollama.
 
-## 5. Kiểm tra bất biến (chạy trước khi báo cáo)
+## 5. Kiểm tra bất biến (T038 — chạy trước khi báo cáo)
 
-Chạy trên máy dev (read-only, người vận hành; worker không tự chạy git):
+Mục này chỉ dùng **lệnh đọc** (`git diff`, `git status`, `git grep`, `git log`) do **người vận
+hành** chạy trên máy dev. Worker implement **không** chạy git trong feature này, nên không có dòng
+nào dưới đây là kết quả đã đo; mọi ô "Kết quả" để trống cho tới khi người vận hành chạy và điền.
+
+Biến `<base>` = nhánh gốc để so sánh (`main`, hoặc `origin/main` sau khi `git fetch`). Chạy từ thư
+mục gốc repo.
+
+### 5.1 Bộ lệnh read-only
 
 ```powershell
+# 5.1.1 Không thay đổi artefact deployment
+git diff --stat "<base>...HEAD" -- ':(glob)**/Dockerfile' deployments/docker-compose.aws.yml deployments/nginx/templates/aws .github/workflows/deploy-aws.yml
 git diff --stat -- ':(glob)**/Dockerfile' deployments/docker-compose.aws.yml deployments/nginx/templates/aws .github/workflows/deploy-aws.yml
+
+# 5.1.2 Danh sách file feature này chạm vào (đọc bằng mắt)
+git diff --name-only "<base>...HEAD"
 git status --porcelain
+
+# 5.1.3 Không có tài nguyên EKS/Kubernetes/Helm
+git grep -nEi '\b(eks|kubernetes|k8s|helm|kustomize|aws_eks)\b' -- deployments/terraform/ollama-ec2 deployments/ollama
+
+# 5.1.4 Không có lệnh/probe/tham chiếu VPS trong artefact của feature
+git grep -nEi '(ssh[^#]*vps|vps-[a-z0-9]|deploy-vps-services|/opt/closy/\.env\.production|vps_runbook)' -- deployments/terraform/ollama-ec2 deployments/ollama
+
+# 5.1.5 Không có auto-teardown/schedule
+git grep -nEi '(aws_autoscaling_schedule|scheduled_action|auto_?teardown|terraform destroy|aws s3 rm)' -- deployments/terraform/ollama-ec2 deployments/ollama
+
+# 5.1.6 Dịch vụ dữ liệu ngoài không đổi (.env.aws.example)
+git diff "<base>...HEAD" -- .env.aws.example | Select-String -Pattern '^[+-](DB_|REDIS_|RABBITMQ_|CLOUDINARY_|PAYOS_)'
+
+# 5.1.7 Không có secret/private key trong diff
+git grep -nE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|AIza[0-9A-Za-z_-]{35}|ghp_[A-Za-z0-9]{20,}' -- . ':!*.md'
 ```
 
-- [ ] Không có thay đổi ở `Dockerfile`, `deployments/docker-compose.aws.yml`,
-      `deployments/nginx/templates/aws/**`, `.github/workflows/deploy-aws.yml`.
-- [ ] Không có tài nguyên EKS/Kubernetes/ALB/ACM trong Terraform hay AWS.
-- [ ] Không có lệnh, probe hay thay đổi DNS nào nhắm vào VPS.
-- [ ] Supabase, Redis Cloud, CloudAMQP, Cloudinary không đổi.
-- [ ] Không có secret trong repo, state, log workflow hay output CI.
+Ghi chú: `git grep` chỉ quét file đang được track; với `.terraform/`, `*.tfstate*`, `*.tfvars` thì
+`.gitignore` (đã cập nhật ở T003) là bằng chứng chúng không vào repo — kiểm thêm bằng
+`git status --porcelain --ignored` nếu cần.
+
+### 5.2 Bảng pass/fail
+
+| # | Hạng mục bất biến | Lệnh | Kỳ vọng | Pass khi | Kết quả |
+|---|---|---|---|---|---|
+| 1 | `Dockerfile**` không đổi | 5.1.1 (dòng 1 và 2) | không có output | cả hai lệnh in rỗng | `TODO(operator)` |
+| 2 | `deployments/docker-compose.aws.yml` không đổi | 5.1.1 | không có output | rỗng | `TODO(operator)` |
+| 3 | `deployments/nginx/templates/aws/**` không đổi | 5.1.1 | không có output | rỗng | `TODO(operator)` |
+| 4 | `.github/workflows/deploy-aws.yml` không đổi | 5.1.1 | không có output | rỗng | `TODO(operator)` |
+| 5 | File feature chạm vào đúng phạm vi | 5.1.2 | chỉ thấy: `docs/operations/ollama-trial-*`, `specs/032-*`, `deployments/terraform/ollama-ec2/**`, `deployments/ollama/**`, `deployments/scripts/aws-env/aws-env-bootstrap.ps1`, `.env.aws.example`, `.env.ollama.example`, `.gitignore`, `shared/**`, `services/ai/**`, `configs/**` | không có file lạ ngoài danh sách; **không** có artefact VPS | `TODO(operator)` |
+| 6 | 0 tài nguyên EKS/Kubernetes/Helm | 5.1.3 | 0 dòng, hoặc chỉ dòng **comment** nói "không dùng Kubernetes" | không có `resource`/`data`/`locals` nào; không có manifest `.yaml` kiểu k8s | `TODO(operator)` |
+| 7 | 0 lệnh/probe VPS | 5.1.4 | 0 dòng | rỗng | `TODO(operator)` |
+| 8 | 0 auto rollback/teardown/schedule | 5.1.5 | 0 dòng | rỗng | `TODO(operator)` |
+| 9 | Supabase/Redis Cloud/CloudAMQP/Cloudinary/ payOS không đổi | 5.1.6 | 0 dòng | rỗng (diff `.env.aws.example` chỉ có dòng AI) | `TODO(operator)` |
+| 10 | Không có secret trong repo | 5.1.7 | 0 dòng | rỗng | `TODO(operator)` |
+| 11 | Không đổi public contract/client DTO | 5.1.2 + `git diff "<base>...HEAD" -- shared/application/dto shared/presentation services/ai/dto api docs/swagger` | không có file nào trong các path đó | rỗng | `TODO(operator)` |
+
+Tất cả 11 mục phải `PASS` trước khi ghi SC-001/SC-004 vào báo cáo. Bất kỳ mục nào `FAIL` → dừng,
+hoàn nguyên thay đổi ngoài phạm vi, **không** "ghi chú rồi bỏ qua".
 
 ## 6. Ngày thứ 7
 
@@ -348,16 +619,16 @@ Cập nhật đường dẫn/ghi chú thật khi có bằng chứng. Không dán
 
 | Tiêu chí | Bằng chứng cần có | Vị trí / ghi chú | Trạng thái |
 |---|---|---|---|
-| SC-001 | Smoke 6 container + diff artefact deployment + 0 tài nguyên EKS | mục 1, mục 5, log Lightsail | TODO |
-| SC-002 | Test `openai` không chạm pricing/reserve, cost 0; Gemini billed giữ nguyên | output `go test` scoped | TODO |
-| SC-003 | Chặn IP ngoài, thiếu/sai Bearer, chặn `11434`; Lightsail 200 | B5 + log proxy | TODO |
-| SC-004 | 0 lệnh/probe VPS; 0 thay đổi artefact VPS | mục 5 | TODO |
-| SC-005 | Load profile 50 request/capability, concurrency 2, 30 phút; p95 TTFT/latency | B6 + raw sample | TODO |
-| SC-006 | Drill rollback ≤15 phút, không mất dữ liệu đã xác nhận | B7 + mốc thời gian | TODO |
+| SC-001 | Smoke 6 container + diff artefact deployment + 0 tài nguyên EKS | mục 1, mục 5 (§5.2 #1–#6), log Lightsail, §9.1 | TODO |
+| SC-002 | Test `openai` không chạm pricing/reserve, cost 0; Gemini billed giữ nguyên | output `go test` scoped, §9.4 | TODO |
+| SC-003 | Chặn IP ngoài, thiếu/sai Bearer, chặn `11434`; Lightsail 200 | B5 + §9.2 (bảng bằng chứng) | TODO |
+| SC-004 | 0 lệnh/probe VPS; 0 thay đổi artefact VPS | mục 5 (§5.2 #5, #7) | TODO |
+| SC-005 | Load profile 50 request/capability, concurrency 2, 30 phút; p95 TTFT/latency | B6 + §9.1 bước 6 + raw sample | TODO |
+| SC-006 | Drill rollback ≤15 phút, không mất dữ liệu đã xác nhận | B7 + §4.2 + §9.3 (bảng bằng chứng) | TODO |
 | SC-007 | Báo cáo go/no-go đủ 8 nhóm chỉ số | `docs/operations/ollama-trial-report.md` | TODO |
-| SC-008 | Regression API; text→Ollama, vision/embedding→Gemini; không đổi DTO | output test + log provider | TODO |
+| SC-008 | Regression API; text→Ollama, vision/embedding→Gemini; không đổi DTO | §9.4 (đã chạy phần local) + log provider ở §4.1.4 + §5.2 #11 | Một phần (local) |
 | SC-009 | Timeout/429/5xx/malformed→Gemini đúng 1 lần; lỗi giữa stream không fallback; cancel/4xx 0 lần | test + drill B6 | TODO |
-| SC-010 | 0 auto rollback/teardown sau ngày 7; quyết định có người/thời điểm | mục 6 + báo cáo | TODO |
+| SC-010 | 0 auto rollback/teardown sau ngày 7; quyết định có người/thời điểm | mục 6 + báo cáo + §5.2 #8 | TODO |
 | SC-011 | Version + digest local/EC2 khớp; contract test pass trước EC2 | A1, A2, B2 | TODO |
 
 Bằng chứng tối thiểu khác (theo quickstart §4): output contract test local, Terraform plan/apply
@@ -500,3 +771,231 @@ có `nginx`. Cách kiểm tra đúng:
 
 Không được đánh dấu T025/T026/T027 là đã chạy cho tới khi có output thật (không kèm secret) được
 dán vào mục 7.
+
+## 9. Phase 5 (US3) — checklist người vận hành (T039–T042)
+
+> **Trạng thái tại thời điểm implement (2026-10-27)**: T037, T038, T040, T041 mới là **tài liệu**;
+> phần script của T039 (`deployments/scripts/aws-env/aws-env-bootstrap.ps1`) đã sửa, còn **mọi bước
+> chạy trên Lightsail/EC2 là operator step và CHƯA được chạy**. T042 mới chạy phần **regression
+> local** (§9.4); phần bằng chứng provider trên môi trường thật vẫn là operator step.
+>
+> Môi trường implement **không** có quyền truy cập Lightsail, AWS, EC2, không có `gh`, không có
+> `docker` trên box, và **không** được deploy. Vì vậy không ô "Kết quả" nào dưới đây được điền sẵn,
+> và **không** được coi là đã đạt.
+
+### 9.1 T039 — thực thi trên Lightsail (operator chạy, chưa chạy)
+
+Điều kiện vào: baseline mục 1 đã chốt, EC2 trial-ready (`/etc/ollama-trial/TRIAL_READY` tồn tại —
+A6/B2), sáu container đang healthy.
+
+- [ ] **1. Chốt T0 và trạng thái trước khi đổi env**
+
+  ```bash
+  cd /opt/closy-aws
+  date -u +%Y-%m-%dT%H:%M:%SZ
+  docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps
+  ```
+
+  Kỳ vọng: 7 dòng `Up` (3 http + 3 worker + nginx). Nếu baseline đã lỗi → dừng, xử lý ngoài phạm vi.
+
+- [ ] **2. Xác nhận 6 key AI mới đã có trong `.env.aws`** (do `aws-env-bootstrap.ps1` bảo đảm
+      không bị rơi; giá trị trial vẫn do người vận hành đặt):
+
+  ```bash
+  grep -cE '^(AI_TEXT_MAX_CONCURRENCY|AI_TEXT_PRIMARY_TIMEOUT_SECONDS|AI_TEXT_FALLBACK_TIMEOUT_SECONDS|AI_OPENAI_REASONING_EFFORT|AI_CHAT_CHUNK_DEADLINE_SECONDS|AI_OPENAI_TRIAL_EXPECTED_HOSTS)=' .env.aws
+  ```
+
+  Kỳ vọng: `6`. Thiếu key nào → bổ sung theo `.env.aws.example` **trước** khi bật trial.
+
+- [ ] **3. Bật trial** đúng §4.1.2 (sửa `.env.aws` → chạy pipeline hiện hữu
+      `gh workflow run deploy-aws.yml -R "hycat-team/smart-wardrobe-be" --ref main -f services=ai`).
+      Không sửa Dockerfile/Compose/Nginx/pipeline.
+
+- [ ] **4. Xác minh 6 container + env** theo §4.1.3 (7 dòng `Up`, 7 dòng env đúng, không có lỗi
+      validation cấu hình).
+
+- [ ] **5. Xác minh 3 capability text + `summary`/`rewriter` do Ollama phục vụ** theo §4.1.4
+      (provider `openai`, `billing_class=unbilled`, `thinking_tokens=0`, `actual_cost=0`), và
+      vision/embedding vẫn `google`/`billed`.
+
+- [ ] **6. Chạy load profile SC-005** (operator; repo **không** có load generator, xem ghi chú dưới):
+
+  - 50 request cho **mỗi** capability `chat_text`, `free_text`, `recommendation_text`,
+    concurrency 2, toàn bộ mẫu nằm trong cửa sổ **30 phút**; ghi `trial_load_started_at` /
+    `trial_load_finished_at`.
+  - Gửi qua **API thật** (không gọi trực tiếp Ollama): mỗi request phải đi qua AI service để có một
+    dòng `ai provider attempt` với `request_id`.
+  - Lưu raw sample phía client (`request_id`, capability, `ttft_ms`, `latency_ms`, HTTP status,
+    lỗi/timeout nếu có) và **join** với log service theo `request_id`.
+  - Phân loại từng mẫu: `success` (attempt 1 `openai`), `fallback` (`provider=google` +
+    `fallback_reason` khác rỗng), `failure` (request bị write timeout 120 giây cắt — client thấy
+    504/EOF và **không** có nội dung).
+
+  Tính p95 từ log (đổi `chat_text` cho từng capability; chỉ lấy attempt 1 để không trộn fallback):
+
+  ```bash
+  cd /opt/closy-aws
+  docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+    logs --since 45m ai-http | grep '"msg":"ai provider attempt"' \
+    | jq -r 'select(.capability=="chat_text" and .attempt_index==1) | .ttft_ms' | sort -n > /tmp/ttft_chat.txt
+  awk '{a[NR]=$1} END {i=int((NR*95+99)/100); if(i<1)i=1; print "n="NR, "p95="a[i]}' /tmp/ttft_chat.txt
+  ```
+
+  Kỳ vọng (SC-005): `chat_text`/`free_text` p95 `ttft_ms` ≤ 15000; `recommendation_text` p95
+  `ttft_ms` ≤ 60000 và hoàn tất ≤ 120000 ms; ≥95% attempt `openai` có `latency_ms` ≤ 90000.
+  Ghi cả số mẫu `n` — nếu `n` nhỏ hơn 50 thì mẫu **không** hợp lệ, không được báo p95.
+
+- [ ] **7. Xác nhận dịch vụ dữ liệu ngoài không đổi và uptime không phải tiêu chí**
+
+  ```bash
+  cd /opt/closy-aws
+  BACKUP="$(ls -t .env.aws.bak-* | head -1)"
+  diff <(grep -E '^(DB_|REDIS_|RABBITMQ_|CLOUDINARY_|PAYOS_)' "$BACKUP") \
+       <(grep -E '^(DB_|REDIS_|RABBITMQ_|CLOUDINARY_|PAYOS_)' .env.aws) && echo "data-service env unchanged"
+  docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+    logs --since 60m ai-http ai-worker commerce-http commerce-worker account-http account-worker \
+    | grep -icE 'connection refused|no such host|authentication failed|certificate'
+  ```
+
+  Kỳ vọng: in `data-service env unchanged`; số dòng lỗi kết nối không tăng so với baseline (ghi cả
+  con số, không chỉ "không đổi"). **Uptime không phải tiêu chí** — không dùng nó làm pass/fail cho
+  SC-005; không có schedule/auto-teardown.
+
+- [ ] **8. Điền bảng bằng chứng T039**
+
+  | Hạng mục | Nguồn | Kỳ vọng | Kết quả | Bằng chứng (không kèm secret) |
+  |---|---|---|---|---|
+  | 6 container + nginx | `docker compose ... ps` | 7/7 `Up`, không `Restarting` | `TODO(operator)` | `TODO(operator)` |
+  | 7 key điều khiển trial trong `ai-http` | `docker inspect` (§4.1.3) | đúng 7 dòng §4.1.3 | `TODO(operator)` | `TODO(operator)` |
+  | `chat_text` | log `ai provider attempt` | `openai`/`unbilled`/success | `TODO(operator)` | `TODO(operator)` |
+  | `free_text` | log | `openai`/`unbilled`/success | `TODO(operator)` | `TODO(operator)` |
+  | `recommendation_text` | log | `openai`/`unbilled`/success | `TODO(operator)` | `TODO(operator)` |
+  | `summary` (route free/paid) | log | `openai`, capability `free_text` hoặc `chat_text` | `TODO(operator)` | `TODO(operator)` |
+  | `rewriter` (route free/paid) | log | `openai`, capability `free_text` hoặc `chat_text` | `TODO(operator)` | `TODO(operator)` |
+  | vision, embedding | `ai_usage_events` (provider/model) + log service hiện hữu | `google`/`billed` | `TODO(operator)` | `TODO(operator)` |
+  | cost 3 đường text | `ai_usage_events` SQL (§4.1.4) | `actual_cost_micro_vnd = 0`, `reserved = 0` | `TODO(operator)` | `TODO(operator)` |
+  | SC-005 load | raw sample + p95 | theo ngưỡng SC-005, `n >= 50`/capability | `TODO(operator)` | đường dẫn raw sample |
+  | Dịch vụ dữ liệu ngoài | `diff` env + log | không đổi, không lỗi kết nối mới | `TODO(operator)` | `TODO(operator)` |
+  | Đường deploy đã dùng | `gh run` hoặc recreate | pipeline hiện hữu, không diff artefact | `TODO(operator)` | run id / thời lượng |
+
+### 9.2 T040 — checklist kiểm tra cô lập truy cập (operator chạy, chưa chạy)
+
+Mục tiêu: SC-003 — 100% request ngoài allowlist bị chặn, 100% thiếu/sai xác thực bị từ chối, 100%
+request hợp lệ từ Lightsail được chấp nhận, 100% phép thử trực tiếp `11434` từ Internet bị chặn.
+
+Quy ước: `<ollama-host>` là subdomain Ollama (không phải domain API), `<elastic-ip>` là output
+`elastic_ip`, `<bearer-token>` đọc từ Secrets Manager (không dán vào evidence).
+
+| ID | Mục đích | Nơi chạy | Lệnh | Kỳ vọng |
+|---|---|---|---|---|
+| A1 | IP ngoài allowlist, không Bearer | máy **không** thuộc Lightsail | `curl.exe -sv --max-time 15 https://<ollama-host>/v1/chat/completions` | `curl: (28)` timeout (security group) hoặc connection reset; **không** có HTTP 200; nếu tới được Nginx thì phải `403` |
+| A2 | IP ngoài allowlist, Bearer **đúng** | máy ngoài allowlist | `curl.exe -sv --max-time 15 -H "Authorization: Bearer <bearer-token>" https://<ollama-host>/v1/chat/completions` | vẫn bị chặn như A1 — chứng minh chặn theo IP, không phải theo token |
+| B1 | Thiếu Bearer | **trên box Lightsail** | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Content-Type: application/json" -d '{}'` | `401` (Nginx trả trước khi tới Ollama) |
+| B2 | Sai Bearer | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Authorization: Bearer wrong-token" -H "Content-Type: application/json" -d '{}'` | `401` |
+| B3 | Request hợp lệ từ Lightsail | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Authorization: Bearer <bearer-token>" -H "Content-Type: application/json" -d '{"model":"qwen3:4b","messages":[{"role":"user","content":"ping"}],"stream":false,"max_tokens":8}'` | `200` |
+| C1 | Truy cập trực tiếp `11434` | máy ngoài (và lặp lại từ box Lightsail) | `curl.exe -sv --max-time 10 http://<elastic-ip>:11434/api/version` | `curl: (28)` timeout hoặc `(7)` refused; **không** có HTTP status, không có JSON version |
+| C2 | Ollama chỉ loopback | SSM trên EC2 | `sudo ss -lntH \| grep 11434` | chỉ `127.0.0.1:11434` |
+| D1 | Path không hỗ trợ | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" https://<ollama-host>/api/version` | `404` (proxy đóng mọi path khác) |
+| D2 | Health probe không cần token | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" https://<ollama-host>/healthz` | `200` |
+
+Đọc log proxy để đối chiếu (metric `proxy_401_total` **chưa tồn tại** — metric filter là T043/Phase 6):
+
+```bash
+# trên EC2 qua SSM
+sudo grep -c ' /v1/chat/completions HTTP/[0-9.]*" 401 ' /var/log/nginx/access.log
+sudo tail -n 20 /var/log/nginx/access.log
+sudo tail -n 20 /var/log/nginx/error.log
+```
+
+**Bảng bằng chứng SC-003**
+
+| Test | Kỳ vọng | Kết quả quan sát | Bằng chứng (log/ảnh đã lọc token) | Pass? |
+|---|---|---|---|---|
+| A1 | timeout / `403`, không 200 | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| A2 | chặn như A1 | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| B1 | `401` | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| B2 | `401` | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| B3 | `200` | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| C1 | timeout / refused | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| C2 | chỉ `127.0.0.1:11434` | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| D1 | `404` | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+| D2 | `200` | `TODO(operator)` | `TODO(operator)` | `TODO(operator)` |
+
+SC-003 chỉ đạt khi **toàn bộ** 9 dòng `Pass`. Ghi rõ giờ chạy và máy chạy từng test (A1/A2 phải
+chạy từ máy **không** phải box Lightsail, nếu không bằng chứng vô hiệu).
+
+### 9.3 T041 — drill rollback ≤15 phút (operator chạy, chưa chạy)
+
+Điều kiện: §9.1 đã xong và trial đang phục vụ text bằng `openai`; có đồng hồ bấm giờ (điện thoại
+hoặc `Measure-Command`/`date`).
+
+- [ ] **1. Dữ liệu đã xác nhận trước drill (chạy trước T0)** — Supabase, chỉ đọc:
+
+  ```sql
+  SELECT count(*) AS confirmed_rows, max(created_at) AS last_confirmed
+  FROM ai_usage_events
+  WHERE status = 'confirmed' AND created_at >= now() - interval '24 hours';
+  ```
+
+  Lưu kết quả vào evidence (SC-006).
+
+- [ ] **2. T0**: ghi giờ UTC bắt đầu drill.
+- [ ] **3. Thực hiện rollback** đúng §4.2 bước 1–5 (chỉ đổi ba `*_TEXT_PRIMARY_*`, giữ
+      `AI_UNBILLED_CAPABILITIES`/vision/embedding/timeout).
+- [ ] **4. Xác minh sau rollback**:
+  - 7 container `Up`, không `Restarting`;
+  - 100% request text có `provider=google`, không còn dòng `openai` mới;
+  - `ai_usage_events` không còn event `openai` mới; Gemini billed có `reserved_cost_micro_vnd > 0`
+    trước khi gọi và `actual_cost_micro_vnd` được confirm.
+- [ ] **5. Không mất dữ liệu đã xác nhận** — lặp lại query ở bước 1 **sau** T1:
+
+  ```sql
+  SELECT count(*) AS confirmed_rows, max(created_at) AS last_confirmed
+  FROM ai_usage_events
+  WHERE status = 'confirmed' AND created_at >= now() - interval '24 hours';
+
+  SELECT status, count(*) FROM ai_usage_events
+  WHERE status IN ('reserved','in_flight') AND created_at < now() - interval '5 minutes'
+  GROUP BY status;
+  ```
+
+  Kỳ vọng: `confirmed_rows` **không giảm**; query thứ hai trả **0 dòng** (không còn reservation treo
+  quá write timeout 120 giây). Nếu có dòng treo: ghi vào báo cáo sự cố, không tự sửa dữ liệu.
+- [ ] **6. T1**: ghi giờ UTC kết thúc; `Δ = T1 - T0` phải `<= 15 phút`.
+- [ ] **7. Không thao tác VPS**: xác nhận bằng §5.2 #7 và bằng nhật ký phiên (không SSH/deploy/đọc
+      secret/đổi DNS VPS).
+- [ ] **8. Nếu trial tiếp tục**: bật lại theo §4.1 và ghi thời gian bật lại **riêng** (không tính
+      vào SC-006). Không đánh tráo số đo hai chiều.
+
+**Bảng bằng chứng SC-006**
+
+| Hạng mục | Kỳ vọng | Kết quả | Bằng chứng |
+|---|---|---|---|
+| T0 (UTC) | — | `TODO(operator)` | `TODO(operator)` |
+| T1 (UTC) | — | `TODO(operator)` | `TODO(operator)` |
+| Δ | ≤ 15 phút | `TODO(operator)` | `TODO(operator)` |
+| Đường rollback | pipeline hiện hữu hoặc recreate env-only | `TODO(operator)` | run id / lệnh |
+| 7 container | `Up`, không `Restarting` | `TODO(operator)` | `docker compose ps` |
+| Text provider sau rollback | 100% `google` | `TODO(operator)` | log `ai provider attempt` |
+| `confirmed_rows` trước/sau | không giảm | `TODO(operator)` | 2 kết quả SQL |
+| Reservation treo | 0 dòng | `TODO(operator)` | kết quả SQL |
+| Thao tác VPS | 0 | `TODO(operator)` | §5.2 #7 |
+| Artefact deployment | 0 diff | `TODO(operator)` | §5.2 #1–#4 |
+
+### 9.4 T042 — regression API local (**đã chạy** ngày 2026-10-27)
+
+Môi trường: Windows, `go1.26.3 windows/amd64`, `CGO_ENABLED=0`, workspace `go.work`. Đây là chạy
+**local**, không phải live. Không chạy `-race` (xem lý do bên dưới).
+
+| # | Lệnh | Kết quả |
+|---|---|---|
+| 1 | `go test ./shared/... -count=1` | **PASS** — mọi package có test đều `ok`, không package nào `FAIL`: `shared/application/constants/apperror`, `shared/application/event`, `shared/application/sse`, `shared/config`, `shared/domain/constants/subscriptioneventtype`, `shared/domain/entities`, `shared/domain/repositories`, `shared/infrastructure/ai`, `shared/infrastructure/ai/google`, `shared/infrastructure/ai/openai`, `shared/infrastructure/caching`, `shared/infrastructure/db`, `shared/infrastructure/messaging`, `shared/infrastructure/search`, `shared/pkg/logger`, `shared/pkg/utils/*` (colorutils, errorutils, jwtutils, numberutils, timeutils, validation), `shared/presentation`, `shared/presentation/middleware`, `shared/presentation/worker`, `shared/tools/*` (hygiene-scan, migration-ownership-check, nginx-check, nginx-routes, rabbitmq-topology, swagger-combine). Các package còn lại `[no test files]` |
+| 2 | `go test ./services/ai/internal/modules/aiexecutor/application/usecase/... -count=1` | **PASS** — `usecase/admin` ok, `usecase/cost` ok, `usecase/grant` ok, `usecase/orchestrator` ok; `usecase/pricing` `[no test files]` |
+| 3 | `go test -race ...` | **KHÔNG chạy** — `CGO_ENABLED=0` trên host này nên race detector không khả dụng (`-race requires cgo`). **Không** đánh dấu pass cho race; race là gate của Phase 7 (T050) trên môi trường có CGO |
+| 4 | Kiểm tra vision/embedding vẫn chọn Gemini | **PASS (bằng chứng tĩnh + test)** — `configs/config.yaml` và `configs/config.production.yaml` giữ `${VISION_PRIMARY_PROVIDER}`/`${EMBEDDING_PRIMARY_PROVIDER}` (không hardcode `openai`); test `TestVisionAndEmbeddingStayOnGoogle` trong `shared/infrastructure/ai/text_routing_test.go` khẳng định vision/embedding chọn `google` và đã pass ở lệnh 1 |
+| 5 | Không đổi client DTO/HTTP contract | **Một phần** — phase này chỉ sửa `docs/operations/ollama-trial-runbook.md` và `deployments/scripts/aws-env/aws-env-bootstrap.ps1`; không sửa file DTO/handler nào. Bằng chứng **đầy đủ** phải là diff git do **người vận hành** chạy (§5.2 #11) vì worker bị cấm chạy git trong feature này |
+| 6 | Lỗi do môi trường (sqlite/CGO) | **Không gặp** — không package nào fail vì sqlite/CGO ở hai lệnh trên; không có mục nào bị bỏ qua |
+
+Ghi chú cho SC-008: phần **local** đã có bằng chứng (routing/config/test). Phần **live** (text →
+Ollama, vision/embedding → Gemini trên box, client DTO không đổi) vẫn phải lấy từ §4.1.4 + §5.2 #11
+khi người vận hành chạy T039 — không được coi là đã đạt chỉ vì hai lệnh `go test` ở trên xanh.
