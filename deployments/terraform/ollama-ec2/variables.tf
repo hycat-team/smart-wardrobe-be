@@ -296,6 +296,17 @@ variable "cloudwatch_log_retention_days" {
   }
 }
 
+variable "cloudwatch_metric_namespace" {
+  description = "CloudWatch namespace shared by the agent metrics and the Nginx log metric filters (contract metric names stay unchanged)."
+  type        = string
+  default     = "OllamaTrial"
+
+  validation {
+    condition     = var.cloudwatch_metric_namespace != ""
+    error_message = "cloudwatch_metric_namespace must not be empty; the dashboard, filters and agent config all read it."
+  }
+}
+
 # ------------------------------------------------------------------------------
 # 7. Resources declared by main.tf - listed here so the variable set stays
 #    traceable. They are not configurable inputs.
@@ -310,6 +321,9 @@ variable "cloudwatch_log_retention_days" {
 #                                    and read-only access to the proxy Bearer secret.
 # - aws_secretsmanager_secret      : proxy Bearer token (proxy_bearer_secret_name).
 # - aws_budgets_budget             : budget_limit_usd with 50/80/100% alerts.
-# - aws_cloudwatch_log_group       : 14-day retention (T043 completes agent/metrics).
+# - aws_cloudwatch_log_group       : 14-day retention for Nginx/Ollama/bootstrap logs.
+# - aws_cloudwatch_log_metric_filter: proxy_5xx_total and proxy_401_total from the
+#                                    bounded Nginx access line.
+# - aws_cloudwatch_dashboard       : ollama-trial-032 with CPU/RAM/disk/proxy widgets.
 # - aws_ebs_volume / attachment    : gp3 model store mounted at /var/lib/ollama.
 # Nothing here may create EKS/Kubernetes, ALB, ACM, Route53 or an auto-destroy schedule.

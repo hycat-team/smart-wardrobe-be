@@ -19,6 +19,12 @@ func NewAttemptTelemetryLogger(log logger.Interface) *AttemptTelemetryLogger {
 	return app_ai.NewAttemptTelemetryLogger(log)
 }
 
+// OpenAIEndpointHostMismatch is the infrastructure-facing alias for the pure
+// warning decision used by the orchestrator and covered by telemetry tests.
+func OpenAIEndpointHostMismatch(rawEndpoint string, expectedHosts []string) (string, bool) {
+	return app_ai.OpenAIEndpointHostMismatch(rawEndpoint, expectedHosts)
+}
+
 // RedactEndpoint removes credentials, query values and the fragment from a
 // provider endpoint so it can be logged for host diagnostics. It returns an
 // empty string for an unparseable value rather than echoing a string that might

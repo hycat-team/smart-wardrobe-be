@@ -145,13 +145,13 @@ qua Ollama; đổi lại Gemini và xác minh phục hồi, không thay artefact
 **Independent Test**: Chạy request AI, kiểm tra log/metric có provider/model/attempt/fallback/latency/
 usage/CPU; tạo báo cáo từ dữ liệu đã thu và đối chiếu đủ mục SC-007.
 
-- [ ] T043 [US4] Thêm CloudWatch agent + log group + metric filter/dashboard cho Nginx/Ollama/CPU/RAM/disk trong `deployments/terraform/ollama-ec2/templates/cloud-init.yaml.tftpl` và `deployments/ollama/`, retention 14 ngày
-- [ ] T044 [US4] Nối metric AI (TTFT, latency, fallback reason, schema failure, thinking tokens, cost) và cảnh báo vận hành khi `provider=openai` nhưng host không khớp endpoint Ollama trial trong `shared/infrastructure/ai/telemetry.go`, `shared/infrastructure/ai/text_service.go`, `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go`
-- [ ] T045 [P] [US4] Viết test telemetry/redaction trong `shared/infrastructure/ai/telemetry_test.go`: đủ field bắt buộc, không có prompt/token/secret, `thinking_tokens` phải 0 trên `openai`, cảnh báo khi endpoint `openai` không khớp Ollama trial
-- [ ] T046 [US4] Hoàn thiện template báo cáo SC-007 trong `docs/operations/ollama-trial-report.md`: smoke, access/auth, lỗi, latency, fallback, queue, CPU/RAM/disk, chi phí AWS
-- [ ] T047 [US4] Viết quy trình ngày thứ 7 trong `docs/operations/ollama-trial-runbook.md`: thu số liệu, sự cố, chi phí, quyết định `go`/`adjust`/`no-go`, người quyết định, thời điểm; giữ cấu hình active; ghi rõ uptime không phải tiêu chí và các dịch vụ dữ liệu không đổi
+- [x] T043 [US4] Thêm CloudWatch agent + log group + metric filter/dashboard cho Nginx/Ollama/CPU/RAM/disk trong `deployments/terraform/ollama-ec2/templates/cloud-init.yaml.tftpl` và `deployments/ollama/`, retention 14 ngày
+- [x] T044 [US4] Nối metric AI (TTFT, latency, fallback reason, schema failure, thinking tokens, cost) và cảnh báo vận hành khi `provider=openai` nhưng host không khớp endpoint Ollama trial trong `shared/infrastructure/ai/telemetry.go`, `shared/infrastructure/ai/text_service.go`, `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go`
+- [x] T045 [P] [US4] Viết test telemetry/redaction trong `shared/infrastructure/ai/telemetry_test.go`: đủ field bắt buộc, không có prompt/token/secret, `thinking_tokens` phải 0 trên `openai`, cảnh báo khi endpoint `openai` không khớp Ollama trial
+- [x] T046 [US4] Hoàn thiện template báo cáo SC-007 trong `docs/operations/ollama-trial-report.md`: smoke, access/auth, lỗi, latency, fallback, queue, CPU/RAM/disk, chi phí AWS
+- [x] T047 [US4] Viết quy trình ngày thứ 7 trong `docs/operations/ollama-trial-runbook.md`: thu số liệu, sự cố, chi phí, quyết định `go`/`adjust`/`no-go`, người quyết định, thời điểm; giữ cấu hình active; ghi rõ uptime không phải tiêu chí và các dịch vụ dữ liệu không đổi
 - [ ] T048 [US4] Thực hiện báo cáo go/no-go trong `docs/operations/ollama-trial-report.md` và audit quyết định; ghi SC-007/SC-010
-- [ ] T049 [US4] Kiểm tra không có schedule/destroy/auto-teardown trong `deployments/terraform/ollama-ec2/` và runbook; ghi bằng chứng SC-010
+- [x] T049 [US4] Kiểm tra không có schedule/destroy/auto-teardown trong `deployments/terraform/ollama-ec2/` và runbook; ghi bằng chứng SC-010
 
 **Checkpoint**: US4 chạy độc lập: có đủ dữ liệu 7 ngày và báo cáo go/no-go, không có hành động tự động sau ngày 7.
 

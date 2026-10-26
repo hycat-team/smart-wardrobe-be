@@ -32,7 +32,9 @@ packages:
   - unzip
   - awscli
   # The CloudWatch agent is not in the Ubuntu archive; runcmd installs the
-  # official .deb. T043 owns pinning the agent version and adding metric filters.
+  # official .deb. The agent version is not pinned for this one-week trial: the
+  # journald collector requires a 2026 release, so the official latest package is
+  # used and the installed version is recorded as evidence before measurement.
 
 write_files:
   # Runtime env contract for the host. Values come from Terraform variables; the
@@ -107,9 +109,9 @@ ${indent(6, bootstrap_script)}
     content: |
 ${indent(6, nginx_template)}
 
-  # CloudWatch agent: logs for nginx + bootstrap and CPU/RAM/disk metrics.
-  # T043 adds metric filters/dashboard on top of this; retention comes from the
-  # Terraform log group and from retention_in_days below.
+  # CloudWatch agent: Nginx access/error, Ollama journal and bootstrap logs plus
+  # the contract CPU/RAM/disk metrics. Metric filters and the dashboard are
+  # declared in main.tf; retention is enforced by the Terraform log group.
   - path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
     permissions: "0644"
     owner: root:root
@@ -124,13 +126,13 @@ ${indent(6, nginx_template)}
             "files": {
               "collect_list": [
                 {
-                  "file_path": "/var/log/nginx/access.log",
+                  "file_path": "/var/log/nginx/ollama-access.log",
                   "log_group_name": "${cloudwatch_log_group_name}",
                   "log_stream_name": "{instance_id}/nginx-access",
                   "retention_in_days": ${cloudwatch_log_retention_days}
                 },
                 {
-                  "file_path": "/var/log/nginx/error.log",
+                  "file_path": "/var/log/nginx/ollama-error.log",
                   "log_group_name": "${cloudwatch_log_group_name}",
                   "log_stream_name": "{instance_id}/nginx-error",
                   "retention_in_days": ${cloudwatch_log_retention_days}
@@ -142,25 +144,43 @@ ${indent(6, nginx_template)}
                   "retention_in_days": ${cloudwatch_log_retention_days}
                 }
               ]
+            },
+            "journald": {
+              "collect_list": [
+                {
+                  "log_group_name": "${cloudwatch_log_group_name}",
+                  "log_stream_name": "{instance_id}/ollama-journal",
+                  "retention_in_days": ${cloudwatch_log_retention_days},
+                  "units": ["ollama.service"]
+                }
+              ]
             }
           }
         },
         "metrics": {
-          "aggregation_dimensions": [["InstanceId"]],
+          "namespace": "${cloudwatch_metric_namespace}",
           "append_dimensions": {
             "InstanceId": "$${aws:InstanceId}"
           },
+          "aggregation_dimensions": [["InstanceId"], ["InstanceId", "path"]],
           "metrics_collected": {
+            "cpu": {
+              "totalcpu": true,
+              "measurement": [
+                {"name": "usage_active", "rename": "ec2_cpu_percent", "unit": "Percent"}
+              ]
+            },
             "mem": {
               "measurement": [
-                {"name": "mem_used_percent", "rename": "ec2_memory_used_percent"}
+                {"name": "used", "rename": "ec2_memory_bytes", "unit": "Bytes"}
               ]
             },
             "disk": {
               "measurement": [
-                {"name": "used_percent", "rename": "ec2_disk_used_percent"}
+                {"name": "free", "rename": "ec2_disk_free_bytes", "unit": "Bytes"}
               ],
-              "resources": ["/"]
+              "resources": ["/", "/var/lib/ollama"],
+              "drop_device": true
             }
           }
         }
@@ -174,7 +194,7 @@ runcmd:
   - [ bash, "-lc", "/opt/ollama-trial/bootstrap.sh >> /var/log/ollama-trial-bootstrap.log 2>&1" ]
   - [ bash, "-lc", "systemctl enable nginx" ]
   # CloudWatch agent (best effort: the trial must still boot if the download fails,
-  # and T043 reports the gap instead of pretending metrics exist).
+  # and the day-7 report records the gap instead of pretending metrics exist).
   - [ bash, "-lc", "if ! command -v amazon-cloudwatch-agent-ctl >/dev/null 2>&1; then curl -fsSL https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o /tmp/amazon-cloudwatch-agent.deb && dpkg -i /tmp/amazon-cloudwatch-agent.deb; fi || true" ]
   - [ bash, "-lc", "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json || true" ]
   - [ bash, "-lc", "systemctl enable amazon-cloudwatch-agent || true" ]

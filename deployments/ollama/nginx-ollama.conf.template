@@ -15,9 +15,15 @@
 # Invariants:
 #   - proxy_pass always targets 127.0.0.1:11434; the inference port is never public.
 #   - Port 80 serves only the ACME challenge and a redirect; it never proxies.
-#   - The Authorization header and the request body are never logged. The default
-#     access log format records method/path/status only, never headers or bodies.
+#   - The Authorization header and the request body are never logged. The access
+#     log format below records only time, client IP, status, request time, bytes,
+#     method and the path without query values (never headers or bodies).
 #   - A missing or wrong Bearer token is rejected here and never reaches Ollama.
+
+# Bounded access log consumed by the CloudWatch agent and by the proxy_5xx_total
+# / proxy_401_total metric filters (field order is part of that contract).
+log_format ollama_trial '$time_iso8601 $remote_addr $status $request_time $body_bytes_sent $request_method $uri';
+error_log /var/log/nginx/ollama-error.log warn;
 
 # Exact-match Bearer check. `map` compares the whole header value, so a token that
 # merely contains the expected string does not pass. The value lives in this file
@@ -73,6 +79,8 @@ server {
     ssl_session_cache shared:ollama_tls:10m;
     ssl_session_timeout 10m;
     ssl_session_tickets off;
+
+    access_log /var/log/nginx/ollama-access.log ollama_trial;
 
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options "nosniff" always;

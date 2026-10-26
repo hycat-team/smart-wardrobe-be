@@ -1,6 +1,9 @@
 package ai
 
 import (
+	"net/url"
+	"strings"
+
 	"smart-wardrobe-be/shared/pkg/logger"
 
 	"go.uber.org/zap"
@@ -48,6 +51,34 @@ func NewAttemptTelemetryLogger(log logger.Interface) *AttemptTelemetryLogger {
 
 // LogAttempt writes the required attempt keys. Timestamp and level are added by
 // the logger itself; every other field comes from the typed payload.
+// OpenAIEndpointHostMismatch reports the endpoint host and whether it is outside
+// the explicit trial allowlist. An empty allowlist disables the warning, which is
+// what non-trial configurations rely on. An endpoint that cannot be parsed is
+// treated as a mismatch so a broken trial configuration still produces a warning.
+//
+// The returned host is a hostname only: no scheme, path, credentials or query.
+func OpenAIEndpointHostMismatch(rawEndpoint string, expectedHosts []string) (string, bool) {
+	if len(expectedHosts) == 0 {
+		return "", false
+	}
+
+	host := ""
+	if parsed, err := url.Parse(strings.TrimSpace(rawEndpoint)); err == nil {
+		host = strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	}
+	if host == "" {
+		return "", true
+	}
+
+	for _, expected := range expectedHosts {
+		candidate := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(expected), "."))
+		if candidate != "" && candidate == host {
+			return host, false
+		}
+	}
+	return host, true
+}
+
 func (l *AttemptTelemetryLogger) LogAttempt(entry AttemptTelemetry) {
 	if l == nil || l.logger == nil {
 		return

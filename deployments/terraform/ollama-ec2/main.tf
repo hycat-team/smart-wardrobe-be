@@ -253,6 +253,7 @@ resource "aws_instance" "ollama" {
     data_volume_device_name   = var.data_volume_device_name
     cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
     cloudwatch_log_group_name = local.cloudwatch_log_group_name
+    cloudwatch_metric_namespace = var.cloudwatch_metric_namespace
     bootstrap_script          = local.bootstrap_script
     nginx_template            = local.nginx_template
   })
@@ -309,8 +310,6 @@ resource "aws_volume_attachment" "ollama_data" {
 # ------------------------------------------------------------------------------
 # 5. Observability and cost guard
 # ------------------------------------------------------------------------------
-# T043 adds metric filters/dashboard on top of this group; the group exists now so
-# the agent configuration rendered by cloud-init has somewhere to write.
 resource "aws_cloudwatch_log_group" "ollama" {
   name              = "/ollama-trial/ec2"
   retention_in_days = var.cloudwatch_log_retention_days
@@ -318,6 +317,155 @@ resource "aws_cloudwatch_log_group" "ollama" {
   tags = {
     Name = "ollama-trial-logs"
   }
+}
+
+# The proxy writes one bounded, header-free access line per request:
+#   $time_iso8601 $remote_addr $status $request_time $body_bytes_sent $request_method $uri
+# These metric filters map the two contract proxy metrics onto that line. The
+# AI attempt metrics (ai_ttft_ms, ai_latency_ms, ...) are emitted by the Go AI
+# service on Lightsail, not by this host, so no EC2 filter invents them here.
+resource "aws_cloudwatch_log_metric_filter" "proxy_5xx" {
+  name           = "ollama-trial-proxy-5xx"
+  log_group_name = aws_cloudwatch_log_group.ollama.name
+  pattern        = "[timestamp, ip, status_code=5*, request_time, bytes, method, uri]"
+
+  metric_transformation {
+    name          = "proxy_5xx_total"
+    namespace     = var.cloudwatch_metric_namespace
+    value         = "1"
+    default_value = "0"
+    unit          = "Count"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "proxy_401" {
+  name           = "ollama-trial-proxy-401"
+  log_group_name = aws_cloudwatch_log_group.ollama.name
+  pattern        = "[timestamp, ip, status_code=401, request_time, bytes, method, uri]"
+
+  metric_transformation {
+    name          = "proxy_401_total"
+    namespace     = var.cloudwatch_metric_namespace
+    value         = "1"
+    default_value = "0"
+    unit          = "Count"
+  }
+}
+
+# The dashboard only uses metrics that this host actually produces. The note
+# widget points the operator at the Go AI service logs for the AI attempt
+# metrics instead of showing permanently empty widgets.
+resource "aws_cloudwatch_dashboard" "ollama" {
+  dashboard_name = "ollama-trial-032"
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "EC2 CPU percent (${var.cloudwatch_metric_namespace}/ec2_cpu_percent)"
+          region = var.aws_region
+          stat   = "Average"
+          period = 300
+          view   = "timeSeries"
+          metrics = [
+            [var.cloudwatch_metric_namespace, "ec2_cpu_percent", "InstanceId", aws_instance.ollama.id]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "EC2 memory bytes (${var.cloudwatch_metric_namespace}/ec2_memory_bytes)"
+          region = var.aws_region
+          stat   = "Average"
+          period = 300
+          view   = "timeSeries"
+          metrics = [
+            [var.cloudwatch_metric_namespace, "ec2_memory_bytes", "InstanceId", aws_instance.ollama.id]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title  = "EC2 disk free bytes (${var.cloudwatch_metric_namespace}/ec2_disk_free_bytes)"
+          region = var.aws_region
+          stat   = "Minimum"
+          period = 300
+          view   = "timeSeries"
+          metrics = [
+            [var.cloudwatch_metric_namespace, "ec2_disk_free_bytes", "InstanceId", aws_instance.ollama.id]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title  = "Nginx proxy 5xx (${var.cloudwatch_metric_namespace}/proxy_5xx_total)"
+          region = var.aws_region
+          stat   = "Sum"
+          period = 300
+          view   = "timeSeries"
+          metrics = [
+            [var.cloudwatch_metric_namespace, "proxy_5xx_total"]
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 12
+        width  = 12
+        height = 6
+        properties = {
+          title  = "Nginx proxy 401 (${var.cloudwatch_metric_namespace}/proxy_401_total)"
+          region = var.aws_region
+          stat   = "Sum"
+          period = 300
+          view   = "timeSeries"
+          metrics = [
+            [var.cloudwatch_metric_namespace, "proxy_401_total"]
+          ]
+        }
+      },
+      {
+        type   = "text"
+        x      = 12
+        y      = 12
+        width  = 12
+        height = 6
+        properties = {
+          markdown = join("\n", [
+            "## Feature 032 Ollama trial telemetry",
+            "",
+            "This host produces:",
+            "- `ec2_cpu_percent`, `ec2_memory_bytes`, `ec2_disk_free_bytes` (CloudWatch agent, namespace `${var.cloudwatch_metric_namespace}`).",
+            "- `proxy_5xx_total`, `proxy_401_total` (Nginx access log metric filters).",
+            "",
+            "AI attempt metrics (`ai_ttft_ms`, `ai_latency_ms`, `ai_fallback_total`, `ai_schema_failure_total`, `ai_thinking_token_total`, `ai_cost_micro_vnd`) come from the Go AI service structured logs on Lightsail. Read them there with the runbook queries; they are not collected on this EC2.",
+            "",
+            "Log retention: ${var.cloudwatch_log_retention_days} days."
+          ])
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_budgets_budget" "trial" {

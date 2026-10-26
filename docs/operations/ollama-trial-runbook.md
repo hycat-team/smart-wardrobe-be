@@ -1,10 +1,10 @@
 # Runbook — Thử nghiệm Ollama trên EC2 (feature 032)
 
 **Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Cập nhật**: 2026-10-27
-(Phase 5 / US3: quy trình bật–rollback–allowlist ở mục 4, kiểm tra bất biến ở mục 5, checklist người
-vận hành T039–T042 ở mục 9) | **Trạng thái**: Phase 3 (US1) và Phase 4 (US2) đã có mã + test; Phase 5
-mới có **tài liệu và script env** — T037–T041 **chưa chạy** (operator step), T042 mới chạy phần
-regression local. Xem mục 8 và mục 9.
+(Phase 6 / US4: CloudWatch agent + metric filter/dashboard + quy trình ngày thứ 7 ở mục 6; T043–T049
+đã có mã/tài liệu, các bước live vẫn là operator step **NOT RUN**) | **Trạng thái**: Phase 3 (US1),
+Phase 4 (US2) và Phase 5 (US3) đã có mã + test/tài liệu; Phase 6 mới có mã telemetry/hạ tầng và quy
+trình — **chưa chạy trial 7 ngày**, chưa có quyết định go/no-go. Xem mục 6, mục 8 và mục 9.
 
 Runbook này là quy trình vận hành duy nhất cho tuần thử nghiệm Ollama: đo baseline, chạy local,
 dựng EC2, bật/tắt bằng env trên Lightsail, rollback và chốt quyết định ngày thứ 7. Hợp đồng chi
@@ -239,9 +239,9 @@ Compose/Nginx/pipeline.
 - Log có `provider`, `model`, `attempt_index`, `billing_class`, `cost_micro_vnd`.
 - `ai_usage_events`: ba đường text có `actual_cost_micro_vnd = 0`.
 
-> Lệnh + output kỳ vọng chi tiết ở §4.1.3/§4.1.4. Lưu ý: `cost_micro_vnd` trong dòng log attempt
-> chưa được điền ở phase này (T044) — cost chỉ đọc từ `ai_usage_events`; vision/embedding không có
-> dòng attempt nào.
+> Lệnh + output kỳ vọng chi tiết ở §4.1.3/§4.1.4. Lưu ý: `version` trong dòng attempt lấy từ
+> `APP_VERSION` (rỗng vẫn hợp lệ); `cost_micro_vnd` vẫn là `0` **theo thiết kế** vì attempt result
+> không mang cost — cost chỉ đọc từ `ai_usage_events`; vision/embedding không có dòng attempt nào.
 
 ### B5. Kiểm tra cô lập truy cập
 
@@ -446,9 +446,9 @@ hiện hữu của service — đừng kết luận "thiếu log = fail".
 
 Bất kỳ dòng `provider=openai` + `billing_class=billed`, hoặc `provider=google` cho capability text
 (khi Ollama không lỗi), hoặc `thinking_tokens != 0` trên `openai` đều là **fail**: dừng, ghi vào
-evidence, không tiếp tục load profile. Hai field `version` và `cost_micro_vnd` trong dòng attempt
-hiện **chưa được điền** (rỗng/0) — chúng thuộc T044/Phase 6; **không** dùng chúng làm tiêu chí và
-không đọc cost từ log, chỉ đọc cost từ `ai_usage_events`.
+evidence, không tiếp tục load profile. `version` lấy từ `APP_VERSION` (rỗng vẫn hợp lệ);
+`cost_micro_vnd` vẫn là `0` theo thiết kế vì attempt result không mang cost — **không** dùng nó làm
+tiêu chí và không đọc cost từ log, chỉ đọc cost từ `ai_usage_events`.
 
 Đối chiếu usage event (Supabase; chỉ đọc, không sửa dữ liệu):
 
@@ -602,16 +602,200 @@ Ghi chú: `git grep` chỉ quét file đang được track; với `.terraform/`,
 Tất cả 11 mục phải `PASS` trước khi ghi SC-001/SC-004 vào báo cáo. Bất kỳ mục nào `FAIL` → dừng,
 hoàn nguyên thay đổi ngoài phạm vi, **không** "ghi chú rồi bỏ qua".
 
-## 6. Ngày thứ 7
+## 6. Ngày thứ 7 — thu số liệu và chốt quyết định (operator, **NOT RUN**)
 
-1. **Không** rollback/tắt/teardown tự động. Cấu hình Ollama tiếp tục active.
-2. Thu đủ số liệu theo
-   [contracts/trial-telemetry.md](../../specs/032-ollama-lightsail-trial/contracts/trial-telemetry.md)
-   §4 và lưu bằng chứng (metric/log raw, không kèm prompt hay secret).
-3. Điền đầy đủ `docs/operations/ollama-trial-report.md`, gồm bảng SC-007 và bảng quyết định.
-4. Chốt `go` / `adjust` / `no-go` với danh tính người quyết định và thời điểm. Nếu chưa quyết định:
-   giữ nguyên cấu hình, tiếp tục quan sát và ghi rõ "chưa có quyết định" trong báo cáo.
-5. Không hạ ngưỡng SC-005 sau khi đã bắt đầu đo; mọi điều chỉnh phải ghi lý do và thời điểm.
+> **Trạng thái tại thời điểm implement (2026-10-27)**: mục này là **quy trình** cho người vận
+> hành. Không bước nào dưới đây được chạy trong môi trường implement: không có quyền truy cập
+> Lightsail/AWS/CloudWatch và không được deploy. Mọi ô kết quả là `TODO(operator)` / **NOT RUN**;
+> không có số liệu hay quyết định nào được tạo trước.
+>
+> **Bất biến**: sau ngày thứ 7 cấu hình Ollama **tiếp tục active**. Không rollback, không tắt, không
+> xoá, không teardown, không hạ cấu hình và không chạy `terraform destroy` chỉ vì hết 7 ngày.
+> Uptime **không** phải tiêu chí quyết định. Các dịch vụ dữ liệu (Supabase/Postgres, Redis,
+> RabbitMQ/CloudAMQP, Cloudinary) **không thay đổi** trong tuần trial; xác nhận bằng diff env và
+> log kết nối ở §6.6.
+
+### 6.1 Chốt mốc thời gian và trạng thái trước khi thu số liệu
+
+```bash
+cd /opt/closy-aws
+date -u +%Y-%m-%dT%H:%M:%SZ
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+  logs --since 7d ai-http ai-worker | grep '"msg":"ai provider attempt"' | wc -l
+```
+
+Ghi `trial_started_at` (mục 1), thời điểm bắt đầu thu số liệu, `trial_finished_at` (UTC) và số dòng
+attempt thô vào `docs/operations/ollama-trial-report.md` mục 1. Nếu `ps` không còn đủ 7 container
+`Up` (3 http + 3 worker + nginx), ghi sự cố vào báo cáo mục 4; **không** tự rollback.
+
+### 6.2 Thu log attempt AI (lỗi, latency, fallback, schema, thinking)
+
+```bash
+cd /opt/closy-aws
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+  logs --since 7d ai-http ai-worker | grep '"msg":"ai provider attempt"' > /tmp/ai-attempts-7d.jsonl
+```
+
+Từ file đó, tổng hợp (dùng `jq`; cài `sudo apt-get install -y jq` nếu thiếu):
+
+```bash
+# outcome breakdown (mục 3 báo cáo)
+jq -r '[.provider,.capability,.outcome]|@tsv' /tmp/ai-attempts-7d.jsonl | sort | uniq -c
+# fallback theo lý do (mục 5 báo cáo)
+jq -r 'select(.fallback_reason!="") | [.capability,.fallback_reason]|@tsv' /tmp/ai-attempts-7d.jsonl | sort | uniq -c
+# schema failure và thinking > 0 trên openai (phải điều tra ngay)
+jq -r 'select(.outcome=="schema_invalid") | [.capability,.model]|@tsv' /tmp/ai-attempts-7d.jsonl | sort | uniq -c
+jq -r 'select(.provider=="openai" and (.thinking_tokens // 0) > 0)' /tmp/ai-attempts-7d.jsonl
+# p95 latency attempt 1 (đổi capability khi cần)
+jq -r 'select(.capability=="chat_text" and .attempt_index==1) | .latency_ms' /tmp/ai-attempts-7d.jsonl \
+  | sort -n > /tmp/latency-chat.txt
+awk '{a[NR]=$1} END {i=int((NR*95+99)/100); if(i<1)i=1; print "n="NR, "p95="a[i]}' /tmp/latency-chat.txt
+```
+
+Kỳ vọng: `thinking_tokens = 0` trên mọi dòng `provider=openai`; bất kỳ dòng nào `> 0` là lỗi cấu
+hình (FR-026) → ghi sự cố, không coi trial hợp lệ. Điền mục 3 (lỗi), mục 4 (latency) và mục 5
+(fallback) của báo cáo từ dữ liệu thô này; lưu đường dẫn file log đã lọc (không kèm prompt/secret)
+vào mục 7.
+
+### 6.3 Thu metric CPU/RAM/disk và proxy
+
+Mở CloudWatch console → Dashboards → `ollama-trial-032` (Terraform T043). Đọc các metric theo
+namespace `OllamaTrial`:
+
+- `ec2_cpu_percent`, `ec2_memory_bytes`, `ec2_disk_free_bytes` (CloudWatch agent trên EC2).
+- `proxy_5xx_total`, `proxy_401_total` (metric filter từ `/var/log/nginx/ollama-access.log`).
+
+CloudWatch agent aggregate các metric agent theo `InstanceId` (và `InstanceId,path` cho disk), nên
+dashboard/CLI dưới đây chỉ cần dimension `InstanceId`; muốn xem từng mount thì mở **Metrics** và chọn
+dimension `path` trong namespace `OllamaTrial`.
+
+Hoặc bằng CLI **chỉ đọc** (thay `<instance-id>` bằng `terraform output instance_id`):
+
+```bash
+aws cloudwatch get-metric-statistics --region ap-southeast-1 --namespace OllamaTrial \
+  --metric-name ec2_cpu_percent --dimensions Name=InstanceId,Value=<instance-id> \
+  --start-time <trial_started_at> --end-time <trial_finished_at> --period 3600 --statistics Average Maximum
+aws cloudwatch get-metric-statistics --region ap-southeast-1 --namespace OllamaTrial \
+  --metric-name ec2_memory_bytes --dimensions Name=InstanceId,Value=<instance-id> \
+  --start-time <trial_started_at> --end-time <trial_finished_at> --period 3600 --statistics Average Maximum
+aws cloudwatch get-metric-statistics --region ap-southeast-1 --namespace OllamaTrial \
+  --metric-name ec2_disk_free_bytes --dimensions Name=InstanceId,Value=<instance-id> \
+  --start-time <trial_started_at> --end-time <trial_finished_at> --period 3600 --statistics Minimum
+aws cloudwatch get-metric-statistics --region ap-southeast-1 --namespace OllamaTrial \
+  --metric-name proxy_5xx_total --start-time <trial_started_at> --end-time <trial_finished_at> \
+  --period 3600 --statistics Sum
+aws cloudwatch get-metric-statistics --region ap-southeast-1 --namespace OllamaTrial \
+  --metric-name proxy_401_total --start-time <trial_started_at> --end-time <trial_finished_at> \
+  --period 3600 --statistics Sum
+```
+
+Ghi giá trị lớn nhất/nhỏ nhất và thời điểm vào mục 7 của báo cáo. Ngưỡng điều tra: CPU >85% kéo dài
+10 phút; RAM >90%; disk free <10 GiB; `proxy_5xx_total` >0 kéo dài 5 phút; `proxy_401_total` >0.
+Không tự đổi cấu hình khi vượt ngưỡng trong lúc thu số liệu; ghi sự cố trước.
+
+Kiểm tra queue và log Ollama (không cần CloudWatch):
+
+```bash
+sudo journalctl -u ollama --since "<7 days ago>" | grep -iE 'queue|out of memory|oom|error' | tail -n 50
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+  logs --since 7d ai-http | grep -ciE 'queue full|too many requests|429|503'
+```
+
+Ghi queue depth đã đặt (`OLLAMA_MAX_QUEUE=8`), số lần queue full/429/503 và xác nhận không có attempt
+thứ ba vào mục 6 của báo cáo.
+
+### 6.4 Thu sự cố trong tuần
+
+Tập hợp mọi sự cố đã ghi trong tuần (từ §9.2, §9.3, log và nhật ký phiên) vào mục 4 của báo cáo:
+thời điểm UTC, sự cố, ảnh hưởng, xử lý, còn tồn hay không. Không suy đoán sự cố không có bằng chứng;
+nếu không có sự cố, ghi rõ "không ghi nhận sự cố" thay vì để trống.
+
+### 6.5 Thu chi phí AWS
+
+```bash
+aws ce get-cost-and-usage --region us-east-1 \
+  --time-period Start=<trial_started_at>,End=<trial_finished_at+1d> \
+  --granularity DAILY --metrics UnblendedCost \
+  --filter '{"Tags":{"Key":"Feature","Values":["032"]}}'
+aws budgets describe-budgets --account-id <account-id> --region us-east-1 \
+  --query 'Budgets[?BudgetName==`ollama-trial-80usd`]'
+```
+
+Ghi chi phí EC2, EBS, Elastic IP, Secrets Manager/SSM/CloudWatch vào mục 5 của báo cáo và đối chiếu
+Budget 80 USD (cảnh báo 50/80/100%). Nếu vượt 80 USD: ghi nhận, **không** tự hạ cấu hình/teardown.
+
+### 6.6 Xác nhận dịch vụ dữ liệu không đổi và uptime không phải tiêu chí
+
+```bash
+cd /opt/closy-aws
+BACKUP="$(ls -t .env.aws.bak-* | head -1)"
+diff <(grep -E '^(DB_|REDIS_|RABBITMQ_|CLOUDINARY_|PAYOS_)' "$BACKUP") \
+     <(grep -E '^(DB_|REDIS_|RABBITMQ_|CLOUDINARY_|PAYOS_)' .env.aws) \
+  && echo "data-service env unchanged"
+docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml \
+  logs --since 7d ai-http ai-worker commerce-http commerce-worker account-http account-worker \
+  | grep -icE 'connection refused|no such host|authentication failed|certificate'
+```
+
+Ghi kết quả vào báo cáo mục 2. Kỳ vọng: `data-service env unchanged`; số dòng lỗi kết nối không tăng
+so với baseline. **Uptime không phải tiêu chí** cho `go`/`adjust`/`no-go`; không dùng uptime để thay
+thế các chỉ số SC-007.
+
+### 6.7 Chốt quyết định `go` / `adjust` / `no-go` (có người và thời điểm)
+
+Điền mục 6 của `docs/operations/ollama-trial-report.md`:
+
+- `decided_at`: UTC, sau ngày thứ 7.
+- `decided_by`: danh tính người quyết định (không phải tên nhóm chung).
+- `decision`: một trong `go` / `adjust` / `no-go`.
+- `rationale`: tham chiếu bảng SC-007, sự cố và chi phí; không cảm tính.
+- `evidence`: link/đường dẫn metric/log/báo cáo đã thu.
+- `follow_ups`: hạng mục còn thiếu trước production.
+
+Nếu chưa có quyết định: ghi "chưa có quyết định", giữ nguyên cấu hình Ollama active, tiếp tục quan
+sát. Quyết định `no-go`/`adjust` **không** kích hoạt rollback tự động; rollback vẫn là hành động thủ
+công theo §4.2 nếu người vận hành chọn, và phải ghi thời gian thực hiện.
+
+### 6.8 Kiểm tra read-only SC-010 — không có schedule/destroy/auto-teardown
+
+T049 chỉ là kiểm tra **đọc**. Đã chạy trong môi trường implement ngày 2026-10-27 bằng PowerShell
+`Select-String` (không chạy git, không chạy AWS), quét 8 file trong
+`deployments/terraform/ollama-ec2/**` và `deployments/ollama/**`:
+
+```powershell
+$patterns = 'aws_autoscaling_schedule|scheduled_action|auto_teardown|auto-teardown|terraform destroy|aws s3 rm'
+$files = @(Get-ChildItem deployments/terraform/ollama-ec2 -Recurse -File | ForEach-Object { $_.FullName })
+$files += @(Get-ChildItem deployments/ollama -Recurse -File | ForEach-Object { $_.FullName })
+Select-String -Path $files -Pattern $patterns -AllMatches
+```
+
+**Kết quả: PASS (read-only)** — `NO MATCHES` trên 8 file. Quét mở rộng thêm
+`aws_autoscaling|aws_scheduler|schedule|prevent_destroy|force_destroy` chỉ thấy đúng một dòng
+**comment** trong `variables.tf` ("Nothing here may create ... an auto-destroy schedule."), không có
+`resource`/`data`/`locals` nào. Trong runbook, các từ `teardown`/`schedule` chỉ xuất hiện ở câu phủ
+định ("không có ... tự động", §5.1.5 và §6); không có lệnh thực thi nào.
+
+Lặp lại bằng git khi người vận hành chạy §5.1.5 (read-only). Không chạy AWS/Lightsail/EC2 để kiểm
+tra mục này. Ghi kết quả PASS và bằng chứng vào báo cáo mục 8 (SC-010).
+
+### 6.9 Bảng bằng chứng ngày thứ 7
+
+| Hạng mục | Nguồn | Kỳ vọng | Kết quả | Bằng chứng |
+|---|---|---|---|---|
+| Log attempt 7 ngày | `ai-http`/`ai-worker` logs | đủ `request_id`, provider/model, outcome | `TODO(operator)` | đường dẫn `/tmp/ai-attempts-7d.jsonl` |
+| Outcome breakdown | `jq` | đủ nhóm lỗi contract | `TODO(operator)` | output đã lọc |
+| Latency p95 | `jq`/`awk` | theo SC-005 | `TODO(operator)` | file raw + output p95 |
+| Fallback | `jq` | theo `fallback_reason` | `TODO(operator)` | output đã lọc |
+| `thinking_tokens` trên `openai` | `jq` | `0` trên mọi dòng | `TODO(operator)` | output đã lọc |
+| CPU/RAM/disk | CloudWatch dashboard/CLI | theo ngưỡng §6.3 | `TODO(operator)` | ảnh/output metric |
+| `proxy_5xx_total`/`proxy_401_total` | CloudWatch | ghi nhận, điều tra nếu >0 | `TODO(operator)` | ảnh/output metric |
+| Queue/Ollama | journal + log AI | queue hữu hạn, không attempt 3 | `TODO(operator)` | output |
+| Sự cố | báo cáo mục 4 | đầy đủ hoặc "không ghi nhận" | `TODO(operator)` | nhật ký |
+| Chi phí | Cost Explorer + Budget | đối chiếu 80 USD | `TODO(operator)` | output/ảnh |
+| Dịch vụ dữ liệu | diff env + log | không đổi | `TODO(operator)` | output |
+| Quyết định | báo cáo mục 6 | `go`/`adjust`/`no-go` + người + giờ | `TODO(operator)` | báo cáo |
+| SC-010 | §6.8 | PASS read-only, không auto-teardown | **PASS (read-only)** | output `Select-String` trên |
 
 ## 7. Chỉ mục bằng chứng
 
@@ -628,7 +812,7 @@ Cập nhật đường dẫn/ghi chú thật khi có bằng chứng. Không dán
 | SC-007 | Báo cáo go/no-go đủ 8 nhóm chỉ số | `docs/operations/ollama-trial-report.md` | TODO |
 | SC-008 | Regression API; text→Ollama, vision/embedding→Gemini; không đổi DTO | §9.4 (đã chạy phần local) + log provider ở §4.1.4 + §5.2 #11 | Một phần (local) |
 | SC-009 | Timeout/429/5xx/malformed→Gemini đúng 1 lần; lỗi giữa stream không fallback; cancel/4xx 0 lần | test + drill B6 | TODO |
-| SC-010 | 0 auto rollback/teardown sau ngày 7; quyết định có người/thời điểm | mục 6 + báo cáo + §5.2 #8 | TODO |
+| SC-010 | 0 auto rollback/teardown sau ngày 7; quyết định có người/thời điểm | mục 6 (§6.7, §6.8) + báo cáo | **Một phần**: read-only PASS cho schedule/teardown (T049, §6.8); quyết định live vẫn `TODO` |
 | SC-011 | Version + digest local/EC2 khớp; contract test pass trước EC2 | A1, A2, B2 | TODO |
 
 Bằng chứng tối thiểu khác (theo quickstart §4): output contract test local, Terraform plan/apply
@@ -898,13 +1082,14 @@ Quy ước: `<ollama-host>` là subdomain Ollama (không phải domain API), `<e
 | D1 | Path không hỗ trợ | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" https://<ollama-host>/api/version` | `404` (proxy đóng mọi path khác) |
 | D2 | Health probe không cần token | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" https://<ollama-host>/healthz` | `200` |
 
-Đọc log proxy để đối chiếu (metric `proxy_401_total` **chưa tồn tại** — metric filter là T043/Phase 6):
+Đọc log proxy để đối chiếu (metric `proxy_401_total`/`proxy_5xx_total` do T043 tạo từ chính access log
+này; field thứ 3 là status):
 
 ```bash
 # trên EC2 qua SSM
-sudo grep -c ' /v1/chat/completions HTTP/[0-9.]*" 401 ' /var/log/nginx/access.log
-sudo tail -n 20 /var/log/nginx/access.log
-sudo tail -n 20 /var/log/nginx/error.log
+sudo awk '$3 == 401 {count++} END {print count+0}' /var/log/nginx/ollama-access.log
+sudo tail -n 20 /var/log/nginx/ollama-access.log
+sudo tail -n 20 /var/log/nginx/ollama-error.log
 ```
 
 **Bảng bằng chứng SC-003**

@@ -2,12 +2,15 @@ package orchestrator
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	uc_interfaces "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/airoute"
 	app_ai "smart-wardrobe-be/shared/application/ai"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 const providerOpenAI = "openai"
@@ -32,6 +35,8 @@ func (uc *OrchestratorUseCase) attachTrialHooks(plan *uc_interfaces.ExecutionPla
 	if plan == nil || plan.Provider != providerOpenAI {
 		return nil
 	}
+
+	uc.warnUnexpectedOpenAIHost(plan, opt)
 
 	state := &trialAttemptState{plan: plan}
 	opt.Route = string(plan.Route)
@@ -94,6 +99,7 @@ func (uc *OrchestratorUseCase) afterTrialAttempt(_ context.Context, state *trial
 
 	entry := app_ai.AttemptTelemetry{
 		Service:        "ai",
+		Version:        appVersion(),
 		Environment:    uc.environment(),
 		RequestID:      requestIDString(meta.RequestID),
 		Operation:      meta.Operation,
@@ -110,6 +116,11 @@ func (uc *OrchestratorUseCase) afterTrialAttempt(_ context.Context, state *trial
 		OutputTokens:   result.Usage.OutputTokens,
 		ThinkingTokens: result.Usage.ThinkingTokens,
 		UsageReported:  result.UsageReported,
+		// The attempt result carries token usage only. The actual billed cost is
+		// written by the cost use case to ai_usage_events; reading it back here
+		// would add a billing lookup, which feature 032 explicitly does not do.
+		// OpenAI/Ollama attempts are unbilled and therefore 0 by contract.
+		CostMicroVND: 0,
 	}
 	// A fallback reason is only meaningful on a failed first attempt that is
 	// still eligible for the single Gemini fallback.
@@ -125,6 +136,40 @@ func (uc *OrchestratorUseCase) environment() string {
 		return ""
 	}
 	return uc.cfg.Server.Env
+}
+
+// appVersion is the image/app version stamped into attempt telemetry. The
+// repository has no build-time version symbol yet, so the deployment-provided
+// APP_VERSION is used. An empty value is allowed and documented: the runbook
+// records the deployed image tag separately.
+func appVersion() string {
+	return strings.TrimSpace(os.Getenv("APP_VERSION"))
+}
+
+// warnUnexpectedOpenAIHost emits one structured warning per trial request when
+// provider=openai points at a host that is not in AI_OPENAI_TRIAL_EXPECTED_HOSTS.
+// An empty list disables the check, and only the host is logged: never the full
+// endpoint, prompt, credential or request body.
+func (uc *OrchestratorUseCase) warnUnexpectedOpenAIHost(plan *uc_interfaces.ExecutionPlan, opt *app_ai.TextGenerationOptions) {
+	if uc == nil || uc.logger == nil || uc.cfg == nil || plan == nil || opt == nil || opt.Primary == nil {
+		return
+	}
+
+	expected := uc.cfg.AI.OpenAITrialExpectedHosts
+	host, mismatch := app_ai.OpenAIEndpointHostMismatch(opt.Primary.Endpoint, expected)
+	if !mismatch {
+		return
+	}
+
+	uc.logger.Warn("openai provider endpoint is outside AI_OPENAI_TRIAL_EXPECTED_HOSTS",
+		zap.String("service", "ai"),
+		zap.String("environment", uc.environment()),
+		zap.String("request_id", requestIDString(plan.RequestID)),
+		zap.String("provider", plan.Provider),
+		zap.String("model", plan.Model),
+		zap.String("endpoint_host", host),
+		zap.Strings("expected_hosts", expected),
+	)
 }
 
 // stampedUnbilled trusts the provider/model stamp the AI service attached to a
