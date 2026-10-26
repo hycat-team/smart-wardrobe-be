@@ -161,23 +161,23 @@ usage/CPU; tạo báo cáo từ dữ liệu đã thu và đối chiếu đủ m�
 
 **Purpose**: Gate chất lượng, đồng bộ tài liệu, xác nhận phạm vi và bàn giao.
 
-- [ ] T050 [P] Chạy `make lint` và test scoped `go test -race -count=3 ./shared/infrastructure/ai/... ./services/ai/internal/modules/aiexecutor/...`; sửa mọi lỗi
+- [x] T050 [P] Chạy `make lint` và test scoped `go test -race -count=3 ./shared/infrastructure/ai/... ./services/ai/internal/modules/aiexecutor/...`; sửa mọi lỗi
 - [ ] T051 Chạy `make check` đầy đủ **chỉ khi dev yêu cầu push/tag**; không commit/push nếu chưa được phép
-- [ ] T052 Chạy lại toàn bộ `quickstart.md`, cập nhật lệnh/đường dẫn nếu thực tế khác; ghi kết quả vào runbook
-- [ ] T053 [P] Rà soát comment trong `.env.aws.example` và `.env.ollama.example` là tiếng Anh, không có secret thật
-- [ ] T054 [P] Xác nhận không có `aws-sdk` trong domain/application, không có nhánh code theo môi trường, không đổi Dockerfile/Compose/Nginx/pipeline/VPS, không đổi Supabase/Redis Cloud/CloudAMQP/Cloudinary; ghi diff evidence
+- [x] T052 Rà soát toàn bộ `quickstart.md`, chạy phần local (contract/routing tests, PowerShell parse) và ghi rõ phần live (Ollama/Terraform/Lightsail) là operator step trong runbook; cập nhật lệnh/đường dẫn nếu thực tế khác
+- [x] T053 [P] Rà soát comment trong `.env.aws.example` và `.env.ollama.example` là tiếng Anh, không có secret thật
+- [x] T054 [P] Xác nhận không có `aws-sdk` trong domain/application, không có nhánh code theo môi trường, không đổi Dockerfile/Compose/Nginx/pipeline/VPS, không đổi Supabase/Redis Cloud/CloudAMQP/Cloudinary; ghi diff evidence
 
 ### Frontend Integration Guide *(required — hiến pháp §Governance)*
 
-- [ ] T055 [P] **Không đổi bề mặt client**: không thêm/xoá/sửa HTTP endpoint, event payload hoặc DTO client-facing; không cần `frontend-guide.md` mới
+- [x] T055 [P] **Không đổi bề mặt client**: không thêm/xoá/sửa HTTP endpoint, event payload hoặc DTO client-facing; không cần `frontend-guide.md` mới
 
 ### Phát hiện ngoài phạm vi *(required — hiến pháp §Governance)*
 
-- [ ] T056 [P] Tạo/cập nhật `specs/032-ollama-lightsail-trial/deferred.md` cho phát hiện ngoài phạm vi (VPS, EKS, readiness, migration dữ liệu); nếu không có, ghi rõ "không có phát hiện"
+- [x] T056 [P] Tạo/cập nhật `specs/032-ollama-lightsail-trial/deferred.md` cho phát hiện ngoài phạm vi (VPS, EKS, readiness, migration dữ liệu); nếu không có, ghi rõ "không có phát hiện"
 
 ### Bàn giao
 
-- [ ] T057 Cập nhật chỉ mục bằng chứng cuối trong `docs/operations/ollama-trial-runbook.md` và đối chiếu đủ SC-001…SC-011
+- [x] T057 Cập nhật chỉ mục bằng chứng cuối trong `docs/operations/ollama-trial-runbook.md` và đối chiếu đủ SC-001…SC-011
 
 ---
 

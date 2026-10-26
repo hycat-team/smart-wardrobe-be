@@ -828,6 +828,12 @@ rollback, báo cáo go/no-go có người quyết định.
 > SC-011 được tạo ra ở bước này; mọi ô "Trạng thái" ở mục 7 vẫn là `TODO` cho tới khi người
 > vận hành chạy và điền.
 
+**Trạng thái code phase (2026-10-27)**: Phase 1–4 và Phase 6 đã có commit; Phase 5 đã có tài liệu và
+script env. Các mục **T025/T026/T027/T039/T040/T041/T048** vẫn là operator step — chưa có bằng chứng
+live. T042 đã chạy phần regression local (mục 9.4). T050–T057 là gate/kiểm tra cuối, không tạo bằng
+chứng thay cho live run. Các phát hiện ngoài phạm vi nằm ở
+[deferred.md](../../specs/032-ollama-lightsail-trial/deferred.md).
+
 ### 8.1 T025 — kiểm tra chức năng + latency local (thủ công, chưa chạy)
 
 Điều kiện: Ollama native đã cài và `qwen3:4b` đã pull (A1). Nếu thiếu, đó là bước thủ công;
