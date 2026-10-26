@@ -20,6 +20,11 @@ const (
 	billingClassBilled   = "billed"
 )
 
+// trialAttemptEnvironment is the environment label the telemetry contract
+// requires for trial attempt logs. The deployment keeps SERVER_ENV as-is (vps on
+// Lightsail); this label only describes the log, it is not a business branch.
+const trialAttemptEnvironment = "aws-course"
+
 // trialAttemptState carries the decision the hooks need across the two attempts
 // of one trial text request. It is written by BeforeAttempt and read after the
 // call returns; the text service closes its channels before the orchestrator
@@ -100,7 +105,7 @@ func (uc *OrchestratorUseCase) afterTrialAttempt(_ context.Context, state *trial
 	entry := app_ai.AttemptTelemetry{
 		Service:        "ai",
 		Version:        appVersion(),
-		Environment:    uc.environment(),
+		Environment:    trialAttemptEnvironment,
 		RequestID:      requestIDString(meta.RequestID),
 		Operation:      meta.Operation,
 		Capability:     meta.Capability,

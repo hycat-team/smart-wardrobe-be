@@ -288,3 +288,7 @@ cost sai, trái FR-013/FR-014.
 
 - [x] T058 Bổ sung validation khởi động cho `provider` của mọi block AI (6 block text + vision/embedding) trong `shared/config/validation.go`: giá trị khác rỗng chỉ nhận `openai`/`google`, giá trị trống vẫn được phép để `.env.aws.example` và block chưa cấu hình tiếp tục khởi động; đồng thời từ chối entry của `AI_OPENAI_TRIAL_EXPECTED_HOSTS` chứa scheme hoặc path (chỉ host), kèm test trong `shared/config/ai_trial_config_test.go` per contracts/env-ai-trial.md §1.4 (missing)
 - [x] T059 Bổ sung `/var/log/cloud-init-output.log` vào `collect_list` của CloudWatch agent trong `deployments/terraform/ollama-ec2/templates/cloud-init.yaml.tftpl` (cùng log group và retention 14 ngày; hiện chỉ thu `/var/log/ollama-trial-bootstrap.log`) và ghi nguồn log này vào mục 6.3 của `docs/operations/ollama-trial-runbook.md` per contracts/trial-telemetry.md §3 (partial)
+
+## Phase 9: Convergence
+
+- [x] T060 Phát đúng `environment=aws-course` trong attempt telemetry theo `contracts/trial-telemetry.md` §1, thay vì lấy nguyên `cfg.Server.Env` (`vps` trên Lightsail); giữ `SERVER_ENV`/ADR 011 nguyên vẹn, chỉ thêm nhãn trial cho log (không tạo nhánh business code theo môi trường) và thêm test khẳng định field `environment` của trial attempt log là `aws-course` trong `services/ai/internal/modules/aiexecutor/application/usecase/orchestrator/` hoặc `shared/infrastructure/ai/telemetry_test.go` per FR-020 + US4/AC1 + contracts/trial-telemetry.md §1 (partial)
