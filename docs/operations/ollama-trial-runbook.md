@@ -278,6 +278,38 @@ Trong phiên SSM kiểm tra:
 
 **Đạt khi**: proxy TLS sẵn sàng, model đúng digest, thinking off, Ollama không public.
 
+### B2.1 Kết quả triển khai EC2 thực tế ngày 2026-10-27
+
+| Hạng mục | Giá trị |
+|---|---|
+| Elastic IP | `13.213.185.178` |
+| Instance | `i-0972535513a16e241` (`c6i.2xlarge`, `ap-southeast-1a`) |
+| Proxy hostname | `ollama.hycat.online` (A record trỏ EIP) |
+| TLS | Let's Encrypt, hạn `2027-01-25` |
+| Ollama | `0.40.11`, model `qwen2.5:3b-instruct-q4_K_M` |
+| Model digest | `sha256:5ee4f07cdb9beadbbb293e85803c569b01bd37ed059d2715faa7bb405f31caa6` |
+| Trạng thái | `/etc/ollama-trial/TRIAL_READY` có; `TRIAL_PENDING` không còn |
+| Allowlist | Security Group + Nginx chỉ `54.251.248.132/32`; `11434` timeout từ ngoài |
+
+Các lỗi thực tế đã gặp và đã sửa trong `main.tf`, `cloud-init.yaml.tftpl`, `bootstrap.sh`,
+`nginx-ollama.conf.template`:
+
+- `user_data` vượt giới hạn 16 KiB → dùng `base64gzip`.
+- Ubuntu 24.04 không cài được package `awscli` → cài AWS CLI v2 từ official zip.
+- EBS Nitro không có `/dev/sdf` → dò disk non-root (`nvme1n1`).
+- `ollama` CLI panic vì thiếu `HOME` → export `HOME=/root`.
+- `ollama list` trả model ID ngắn, không phải blob digest → đọc digest từ `ollama show --modelfile`.
+- Nginx mặc định của Ubuntu trùng `default_server` port 80 → xoá site default.
+- Bearer token 64 ký tự vượt map bucket mặc định → `map_hash_bucket_size 128`.
+- Ollama trả 403 khi nhận Host public → upstream dùng `Host 127.0.0.1:11434`.
+
+Kiểm chứng:
+
+- `/healthz` qua TLS: `200`.
+- Bearer đúng qua TLS: `200`; không Bearer: `401`.
+- Outfit qua API AWS: `200`, `isFallback=false`, provider `openai`, ~68.7s.
+- Drill fallback: stop Ollama → attempt 1 `http_5xx` → attempt 2 `google/gemini-3.1-flash-lite` success ~1.7s; start lại Ollama OK.
+
 ### B3. Bật trial trên Lightsail
 
 Cập nhật `/opt/closy-aws/.env.aws` theo
