@@ -27,6 +27,10 @@
 
 set -euo pipefail
 
+# cloud-init/runcmd may invoke this script without HOME; the Ollama CLI panics
+# while resolving its model directory unless HOME is defined.
+export HOME="${HOME:-/root}"
+
 readonly TRIAL_DIR="/etc/ollama-trial"
 readonly ENV_FILE="${TRIAL_DIR}/trial.env"
 readonly TEMPLATE_DIR="/opt/ollama-trial"
@@ -95,26 +99,40 @@ load_env() {
 # resolve to /dev/nvme1n1. Resolve it and never touch the root device.
 resolve_data_device() {
   local configured="${TRIAL_DATA_DEVICE:-/dev/sdf}"
-  local resolved root_source attempt
-
-  for attempt in $(seq 1 30); do
-    if [[ -b "${configured}" ]]; then
-      break
-    fi
-    sleep 1
-  done
-  [[ -b "${configured}" ]] || fail "data device ${configured} not present; check the Terraform EBS attachment"
-
-  resolved="$(readlink -f "${configured}" 2>/dev/null || true)"
-  [[ -n "${resolved}" && -b "${resolved}" ]] || fail "cannot resolve ${configured} to a block device"
+  local resolved="" root_source root_disk attempt
 
   root_source="$(findmnt -n -o SOURCE / 2>/dev/null || true)"
-  if [[ -n "${root_source}" && "${resolved}" == "${root_source}"* ]]; then
-    fail "${configured} resolved to the root device (${resolved}); refusing to format it"
+  root_disk="$(lsblk -no PKNAME "${root_source}" 2>/dev/null | head -n1 || true)"
+
+  # Nitro instances expose /dev/sdf as /dev/nvme1n1, and the symlink may not
+  # exist at all. Wait for the attached EBS disk, then fall back to the first
+  # non-root disk. The root disk is never formatted.
+  for attempt in $(seq 1 60); do
+    if [[ -b "${configured}" ]]; then
+      resolved="$(readlink -f "${configured}" 2>/dev/null || true)"
+    fi
+    if [[ -z "${resolved}" ]]; then
+      resolved="$(lsblk -dpno NAME,TYPE 2>/dev/null | awk '$2 == "disk" {print $1}' | while read -r dev; do
+        [[ "$(basename "${dev}")" == "${root_disk}" ]] && continue
+        printf '%s\n' "${dev}"
+        break
+      done)"
+    fi
+    if [[ -n "${resolved}" && -b "${resolved}" ]]; then
+      break
+    fi
+    sleep 2
+  done
+
+  [[ -n "${resolved}" && -b "${resolved}" ]] ||
+    fail "no non-root data block device found; check the Terraform EBS attachment (root=${root_disk:-unknown})"
+
+  if [[ -n "${root_disk}" && "$(basename "${resolved}")" == "${root_disk}" ]]; then
+    fail "data device resolved to the root disk (${resolved}); refusing to format it"
   fi
   case "${resolved}" in
     /dev/nvme0n1 | /dev/xvda | /dev/sda)
-      fail "${configured} resolved to the root disk (${resolved}); refusing to format it"
+      fail "data device resolved to the root disk (${resolved}); refusing to format it"
       ;;
   esac
 
@@ -161,7 +179,7 @@ prepare_data_volume() {
 # Ollama runtime
 # ------------------------------------------------------------------------------
 install_ollama() {
-  if command -v ollama >/dev/null 2>&1 && ollama --version 2>/dev/null | grep -q "${OLLAMA_VERSION}"; then
+  if command -v ollama >/dev/null 2>&1 && ollama --version 2>&1 | grep -q "${OLLAMA_VERSION}"; then
     log "pinned Ollama ${OLLAMA_VERSION} already installed"
   else
     log "installing pinned Ollama ${OLLAMA_VERSION} (never 'latest')"
@@ -173,7 +191,7 @@ install_ollama() {
   fi
 
   local installed
-  installed="$(ollama --version 2>/dev/null | head -n1 || true)"
+  installed="$(ollama --version 2>&1 || true)"
   [[ "${installed}" == *"${OLLAMA_VERSION}"* ]] ||
     fail "installed Ollama (${installed}) does not match pinned ${OLLAMA_VERSION}; refusing to measure"
 
@@ -213,16 +231,17 @@ pull_model() {
   ollama pull "${OLLAMA_MODEL}"
 
   local expected actual
-  expected="$(printf '%s' "${OLLAMA_MODEL_DIGEST#sha256:}" | tr '[:upper:]' '[:lower:]' | cut -c1-12)"
-  # `ollama list` prints the 12-character digest prefix in the ID column.
-  # `|| true` keeps a harmless SIGPIPE from aborting the script (pipefail is on).
-  actual="$(ollama list 2>/dev/null | awk -v model="${OLLAMA_MODEL}" '$1 == model { print $2; exit }' | tr '[:upper:]' '[:lower:]' | cut -c1-12 || true)"
+  expected="$(printf '%s' "${OLLAMA_MODEL_DIGEST#sha256:}" | tr '[:upper:]' '[:lower:]')"
+  # `ollama list` shows a short model ID, not the blob digest. Resolve the
+  # full manifest blob digest from the generated Modelfile instead.
+  actual="$(ollama show --modelfile "${OLLAMA_MODEL}" 2>/dev/null |
+    grep -oE 'sha256-[0-9a-f]{64}' | head -n1 | sed 's/^sha256-//' || true)"
   [[ -n "${actual}" ]] || fail "model ${OLLAMA_MODEL} not found after pull"
 
   if [[ "${expected}" != "${actual}" ]]; then
-    fail "digest mismatch: pinned ${OLLAMA_MODEL_DIGEST}, host has ${actual}; stopping before measurement"
+    fail "digest mismatch: pinned ${OLLAMA_MODEL_DIGEST}, host has sha256:${actual}; stopping before measurement"
   fi
-  log "model digest matches the pinned prefix ${actual}"
+  log "model digest matches the pinned digest ${actual}"
 }
 
 # ------------------------------------------------------------------------------
@@ -262,6 +281,11 @@ fetch_bearer_token() {
 # ------------------------------------------------------------------------------
 ensure_acme_webroot() {
   install -d -m 0755 "${ACME_WEBROOT}"
+  # Ubuntu's stock site also declares default_server on :80; remove it so the
+  # ACME/redirect block below owns the port.
+  if [[ -e /etc/nginx/sites-enabled/default ]]; then
+    rm -f /etc/nginx/sites-enabled/default
+  fi
 }
 
 # HTTP-only config used before a certificate exists. It serves the ACME challenge

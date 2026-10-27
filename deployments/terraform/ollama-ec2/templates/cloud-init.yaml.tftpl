@@ -30,7 +30,8 @@ packages:
   - certbot
   - python3-certbot-nginx
   - unzip
-  - awscli
+  # AWS CLI v2 is installed from the official zip in runcmd; the Ubuntu
+  # `awscli` package is unavailable on 24.04 and would fail the package step.
   # The CloudWatch agent is not in the Ubuntu archive; runcmd installs the
   # official .deb. The agent version is not pinned for this one-week trial: the
   # journald collector requires a 2026 release, so the official latest package is
@@ -101,13 +102,13 @@ write_files:
     permissions: "0755"
     owner: root:root
     content: |
-${indent(6, bootstrap_script)}
+      ${indent(6, bootstrap_script)}
 
   - path: /opt/ollama-trial/nginx-ollama.conf.template
     permissions: "0644"
     owner: root:root
     content: |
-${indent(6, nginx_template)}
+      ${indent(6, nginx_template)}
 
   # CloudWatch agent: Nginx access/error, Ollama journal, bootstrap and
   # cloud-init logs plus the contract CPU/RAM/disk metrics. Metric filters and the
@@ -196,6 +197,9 @@ ${indent(6, nginx_template)}
 runcmd:
   - [ bash, "-c", "install -d -m 0700 /opt/ollama-trial" ]
   - [ bash, "-c", "install -d -m 0755 /var/lib/ollama /var/lib/ollama/models /var/www/certbot" ]
+  # AWS CLI v2 (official installer) is required to read the Bearer token from
+  # Secrets Manager; Ubuntu 24.04 has no working `awscli` apt package.
+  - [ bash, "-lc", "if ! command -v aws >/dev/null 2>&1; then curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install; fi" ]
   # Bootstrap is idempotent. It exits 0 when the certificate cannot be issued yet
   # and leaves /etc/ollama-trial/TLS_PENDING for the operator.
   - [ bash, "-lc", "/opt/ollama-trial/bootstrap.sh >> /var/log/ollama-trial-bootstrap.log 2>&1" ]

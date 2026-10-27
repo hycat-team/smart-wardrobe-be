@@ -234,29 +234,31 @@ resource "aws_instance" "ollama" {
     encrypted   = true
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
-    aws_region                = var.aws_region
-    ollama_host               = var.ollama_host
-    ollama_model              = var.ollama_model
-    model_digest              = var.model_digest
-    ollama_version            = var.ollama_version
-    ollama_num_parallel       = var.ollama_num_parallel
-    ollama_max_queue          = var.ollama_max_queue
-    ollama_keep_alive         = var.ollama_keep_alive
-    ollama_num_gpu            = var.ollama_num_gpu
-    proxy_https_port          = var.proxy_https_port
-    proxy_acme_port           = var.proxy_acme_port
-    proxy_allowed_cidr        = var.proxy_allowed_cidr
-    proxy_hostname            = var.proxy_hostname
-    proxy_acme_email          = var.proxy_acme_email
-    proxy_bearer_secret_arn   = aws_secretsmanager_secret.proxy_bearer.arn
-    data_volume_device_name   = var.data_volume_device_name
+  # The rendered cloud-init payload is larger than EC2's 16 KiB user-data limit,
+  # so ship it gzipped; cloud-init detects gzip automatically.
+  user_data_base64 = base64gzip(templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
+    aws_region                    = var.aws_region
+    ollama_host                   = var.ollama_host
+    ollama_model                  = var.ollama_model
+    model_digest                  = var.model_digest
+    ollama_version                = var.ollama_version
+    ollama_num_parallel           = var.ollama_num_parallel
+    ollama_max_queue              = var.ollama_max_queue
+    ollama_keep_alive             = var.ollama_keep_alive
+    ollama_num_gpu                = var.ollama_num_gpu
+    proxy_https_port              = var.proxy_https_port
+    proxy_acme_port               = var.proxy_acme_port
+    proxy_allowed_cidr            = var.proxy_allowed_cidr
+    proxy_hostname                = var.proxy_hostname
+    proxy_acme_email              = var.proxy_acme_email
+    proxy_bearer_secret_arn       = aws_secretsmanager_secret.proxy_bearer.arn
+    data_volume_device_name       = var.data_volume_device_name
     cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
-    cloudwatch_log_group_name = local.cloudwatch_log_group_name
-    cloudwatch_metric_namespace = var.cloudwatch_metric_namespace
-    bootstrap_script          = local.bootstrap_script
-    nginx_template            = local.nginx_template
-  })
+    cloudwatch_log_group_name     = local.cloudwatch_log_group_name
+    cloudwatch_metric_namespace   = var.cloudwatch_metric_namespace
+    bootstrap_script              = local.bootstrap_script
+    nginx_template                = local.nginx_template
+  }))
 
   tags = {
     Name = "ollama-trial-c6i-2xlarge"

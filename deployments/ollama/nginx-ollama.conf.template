@@ -28,6 +28,10 @@ error_log /var/log/nginx/ollama-error.log warn;
 # Exact-match Bearer check. `map` compares the whole header value, so a token that
 # merely contains the expected string does not pass. The value lives in this file
 # with 0640 root:root permissions and the token is never echoed to a log.
+# A 64-character hex token plus "Bearer " exceeds the default 64-byte map
+# bucket, so raise the bucket size before declaring the map.
+map_hash_bucket_size 128;
+
 map $http_authorization $ollama_authorized {
     default                             0;
     "Bearer __PROXY_BEARER_TOKEN__"      1;
@@ -114,7 +118,10 @@ server {
 
         proxy_pass http://ollama_loopback;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        # Ollama 0.40 rejects a non-local Host header on the OpenAI-compatible
+        # route with 403, so keep the upstream Host local even though the public
+        # virtual host is ollama.<domain>.
+        proxy_set_header Host 127.0.0.1:11434;
         proxy_set_header Connection "";
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
