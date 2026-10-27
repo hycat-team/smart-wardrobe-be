@@ -5,6 +5,7 @@ import (
 	aiexecutor_contract "smart-wardrobe-be/services/ai/contract/aiexecutor"
 	brand_contract "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
+	uc_caching "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
@@ -25,6 +26,8 @@ type OutfitRecommendationUseCase struct {
 	userQuotaCtr     contract.IUserQuotaContract
 	brandContract    brand_contract.IBrandContract
 	profileRepo      repositories.IUserStyleProfileRepository
+	catalogCache     uc_caching.IPersonalizationCatalogCache
+	snapshotCache    uc_caching.IRecommendationSnapshotCache
 	uow              shared_repos.IUnitOfWork
 	nlpParser        *parser.LocalNLPParser
 }
@@ -40,6 +43,8 @@ func NewOutfitRecommendationUseCase(
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,
 	profileRepo repositories.IUserStyleProfileRepository,
+	catalogCache uc_caching.IPersonalizationCatalogCache,
+	snapshotCache uc_caching.IRecommendationSnapshotCache,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IOutfitRecommendationUseCase {
 	_ = dto.ParsedIntent{} // import check
@@ -53,6 +58,8 @@ func NewOutfitRecommendationUseCase(
 		userQuotaCtr:     userQuotaCtr,
 		brandContract:    brandContract,
 		profileRepo:      profileRepo,
+		catalogCache:     catalogCache,
+		snapshotCache:    snapshotCache,
 		uow:              uow,
 		nlpParser:        parser.NewLocalNLPParser(),
 	}

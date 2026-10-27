@@ -15,11 +15,23 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/synthesis"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
-
 	"smart-wardrobe-be/shared/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
+
+// candidateFilterResult is the internal output of the retrieval/ranking stage.
+// It carries everything the suggestion builder needs to reuse the exact same
+// semantic query, style vector and hard filters as the outfit itself
+// (033 US2/T039-T040) without issuing a second embedding call.
+type candidateFilterResult struct {
+	Candidates      []types.CandidateForPrompt
+	FashionItemMap  map[uuid.UUID]*dto.FashionItemContractDTO
+	Personalization types.PersonalizationContext
+	Pool            []types.CandidateForRanking
+	RetrievalQuery  types.RecommendationRetrievalQuery
+	QueryVector     entities.Vector
+}
 
 // validateAndGetActiveItems kiểm tra hạn ngạch hàng ngày của người dùng và truy vấn các món đồ
 // đang hoạt động trong tủ đồ (không bị xóa mềm và có trạng thái là InWardrobe).
@@ -87,13 +99,13 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 //
 // Đầu ra mẫu:
 //
-//	([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, types.PersonalizationContext, nil)
+//	(*candidateFilterResult, nil)
 func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
 	activeItems []*wardrobeDto.WardrobeItemContractDTO,
 	input dto.RecommendOutfitReq,
-) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, types.PersonalizationContext, error) {
+) (*candidateFilterResult, error) {
 	intent := uc.parseRecommendationIntent(input)
 	// Personalization is loaded and merged here so every downstream stage
 	// (query blend, ranking, prompt, HSL fallback) sees the same context.
@@ -332,10 +344,17 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	)
 
 	if !ranking.HasValidOutfitStructurePrompts(ranked, fashionItemMap) {
-		return nil, nil, types.PersonalizationContext{}, fashioerrors.ErrInsufficientOutfitComponents()
+		return nil, fashioerrors.ErrInsufficientOutfitComponents()
 	}
 
-	return ranked, fashionItemMap, personalization, nil
+	return &candidateFilterResult{
+		Candidates:      ranked,
+		FashionItemMap:  fashionItemMap,
+		Personalization: personalization,
+		Pool:            rankingCandidates,
+		RetrievalQuery:  retrievalQuery,
+		QueryVector:     queryVector,
+	}, nil
 }
 
 // generateOutfitRecommendation gọi dịch vụ AI/LLM để tổng hợp và sinh ra gợi ý trang phục từ danh sách ứng viên đã chọn lọc.

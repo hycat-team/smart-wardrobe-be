@@ -15,6 +15,11 @@ import (
 
 type IWardrobeItemRepository interface {
 	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
+	// LockUserWardrobe takes a transaction-scoped advisory lock for one user so
+	// that a wardrobe quota check and the insert it guards cannot interleave
+	// with another request of the same user. It MUST be called on a context
+	// that carries a unit-of-work transaction.
+	LockUserWardrobe(ctx context.Context, userID uuid.UUID) error
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, filterByFashionItems bool) (int64, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)

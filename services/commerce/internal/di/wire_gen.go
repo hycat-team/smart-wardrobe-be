@@ -46,6 +46,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
 	worker3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/worker"
+	caching3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/caching"
 	persistence3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/persistence"
 	contract3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/contract"
 	handler4 "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/handler"
@@ -200,7 +201,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iaiOrchestrator := commerceContracts.AIOrchestrator
 	iUserQuotaContract := commerceContracts.UserQuota
 	iUserStyleProfileRepository := persistence3.NewUserStyleProfileRepository(gormDB)
-	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUserStyleProfileRepository, iUnitOfWork)
+	iPersonalizationCatalogCache := caching3.NewRedisPersonalizationCatalogCache(iCacheService)
+	iRecommendationSnapshotCache := caching3.NewRedisRecommendationSnapshotCache(iCacheService)
+	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUserStyleProfileRepository, iPersonalizationCatalogCache, iRecommendationSnapshotCache, iUnitOfWork)
 	iConversationalContextRepository := persistence3.NewConversationalContextRepository(gormDB)
 	iMessageRepository := persistence3.NewMessageRepository(gormDB)
 	iWardrobeChatUseCase := chat2.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iWardrobeContract, iUnitOfWork)
