@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
@@ -19,10 +20,13 @@ import (
 //  1. Duyệt qua từng ứng viên và gọi [ScoreCandidateItem] để chấm điểm dựa trên độ tương quan ý định, mức độ thường mặc và bonus không mặc lâu ngày.
 //  2. Cộng thêm điểm thưởng từ công cụ tìm kiếm ngữ nghĩa qua [RetrievalScoreBonus].
 //  3. Trừ đi điểm phạt nếu ứng viên đó thuộc các nguồn dự phòng nới lỏng qua [FallbackSourcePenalty].
-//  4. Thu thập các thống kê điểm số qua [RankedCandidateScoreStats].
-//  5. Sắp xếp danh sách ứng viên theo thứ tự điểm giảm dần, thứ tự tìm kiếm, và UUID.
-//  6. Thực hiện đa dạng hóa danh sách qua [DiversifyRankedCandidates] để giới hạn số lượng đồ của cùng một danh mục (tránh trường hợp gợi ý quá nhiều áo hoặc quần cùng lúc).
-//  7. Trả về lát cắt [CandidateForPrompt] chứa thông tin ứng viên và danh sách nhãn (tags) đi kèm, cùng với thống kê xếp hạng [RerankStats].
+//  4. Áp dụng ưu tiên vòng xoay qua [ApplyRecencyCooldown]: trong mỗi vai trò, nếu món đứng đầu
+//     đang trong vùng làm mát mà có món ngoài vùng làm mát chất lượng tương đương (trong
+//     `cooldownTolerance`), món ngoài vùng được đưa lên trước.
+//  5. Thu thập các thống kê điểm số qua [RankedCandidateScoreStats].
+//  6. Sắp xếp danh sách ứng viên theo thứ tự điểm giảm dần, thứ tự tìm kiếm, và UUID.
+//  7. Thực hiện đa dạng hóa danh sách qua [DiversifyRankedCandidates] để giới hạn số lượng đồ của cùng một danh mục (tránh trường hợp gợi ý quá nhiều áo hoặc quần cùng lúc).
+//  8. Trả về lát cắt [CandidateForPrompt] chứa thông tin ứng viên và danh sách nhãn (tags) đi kèm, cùng với thống kê xếp hạng [RerankStats].
 //
 // Đầu vào mẫu:
 //
@@ -36,19 +40,20 @@ func RankCandidates(
 	candidates []types.CandidateForRanking,
 	intent dto.ParsedIntent,
 	retrievalQuery types.RecommendationRetrievalQuery,
-	recentlyWornPenaltyDays int,
-	longUnwornBonusDays int,
+	recency RecencyWindow,
+	cooldownTolerance float64,
 	minimumPool int,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) ([]types.CandidateForPrompt, types.RerankStats) {
+	window := recency.Normalized()
+	now := time.Now()
 	scored := make([]types.RankedCandidate, len(candidates))
 	for i, candidate := range candidates {
 		score, tags := ScoreCandidateItem(
 			candidate.Item,
 			intent,
 			retrievalQuery,
-			recentlyWornPenaltyDays,
-			longUnwornBonusDays,
+			window,
 			fashionItemMap,
 		)
 		score += RetrievalScoreBonus(candidate)
@@ -61,19 +66,23 @@ func RankCandidates(
 		if candidate.ItemContext == outfititemcontext.BrandItem {
 			tags = append(tags, "source:brand-item")
 		}
+		tags = prioritizeRecencyCooldownTag(tags)
 		scored[i] = types.RankedCandidate{
 			Item:          candidate.Item,
 			Score:         score,
+			OrderScore:    score,
 			Tags:          tags,
 			Source:        candidate.Source,
 			RetrievalRank: candidate.RetrievalRank,
 			ItemContext:   candidate.ItemContext,
 			BrandItem:     candidate.BrandItem,
+			Cooldown:      IsInRecencyCooldown(candidate.Item, window, now),
 		}
 	}
 	sort.Slice(scored, func(i, j int) bool {
 		return RankedCandidateLess(scored[i], scored[j])
 	})
+	scored, cooldownSubstitutions := ApplyRecencyCooldown(scored, cooldownTolerance, fashionItemMap)
 
 	limit := min(len(scored), minimumPool)
 	if limit < 15 && len(scored) >= 15 {
@@ -81,6 +90,7 @@ func RankCandidates(
 	}
 
 	stats := RankedCandidateScoreStats(scored)
+	stats.CooldownSubstitutions = cooldownSubstitutions
 	diversified := DiversifyRankedCandidates(scored, limit, fashionItemMap)
 	// Safeguard: diversification có thể cắt mất một role do giới hạn `limit`. Bổ sung
 	// lại role còn thiếu từ pool đã chấm điểm để không mất cấu trúc bộ hợp lệ.
@@ -206,10 +216,13 @@ func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int, fashio
 	return selected
 }
 
-// RankedCandidateLess so sánh hai ứng viên để phục vụ sắp xếp: ưu tiên điểm số lớn hơn, sau đó đến thứ tự xếp hạng tìm kiếm nhỏ hơn, cuối cùng so sánh chuỗi UUID.
+// RankedCandidateLess so sánh hai ứng viên để phục vụ sắp xếp: ưu tiên khóa sắp xếp lớn hơn
+// (OrderScore, mặc định bằng Score), sau đó đến thứ tự xếp hạng tìm kiếm nhỏ hơn, cuối cùng so sánh chuỗi UUID.
 func RankedCandidateLess(left, right types.RankedCandidate) bool {
-	if left.Score != right.Score {
-		return left.Score > right.Score
+	leftOrder := RankedCandidateOrderScore(left)
+	rightOrder := RankedCandidateOrderScore(right)
+	if leftOrder != rightOrder {
+		return leftOrder > rightOrder
 	}
 	leftRank := NormalizedRetrievalRank(left.RetrievalRank)
 	rightRank := NormalizedRetrievalRank(right.RetrievalRank)

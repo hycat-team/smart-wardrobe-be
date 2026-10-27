@@ -3,6 +3,7 @@ package ranking
 import (
 	"math"
 	"testing"
+	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
@@ -123,7 +124,7 @@ func TestRankCandidatesKeepsOutfitStructureAfterDiversify(t *testing.T) {
 		Item: bottom, Source: "lexical", RetrievalScore: 0.1, RetrievalRank: 5,
 	})
 
-	ranked, _ := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, 3, fashionItemMap)
+	ranked, _ := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), defaultCooldownScoreTolerance, 3, fashionItemMap)
 
 	promptCandidates := make([]types.CandidateForPrompt, 0, len(ranked))
 	for _, c := range ranked {
@@ -143,7 +144,7 @@ func TestRankCandidatesAddsSourceTags(t *testing.T) {
 		},
 	}
 
-	ranked, _ := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, 2, nil)
+	ranked, _ := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), defaultCooldownScoreTolerance, 2, nil)
 	if len(ranked) != 1 {
 		t.Fatalf("expected one ranked candidate, got %d", len(ranked))
 	}
@@ -290,7 +291,7 @@ func TestRankCandidatesUsesRetrievalRelevanceWhenRuleScoresAreClose(t *testing.T
 		},
 	}
 
-	ranked, stats := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, 2, nil)
+	ranked, stats := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), defaultCooldownScoreTolerance, 2, nil)
 	if len(ranked) != 2 {
 		t.Fatalf("expected two ranked candidates, got %d", len(ranked))
 	}
@@ -307,10 +308,10 @@ func TestScoreCandidateItemDoesNotPenalizeOuterwearWhenWeatherUnspecified(t *tes
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
-	if score != 1.1 {
-		t.Fatalf("expected neutral outerwear baseline without weather penalty, got %.2f tags=%v", score, tags)
+	if score != 1.25 {
+		t.Fatalf("expected neutral outerwear baseline plus the unconditional long-unworn bonus, got %.2f tags=%v", score, tags)
 	}
 	if containsString(tags, "weather-mismatch:heavy-outerwear") {
 		t.Fatalf("did not expect weather mismatch tag without weather, got %v", tags)
@@ -322,7 +323,7 @@ func TestScoreCandidateItemBoostsColdLikeOuterwear(t *testing.T) {
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"winter"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"winter"}}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if score <= 1.1 {
 		t.Fatalf("expected cold-like outerwear boost, got %.2f tags=%v", score, tags)
@@ -337,7 +338,7 @@ func TestScoreCandidateItemPenalizesHotLikeOuterwear(t *testing.T) {
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"summer"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"summer"}}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if score >= 1.1 {
 		t.Fatalf("expected hot-like outerwear penalty, got %.2f tags=%v", score, tags)
@@ -352,7 +353,7 @@ func TestScoreCandidateItemDoesNotTreatRainyAsCold(t *testing.T) {
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if containsString(tags, "weather-appropriate:outerwear") {
 		t.Fatalf("did not expect rainy to use cold-like outerwear boost, got %v", tags)
@@ -368,7 +369,7 @@ func TestScoreCandidateItemBoostsExplicitRainySignal(t *testing.T) {
 	fi.Description = &desc
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if !containsString(tags, "weather-appropriate:rainy") {
 		t.Fatalf("expected explicit rainy signal tag, got %v", tags)
@@ -380,7 +381,7 @@ func TestScoreCandidateItemAppliesExcludedWeatherPenalty(t *testing.T) {
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{ExcludedWeather: []string{"cold"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{ExcludedWeather: []string{"cold"}}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if score >= 1.1 {
 		t.Fatalf("expected excluded cold-like weather penalty, got %.2f tags=%v", score, tags)
@@ -396,7 +397,7 @@ func TestScoreCandidateItemMatchesOccasionTaxonomy(t *testing.T) {
 	fi.Style = &style
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
-	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{Occasion: []string{"work"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{Occasion: []string{"work"}}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if score <= 1.1 {
 		t.Fatalf("expected work occasion to match office taxonomy, got %.2f tags=%v", score, tags)
@@ -524,8 +525,8 @@ func TestScoreCandidateItemPersonalStyleBonusDependsOnRequestStyle(t *testing.T)
 			withProfile := baseIntent
 			withProfile.PersonalStyle = []string{"minimalist"}
 
-			base, _ := ScoreCandidateItem(item, baseIntent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
-			matched, tags := ScoreCandidateItem(item, withProfile, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+			base, _ := ScoreCandidateItem(item, baseIntent, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
+			matched, tags := ScoreCandidateItem(item, withProfile, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 			if delta := matched - base; math.Abs(delta-tc.want) > 1e-9 {
 				t.Fatalf("expected a %.2f personal-style bonus, got %.4f (%.4f vs %.4f)", tc.want, delta, matched, base)
@@ -556,8 +557,8 @@ func TestScoreCandidateItemLearnedStyleBonusUsesConfiguredWeight(t *testing.T) {
 				LearnedStyleWeight: tc.weight,
 			}
 
-			base, _ := ScoreCandidateItem(item, baseIntent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
-			matched, tags := ScoreCandidateItem(item, withLearned, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+			base, _ := ScoreCandidateItem(item, baseIntent, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
+			matched, tags := ScoreCandidateItem(item, withLearned, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 			if delta := matched - base; math.Abs(delta-tc.want) > 1e-9 {
 				t.Fatalf("expected a %.2f learned-style bonus, got %.4f", tc.want, delta)
@@ -573,8 +574,8 @@ func TestScoreCandidateItemPenalizesAvoidedStyleWithoutFiltering(t *testing.T) {
 	item, fashionItemMap := personalisedTestItem("minimalist")
 	avoidIntent := dto.ParsedIntent{AvoidStyle: []string{"minimalist"}}
 
-	base, _ := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
-	avoided, tags := ScoreCandidateItem(item, avoidIntent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	base, _ := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
+	avoided, tags := ScoreCandidateItem(item, avoidIntent, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	if delta := avoided - base; math.Abs(delta-(-0.30)) > 1e-9 {
 		t.Fatalf("expected a %.2f avoid-style penalty, got %.4f", -0.30, delta)
@@ -590,8 +591,8 @@ func TestScoreCandidateItemPenalizesAvoidedStyleWithoutFiltering(t *testing.T) {
 		[]types.CandidateForRanking{{Item: item, Source: "lexical"}},
 		avoidIntent,
 		types.RecommendationRetrievalQuery{},
-		3,
-		14,
+		testRecencyWindow(),
+		defaultCooldownScoreTolerance,
 		5,
 		fashionItemMap,
 	)
@@ -608,8 +609,8 @@ func TestScoreCandidateItemPrefersDeclaredOverLearnedStyle(t *testing.T) {
 		LearnedStyleWeight: 0.10,
 	}
 
-	base, _ := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
-	stacked, tags := ScoreCandidateItem(item, intent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	base, _ := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
+	stacked, tags := ScoreCandidateItem(item, intent, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
 
 	// The declared bonus (0.25) must outrank the learned bonus (0.10); both are
 	// additive soft signals, so the profile contribution is 0.35 in total.
@@ -618,5 +619,221 @@ func TestScoreCandidateItemPrefersDeclaredOverLearnedStyle(t *testing.T) {
 	}
 	if !containsString(tags, "personal-style-match") || !containsString(tags, "learned-style-match") {
 		t.Fatalf("expected both personal and learned tags, got %v", tags)
+	}
+}
+
+// testRecencyWindow mirrors the shipped rag windows.
+func testRecencyWindow() RecencyWindow {
+	return RecencyWindow{
+		RecentlyWornDays:        7,
+		RecentlyRecommendedDays: 3,
+		LongUnwornDays:          14,
+	}
+}
+
+// rotationBaseItem builds an item whose fashion metadata carries no style,
+// occasion or colour signal, so a score difference isolates rotation effects.
+func rotationBaseItem() (*wardrobeDto.WardrobeItemContractDTO, map[uuid.UUID]*dto.FashionItemContractDTO) {
+	item, fashion := newTestItemWithFashion()
+	return item, map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fashion}
+}
+
+func TestScoreCandidateItemRecentlyWornPenaltyDecaysToZeroAtWindow(t *testing.T) {
+	item, fashionItemMap := rotationBaseItem()
+	twoDaysAgo := time.Now().AddDate(0, 0, -2)
+	item.LastUsedAt = &twoDaysAgo
+
+	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
+
+	// Baseline of the same item without a use signal: 1.0 + neutral 0.1 +
+	// long-unworn 0.15. A recently worn item loses the bonus and pays the linear
+	// penalty (1 - 2/7) * 0.45.
+	baselineWithoutUse := 1.0 + 0.1 + longUnwornBonus
+	wantPenalty := (1 - 2.0/7.0) * recentlyWornPenaltyMax
+	if delta := score - baselineWithoutUse; math.Abs(delta-(-wantPenalty-longUnwornBonus)) > 1e-9 {
+		t.Fatalf("recently-worn delta = %.6f, want %.6f (tags %v)", delta, -wantPenalty-longUnwornBonus, tags)
+	}
+	if !containsString(tags, "recently-worn-penalty:-0.32") {
+		t.Fatalf("expected a recently-worn penalty tag, got %v", tags)
+	}
+	if containsString(tags, "long-unworn-bonus") || containsString(tags, "new-item-bonus") {
+		t.Fatalf("a recently worn item must not get a rotation bonus, got %v", tags)
+	}
+	if !containsString(tags, RecencyCooldownTag) {
+		t.Fatalf("expected the recency-cooldown tag, got %v", tags)
+	}
+}
+
+func TestScoreCandidateItemRecentlyWornWindowIsConfigurable(t *testing.T) {
+	item, fashionItemMap := rotationBaseItem()
+	fourDaysAgo := time.Now().AddDate(0, 0, -4)
+	item.LastUsedAt = &fourDaysAgo
+
+	shortWindow, shortTags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, RecencyWindow{RecentlyWornDays: 3, LongUnwornDays: 14}, fashionItemMap)
+	longWindow, longTags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), fashionItemMap)
+
+	if shortWindow <= longWindow {
+		t.Fatalf("a 3-day window must not penalize a 4-day-old use while the 7-day window does: short=%.4f long=%.4f", shortWindow, longWindow)
+	}
+	if containsString(shortTags, RecencyCooldownTag) {
+		t.Fatalf("4-day-old use must be outside a 3-day cooldown, got %v", shortTags)
+	}
+	if !containsString(longTags, RecencyCooldownTag) {
+		t.Fatalf("4-day-old use must be inside a 7-day cooldown, got %v", longTags)
+	}
+}
+
+func TestScoreCandidateItemNewItemBonusUsesCreatedAt(t *testing.T) {
+	recentlyCreated, recentMap := rotationBaseItem()
+	recentlyCreated.CreatedAt = time.Now().AddDate(0, 0, -1)
+	recentScore, recentTags := ScoreCandidateItem(recentlyCreated, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), recentMap)
+
+	oldItem, oldMap := rotationBaseItem()
+	oldItem.CreatedAt = time.Now().AddDate(0, 0, -100)
+	oldScore, oldTags := ScoreCandidateItem(oldItem, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), oldMap)
+
+	if !containsString(recentTags, "new-item-bonus") {
+		t.Fatalf("expected a creation-based new-item tag, got %v", recentTags)
+	}
+	if containsString(oldTags, "new-item-bonus") {
+		t.Fatalf("an old item must not be labelled new, got %v", oldTags)
+	}
+	if !containsString(oldTags, "long-unworn-bonus") {
+		t.Fatalf("expected the long-unworn tag for an old never-used item, got %v", oldTags)
+	}
+	if math.Abs(recentScore-oldScore) > 1e-9 {
+		t.Fatalf("both never-used items must receive one rotation bonus: new=%.4f old=%.4f", recentScore, oldScore)
+	}
+
+	// A recently used item is not "new" even when it was created moments ago:
+	// the label must never fall back to the never-used proxy (FR-057).
+	recentUse, recentUseMap := rotationBaseItem()
+	recentUse.CreatedAt = time.Now().AddDate(0, 0, -1)
+	yesterday := time.Now().AddDate(0, 0, -1)
+	recentUse.LastUsedAt = &yesterday
+	_, recentUseTags := ScoreCandidateItem(recentUse, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), recentUseMap)
+	if containsString(recentUseTags, "new-item-bonus") {
+		t.Fatalf("a used item must not get the new-item bonus, got %v", recentUseTags)
+	}
+}
+
+func TestScoreCandidateItemLongUnwornBonusIgnoresStyleAndOccasion(t *testing.T) {
+	oldUse, oldMap := rotationBaseItem()
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	oldUse.LastUsedAt = &thirtyDaysAgo
+
+	notLongUnworn, notLongMap := rotationBaseItem()
+	tenDaysAgo := time.Now().AddDate(0, 0, -10)
+	notLongUnworn.LastUsedAt = &tenDaysAgo
+
+	oldScore, oldTags := ScoreCandidateItem(oldUse, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), oldMap)
+	notOldScore, _ := ScoreCandidateItem(notLongUnworn, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), notLongMap)
+
+	if delta := oldScore - notOldScore; math.Abs(delta-longUnwornBonus) > 1e-9 {
+		t.Fatalf("long-unworn delta = %.4f, want %.2f without any style/occasion request", delta, longUnwornBonus)
+	}
+	if !containsString(oldTags, "long-unworn-bonus") {
+		t.Fatalf("expected the long-unworn tag without style/occasion, got %v", oldTags)
+	}
+}
+
+func TestScoreCandidateItemRecentlyRecommendedPenalty(t *testing.T) {
+	oldUse, oldMap := rotationBaseItem()
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	oldUse.LastUsedAt = &thirtyDaysAgo
+	base, _ := ScoreCandidateItem(oldUse, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), oldMap)
+
+	recommended, recommendedMap := rotationBaseItem()
+	recommended.LastUsedAt = &thirtyDaysAgo
+	yesterday := time.Now().AddDate(0, 0, -1)
+	recommended.LastRecommendedAt = &yesterday
+	withPenalty, tags := ScoreCandidateItem(recommended, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), recommendedMap)
+
+	if delta := withPenalty - base; math.Abs(delta-(-recentlyRecommendedPenalty)) > 1e-9 {
+		t.Fatalf("recently-recommended delta = %.4f, want -%.2f", delta, recentlyRecommendedPenalty)
+	}
+	if !containsString(tags, "recently-recommended-penalty:-0.12") {
+		t.Fatalf("expected the recently-recommended penalty tag, got %v", tags)
+	}
+	if !containsString(tags, RecencyCooldownTag) {
+		t.Fatalf("expected the recency-cooldown tag, got %v", tags)
+	}
+}
+
+func TestScoreCandidateItemDoesNotStackRecommendedPenaltyOnRecentlyWorn(t *testing.T) {
+	recentUse, recentMap := rotationBaseItem()
+	yesterday := time.Now().AddDate(0, 0, -1)
+	recentUse.LastUsedAt = &yesterday
+	base, _ := ScoreCandidateItem(recentUse, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), recentMap)
+
+	alsoRecommended, alsoMap := rotationBaseItem()
+	alsoRecommended.LastUsedAt = &yesterday
+	alsoRecommended.LastRecommendedAt = &yesterday
+	combined, tags := ScoreCandidateItem(alsoRecommended, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, testRecencyWindow(), alsoMap)
+
+	if math.Abs(combined-base) > 1e-9 {
+		t.Fatalf("recommended penalty must not stack with the worn penalty: %.4f vs %.4f", combined, base)
+	}
+	if containsString(tags, "recently-recommended-penalty:-0.12") {
+		t.Fatalf("did not expect a stacked recommendation penalty, got %v", tags)
+	}
+	if !containsString(tags, RecencyCooldownTag) {
+		t.Fatalf("expected the recency-cooldown tag, got %v", tags)
+	}
+}
+
+func TestRankCandidatesMarksCooldownAndPutsTheTagFirst(t *testing.T) {
+	recent, recentMap := rotationBaseItem()
+	recentMapItem := recentMap[*recent.FashionItemID]
+	recentMapItem.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
+	style := "minimalist"
+	recentMapItem.Style = &style
+	yesterday := time.Now().AddDate(0, 0, -1)
+	recent.LastUsedAt = &yesterday
+	recent.LastRecommendedAt = &yesterday
+
+	old, oldMap := rotationBaseItem()
+	oldMapItem := oldMap[*old.FashionItemID]
+	oldMapItem.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
+	oldMapItem.Style = &style
+	fortyDaysAgo := time.Now().AddDate(0, 0, -40)
+	old.LastUsedAt = &fortyDaysAgo
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		*recent.FashionItemID: recentMapItem,
+		*old.FashionItemID:    oldMapItem,
+	}
+	intent := dto.ParsedIntent{StyleTarget: []string{"minimalist"}, Occasion: []string{"work"}}
+
+	ranked, stats := RankCandidates(
+		[]types.CandidateForRanking{
+			{Item: recent, Source: types.CandidateSourceRetrieval, RetrievalScore: 1, RetrievalRank: 1},
+			{Item: old, Source: types.CandidateSourceRetrieval, RetrievalScore: 0.5, RetrievalRank: 2},
+		},
+		intent,
+		types.RecommendationRetrievalQuery{},
+		testRecencyWindow(),
+		0.15,
+		5,
+		fashionItemMap,
+	)
+	if stats.CooldownSubstitutions != 0 {
+		t.Fatalf("no substitution is possible when the whole role is in cooldown, got %d", stats.CooldownSubstitutions)
+	}
+	if len(ranked) != 2 {
+		t.Fatalf("expected both candidates, got %d", len(ranked))
+	}
+	for _, candidate := range ranked {
+		cooldownTagged := containsString(candidate.Tags, RecencyCooldownTag)
+		switch candidate.Item.ID {
+		case recent.ID:
+			if !cooldownTagged || candidate.Tags[0] != RecencyCooldownTag {
+				t.Fatalf("expected recency-cooldown to be the first tag of the recently worn item, got %v", candidate.Tags)
+			}
+		case old.ID:
+			if cooldownTagged {
+				t.Fatalf("a 40-day-old use must not be tagged in cooldown, got %v", candidate.Tags)
+			}
+		}
 	}
 }

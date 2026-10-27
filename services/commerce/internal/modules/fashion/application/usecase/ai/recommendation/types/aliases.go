@@ -18,6 +18,9 @@ const (
 	CandidateSourceRelaxedFallback CandidateSource = "relaxed-fallback"
 	// CandidateSourceGeneralFallback đại diện cho mức độ lọc dự phòng tổng quan/rộng nhất (general fallback).
 	CandidateSourceGeneralFallback CandidateSource = "general-fallback"
+	// CandidateSourceStale đại diện cho ứng viên được dành chỗ vì lâu không dùng
+	// (033 US3, FR-058). Nó nằm trong pool bình thường, không phải nguồn dự phòng.
+	CandidateSourceStale CandidateSource = "stale"
 
 	// RetrievalTermSourceDictionary chỉ ra từ khóa truy vấn được trích xuất từ các từ điển cục bộ.
 	RetrievalTermSourceDictionary RetrievalTermSource = "local-dictionary"

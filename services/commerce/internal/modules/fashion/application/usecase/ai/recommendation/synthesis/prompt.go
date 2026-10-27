@@ -73,6 +73,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
 	builder.WriteString("Rules: aliases (A1, A2, ...) are internal IDs and MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation (no \"(A1)\", no bare \"A1\"); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
 	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
+	builder.WriteString("Recency rotation rule: candidates tagged with recency-cooldown were worn or recommended very recently. When two candidates for the same role are otherwise of equivalent quality, prefer the one WITHOUT the recency-cooldown tag so the user's wardrobe keeps rotating; if every candidate for a role carries the tag, still choose the best one instead of omitting the role.\n")
 	builder.WriteString("Outfit rules:\n")
 	builder.WriteString("- CORE roles define a complete outfit: exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
 	builder.WriteString("- Each role must appear at most once. Do NOT output two items with the same role.\n")

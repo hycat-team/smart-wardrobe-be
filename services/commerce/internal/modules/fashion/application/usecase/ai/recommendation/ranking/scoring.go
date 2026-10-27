@@ -55,9 +55,15 @@ const (
 //   - Trừ điểm phạt nếu món đồ rơi vào kiểu thời tiết người dùng muốn tránh (ví dụ: tránh đồ lạnh khi trời nóng).
 //
 // 7. **So khớp Lexical**: Cộng thêm điểm cho các từ khóa tìm kiếm thô khớp với metadata của món đồ (tối đa cộng 0.5 điểm).
-// 8. **Tần suất sử dụng**:
-//   - Trừ điểm phạt (tối đa 0.4) nếu món đồ vừa mới mặc gần đây (trong khoảng [recentlyWornDays]).
-//   - Cộng điểm thưởng 0.15 nếu món đồ đã lâu không mặc hoặc là đồ mới chưa từng mặc.
+// 8. **Tần suất sử dụng (033 US3/T051)**:
+//   - Trừ điểm phạt theo cửa sổ `RecencyWindow.RecentlyWornDays` (mặc định 7 ngày), tối đa
+//     0.45 khi vừa mặc hôm nay và giảm tuyến tính về 0 tại mép cửa sổ.
+//   - Cộng 0.15 khi món chưa từng dùng hoặc lâu hơn `LongUnwornDays`, bất kể yêu cầu có nêu
+//     phong cách hay dịp hay không (FR-056). Món được tạo trong cửa sổ đó được gắn nhãn
+//     `new-item-bonus`, còn lại là `long-unworn-bonus` (FR-057: "món mới" theo `created_at`).
+//   - Trừ 0.12 khi món vừa được gợi ý trong `RecentlyRecommendedDays` (mặc định 3 ngày) và
+//     chưa bị phạt vì vừa mặc, để không lặp lại cùng một món qua nhiều lượt gợi ý.
+//   - Món trong vùng làm mát (vừa mặc hoặc vừa được gợi ý) mang nhãn `recency-cooldown`.
 //
 // 9. **Gu cá nhân (mềm, 033 US1)**:
 //   - Cộng 0.25 (hoặc 0.10 nếu request đã có style target) khi món đồ khớp gu khai báo.
@@ -78,13 +84,11 @@ func ScoreCandidateItem(
 	item *wardrobeDto.WardrobeItemContractDTO,
 	intent dto.ParsedIntent,
 	retrievalQuery types.RecommendationRetrievalQuery,
-	recentlyWornDays,
-	longUnwornDays int,
+	recency RecencyWindow,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) (float64, []string) {
 	score := 1.0
 	var reasonTags []string
-	styleMatched := false
 	matchedTerms := map[string]bool{}
 	fashion := fashionForItemFromMap(item, fashionItemMap)
 
@@ -94,7 +98,6 @@ func ScoreCandidateItem(
 			targetNorm := strings.ToLower(target)
 			if strings.Contains(itemStyle, targetNorm) {
 				score += 0.3
-				styleMatched = true
 				reasonTags = append(reasonTags, "style-match:"+target)
 				matchedTerms[targetNorm] = true
 				break
@@ -273,19 +276,48 @@ func ScoreCandidateItem(
 	}
 	score += lexicalBoost
 
-	if item.LastUsedAt != nil {
-		days := int(time.Since(*item.LastUsedAt).Hours() / 24)
-		if days < recentlyWornDays {
-			penalty := float64(recentlyWornDays-days) / float64(recentlyWornDays) * 0.4
-			score -= penalty
-			reasonTags = append(reasonTags, fmt.Sprintf("recently-worn-penalty:-%.2f", penalty))
-		} else if days > longUnwornDays && (styleMatched || len(intent.Occasion) > 0) {
-			score += 0.15
+	// Rotation signals (033 US3/T051). They are additive and soft: the item is
+	// never removed from the pool, only moved up or down.
+	now := time.Now()
+	window := recency.Normalized()
+	daysSinceUsed, hasBeenUsed := 0, item.LastUsedAt != nil
+	if hasBeenUsed {
+		daysSinceUsed = DaysSince(*item.LastUsedAt, now)
+	}
+	recentlyWorn := hasBeenUsed && daysSinceUsed < window.RecentlyWornDays
+	if recentlyWorn {
+		penalty := (1 - float64(daysSinceUsed)/float64(window.RecentlyWornDays)) * recentlyWornPenaltyMax
+		score -= penalty
+		reasonTags = append(reasonTags, fmt.Sprintf("recently-worn-penalty:-%.2f", penalty))
+	}
+
+	// FR-056: the long-unworn bonus no longer depends on style/occasion, and a
+	// never-used item counts as long-unworn. FR-057: the "new item" label comes
+	// from created_at, so a brand-new item is tagged as new while an old item
+	// that was never worn keeps the plain long-unworn tag. Both get one 0.15
+	// bonus, never two.
+	if !hasBeenUsed || daysSinceUsed > window.LongUnwornDays {
+		score += longUnwornBonus
+		if isNewItem(item, now, window.LongUnwornDays) {
+			reasonTags = append(reasonTags, "new-item-bonus")
+		} else {
 			reasonTags = append(reasonTags, "long-unworn-bonus")
 		}
-	} else if styleMatched || len(intent.Occasion) > 0 {
-		score += 0.15
-		reasonTags = append(reasonTags, "new-item-bonus")
+	}
+
+	recentlyRecommended := false
+	if item.LastRecommendedAt != nil {
+		daysSinceRecommended := DaysSince(*item.LastRecommendedAt, now)
+		recentlyRecommended = daysSinceRecommended < window.RecentlyRecommendedDays
+		// A recently worn item already carries the larger worn penalty; stacking
+		// the recommendation penalty would double-punish the same signal.
+		if recentlyRecommended && !recentlyWorn {
+			score -= recentlyRecommendedPenalty
+			reasonTags = append(reasonTags, fmt.Sprintf("recently-recommended-penalty:-%.2f", recentlyRecommendedPenalty))
+		}
+	}
+	if recentlyWorn || recentlyRecommended {
+		reasonTags = append(reasonTags, RecencyCooldownTag)
 	}
 
 	return score, reasonTags

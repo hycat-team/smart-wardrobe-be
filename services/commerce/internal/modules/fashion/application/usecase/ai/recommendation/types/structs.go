@@ -16,11 +16,37 @@ type CandidateForPrompt struct {
 }
 
 // RerankStats lưu trữ các thông số thống kê phục vụ cho việc chấm điểm và đa dạng hóa danh sách ứng viên sau khi xếp hạng.
+//
+// Các trường từ StaleSlotsAdded trở xuống phục vụ quan sát vòng xoay đồ (033 US3/T052):
+// một dòng structured log mỗi lần gợi ý đủ để tính SC-002/SC-003/SC-004. Danh sách ID
+// dùng fashion item id (bản sao của cùng một món chia sẻ mã) và không chứa PII.
 type RerankStats struct {
 	MinScore         float64
 	MaxScore         float64
 	AvgScore         float64
 	DiversifiedCount int
+	// StaleSlotsAdded là số món lâu không dùng được dành chỗ trong pool ứng viên.
+	StaleSlotsAdded int
+	// CooldownSubstitutions là số lần ưu tiên món ngoài vùng làm mát thay cho món
+	// trong vùng làm mát (033 FR-059).
+	CooldownSubstitutions int
+	// RecentlyUsedRepeatRatio là tỷ lệ món trả về đã được sử dụng trong cửa sổ
+	// recently_worn_penalty_days (SC-003).
+	RecentlyUsedRepeatRatio float64
+	// RecentlyRecommendedRepeatRatio là tỷ lệ món trả về đã được gợi ý trong cửa sổ
+	// recently_recommended_penalty_days.
+	RecentlyRecommendedRepeatRatio float64
+	// PersonalStyleMatchRatio bằng 1 khi gợi ý có ít nhất một món khớp gu (SC-002).
+	PersonalStyleMatchRatio float64
+	// ReturnedItemIDs là fashion item id của primary + alternatives đã trả về.
+	ReturnedItemIDs []string
+	// StaleItemIDs là tập con của ReturnedItemIDs thuộc nhóm lâu không dùng.
+	StaleItemIDs []string
+	// StaleEligibleItemIDs là toàn bộ món lâu không dùng đủ điều kiện của người dùng
+	// (mẫu số SC-004), không chỉ các slot đã dùng.
+	StaleEligibleItemIDs []string
+	// CooldownItemIDs là tập con của ReturnedItemIDs đang trong vùng làm mát.
+	CooldownItemIDs []string
 }
 
 // CandidateForRanking đại diện cho một món đồ ứng viên đang được xử lý trong pipeline chấm điểm và xếp hạng.
@@ -38,13 +64,22 @@ type CandidateForRanking struct {
 
 // RankedCandidate đại diện cho một món đồ ứng viên đã được tính điểm và sắp xếp thứ hạng hoàn chỉnh.
 type RankedCandidate struct {
-	Item          *wardrobeDto.WardrobeItemContractDTO
-	Score         float64
+	Item  *wardrobeDto.WardrobeItemContractDTO
+	Score float64
+	// OrderScore là khóa sắp xếp thực tế (mặc định bằng Score). ApplyRecencyCooldown
+	// gán khóa này cao hơn món trong vùng làm mát cho món được ưu tiên, nhờ vậy thứ
+	// tự ưu tiên sống sót qua các lần sắp xếp lại của diversification và structure
+	// guarantee mà không làm sai lệch điểm số đã chấm.
+	OrderScore    float64
 	Tags          []string
 	Source        CandidateSource
 	RetrievalRank int
 	ItemContext   outfititemcontext.OutfitItemContext
 	BrandItem     *brandDto.BrandItemContractDTO
+	// Cooldown đánh dấu món đang trong vùng làm mát: đã dùng trong cửa sổ
+	// recently_worn_penalty_days hoặc đã được gợi ý trong cửa sổ
+	// recently_recommended_penalty_days (033 FR-059).
+	Cooldown bool
 }
 
 // FallbackCandidateCounts đếm số lượng ứng viên tìm được qua các tầng lọc dự phòng khác nhau (Strict, Relaxed, General).

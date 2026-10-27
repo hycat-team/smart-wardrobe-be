@@ -137,3 +137,120 @@ func TestMissingOptionalRolesReturnsNilWhenAllPresent(t *testing.T) {
 		t.Fatalf("expected 2 missing optional roles, got %+v", need)
 	}
 }
+
+// --- recency cooldown preference (033 US3/T054) -----------------------------
+
+func TestApplyRecencyCooldownPromotesEquivalentItemOutsideCooldown(t *testing.T) {
+	cooldownTop, cooldownFashion, _ := newRankedTestCandidate("ao", 1.50)
+	cooldownTop.Cooldown = true
+	outside, outsideFashion, _ := newRankedTestCandidate("ao", 1.40)
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		cooldownFashion.ID: cooldownFashion,
+		outsideFashion.ID:  outsideFashion,
+	}
+
+	got, substitutions := ApplyRecencyCooldown([]types.RankedCandidate{cooldownTop, outside}, 0.15, fashionItemMap)
+
+	if substitutions != 1 {
+		t.Fatalf("substitutions = %d, want 1", substitutions)
+	}
+	if got[0].Item.ID != outside.Item.ID {
+		t.Fatalf("first candidate = %s, want the item outside cooldown %s", got[0].Item.ID, outside.Item.ID)
+	}
+	if got[0].Score != 1.40 || got[1].Score != 1.50 {
+		t.Fatalf("the base scores must stay untouched, got %.2f and %.2f", got[0].Score, got[1].Score)
+	}
+}
+
+func TestApplyRecencyCooldownKeepsAllCooldownOrder(t *testing.T) {
+	top, topFashion, _ := newRankedTestCandidate("ao", 1.50)
+	top.Cooldown = true
+	second, secondFashion, _ := newRankedTestCandidate("ao", 1.40)
+	second.Cooldown = true
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		topFashion.ID:    topFashion,
+		secondFashion.ID: secondFashion,
+	}
+
+	got, substitutions := ApplyRecencyCooldown([]types.RankedCandidate{top, second}, 0.15, fashionItemMap)
+
+	if substitutions != 0 {
+		t.Fatalf("substitutions = %d, want 0 when every candidate is in cooldown", substitutions)
+	}
+	if got[0].Item.ID != top.Item.ID {
+		t.Fatalf("first candidate = %s, want the best cooldown item %s", got[0].Item.ID, top.Item.ID)
+	}
+}
+
+func TestApplyRecencyCooldownIgnoresItemsOutsideTolerance(t *testing.T) {
+	cooldownTop, cooldownFashion, _ := newRankedTestCandidate("ao", 1.80)
+	cooldownTop.Cooldown = true
+	outside, outsideFashion, _ := newRankedTestCandidate("ao", 1.40)
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		cooldownFashion.ID: cooldownFashion,
+		outsideFashion.ID:  outsideFashion,
+	}
+
+	got, substitutions := ApplyRecencyCooldown([]types.RankedCandidate{cooldownTop, outside}, 0.15, fashionItemMap)
+
+	if substitutions != 0 {
+		t.Fatalf("substitutions = %d, want 0 when the quality gap exceeds the tolerance", substitutions)
+	}
+	if got[0].Item.ID != cooldownTop.Item.ID {
+		t.Fatalf("first candidate = %s, want the better cooldown item %s", got[0].Item.ID, cooldownTop.Item.ID)
+	}
+}
+
+func TestApplyRecencyCooldownCountsSubstitutionsPerRole(t *testing.T) {
+	topCooldown, topFashion, _ := newRankedTestCandidate("ao", 1.50)
+	topCooldown.Cooldown = true
+	topOutside, topOutsideFashion, _ := newRankedTestCandidate("ao", 1.45)
+	bottomCooldown, bottomFashion, _ := newRankedTestCandidate("quan", 1.50)
+	bottomCooldown.Cooldown = true
+	bottomOutside, bottomOutsideFashion, _ := newRankedTestCandidate("quan", 1.42)
+	shoesCooldown, shoesFashion, _ := newRankedTestCandidate("giay", 1.50)
+	shoesCooldown.Cooldown = true
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		topFashion.ID:           topFashion,
+		topOutsideFashion.ID:    topOutsideFashion,
+		bottomFashion.ID:        bottomFashion,
+		bottomOutsideFashion.ID: bottomOutsideFashion,
+		shoesFashion.ID:         shoesFashion,
+	}
+
+	scored := []types.RankedCandidate{topCooldown, topOutside, bottomCooldown, bottomOutside, shoesCooldown}
+	got, substitutions := ApplyRecencyCooldown(scored, 0.15, fashionItemMap)
+
+	if substitutions != 2 {
+		t.Fatalf("substitutions = %d, want one per substitutable role (top, bottom)", substitutions)
+	}
+	promoted := map[uuid.UUID]bool{got[0].Item.ID: true, got[1].Item.ID: true}
+	if !promoted[topOutside.Item.ID] || !promoted[bottomOutside.Item.ID] {
+		t.Fatalf("expected both promoted items first, got %s then %s", got[0].Item.ID, got[1].Item.ID)
+	}
+	remaining := map[uuid.UUID]bool{got[2].Item.ID: true, got[3].Item.ID: true, got[4].Item.ID: true}
+	if !remaining[topCooldown.Item.ID] || !remaining[bottomCooldown.Item.ID] || !remaining[shoesCooldown.Item.ID] {
+		t.Fatalf("cooldown items must stay after the promoted ones, got %v", remaining)
+	}
+}
+
+func TestApplyRecencyCooldownDoesNotCrossRoles(t *testing.T) {
+	cooldownTop, topFashion, _ := newRankedTestCandidate("ao", 1.50)
+	cooldownTop.Cooldown = true
+	outsideBottom, bottomFashion, _ := newRankedTestCandidate("quan", 1.45)
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		topFashion.ID:    topFashion,
+		bottomFashion.ID: bottomFashion,
+	}
+
+	got, substitutions := ApplyRecencyCooldown([]types.RankedCandidate{cooldownTop, outsideBottom}, 0.15, fashionItemMap)
+
+	if substitutions != 0 {
+		t.Fatalf("substitutions = %d, want 0: a bottom must never replace a top", substitutions)
+	}
+	if got[0].Item.ID != cooldownTop.Item.ID {
+		t.Fatalf("first candidate = %s, want the top to stay first", got[0].Item.ID)
+	}
+}
