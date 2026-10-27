@@ -344,6 +344,13 @@ psql "postgres://admin:123456@localhost:5432/postgres" -c "DROP DATABASE verify_
 the one database and their fixtures race when the packages run in parallel
 (026 D-03). CI runs the same target in the `db-integration` job.
 
+The target runs the `TestIntegration*` suites of **all three services**:
+`services/account`, `services/commerce`, `services/ai`. `services/commerce` was
+added by feature 033 (T093) — before that the target silently skipped Commerce,
+so its migration/outbox/repository integration tests never ran in this gate.
+Keep the order account → commerce → ai: account holds the historical migration
+chain and the commerce suites assume the shared `search_path`.
+
 The `search_path` in `TEST_DATABASE_URL` mirrors `configs/config.yaml`: migrations
 create tables in module schemas while repositories use unqualified names, so a
 DSN without it fails with "relation does not exist" even though the schema is

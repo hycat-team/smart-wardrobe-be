@@ -228,7 +228,7 @@ configs/config.production.yaml
 .gitignore                                           # .specify/feature.json
 
 docs/
-├── decisions/017-personalization-style-profile.md   # ADR mới
+├── decisions/018-personalization-style-profile.md   # ADR mới
 ├── decisions/README.md                              # index
 ├── system-design/ai-pipeline.md
 ├── system-design/architecture.md

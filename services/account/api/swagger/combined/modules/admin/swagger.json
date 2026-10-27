@@ -1488,6 +1488,10 @@
         "name": {
           "type": "string"
         },
+        "personalizationEnabled": {
+          "description": "PersonalizationEnabled defaults to false when omitted (033 contract §4.2).",
+          "type": "boolean"
+        },
         "planKind": {
           "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
         },
@@ -1755,6 +1759,10 @@
         "name": {
           "type": "string"
         },
+        "personalizationEnabled": {
+          "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old clients ignore it.",
+          "type": "boolean"
+        },
         "planKind": {
           "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
         },
@@ -1796,6 +1804,10 @@
         "name": {
           "type": "string"
         },
+        "personalizationEnabled": {
+          "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old clients ignore it.",
+          "type": "boolean"
+        },
         "planKind": {
           "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
         },
@@ -1833,6 +1845,10 @@
         },
         "name": {
           "type": "string"
+        },
+        "personalizationEnabled": {
+          "description": "PersonalizationEnabled nil means \"keep the current value\" (033 D2).",
+          "type": "boolean"
         },
         "price": {
           "type": "number"
@@ -1903,6 +1919,10 @@
         },
         "maxWardrobeItems": {
           "type": "integer"
+        },
+        "personalizationEnabled": {
+          "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old clients ignore it.",
+          "type": "boolean"
         },
         "planId": {
           "type": "string"
@@ -5625,6 +5645,72 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitReq": {
+      "properties": {
+        "colorTone": {
+          "description": "Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)",
+          "example": "light",
+          "type": "string"
+        },
+        "details": {
+          "description": "Ghi chú thêm bằng tay (free text)",
+          "type": "string"
+        },
+        "fashionItemIds": {
+          "description": "Danh sách mã trang phục người dùng đã sở hữu (1-10 món)",
+          "example": [
+            "3f1c2a9e-0e0b-4a52-9f7e-8b6a1a2c3d4e"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array"
+        },
+        "occasion": {
+          "description": "Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập dịp tùy ý)",
+          "example": "work",
+          "type": "string"
+        },
+        "season": {
+          "description": "Mùa phối đồ\n@enums spring,summer,autumn,winter,all",
+          "enum": [
+            "spring",
+            "summer",
+            "autumn",
+            "winter",
+            "all"
+          ],
+          "type": "string"
+        },
+        "styleTarget": {
+          "description": "Phong cách hướng tới (Gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant, hoặc nhập phong cách tùy ý)",
+          "example": "minimalist",
+          "type": "string"
+        },
+        "weather": {
+          "description": "Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)",
+          "example": "hot",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fashionItemIds"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitRes": {
+      "properties": {
+        "suggestions": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CreateCategoryReq": {
       "properties": {
         "name": {
@@ -5747,6 +5833,20 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes": {
+      "properties": {
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendOutfitReq": {
       "properties": {
         "colorTone": {
@@ -5863,8 +5963,19 @@
           },
           "type": "array"
         },
+        "recommendationId": {
+          "description": "RecommendationID identifies this recommendation for the feedback endpoint\n(033 contracts §2.1). Always present.",
+          "type": "string"
+        },
         "remainingQuota": {
           "type": "integer"
+        },
+        "suggestions": {
+          "description": "Suggestions lists catalog items that fill a missing or low-quality outfit\nrole (033 US2, contracts §2.1). It is additive: suggestions are NOT part\nof Items, are NOT counted as outfit items and do NOT consume quota.",
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes"
+          },
+          "type": "array"
         },
         "title": {
           "type": "string"
@@ -5881,6 +5992,107 @@
       "required": [
         "content"
       ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "excludedStyles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "hasEmbedding": {
+          "type": "boolean"
+        },
+        "maxStyles": {
+          "type": "integer"
+        },
+        "personalizationAvailable": {
+          "type": "boolean"
+        },
+        "styles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "description": "UpdatedAt is the row timestamp; nil when the user has never saved a\nprofile (a default profile is not persisted by GET).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionItem": {
+      "properties": {
+        "itemCount": {
+          "description": "Số món đang hoạt động mang phong cách này",
+          "example": 12,
+          "type": "integer"
+        },
+        "ratio": {
+          "description": "Tỷ lệ itemCount / sampleSize, làm tròn 2 chữ số",
+          "example": 0.4,
+          "type": "number"
+        },
+        "value": {
+          "description": "Giá trị phong cách đã chuẩn hoá",
+          "example": "minimalist",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionRes": {
+      "properties": {
+        "sampleSize": {
+          "example": 30,
+          "type": "integer"
+        },
+        "styles": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionItem"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackReq": {
+      "properties": {
+        "action": {
+          "description": "Hành động phản hồi đối với bộ đồ được gợi ý",
+          "enum": [
+            "like",
+            "dislike",
+            "saved"
+          ],
+          "example": "like",
+          "type": "string"
+        },
+        "recommendationId": {
+          "description": "Mã gợi ý nhận được từ response của endpoint gợi ý phối đồ",
+          "example": "5b0c9f54-7d61-4f7a-9a4e-9f1f7f4f3a21",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "recommendationId"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackRes": {
+      "properties": {
+        "accepted": {
+          "example": true,
+          "type": "boolean"
+        }
+      },
       "type": "object"
     },
     "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateCategoryReq": {
@@ -5909,6 +6121,37 @@
         "title": {
           "maxLength": 255,
           "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateStyleProfileReq": {
+      "properties": {
+        "enabled": {
+          "description": "Bật/tắt áp dụng hồ sơ gu vào gợi ý phối đồ",
+          "example": true,
+          "type": "boolean"
+        },
+        "excludedStyles": {
+          "description": "Danh sách phong cách muốn tránh (mảng rỗng = xoá danh sách)",
+          "example": [
+            "streetwear"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "styles": {
+          "description": "Danh sách phong cách yêu thích (mảng rỗng = xoá danh sách)",
+          "example": [
+            "minimalist",
+            "elegant"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "type": "object"
@@ -6131,6 +6374,15 @@
     "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SaveOutfitItemReq": {
       "properties": {
         "fashionItemId": {
+          "type": "string"
+        },
+        "itemContext": {
+          "description": "ItemContext is optional (feature 033). When omitted the item is resolved\nautomatically: user wardrobe -\u003e eligible brand item -\u003e system catalog.",
+          "enum": [
+            "user_wardrobe",
+            "brand_item",
+            "system_catalog"
+          ],
           "type": "string"
         },
         "layerOrder": {

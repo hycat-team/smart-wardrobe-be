@@ -72,6 +72,12 @@ Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) tr
 - **Tác nhân (Actor):** Khách hàng (User).
 - **Đối tượng ảnh hưởng:** Tạo các bản ghi quần áo mới cho current user.
 - **Mô tả:** Sao chép các vật phẩm mẫu từ catalog hệ thống vào tủ đồ cá nhân của người dùng, luồng này được thiết kế không làm tiêu thụ quota AI.
+- **Điều kiện hợp lệ (033):** Mỗi ID gửi lên **chỉ** được chấp nhận khi là **món thật của tủ đồ hệ thống**:
+  `item_type = SystemCatalogItem`, `status = InWardrobe`, chưa bị xoá mềm và có `fashion_item_id`.
+  Nếu một ID trong lô không hợp lệ, **toàn bộ** lô bị từ chối, không clone một phần.
+- **Trước → sau:** trước 033 endpoint chỉ lọc theo `fashion_item_id` và không kiểm tra loại/trạng thái, nên
+  một user có thể chèn món riêng của người khác vào "catalog-init" (lỗ hổng cross-user). Nay chỉ nhận
+  `SystemCatalogItem` + `InWardrobe` + chưa xoá; món không hợp lệ trả lỗi `400` thay vì được clone.
 
 ### 6. Tải lên hàng loạt hình ảnh quần áo
 

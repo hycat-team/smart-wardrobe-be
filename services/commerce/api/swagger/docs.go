@@ -1750,6 +1750,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/ai/outfit-completions": {
+            "post": {
+                "description": "Nhận 1-10 món người dùng đã sở hữu và trả về gợi ý cho các vai trò còn thiếu (áo, quần hoặc đầm, giày, áo khoác khi ngữ cảnh cần lớp ngoài).\nEndpoint không chạy LLM, không tạo bộ đồ mới và không trừ lượt gợi ý AI trong ngày.\nNếu tập món đã đủ cấu trúc, response trả về suggestions rỗng thay vì báo lỗi.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe AI"
+                ],
+                "summary": "Hoàn thiện bộ đồ đã có",
+                "parameters": [
+                    {
+                        "description": "Các món đã có và ngữ cảnh phối đồ",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Gợi ý hoàn thiện bộ đồ thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Một món đồ không thuộc tủ đồ của người dùng hoặc danh sách không hợp lệ",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/outfit-recommendations": {
             "post": {
                 "description": "Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người dùng dựa trên dịp, thời tiết và phong cách.\n\nCác trường trong Request Body:\n- occasion (Dịp phối đồ, gợi ý: casual, work, date, party, sport,...)\n- styleTarget (Phong cách hướng tới, gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant,...)\n- season (Mùa phối đồ, enum: spring, summer, autumn, winter, all)\n- weather (Thời tiết hiện tại, gợi ý: hot, cold, warm, cool, rainy,...)\n- colorTone (Tông màu phối đồ, gợi ý: light, dark, pastel, earthy, neon,...)\n- details (Ghi chú thêm bằng tay, tối đa 1.000 ký tự Unicode sau khi chuẩn hóa NFC. Frontend nên kiểm tra giới hạn trước khi gửi để đảm bảo trải nghiệm người dùng.)",
@@ -1791,6 +1843,70 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/outfit-recommendations/feedback": {
+            "post": {
+                "description": "Ghi nhận phản hồi like/dislike/saved cho một bộ đồ đã được gợi ý trước đó, phục vụ học gu thời trang.\nClient chỉ gửi recommendationId nhận từ response gợi ý và action; danh sách món được lấy từ snapshot phía server.\nEndpoint idempotent theo (người dùng, recommendationId, action): gửi lặp lại không tạo tín hiệu thứ hai.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe AI"
+                ],
+                "summary": "Gửi phản hồi cho gợi ý phối đồ",
+                "parameters": [
+                    {
+                        "description": "Phản hồi cho gợi ý phối đồ",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ghi nhận phản hồi thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Hành động phản hồi không hợp lệ",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Gợi ý thuộc người dùng khác",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Không tìm thấy gợi ý hoặc gợi ý đã hết hạn",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
                         }
                     }
                 }
@@ -5578,6 +5694,141 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/style-profile": {
+            "get": {
+                "description": "Trả hồ sơ gu hiện tại của người dùng. Nếu chưa từng lưu, trả giá trị mặc định và không tạo bản ghi.\nNgười dùng đã hết quyền lợi gói vẫn xem được hồ sơ, với personalizationAvailable = false.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Style Profile"
+                ],
+                "summary": "Lấy hồ sơ phong cách cá nhân",
+                "responses": {
+                    "200": {
+                        "description": "Lấy hồ sơ phong cách thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Cập nhật một phần hồ sơ gu: trường bỏ trống giữ nguyên giá trị, mảng rỗng xoá danh sách.\nMỗi danh sách được trim, loại trùng không phân biệt hoa thường, mỗi giá trị tối đa 50 ký tự và tối đa maxStyles giá trị.\nBiểu diễn ngữ nghĩa được tạo lại khi lưu; nếu nhà cung cấp AI lỗi, hồ sơ vẫn được lưu với hasEmbedding = false.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Style Profile"
+                ],
+                "summary": "Cập nhật hồ sơ phong cách cá nhân",
+                "parameters": [
+                    {
+                        "description": "Thông tin hồ sơ phong cách cần cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateStyleProfileReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cập nhật hồ sơ phong cách thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Xoá hồ sơ gu của người dùng hiện tại. Thao tác idempotent: xoá khi chưa có hồ sơ vẫn thành công.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Style Profile"
+                ],
+                "summary": "Xoá hồ sơ phong cách cá nhân",
+                "responses": {
+                    "200": {
+                        "description": "Xoá hồ sơ phong cách thành công",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/style-profile/suggestions": {
+            "get": {
+                "description": "Gợi ý gu từ những món đồ đang hoạt động trong tủ (cold start). Không tự áp dụng: người dùng xác nhận bằng PUT /me/style-profile.\nChưa đủ dữ liệu: data là {\"styles\": [], \"sampleSize\": 0} và thông báo nằm ở message của envelope.\nEndpoint read-only: công tắc vận hành personalization.enabled không chặn, nhưng gói không có quyền lợi thì trả 403.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Style Profile"
+                ],
+                "summary": "Gợi ý phong cách từ tủ đồ hiện có",
+                "responses": {
+                    "200": {
+                        "description": "Lấy gợi ý phong cách thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/wardrobe-items": {
             "get": {
                 "description": "Lấy danh sách trang phục trong tủ đồ của người dùng, hỗ trợ lọc theo trạng thái và áp dụng trạng thái khóa động cho các món usable vượt hạn mức gói",
@@ -5666,7 +5917,7 @@ const docTemplate = `{
         },
         "/api/v1/outfits": {
             "post": {
-                "description": "Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.",
+                "description": "Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.\nMỗi item có thể gửi kèm itemContext (user_wardrobe | brand_item | system_catalog).\nKhi bỏ trống, hệ thống tự dò theo thứ tự: tủ đồ người dùng -\u003e món thương hiệu đủ điều kiện -\u003e bộ sưu tập hệ thống.\nMón system_catalog được sao chép vào tủ đồ trong cùng giao dịch (không chạy lại phân tích ảnh) và trả về với itemContext = user_wardrobe.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5783,7 +6034,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối đồ.",
+                "description": "Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối đồ.\nÁp dụng cùng quy tắc itemContext như khi tạo: món system_catalog được sao chép vào tủ đồ nếu chưa sở hữu.\nChỉ các món mới thêm mới được cập nhật last_used_at và phát tín hiệu học gu.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10709,6 +10960,72 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitReq": {
+            "type": "object",
+            "required": [
+                "fashionItemIds"
+            ],
+            "properties": {
+                "colorTone": {
+                    "description": "Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)",
+                    "type": "string",
+                    "example": "light"
+                },
+                "details": {
+                    "description": "Ghi chú thêm bằng tay (free text)",
+                    "type": "string"
+                },
+                "fashionItemIds": {
+                    "description": "Danh sách mã trang phục người dùng đã sở hữu (1-10 món)",
+                    "type": "array",
+                    "maxItems": 10,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "3f1c2a9e-0e0b-4a52-9f7e-8b6a1a2c3d4e"
+                    ]
+                },
+                "occasion": {
+                    "description": "Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập dịp tùy ý)",
+                    "type": "string",
+                    "example": "work"
+                },
+                "season": {
+                    "description": "Mùa phối đồ\n@enums spring,summer,autumn,winter,all",
+                    "type": "string",
+                    "enum": [
+                        "spring",
+                        "summer",
+                        "autumn",
+                        "winter",
+                        "all"
+                    ]
+                },
+                "styleTarget": {
+                    "description": "Phong cách hướng tới (Gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant, hoặc nhập phong cách tùy ý)",
+                    "type": "string",
+                    "example": "minimalist"
+                },
+                "weather": {
+                    "description": "Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)",
+                    "type": "string",
+                    "example": "hot"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitRes": {
+            "type": "object",
+            "properties": {
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes"
+                    }
+                }
+            }
+        },
         "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CreateCategoryReq": {
             "type": "object",
             "required": [
@@ -10831,6 +11148,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes": {
+            "type": "object",
+            "properties": {
+                "fashionItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendOutfitReq": {
             "type": "object",
             "properties": {
@@ -10948,8 +11279,19 @@ const docTemplate = `{
                         "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemGroup"
                     }
                 },
+                "recommendationId": {
+                    "description": "RecommendationID identifies this recommendation for the feedback endpoint\n(033 contracts §2.1). Always present.",
+                    "type": "string"
+                },
                 "remainingQuota": {
                     "type": "integer"
+                },
+                "suggestions": {
+                    "description": "Suggestions lists catalog items that fill a missing or low-quality outfit\nrole (033 US2, contracts §2.1). It is additive: suggestions are NOT part\nof Items, are NOT counted as outfit items and do NOT consume quota.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes"
+                    }
                 },
                 "title": {
                     "type": "string"
@@ -10964,6 +11306,107 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "excludedStyles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hasEmbedding": {
+                    "type": "boolean"
+                },
+                "maxStyles": {
+                    "type": "integer"
+                },
+                "personalizationAvailable": {
+                    "type": "boolean"
+                },
+                "styles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the row timestamp; nil when the user has never saved a\nprofile (a default profile is not persisted by GET).",
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionItem": {
+            "type": "object",
+            "properties": {
+                "itemCount": {
+                    "description": "Số món đang hoạt động mang phong cách này",
+                    "type": "integer",
+                    "example": 12
+                },
+                "ratio": {
+                    "description": "Tỷ lệ itemCount / sampleSize, làm tròn 2 chữ số",
+                    "type": "number",
+                    "example": 0.4
+                },
+                "value": {
+                    "description": "Giá trị phong cách đã chuẩn hoá",
+                    "type": "string",
+                    "example": "minimalist"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionRes": {
+            "type": "object",
+            "properties": {
+                "sampleSize": {
+                    "type": "integer",
+                    "example": 30
+                },
+                "styles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionItem"
+                    }
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackReq": {
+            "type": "object",
+            "required": [
+                "action",
+                "recommendationId"
+            ],
+            "properties": {
+                "action": {
+                    "description": "Hành động phản hồi đối với bộ đồ được gợi ý",
+                    "type": "string",
+                    "enum": [
+                        "like",
+                        "dislike",
+                        "saved"
+                    ],
+                    "example": "like"
+                },
+                "recommendationId": {
+                    "description": "Mã gợi ý nhận được từ response của endpoint gợi ý phối đồ",
+                    "type": "string",
+                    "example": "5b0c9f54-7d61-4f7a-9a4e-9f1f7f4f3a21"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackRes": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -10994,6 +11437,37 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "maxLength": 255
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateStyleProfileReq": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "description": "Bật/tắt áp dụng hồ sơ gu vào gợi ý phối đồ",
+                    "type": "boolean",
+                    "example": true
+                },
+                "excludedStyles": {
+                    "description": "Danh sách phong cách muốn tránh (mảng rỗng = xoá danh sách)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "streetwear"
+                    ]
+                },
+                "styles": {
+                    "description": "Danh sách phong cách yêu thích (mảng rỗng = xoá danh sách)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "minimalist",
+                        "elegant"
+                    ]
                 }
             }
         },
@@ -11222,6 +11696,15 @@ const docTemplate = `{
             "properties": {
                 "fashionItemId": {
                     "type": "string"
+                },
+                "itemContext": {
+                    "description": "ItemContext is optional (feature 033). When omitted the item is resolved\nautomatically: user wardrobe -\u003e eligible brand item -\u003e system catalog.",
+                    "type": "string",
+                    "enum": [
+                        "user_wardrobe",
+                        "brand_item",
+                        "system_catalog"
+                    ]
                 },
                 "layerOrder": {
                     "type": "integer"

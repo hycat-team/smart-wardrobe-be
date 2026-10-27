@@ -2362,6 +2362,61 @@ definitions:
       updatedAt:
         type: string
     type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitReq:
+    properties:
+      colorTone:
+        description: 'Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon...
+          hoặc nhập tông màu tùy ý)'
+        example: light
+        type: string
+      details:
+        description: Ghi chú thêm bằng tay (free text)
+        type: string
+      fashionItemIds:
+        description: Danh sách mã trang phục người dùng đã sở hữu (1-10 món)
+        example:
+        - 3f1c2a9e-0e0b-4a52-9f7e-8b6a1a2c3d4e
+        items:
+          type: string
+        maxItems: 10
+        minItems: 1
+        type: array
+      occasion:
+        description: 'Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập
+          dịp tùy ý)'
+        example: work
+        type: string
+      season:
+        description: |-
+          Mùa phối đồ
+          @enums spring,summer,autumn,winter,all
+        enum:
+        - spring
+        - summer
+        - autumn
+        - winter
+        - all
+        type: string
+      styleTarget:
+        description: 'Phong cách hướng tới (Gợi ý: minimalist, vintage, streetwear,
+          preppy, sporty, elegant, hoặc nhập phong cách tùy ý)'
+        example: minimalist
+        type: string
+      weather:
+        description: 'Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc
+          nhập thời tiết cụ thể)'
+        example: hot
+        type: string
+    required:
+    - fashionItemIds
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitRes:
+    properties:
+      suggestions:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes'
+        type: array
+    type: object
   smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CreateCategoryReq:
     properties:
       name:
@@ -2445,6 +2500,15 @@ definitions:
       style:
         type: string
       updatedAt:
+        type: string
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes:
+    properties:
+      fashionItem:
+        $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes'
+      reason:
+        type: string
+      role:
         type: string
     type: object
   smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendOutfitReq:
@@ -2535,8 +2599,21 @@ definitions:
         items:
           $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemGroup'
         type: array
+      recommendationId:
+        description: |-
+          RecommendationID identifies this recommendation for the feedback endpoint
+          (033 contracts §2.1). Always present.
+        type: string
       remainingQuota:
         type: integer
+      suggestions:
+        description: |-
+          Suggestions lists catalog items that fill a missing or low-quality outfit
+          role (033 US2, contracts §2.1). It is additive: suggestions are NOT part
+          of Items, are NOT counted as outfit items and do NOT consume quota.
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.OutfitSuggestionRes'
+        type: array
       title:
         type: string
     type: object
@@ -2546,6 +2623,79 @@ definitions:
         type: string
     required:
     - content
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes:
+    properties:
+      enabled:
+        type: boolean
+      excludedStyles:
+        items:
+          type: string
+        type: array
+      hasEmbedding:
+        type: boolean
+      maxStyles:
+        type: integer
+      personalizationAvailable:
+        type: boolean
+      styles:
+        items:
+          type: string
+        type: array
+      updatedAt:
+        description: |-
+          UpdatedAt is the row timestamp; nil when the user has never saved a
+          profile (a default profile is not persisted by GET).
+        type: string
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionItem:
+    properties:
+      itemCount:
+        description: Số món đang hoạt động mang phong cách này
+        example: 12
+        type: integer
+      ratio:
+        description: Tỷ lệ itemCount / sampleSize, làm tròn 2 chữ số
+        example: 0.4
+        type: number
+      value:
+        description: Giá trị phong cách đã chuẩn hoá
+        example: minimalist
+        type: string
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionRes:
+    properties:
+      sampleSize:
+        example: 30
+        type: integer
+      styles:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionItem'
+        type: array
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackReq:
+    properties:
+      action:
+        description: Hành động phản hồi đối với bộ đồ được gợi ý
+        enum:
+        - like
+        - dislike
+        - saved
+        example: like
+        type: string
+      recommendationId:
+        description: Mã gợi ý nhận được từ response của endpoint gợi ý phối đồ
+        example: 5b0c9f54-7d61-4f7a-9a4e-9f1f7f4f3a21
+        type: string
+    required:
+    - action
+    - recommendationId
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackRes:
+    properties:
+      accepted:
+        example: true
+        type: boolean
     type: object
   smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateCategoryReq:
     properties:
@@ -2567,6 +2717,28 @@ definitions:
       title:
         maxLength: 255
         type: string
+    type: object
+  smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateStyleProfileReq:
+    properties:
+      enabled:
+        description: Bật/tắt áp dụng hồ sơ gu vào gợi ý phối đồ
+        example: true
+        type: boolean
+      excludedStyles:
+        description: Danh sách phong cách muốn tránh (mảng rỗng = xoá danh sách)
+        example:
+        - streetwear
+        items:
+          type: string
+        type: array
+      styles:
+        description: Danh sách phong cách yêu thích (mảng rỗng = xoá danh sách)
+        example:
+        - minimalist
+        - elegant
+        items:
+          type: string
+        type: array
     type: object
   smart-wardrobe-be_services_commerce_internal_modules_fashion_domain_constants_messagesender.MessageSender:
     enum:
@@ -2715,6 +2887,15 @@ definitions:
   smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SaveOutfitItemReq:
     properties:
       fashionItemId:
+        type: string
+      itemContext:
+        description: |-
+          ItemContext is optional (feature 033). When omitted the item is resolved
+          automatically: user wardrobe -> eligible brand item -> system catalog.
+        enum:
+        - user_wardrobe
+        - brand_item
+        - system_catalog
         type: string
       layerOrder:
         type: integer
@@ -4094,6 +4275,41 @@ paths:
       summary: Nhắn tin với stylist AI (Stream SSE)
       tags:
       - Wardrobe AI
+  /api/v1/ai/outfit-completions:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Nhận 1-10 món người dùng đã sở hữu và trả về gợi ý cho các vai trò còn thiếu (áo, quần hoặc đầm, giày, áo khoác khi ngữ cảnh cần lớp ngoài).
+        Endpoint không chạy LLM, không tạo bộ đồ mới và không trừ lượt gợi ý AI trong ngày.
+        Nếu tập món đã đủ cấu trúc, response trả về suggestions rỗng thay vì báo lỗi.
+      parameters:
+      - description: Các món đã có và ngữ cảnh phối đồ
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Gợi ý hoàn thiện bộ đồ thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CompleteOutfitRes'
+              type: object
+        "400":
+          description: Một món đồ không thuộc tủ đồ của người dùng hoặc danh sách
+            không hợp lệ
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+      summary: Hoàn thiện bộ đồ đã có
+      tags:
+      - Wardrobe AI
   /api/v1/ai/outfit-recommendations:
     post:
       consumes:
@@ -4128,6 +4344,48 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedOutfitRes'
               type: object
       summary: Gợi ý phối đồ từ tủ đồ
+      tags:
+      - Wardrobe AI
+  /api/v1/ai/outfit-recommendations/feedback:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Ghi nhận phản hồi like/dislike/saved cho một bộ đồ đã được gợi ý trước đó, phục vụ học gu thời trang.
+        Client chỉ gửi recommendationId nhận từ response gợi ý và action; danh sách món được lấy từ snapshot phía server.
+        Endpoint idempotent theo (người dùng, recommendationId, action): gửi lặp lại không tạo tín hiệu thứ hai.
+      parameters:
+      - description: Phản hồi cho gợi ý phối đồ
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ghi nhận phản hồi thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SubmitRecommendationFeedbackRes'
+              type: object
+        "400":
+          description: Hành động phản hồi không hợp lệ
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+        "403":
+          description: Gợi ý thuộc người dùng khác
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+        "404":
+          description: Không tìm thấy gợi ý hoặc gợi ý đã hết hạn
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+      summary: Gửi phản hồi cho gợi ý phối đồ
       tags:
       - Wardrobe AI
   /api/v1/brand-benefits/{benefitId}:
@@ -6414,6 +6672,95 @@ paths:
       summary: Lấy danh sách bộ phối đồ của tôi
       tags:
       - Outfits
+  /api/v1/me/style-profile:
+    delete:
+      consumes:
+      - application/json
+      description: 'Xoá hồ sơ gu của người dùng hiện tại. Thao tác idempotent: xoá
+        khi chưa có hồ sơ vẫn thành công.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xoá hồ sơ phong cách thành công
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+      summary: Xoá hồ sơ phong cách cá nhân
+      tags:
+      - Style Profile
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Trả hồ sơ gu hiện tại của người dùng. Nếu chưa từng lưu, trả giá trị mặc định và không tạo bản ghi.
+        Người dùng đã hết quyền lợi gói vẫn xem được hồ sơ, với personalizationAvailable = false.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy hồ sơ phong cách thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes'
+              type: object
+      summary: Lấy hồ sơ phong cách cá nhân
+      tags:
+      - Style Profile
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Cập nhật một phần hồ sơ gu: trường bỏ trống giữ nguyên giá trị, mảng rỗng xoá danh sách.
+        Mỗi danh sách được trim, loại trùng không phân biệt hoa thường, mỗi giá trị tối đa 50 ký tự và tối đa maxStyles giá trị.
+        Biểu diễn ngữ nghĩa được tạo lại khi lưu; nếu nhà cung cấp AI lỗi, hồ sơ vẫn được lưu với hasEmbedding = false.
+      parameters:
+      - description: Thông tin hồ sơ phong cách cần cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateStyleProfileReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cập nhật hồ sơ phong cách thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleProfileRes'
+              type: object
+      summary: Cập nhật hồ sơ phong cách cá nhân
+      tags:
+      - Style Profile
+  /api/v1/me/style-profile/suggestions:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Gợi ý gu từ những món đồ đang hoạt động trong tủ (cold start). Không tự áp dụng: người dùng xác nhận bằng PUT /me/style-profile.
+        Chưa đủ dữ liệu: data là {"styles": [], "sampleSize": 0} và thông báo nằm ở message của envelope.
+        Endpoint read-only: công tắc vận hành personalization.enabled không chặn, nhưng gói không có quyền lợi thì trả 403.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy gợi ý phong cách thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.StyleSuggestionRes'
+              type: object
+      summary: Gợi ý phong cách từ tủ đồ hiện có
+      tags:
+      - Style Profile
   /api/v1/me/wardrobe-items:
     get:
       description: Lấy danh sách trang phục trong tủ đồ của người dùng, hỗ trợ lọc
@@ -6469,8 +6816,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ
-        kéo thả 2D và layer order.
+      description: |-
+        Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.
+        Mỗi item có thể gửi kèm itemContext (user_wardrobe | brand_item | system_catalog).
+        Khi bỏ trống, hệ thống tự dò theo thứ tự: tủ đồ người dùng -> món thương hiệu đủ điều kiện -> bộ sưu tập hệ thống.
+        Món system_catalog được sao chép vào tủ đồ trong cùng giao dịch (không chạy lại phân tích ảnh) và trả về với itemContext = user_wardrobe.
       parameters:
       - description: Tọa độ 2D và thông tin phối đồ
         in: body
@@ -6539,8 +6889,10 @@ paths:
     put:
       consumes:
       - application/json
-      description: Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối
-        đồ.
+      description: |-
+        Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối đồ.
+        Áp dụng cùng quy tắc itemContext như khi tạo: món system_catalog được sao chép vào tủ đồ nếu chưa sở hữu.
+        Chỉ các món mới thêm mới được cập nhật last_used_at và phát tín hiệu học gu.
       parameters:
       - description: ID bộ phối đồ
         in: path
