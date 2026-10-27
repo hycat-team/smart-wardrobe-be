@@ -24,6 +24,7 @@ type OutfitRecommendationUseCase struct {
 	userSubContract  contract.IUserSubscriptionContract
 	userQuotaCtr     contract.IUserQuotaContract
 	brandContract    brand_contract.IBrandContract
+	profileRepo      repositories.IUserStyleProfileRepository
 	uow              shared_repos.IUnitOfWork
 	nlpParser        *parser.LocalNLPParser
 }
@@ -38,6 +39,7 @@ func NewOutfitRecommendationUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,
+	profileRepo repositories.IUserStyleProfileRepository,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IOutfitRecommendationUseCase {
 	_ = dto.ParsedIntent{} // import check
@@ -50,6 +52,7 @@ func NewOutfitRecommendationUseCase(
 		userSubContract:  userSubContract,
 		userQuotaCtr:     userQuotaCtr,
 		brandContract:    brandContract,
+		profileRepo:      profileRepo,
 		uow:              uow,
 		nlpParser:        parser.NewLocalNLPParser(),
 	}

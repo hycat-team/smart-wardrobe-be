@@ -2,15 +2,18 @@ package synthesis
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
+	aiexecutor_dto "smart-wardrobe-be/services/ai/dto/aiexecutor"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/shared/config"
 )
 
 func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
@@ -70,7 +73,7 @@ func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.
 	}
 	prompt, err := BuildRecommendationPromptWithLimits(candidates, dto.RecommendOutfitReq{}, PromptLimits{
 		CandidateLimit: 2, DescriptionMaxCharacters: 20, TagsLimit: 2, PromptMaxCharacters: 5000,
-	}, fashionItemMap)
+	}, fashionItemMap, types.PersonalizationContext{})
 	if err != nil {
 		t.Fatalf("unexpected prompt error: %v", err)
 	}
@@ -383,3 +386,155 @@ func newSynthItem() (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemContr
 }
 
 func strPtr(s string) *string { return &s }
+
+func TestBuildRecommendationPromptOnlyEmitsNonEmptyPersonalizationKeys(t *testing.T) {
+	item, fi := newSynthItem()
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
+	candidates := []types.CandidateForPrompt{{Item: item}}
+
+	keys := []string{"personal_style", "learned_style", "avoid_styles"}
+
+	emptyPrompt := BuildRecommendationPromptWithPersonalization(
+		candidates,
+		dto.RecommendOutfitReq{},
+		fashionItemMap,
+		types.PersonalizationContext{},
+	)
+	for _, key := range keys {
+		if strings.Contains(emptyPrompt, key) {
+			t.Fatalf("expected no %q key without a profile, got: %s", key, emptyPrompt)
+		}
+	}
+
+	profilePrompt := BuildRecommendationPromptWithPersonalization(
+		candidates,
+		dto.RecommendOutfitReq{},
+		fashionItemMap,
+		types.PersonalizationContext{
+			Active:         true,
+			ExplicitStyles: []string{"minimalist"},
+			LearnedStyles:  []string{"vintage"},
+			ExcludedStyles: []string{"streetwear"},
+		},
+	)
+	for _, want := range []string{
+		`"personal_style":"minimalist"`,
+		`"learned_style":"vintage"`,
+		`"avoid_styles":"streetwear"`,
+	} {
+		if !strings.Contains(profilePrompt, want) {
+			t.Fatalf("expected %q in the context payload, got: %s", want, profilePrompt)
+		}
+	}
+}
+
+// fakeSynthesisAI records the prompts and answers with one scripted payload.
+type fakeSynthesisAI struct {
+	response     string
+	err          error
+	systemPrompt string
+	userPrompt   string
+	calls        int
+}
+
+func (f *fakeSynthesisAI) AnalyzeImage(context.Context, string, string) (string, error) {
+	return "", nil
+}
+
+func (f *fakeSynthesisAI) GenerateEmbeddings(context.Context, []string) ([][]float32, error) {
+	return nil, nil
+}
+
+func (f *fakeSynthesisAI) GenerateChatText(context.Context, string, string, aiexecutor_dto.OrchestratorOptions) (string, error) {
+	return "", nil
+}
+
+func (f *fakeSynthesisAI) GenerateRecommendationText(
+	_ context.Context,
+	systemPrompt string,
+	userPrompt string,
+	_ aiexecutor_dto.OrchestratorOptions,
+) (string, error) {
+	f.calls++
+	f.systemPrompt = systemPrompt
+	f.userPrompt = userPrompt
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.response, nil
+}
+
+func (f *fakeSynthesisAI) GenerateChatTextStream(context.Context, string, string, aiexecutor_dto.OrchestratorOptions) (<-chan string, <-chan error) {
+	text := make(chan string)
+	errs := make(chan error)
+	close(text)
+	close(errs)
+	return text, errs
+}
+
+func TestSystemPromptCarriesThePersonalStyleRule(t *testing.T) {
+	top, topFashion := newSynthItem()
+	topFashion.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
+	bottom, bottomFashion := newSynthItem()
+	bottomFashion.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Quan", Slug: "quan"}
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		*top.FashionItemID:    topFashion,
+		*bottom.FashionItemID: bottomFashion,
+	}
+	candidates := []types.CandidateForPrompt{{Item: top}, {Item: bottom}}
+	ai := &fakeSynthesisAI{response: `{"title":"Bộ đồ tối giản","explanation":"Áo và quần hài hòa cho ngày làm việc.","items":[{"role":"top","primary_id":"A1","alternative_ids":[]},{"role":"bottom","primary_id":"A2","alternative_ids":[]}]}`}
+
+	res, err := GenerateOutfitRecommendation(
+		context.Background(),
+		ai,
+		uuid.New(),
+		candidates,
+		dto.RecommendOutfitReq{},
+		&config.Config{},
+		fashionItemMap,
+		types.PersonalizationContext{ExplicitStyles: []string{"minimalist"}},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil {
+		t.Fatal("expected an outfit response")
+	}
+	if ai.calls != 1 {
+		t.Fatalf("expected one provider call, got %d", ai.calls)
+	}
+	for _, want := range []string{"Personal style rule", "personal_style", "learned_style", "avoid_styles"} {
+		if !strings.Contains(ai.systemPrompt, want) {
+			t.Fatalf("expected %q in the system prompt, got: %s", want, ai.systemPrompt)
+		}
+	}
+	if !strings.Contains(ai.userPrompt, `"personal_style":"minimalist"`) {
+		t.Fatalf("expected the personal style in the user prompt, got: %s", ai.userPrompt)
+	}
+}
+
+func TestRecommendedOutfitResExposesRecommendationID(t *testing.T) {
+	recommendationID := uuid.New()
+
+	payload, err := json.Marshal(dto.RecommendedOutfitRes{
+		RecommendationID: recommendationID,
+		Title:            "Bộ đồ",
+		Explanation:      "Mô tả",
+	})
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	if !strings.Contains(string(payload), `"recommendationId"`) {
+		t.Fatalf("expected the recommendationId JSON field, got: %s", payload)
+	}
+
+	decoded := map[string]any{}
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatalf("unexpected unmarshal error: %v", err)
+	}
+	if got, ok := decoded["recommendationId"]; !ok || got != recommendationID.String() {
+		t.Fatalf("expected recommendationId=%s, got %v", recommendationID, got)
+	}
+}

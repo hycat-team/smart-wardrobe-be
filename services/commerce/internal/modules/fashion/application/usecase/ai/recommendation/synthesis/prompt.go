@@ -36,16 +36,23 @@ type PromptLimits struct {
 //
 //	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
 func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
-	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap)
+	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap, types.PersonalizationContext{})
 	return prompt
 }
 
-func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) (string, error) {
+// BuildRecommendationPromptWithPersonalization renders the prompt with the
+// user's saved profile appended to the context payload (033 US1/T032).
+func BuildRecommendationPromptWithPersonalization(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO, pc types.PersonalizationContext) string {
+	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap, pc)
+	return prompt
+}
+
+func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO, pc types.PersonalizationContext) (string, error) {
 	if limits.CandidateLimit > 0 && len(candidates) > limits.CandidateLimit {
 		candidates = candidates[:limits.CandidateLimit]
 	}
 	for len(candidates) > 0 {
-		prompt := buildRecommendationPrompt(candidates, input, limits, fashionItemMap)
+		prompt := buildRecommendationPrompt(candidates, input, limits, fashionItemMap, pc)
 		if limits.PromptMaxCharacters <= 0 || len([]rune(prompt)) <= limits.PromptMaxCharacters {
 			return prompt, nil
 		}
@@ -54,7 +61,7 @@ func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, 
 	return "", fmt.Errorf("recommendation prompt exceeds configured character limit")
 }
 
-func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
+func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO, pc types.PersonalizationContext) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
 	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
@@ -96,6 +103,17 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 	if input.ColorTone != nil {
 		contextPayload["color_tone"] = *input.ColorTone
+	}
+	// Personal profile context is only emitted when the user actually has
+	// preferences to apply; keys are omitted entirely otherwise (T032).
+	if len(pc.ExplicitStyles) > 0 {
+		contextPayload["personal_style"] = strings.Join(pc.ExplicitStyles, ", ")
+	}
+	if len(pc.LearnedStyles) > 0 {
+		contextPayload["learned_style"] = strings.Join(pc.LearnedStyles, ", ")
+	}
+	if len(pc.ExcludedStyles) > 0 {
+		contextPayload["avoid_styles"] = strings.Join(pc.ExcludedStyles, ", ")
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)

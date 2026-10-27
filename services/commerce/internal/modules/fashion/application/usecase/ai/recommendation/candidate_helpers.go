@@ -14,6 +14,7 @@ import (
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	personalization_shared "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/shared"
 	"smart-wardrobe-be/shared/pkg/utils/sliceutils"
 )
 
@@ -80,16 +81,22 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 	return intent
 }
 
-// buildRecommendationQueryVector sinh vector nhúng (embedding vector) từ chuỗi truy vấn ngữ nghĩa bằng dịch vụ AI.
+// buildRecommendationQueryVector sinh vector nhúng (embedding vector) từ chuỗi truy vấn ngữ nghĩa bằng dịch vụ AI
+// và trộn mềm với vector gu cá nhân (033 D4, T030).
 //
 // Hành vi:
 // Hàm thiết lập thời hạn timeout từ cấu hình ([RecommendationEmbeddingTimeoutSeconds]) và gọi [GenerateEmbeddings]
 // của dịch vụ AI. Nếu xảy ra lỗi hoặc số chiều vector trả về không khớp với cấu hình ([RecommendationEmbeddingDimension]),
-// hàm sẽ ghi log cảnh báo và trả về [nil] để hệ thống tiếp tục chạy với tìm kiếm từ khóa (lexical search) thuần túy làm fallback.
+// hàm sẽ ghi log cảnh báo và bỏ phần vector truy vấn.
+//
+// Khi có style vector: kết quả là normalize((1-w)*normalize(query) + w*normalize(style)) với w là trọng số gu
+// hiệu lực. Query rỗng thì dùng style vector; style vector rỗng thì giữ nguyên query (text-only).
 //
 // Đầu vào mẫu:
 //
 //	semanticQuery: "occasion: work | color tone: light"
+//	styleVector:   []float32{0.123, -0.456, ...} (có thể nil)
+//	styleWeight:   0.30
 //
 // Đầu ra mẫu:
 //
@@ -97,14 +104,32 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 	ctx context.Context,
 	semanticQuery string,
+	styleVector []float32,
+	styleWeight float64,
 ) entities.Vector {
+	var queryVector []float32
 	if semanticQuery == "" {
 		uc.logger.Warn("Outfit recommendation embedding skipped",
 			zap.String("reason", "empty_semantic_query"),
 		)
-		return nil
+	} else {
+		queryVector = uc.embedRecommendationQuery(ctx, semanticQuery)
 	}
 
+	if len(styleVector) == 0 {
+		return entities.Vector(queryVector)
+	}
+
+	blended := personalization_shared.BlendVectors(queryVector, styleVector, styleWeight)
+	return entities.Vector(sliceutils.NormalizeVector(blended))
+}
+
+// embedRecommendationQuery calls the embedding provider for the semantic query
+// and returns nil (fail-soft) on any error, dimension mismatch or empty answer.
+func (uc *OutfitRecommendationUseCase) embedRecommendationQuery(
+	ctx context.Context,
+	semanticQuery string,
+) []float32 {
 	embedCtx, cancel := context.WithTimeout(ctx, time.Duration(uc.cfg.RAG.RecommendationEmbeddingTimeoutSeconds)*time.Second)
 	defer cancel()
 
@@ -131,7 +156,7 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 		return nil
 	}
 
-	return entities.Vector(vecs[0])
+	return vecs[0]
 }
 
 // buildRecommendationRetrievalQuery chuyển đổi ý định đã phân tích thành truy vấn tìm kiếm nâng cao (RecommendationRetrievalQuery).

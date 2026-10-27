@@ -1,6 +1,7 @@
 package ranking
 
 import (
+	"math"
 	"testing"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
@@ -496,4 +497,126 @@ func newTestItemWithFashion() (*wardrobeDto.WardrobeItemContractDTO, *dto.Fashio
 	}
 	res := &dto.FashionItemContractDTO{ID: fashionID}
 	return item, res
+}
+
+func personalisedTestItem(style string) (*wardrobeDto.WardrobeItemContractDTO, map[uuid.UUID]*dto.FashionItemContractDTO) {
+	item, fi := newTestItemWithFashion()
+	itemStyle := style
+	fi.Style = &itemStyle
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
+	return item, map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
+}
+
+func TestScoreCandidateItemPersonalStyleBonusDependsOnRequestStyle(t *testing.T) {
+	cases := []struct {
+		name         string
+		requestStyle []string
+		want         float64
+	}{
+		{name: "profile is the only style signal", requestStyle: nil, want: 0.25},
+		{name: "request style weakens the profile bonus", requestStyle: []string{"streetwear"}, want: 0.10},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			item, fashionItemMap := personalisedTestItem("minimalist")
+			baseIntent := dto.ParsedIntent{StyleTarget: tc.requestStyle}
+			withProfile := baseIntent
+			withProfile.PersonalStyle = []string{"minimalist"}
+
+			base, _ := ScoreCandidateItem(item, baseIntent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+			matched, tags := ScoreCandidateItem(item, withProfile, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+
+			if delta := matched - base; math.Abs(delta-tc.want) > 1e-9 {
+				t.Fatalf("expected a %.2f personal-style bonus, got %.4f (%.4f vs %.4f)", tc.want, delta, matched, base)
+			}
+			if !containsString(tags, "personal-style-match") {
+				t.Fatalf("expected the personal-style-match tag, got %v", tags)
+			}
+		})
+	}
+}
+
+func TestScoreCandidateItemLearnedStyleBonusUsesConfiguredWeight(t *testing.T) {
+	cases := []struct {
+		name   string
+		weight float64
+		want   float64
+	}{
+		{name: "unconfigured keeps the default", weight: 0, want: 0.10},
+		{name: "configured weight is applied", weight: 0.25, want: 0.25},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			item, fashionItemMap := personalisedTestItem("minimalist")
+			baseIntent := dto.ParsedIntent{}
+			withLearned := dto.ParsedIntent{
+				LearnedStyle:       []string{"minimalist"},
+				LearnedStyleWeight: tc.weight,
+			}
+
+			base, _ := ScoreCandidateItem(item, baseIntent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+			matched, tags := ScoreCandidateItem(item, withLearned, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+
+			if delta := matched - base; math.Abs(delta-tc.want) > 1e-9 {
+				t.Fatalf("expected a %.2f learned-style bonus, got %.4f", tc.want, delta)
+			}
+			if !containsString(tags, "learned-style-match") {
+				t.Fatalf("expected the learned-style-match tag, got %v", tags)
+			}
+		})
+	}
+}
+
+func TestScoreCandidateItemPenalizesAvoidedStyleWithoutFiltering(t *testing.T) {
+	item, fashionItemMap := personalisedTestItem("minimalist")
+	avoidIntent := dto.ParsedIntent{AvoidStyle: []string{"minimalist"}}
+
+	base, _ := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	avoided, tags := ScoreCandidateItem(item, avoidIntent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+
+	if delta := avoided - base; math.Abs(delta-(-0.30)) > 1e-9 {
+		t.Fatalf("expected a %.2f avoid-style penalty, got %.4f", -0.30, delta)
+	}
+	if !containsString(tags, "avoid-style") {
+		t.Fatalf("expected the avoid-style tag, got %v", tags)
+	}
+	if avoided <= 0 {
+		t.Fatalf("an avoided style must never zero out the candidate, got %.4f", avoided)
+	}
+
+	ranked, _ := RankCandidates(
+		[]types.CandidateForRanking{{Item: item, Source: "lexical"}},
+		avoidIntent,
+		types.RecommendationRetrievalQuery{},
+		3,
+		14,
+		5,
+		fashionItemMap,
+	)
+	if len(ranked) != 1 || ranked[0].Item.ID != item.ID {
+		t.Fatalf("expected the avoided item to stay in the ranked pool, got %d candidates", len(ranked))
+	}
+}
+
+func TestScoreCandidateItemPrefersDeclaredOverLearnedStyle(t *testing.T) {
+	item, fashionItemMap := personalisedTestItem("minimalist")
+	intent := dto.ParsedIntent{
+		PersonalStyle:      []string{"minimalist"},
+		LearnedStyle:       []string{"minimalist"},
+		LearnedStyleWeight: 0.10,
+	}
+
+	base, _ := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+	stacked, tags := ScoreCandidateItem(item, intent, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
+
+	// The declared bonus (0.25) must outrank the learned bonus (0.10); both are
+	// additive soft signals, so the profile contribution is 0.35 in total.
+	if delta := stacked - base; math.Abs(delta-0.35) > 1e-9 {
+		t.Fatalf("expected declared and learned bonuses to stack to 0.35, got %.4f tags=%v", delta, tags)
+	}
+	if !containsString(tags, "personal-style-match") || !containsString(tags, "learned-style-match") {
+		t.Fatalf("expected both personal and learned tags, got %v", tags)
+	}
 }

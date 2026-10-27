@@ -42,11 +42,14 @@ type RecommendedItemRes struct {
 }
 
 type RecommendedOutfitRes struct {
-	Title          string                  `json:"title"`
-	Explanation    string                  `json:"explanation"`
-	Items          []*RecommendedItemGroup `json:"items"`
-	IsFallback     bool                    `json:"isFallback"`
-	RemainingQuota int                     `json:"remainingQuota"`
+	// RecommendationID identifies this recommendation for the feedback endpoint
+	// (033 contracts §2.1). Always present.
+	RecommendationID uuid.UUID               `json:"recommendationId"`
+	Title            string                  `json:"title"`
+	Explanation      string                  `json:"explanation"`
+	Items            []*RecommendedItemGroup `json:"items"`
+	IsFallback       bool                    `json:"isFallback"`
+	RemainingQuota   int                     `json:"remainingQuota"`
 }
 
 type RecommendedItemGroup struct {
@@ -66,4 +69,14 @@ type ParsedIntent struct {
 	ExcludedStyles      []string `json:"excludedStyles"`
 	ExcludedColorTones  []string `json:"excludedColorTones"`
 	ExcludedWeather     []string `json:"excludedWeather"`
+	// PersonalStyle, LearnedStyle and AvoidStyle come from the user's saved
+	// profile (033 US1). They are soft preferences and never overwrite the
+	// request-level StyleTarget/ExcludedStyles fields.
+	PersonalStyle []string `json:"personalStyle,omitempty"`
+	LearnedStyle  []string `json:"learnedStyle,omitempty"`
+	AvoidStyle    []string `json:"avoidStyle,omitempty"`
+	// LearnedStyleWeight is the score weight applied to LearnedStyle matches,
+	// read from personalization.learned_style_weight (033 US1/T031). Zero means
+	// "not configured", so the scorer keeps its built-in default.
+	LearnedStyleWeight float64 `json:"learnedStyleWeight,omitempty"`
 }

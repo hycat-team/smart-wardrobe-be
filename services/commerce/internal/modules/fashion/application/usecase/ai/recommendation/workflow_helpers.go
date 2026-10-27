@@ -87,20 +87,30 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 //
 // Đầu ra mẫu:
 //
-//	([]types.CandidateForPrompt, nil)
+//	([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, types.PersonalizationContext, nil)
 func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
 	activeItems []*wardrobeDto.WardrobeItemContractDTO,
 	input dto.RecommendOutfitReq,
-) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, error) {
+) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, types.PersonalizationContext, error) {
 	intent := uc.parseRecommendationIntent(input)
+	// Personalization is loaded and merged here so every downstream stage
+	// (query blend, ranking, prompt, HSL fallback) sees the same context.
+	// The request-level StyleTarget is never overwritten.
+	personalization := uc.loadPersonalizationContext(ctx, userID, intent)
+	intent = mergePersonalizationIntoIntent(intent, personalization)
 	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
 	// Category là sở thích mềm (soft preference), KHÔNG phải bộ lọc cứng: giới hạn
 	// pool vào một category sẽ khiến không thể ghép bộ hoàn chỉnh (áo + quần hoặc đầm).
 	// Giữ seasonality, bỏ category hard filter.
 	retrievalQuery.HardFilters.CategorySlugs = nil
-	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
+	queryVector := uc.buildRecommendationQueryVector(
+		ctx,
+		retrievalQuery.SemanticQuery,
+		personalization.StyleVector,
+		personalization.StyleWeight,
+	)
 
 	minimumPool := uc.cfg.RAG.RecommendationMinimumCandidatePool
 	maxBrandCandidates := (minimumPool * 30) / 100
@@ -322,10 +332,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	)
 
 	if !ranking.HasValidOutfitStructurePrompts(ranked, fashionItemMap) {
-		return nil, nil, fashioerrors.ErrInsufficientOutfitComponents()
+		return nil, nil, types.PersonalizationContext{}, fashioerrors.ErrInsufficientOutfitComponents()
 	}
 
-	return ranked, fashionItemMap, nil
+	return ranked, fashionItemMap, personalization, nil
 }
 
 // generateOutfitRecommendation gọi dịch vụ AI/LLM để tổng hợp và sinh ra gợi ý trang phục từ danh sách ứng viên đã chọn lọc.
@@ -344,8 +354,9 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+	personalization types.PersonalizationContext,
 ) (*dto.RecommendedOutfitRes, error) {
-	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, userID, candidates, input, uc.cfg, fashionItemMap)
+	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, userID, candidates, input, uc.cfg, fashionItemMap, personalization)
 }
 
 // updateQuotaAndConstructResponse thực hiện trừ đi 1 lượt sử dụng trong quota hàng ngày của người dùng,
