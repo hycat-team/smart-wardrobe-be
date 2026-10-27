@@ -320,6 +320,19 @@ script này sinh file, rồi chạy quy trình deploy AWS hiện hữu. **Không
 **Đạt khi**: chỉ container AI được tạo lại; sáu container vẫn healthy; không có diff Dockerfile/
 Compose/Nginx/pipeline.
 
+### B3.1 Kết quả bật trial thực tế ngày 2026-10-27
+
+`.env.aws` đã chuyển ba nhóm `CHAT_TEXT`/`RECOMMENDATION_TEXT`/`FREE_TEXT` sang
+`openai` tại `https://ollama.hycat.online/v1/chat/completions`; `ai-http` và
+`ai-worker` đã được recreate.
+
+- Outfit qua API thật: `200`, `isFallback=false`, provider `openai`,
+  `latency_ms=68690`, model `qwen2.5:3b-instruct-q4_K_M`.
+- Chat SSE qua API thật: nhận đủ chunk và `event: done`; attempt
+  `provider=openai`, `latency_ms=13687`.
+- Fallback drill: stop Ollama → attempt 1 `http_5xx` → attempt 2
+  `provider=google/gemini-3.1-flash-lite` success ~1.7s; start lại Ollama OK.
+
 ### B4. Smoke test
 
 - Gọi `chat_text`, `recommendation_text`, `free_text` qua API thật → provider thắng là `openai`.
