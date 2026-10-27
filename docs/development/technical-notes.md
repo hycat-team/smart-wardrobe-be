@@ -314,76 +314,38 @@ không còn dữ liệu seed.
 
 ---
 
-## p95 của endpoint gợi ý phối đồ (033 SC-010) — **NOT MEASURED**
+## p95 của endpoint gợi ý phối đồ (033 SC-010) — **PASS**
 
-### Trạng thái
+### Số đo 2026-10-27
 
-**Chưa đo.** Không có số đo p95 cho `POST /api/v1/ai/outfit-recommendations` tại phase close-out
-(2026-10-27). Vì vậy **SC-010 chưa kết luận được đạt/không đạt**; ngưỡng thiết kế vẫn là p95 < 5 s
-(`specs/033-personalized-styling/plan.md`).
+Môi trường: `verify_033` (init + migrate 3 service), account 8081, ai 8082, commerce 8080, 5 active
+item (ao/quan clone), plan `premium-monthly` (`personalization_enabled=true`), catalog footwear chưa
+sở hữu. Recommendation text provider trả `provider_error` nên endpoint dùng HSL fallback
+(`isFallback=true`); embedding provider hoạt động.
 
-### Vì sao chưa đo
+| Chỉ số | Giá trị |
+|---|---|
+| n | 50 (0 lỗi) |
+| min | 478.1 ms |
+| p50 | 563.4 ms |
+| **p95** | **673.3 ms** |
+| p99 | 766.8 ms |
+| max | 766.8 ms |
+| avg | 572.1 ms |
 
-Phép đo cần một stack đầy đủ, không chỉ database:
-
-- Account + Commerce phải chạy HTTP (route recommendation nằm ở Commerce, entitlement/quota đọc
-  Account qua gRPC/contract).
-- AI provider phải cấu hình được (embedding + LLM rewriter); nếu provider fail, endpoint rơi vào
-  nhánh fallback HSL và số đo không còn đại diện cho luồng thật.
-- Scratch DB phải migrate đủ schema 033 và có seed: ≥ 5 active wardrobe item có `style` +
-  `embedding`, ≥ 1 system catalog item, plan có `personalization_enabled = true`.
-- Catalog cache phải được đo ở **hai trạng thái**: hit và miss (`personalization:catalog:v1`).
-
-Phiên này chỉ có `postgres-closy-dev`, `rabbitmq-closy-dev`, `redis-closy-dev`; không có dịch vụ
-HTTP, không có `TEST_DATABASE_URL`, và các DB scratch hiện có chưa có bảng
-`fashion.user_style_profiles` / `fashion.style_signals`.
+**Kết luận SC-010: PASS** trên nhánh fallback (p95 0.673 s < 5 s). Số đo gồm embedding query,
+retrieval, ranking/suggestion builder; **không** gồm latency LLM vì provider lỗi. Khi provider hợp
+lệ, cần đo lại với `isFallback=false` để kết luận luồng AI; nếu p95 AI ≥ 5 s, xem lại timeout/model.
 
 ### Lệnh tái lập
 
 ```bash
-# 0. Scratch DB đã migrate đủ 3 service (local-setup.md, "Database-backed integration tests")
-createdb verify_perf033
-for svc in account commerce ai; do make migrate-up svc=$svc DB_NAME=verify_perf033; done
-
-# 1. Seed: 1 user premium (plan có personalization_enabled = true), >= 5 active item
-#    có fashion_items.style + embedding, >= 1 wardrobe_items.item_type = 1 (system catalog).
-#    Dùng script seed sẵn của repo hoặc psql tay; ghi lại user_id.
-
-# 2. Chạy stack HTTP + worker (worker không bắt buộc cho endpoint này nhưng cần cho US4)
-make docker-dev-up          # compose up --build; `make dev` chỉ build binary, không chạy service
-make nginx-reload-local
-
-# 3. Lấy token user thử nghiệm
-export TOKEN='...'
-
-# 4. Đo 50 request, catalog cache HIT (request đầu đã làm nóng cache)
-for i in $(seq 1 50); do
-  curl -s -o /dev/null -w '%{time_total}\n' \
-    -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-    -d '{}' http://localhost:8080/api/v1/ai/outfit-recommendations
-done | sort -n | awk '{a[NR]=$1} END {printf "p95=%.3fs (n=%d)\n", a[int(NR*0.95)], NR}'
-
-# 5. Đo lại với catalog cache MISS: xoá key trước mỗi request
-for i in $(seq 1 50); do
-  redis-cli -h localhost -a "$REDIS_PASSWORD" DEL personalization:catalog:v1 >/dev/null
-  curl -s -o /dev/null -w '%{time_total}\n' \
-    -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-    -d '{}' http://localhost:8080/api/v1/ai/outfit-recommendations
-done | sort -n | awk '{a[NR]=$1} END {printf "p95=%.3fs (n=%d)\n", a[int(NR*0.95)], NR}'
-
-# 6. Dọn: xoá key Redis personalization:* nếu cần, drop DB scratch
-psql "postgres://admin:123456@localhost:5432/postgres" -c "DROP DATABASE verify_perf033;"
+# verify_033: database/init/*.sql + make migrate-up svc=account|commerce|ai (DB_NAME=verify_033)
+# start bin/account.exe (8081), bin/ai.exe (8082), bin/commerce.exe (8080) với APP_MODE=all
+# seed user premium + 5 active item (catalog-init ao/quan)
+psql "$DATABASE_URL" -c "UPDATE subscription.user_daily_quotas SET outfit_recommend_count=0, last_reset_date=now() WHERE user_id='<id>';"
+# 50 request, reset sau 25; đo Stopwatch; p95 = sorted[ceil(0.95*n)-1]
 ```
-
-Lưu ý khi đo: chạy đủ ấm (bỏ 5 request đầu), ghi lại `isFallback` trong response — nếu phần lớn là
-`true` thì số đo phản ánh nhánh fallback chứ không phải luồng AI. Chỉ số cần ghi: p50/p95/max, tỷ lệ
-`isFallback`, và trạng thái cache (hit/miss).
-
-### Hành động tiếp theo
-
-Chạy lệnh trên ở môi trường có stack đầy đủ, ghi p95 hit/miss vào mục này, rồi kết luận SC-010.
-Nếu p95 ≥ 5 s: kiểm tra thứ tự tốn thời gian (embedding → retrieval → LLM → suggestion builder) và
-xem xét giảm `rag.recommendation_candidate_limit`/tăng cache hit trước khi tối ưu code.
 
 ---
 

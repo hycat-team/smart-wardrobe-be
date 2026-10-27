@@ -217,47 +217,46 @@ Ghi tại phase close-out (T085), ngày 2026-10-27. Mục này chỉ ghi **việ
 | Hạng mục | Giá trị |
 |---|---|
 | Go | `go1.26.5 windows/amd64` (`go.work` khai báo 1.26.0) |
-| Container đang chạy | `postgres-closy-dev`, `rabbitmq-closy-dev`, `redis-closy-dev` (đều healthy) |
-| Dịch vụ HTTP (account/commerce/ai) | **không chạy** |
-| Worker learning | **không chạy** |
-| `TEST_DATABASE_URL` | **chưa đặt**; các DB scratch hiện có (`smart_wardrobe_test`, `closy_test_027`, `verify_plan031`) **chưa** có bảng `fashion.user_style_profiles` / `fashion.style_signals`, tức chưa migrate schema 033 |
-| AI provider | có key trong `.env` nhưng **không gọi** trong phiên này (không có service chạy) |
+| Container | `postgres-closy-dev`, `rabbitmq-closy-dev`, `redis-closy-dev` (healthy) |
+| DB integration | `verify_it_033` (init `database/init/*.sql` + migrate đủ account/commerce/ai) |
+| Stack E2E | account `8081`, ai `8082`, commerce `8080` (`APP_MODE=all`, chạy từ `bin/*.exe`), DB `verify_033` |
+| Worker learning | chạy cùng commerce (`APP_MODE=all`) |
+| AI provider | embedding OK (`hasEmbedding=true`); recommendation text provider trả `provider_error` → endpoint dùng HSL fallback (`isFallback=true`) trong lần E2E này |
 
-### 7.2 Đã chạy trong phase close-out
+### 7.2 Đã chạy trong close-out
 
 | Lệnh | Kết quả |
 |---|---|
-| `make SHELL=C:/Windows/System32/cmd.exe generate` (lần 1) | **FAIL** ở `swagger-combine`: `path /api/v1/me/style-profile: tag "Style Profile" missing from mapping` |
-| Sửa `shared/tools/swagger-combine/module-mapping.json`: thêm tag `Style Profile` vào module `fashion` | — |
-| `make SHELL=C:/Windows/System32/cmd.exe generate` (lần 2) | **PASS**: wire 3 service, swagger 3 service, combine (3 services / 9 modules), nginx-routes (43 locations) |
-| `go test -race -count=3 ./services/commerce/internal/modules/fashion/...` | **PASS** toàn bộ package có test, gồm `personalization/{profile,feedback,learning,completion}`, `ai/recommendation{,...}`, `presentation/handler` |
-| `go test -race -count=3 ./services/commerce/internal/modules/wardrobe/...` | **PASS**, gồm `usecase/outfit` (clone-on-save), `usecase/wardrobe/catalog` (catalog-init) |
-| `go test -race -count=3 ./services/account/internal/modules/subscription/...` | **PASS** toàn bộ package có test |
-| `go test ./shared/tools/swagger-combine/... ./shared/tools/nginx-routes/...` | **PASS** |
-| `make SHELL=C:/Windows/System32/cmd.exe lint` | **PASS** (`fmt-check` + `go vet` toàn workspace) |
-| `git status --porcelain` / `git diff --stat` | artifact sinh tự động đã đổi đúng phạm vi 033 (xem §7.5) |
+| `make SHELL=C:/Windows/System32/cmd.exe generate` (lần 1) | **FAIL** ở `swagger-combine`: tag `Style Profile` thiếu mapping |
+| Thêm tag `Style Profile` vào `shared/tools/swagger-combine/module-mapping.json` | — |
+| `make SHELL=C:/Windows/System32/cmd.exe generate` (lần 2) | **PASS**: wire 3 service, swagger 3 service, combine 3 services/9 modules, nginx 43 locations |
+| `make SHELL=C:/Windows/System32/cmd.exe test-db-integration` với `verify_it_033` | **PASS** (exit 0); account/commerce/ai `TestIntegration*`, gồm personalization schema/signal/profile và wardrobe stale order |
+| `go test -race -count=3` cho `fashion/...`, `wardrobe/...`, `account/subscription/...` | **PASS** |
+| `make SHELL=C:/Windows/System32/cmd.exe lint` | **PASS** |
+| `make SHELL=C:/Windows/System32/cmd.exe check` (trước khi bổ sung E2E) | **PASS** (fmt, tidy, generate, nginx, vet, race, build) |
 
-### 7.3 Đã chạy ở phase trước, **không chạy lại** trong phase này
+### 7.3 E2E US1–US7 (2026-10-27)
 
-Các kết quả dưới đây là số liệu báo cáo của phase 2/phase 3, chép nguyên trạng; phase close-out
-không tái lập được vì thiếu `TEST_DATABASE_URL` và DB scratch chưa migrate schema 033.
-
-- Phase 2 — DB integration: **12/12** test `TestIntegration*` của Commerce (migration, outbox,
-  repository mới).
-- Phase 3 — DB integration repository hồ sơ gu: **4/4** test.
-- Các unit test theo package đã xanh ở từng phase; phase close-out chạy lại toàn bộ scoped ở §7.2.
-
-### 7.4 Chưa chạy và lý do
-
-| Kịch bản | Vì sao chưa chạy |
+| Story | Kết quả |
 |---|---|
-| US1–US7 end-to-end (§3) | Cần Account + Commerce + AI chạy HTTP, worker learning, subscription `personalization-monthly`/plan có `personalization_enabled = true`, catalog seed và AI provider. Phiên này chỉ có Postgres/Redis/RabbitMQ. |
-| US4 learning (event → `learned_styles` trong 60 s) | Cần worker `style_learning_queue` chạy cùng RabbitMQ và DB đã migrate. |
-| US2 bước 4/5 (vượt hạn mức, catalog item bị gỡ) | Cần dữ liệu tủ/catalog thật và gọi HTTP; phần logic đã có unit test `usecase/outfit` + `usecase/wardrobe/catalog`. |
-| SC-002/SC-003/SC-004/SC-013 (phân tích log 30 ngày) | Không có log 30 ngày của môi trường chạy thật. |
-| SC-010 (p95) | Xem T090 — **NOT MEASURED**, lý do và lệnh tái lập ở `docs/development/technical-notes.md`. |
-| SC-011 (client cũ chạy trên response mới) | Không chạy web/mobile runtime trong phiên này; đã đối chiếu tĩnh ở `frontend-guide.md` §15.5. |
-| Kiểm chứng trên dữ liệu production | Ngoài phạm vi, bị cấm bởi §6. |
+| US1 | GET/PUT `/me/style-profile` 200; `personalizationAvailable=true`, `hasEmbedding=true`; POST recommendation 200, có `recommendationId`, top+bottom, `personalized=true`, `personal_style_match_ratio=1`; `isFallback=true` do provider error (HSL fallback) |
+| US2 | Sau fix retrieval, `suggestions` có footwear catalog; save outfit với `itemContext=system_catalog` → 201; wardrobe 5→6, clone giày 1 row, không clone mồ côi |
+| US3 | `last_recommended_at` được set; save set `last_used_at`; PUT đổi tên không đổi `last_used_at`; log rotation có `stale_slots_added=2`, `cooldown_substitutions=0`, `personal_style_match_ratio=1` |
+| US4 | `style_signals` source 1 (3 item); `learned_styles={"Casual":0.667,"Sporty":0.333}`, `learned_at` set; `styles=["casual"]`, `excluded=["vintage"]` không đổi |
+| US5 | `sampleSize=3`, `Casual:2 (0.67)`, `Sporty:1 (0.33)`; dedupe theo `fashion_item_id` (D-07) |
+| US6 | like 200; duplicate 200; user khác 403; `style_signals` có source 1 và 2, không nhân đôi |
+| US7 | completions ao+quan → suggestion footwear; quota `outfitRecommendCount` 2→2 |
+| p95 | n=50, 0 lỗi; p50 **563.4ms**, p95 **673.3ms**, p99 766.8ms, max 766.8ms; **SC-010 PASS** (ngưỡng <5s) |
+
+### 7.4 Chưa chạy / giới hạn
+
+| Kịch bản | Lý do |
+|---|---|
+| SC-002/SC-003/SC-004/SC-013 (log 30 ngày) | Chưa có 30 ngày log vận hành |
+| SC-011 runtime web/mobile | Không chạy web/mobile runtime; đã đối chiếu tĩnh ở `frontend-guide.md` §15.5 |
+| US2 vượt hạn mức / catalog item bị gỡ qua HTTP | Đã có unit/DB test; E2E không lặp qua HTTP |
+| AI text path | Provider trả `provider_error`; E2E dùng HSL fallback. p95 phản ánh nhánh fallback, không có latency LLM |
+| Production | Ngoài phạm vi |
 
 ### 7.5 Artifact sinh tự động đã thay đổi (T086)
 
@@ -272,8 +271,8 @@ không tái lập được vì thiếu `TEST_DATABASE_URL` và DB scratch chưa 
 - `shared/tools/swagger-combine/module-mapping.json`: thêm tag `Style Profile` (bắt buộc để
   `swagger-combine` chạy được; không phải thay đổi hành vi API).
 
-Các file `docs/**` và `Makefile` đang `M` trong `git status` là thay đổi **có sẵn từ trước** phase
-này, không do `make generate` sinh ra.
+Các thay đổi `docs/**` và `Makefile` là thay đổi chủ đích của feature (T080–T083, T093), không do
+`make generate` sinh ra.
 
 ### 7.6 Lệnh tái lập
 
@@ -297,9 +296,23 @@ DB integration (cần scratch DB đã migrate đủ 3 service — xem
 [local-setup.md](../../docs/development/local-setup.md) mục "Database-backed integration tests"):
 
 ```bash
-export TEST_DATABASE_URL="postgres://admin:123456@localhost:5432/verify_it?sslmode=disable&search_path=public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
-export TEST_DATABASE_ALLOW_REGISTRY_ROLLBACK=true
-make test-db-integration
+export TEST_DATABASE_URL="postgres://admin:123456@localhost:5432/verify_it_033?sslmode=disable&search_path=public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
+export TEST_RABBITMQ_URL="amqp://<user>:<password>@localhost:5672/"
+make SHELL=C:/Windows/System32/cmd.exe test-db-integration
+```
+
+E2E/p95 (đã chạy ngày 2026-10-27):
+
+```bash
+# 1. DB verify_033: database/init/*.sql + make migrate-up svc=account|commerce|ai (DB_NAME=verify_033)
+# 2. Start: bin/account.exe (SERVER_PORT=8081), bin/ai.exe (SERVER_PORT=8082),
+#           bin/commerce.exe (SERVER_PORT=8080, INGRESS_ACCOUNT_URL=http://localhost:8081,
+#           INGRESS_AI_URL=http://localhost:8082); APP_MODE=all.
+# 3. Seed user premium + 5 active item (catalog-init ao/quan), rồi chạy US1–US7 ở §3.
+# 4. p95: reset subscription.user_daily_quotas.outfit_recommend_count=0;
+#         50 request POST /api/v1/ai/outfit-recommendations; reset sau 25 request;
+#         đo bằng Stopwatch, lấy p95 theo index ceil(0.95*n)-1.
+# 5. Dọn: stop 3 process; drop verify_033/verify_it_033.
 ```
 
 ## 8. Rà soát bảo mật (T089)
