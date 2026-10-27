@@ -188,22 +188,27 @@ func (f *fakeSuggestionWardrobeContract) GetOwnedFashionItemIDs(context.Context,
 }
 
 // fakeSuggestionFashionRepo fakes IFashionItemRepository and records the exact
-// retrieval arguments so the test can prove hard filters and the query vector
-// are reused unchanged (SC-014).
+// retrieval arguments so the test can prove the gap-role scope and the avoided
+// terms are reused (SC-014).
 type fakeSuggestionFashionRepo struct {
 	repositories.IFashionItemRepository
-	items       map[uuid.UUID]*entities.FashionItem
-	hybrid      []repositories.HybridCandidate
-	hybridErr   error
-	itemsErr    error
-	hybridCalls int
-	gotIDs      []uuid.UUID
-	gotVector   []float32
-	gotLexical  []string
-	gotExcluded []string
-	gotFilters  repositories.RecommendationHardFilters
-	gotLimit    int
-	gotRRF      int
+	items map[uuid.UUID]*entities.FashionItem
+	// queryMatched models the SQL relevance cut: when the caller supplies a
+	// semantic vector or lexical terms, only the items listed here survive the
+	// outfit-query match. An empty query exercises the repository fallback
+	// branch, which returns every catalog item inside the hard filters.
+	queryMatched map[uuid.UUID]bool
+	hybrid       []repositories.HybridCandidate
+	hybridErr    error
+	itemsErr     error
+	hybridCalls  int
+	gotIDs       []uuid.UUID
+	gotVector    []float32
+	gotLexical   []string
+	gotExcluded  []string
+	gotFilters   repositories.RecommendationHardFilters
+	gotLimit     int
+	gotRRF       int
 }
 
 func (f *fakeSuggestionFashionRepo) GetHybridCandidates(
@@ -233,11 +238,29 @@ func (f *fakeSuggestionFashionRepo) GetHybridCandidates(
 	for _, id := range fashionItemIDs {
 		wanted[id] = struct{}{}
 	}
+	allowedCategories := make(map[string]struct{}, len(hardFilters.CategorySlugs))
+	for _, slug := range hardFilters.CategorySlugs {
+		allowedCategories[slug] = struct{}{}
+	}
+	queryOnly := len(semanticVector) > 0 || len(lexicalTerms) > 0
 	filtered := make([]repositories.HybridCandidate, 0, len(f.hybrid))
 	for _, candidate := range f.hybrid {
-		if _, ok := wanted[candidate.ID]; ok {
-			filtered = append(filtered, candidate)
+		if _, ok := wanted[candidate.ID]; !ok {
+			continue
 		}
+		if len(allowedCategories) > 0 {
+			item := f.items[candidate.ID]
+			if item == nil || item.Category == nil {
+				continue
+			}
+			if _, ok := allowedCategories[item.Category.Slug]; !ok {
+				continue
+			}
+		}
+		if queryOnly && !f.queryMatched[candidate.ID] {
+			continue
+		}
+		filtered = append(filtered, candidate)
 	}
 	return filtered, nil
 }
@@ -315,6 +338,25 @@ func suggestionTestFilter(personalization types.PersonalizationContext, pool []t
 		},
 		QueryVector: entities.Vector{0.1, 0.2},
 	}
+}
+
+// suggestionTestFilterWithScoredOutfit returns the base filter with a pool that
+// scores top and bottom above the gap threshold, so the only detected gap is
+// footwear — the 033 US2 E2E scenario.
+func suggestionTestFilterWithScoredOutfit(personalization types.PersonalizationContext) *candidateFilterResult {
+	filter := suggestionTestFilter(personalization, nil)
+	fashionMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
+	pool := make([]types.CandidateForRanking, 0, 2)
+	for _, slug := range []string{"ao", "quan"} {
+		candidate, itemMap := poolCandidate(slug, 0.9)
+		pool = append(pool, candidate)
+		for id, item := range itemMap {
+			fashionMap[id] = item
+		}
+	}
+	filter.Pool = pool
+	filter.FashionItemMap = fashionMap
+	return filter
 }
 
 func suggestionTestUseCase(
@@ -486,7 +528,7 @@ func TestBuildCatalogSuggestionsSkipsOwnedFashionItems(t *testing.T) {
 	}
 }
 
-func TestBuildCatalogSuggestionsReusesOutfitRetrievalContext(t *testing.T) {
+func TestBuildCatalogSuggestionsRetrievesGapCategoriesWithoutOutfitQuery(t *testing.T) {
 	shoes := suggestionCatalogItem("giay", "")
 	repo := &fakeSuggestionFashionRepo{
 		items:  suggestionItemIndex(shoes),
@@ -494,7 +536,7 @@ func TestBuildCatalogSuggestionsReusesOutfitRetrievalContext(t *testing.T) {
 	}
 	contract := &fakeSuggestionWardrobeContract{catalogIDs: []uuid.UUID{shoes.ID}}
 	uc := suggestionTestUseCase(suggestionTestConfig(), repo, contract, &fakeSuggestionCatalogCache{})
-	filter := suggestionTestFilter(types.PersonalizationContext{}, nil)
+	filter := suggestionTestFilterWithScoredOutfit(types.PersonalizationContext{})
 
 	uc.buildCatalogSuggestions(
 		context.Background(),
@@ -503,20 +545,164 @@ func TestBuildCatalogSuggestionsReusesOutfitRetrievalContext(t *testing.T) {
 		filter,
 	)
 
-	if !reflect.DeepEqual(repo.gotFilters, filter.RetrievalQuery.HardFilters) {
-		t.Fatalf("hard filters = %+v, want the outfit filters %+v", repo.gotFilters, filter.RetrievalQuery.HardFilters)
+	if want := []string{"giay"}; !reflect.DeepEqual(repo.gotFilters.CategorySlugs, want) {
+		t.Fatalf("category filter = %v, want the footwear category %v", repo.gotFilters.CategorySlugs, want)
 	}
-	if !reflect.DeepEqual(repo.gotVector, []float32(filter.QueryVector)) {
-		t.Fatalf("query vector = %v, want %v", repo.gotVector, filter.QueryVector)
+	if want := []string{"winter"}; !reflect.DeepEqual(repo.gotFilters.Seasonality, want) {
+		t.Fatalf("seasonality filter = %v, want %v (the outfit filters must be preserved)", repo.gotFilters.Seasonality, want)
 	}
-	if !reflect.DeepEqual(repo.gotLexical, []string{"office"}) {
-		t.Fatalf("lexical terms = %v, want [office]", repo.gotLexical)
+	if len(repo.gotVector) != 0 {
+		t.Fatalf("query vector = %v, want empty: the fallback must not filter by the outfit query", repo.gotVector)
 	}
-	if !reflect.DeepEqual(repo.gotExcluded, []string{"dark"}) {
-		t.Fatalf("excluded terms = %v, want [dark]", repo.gotExcluded)
+	if len(repo.gotLexical) != 0 {
+		t.Fatalf("lexical terms = %v, want empty: the fallback must not filter by the outfit query", repo.gotLexical)
+	}
+	if want := []string{"dark"}; !reflect.DeepEqual(repo.gotExcluded, want) {
+		t.Fatalf("excluded terms = %v, want %v (avoided styles stay excluded)", repo.gotExcluded, want)
+	}
+	if got := filter.RetrievalQuery.HardFilters.CategorySlugs; len(got) != 0 {
+		t.Fatalf("outfit hard filters were mutated: CategorySlugs = %v, want empty", got)
+	}
+	if want := (entities.Vector{0.1, 0.2}); !reflect.DeepEqual(filter.QueryVector, want) {
+		t.Fatalf("outfit query vector was mutated: %v, want %v", filter.QueryVector, want)
 	}
 	if repo.gotLimit != 1 || repo.gotRRF != 60 {
 		t.Fatalf("limit/rrf = %d/%d, want 1/60", repo.gotLimit, repo.gotRRF)
+	}
+}
+
+// TestBuildCatalogSuggestionsReturnsStyleMismatchedCatalogItem covers the E2E
+// regression of 033 US2: the request is "casual" and the only catalog footwear is
+// "sporty". Reusing the outfit query text/vector dropped that item before the
+// picker ran, so the footwear gap came back empty. The gap-role fallback must
+// retrieve by category and still hand the item to the picker.
+func TestBuildCatalogSuggestionsReturnsStyleMismatchedCatalogItem(t *testing.T) {
+	sportyShoes := suggestionCatalogItem("giay", "sporty")
+	repo := &fakeSuggestionFashionRepo{
+		items:  suggestionItemIndex(sportyShoes),
+		hybrid: []repositories.HybridCandidate{suggestionHybrid(sportyShoes, 0)},
+		// The catalog footwear does not match the outfit query, so the relevance
+		// cut would have dropped it.
+		queryMatched: map[uuid.UUID]bool{},
+	}
+	contract := &fakeSuggestionWardrobeContract{catalogIDs: []uuid.UUID{sportyShoes.ID}}
+	uc := suggestionTestUseCase(suggestionTestConfig(), repo, contract, &fakeSuggestionCatalogCache{})
+	// The request style is "casual" and the catalog item is "sporty": the style
+	// signals must not filter the fallback candidate out either.
+	personalization := types.PersonalizationContext{
+		Active:         true,
+		ExplicitStyles: []string{"casual"},
+	}
+
+	got := uc.buildCatalogSuggestions(
+		context.Background(),
+		uuid.New(),
+		outfitWithRoles("top", "bottom"),
+		suggestionTestFilterWithScoredOutfit(personalization),
+	)
+
+	if len(got) != 1 || got[0].Role != "footwear" {
+		t.Fatalf("suggestions = %v, want one footwear suggestion from the category fallback", suggestionRoles(got))
+	}
+	if got[0].FashionItem == nil || got[0].FashionItem.ID != sportyShoes.ID {
+		t.Fatalf("suggested %+v, want the style-mismatched catalog footwear", got[0].FashionItem)
+	}
+	if len(repo.gotVector) != 0 || len(repo.gotLexical) != 0 {
+		t.Fatalf("fallback retrieval carried the outfit query (vector=%v lexical=%v), want neither",
+			repo.gotVector, repo.gotLexical)
+	}
+	if want := []string{"giay"}; !reflect.DeepEqual(repo.gotFilters.CategorySlugs, want) {
+		t.Fatalf("category filter = %v, want %v", repo.gotFilters.CategorySlugs, want)
+	}
+}
+
+// TestBuildCatalogSuggestionsCategoryFallbackSkipsOwnedItems proves the FR-021
+// ownership exclusion still applies on the category fallback path.
+func TestBuildCatalogSuggestionsCategoryFallbackSkipsOwnedItems(t *testing.T) {
+	ownedShoes := suggestionCatalogItem("giay", "sporty")
+	freeShoes := suggestionCatalogItem("giay", "sporty")
+	repo := &fakeSuggestionFashionRepo{
+		items: suggestionItemIndex(ownedShoes, freeShoes),
+		hybrid: []repositories.HybridCandidate{
+			suggestionHybrid(ownedShoes, 0),
+			suggestionHybrid(freeShoes, 0),
+		},
+		queryMatched: map[uuid.UUID]bool{},
+	}
+	contract := &fakeSuggestionWardrobeContract{
+		catalogIDs: []uuid.UUID{ownedShoes.ID, freeShoes.ID},
+		ownedIDs:   []uuid.UUID{ownedShoes.ID},
+	}
+	uc := suggestionTestUseCase(suggestionTestConfig(), repo, contract, &fakeSuggestionCatalogCache{})
+
+	got := uc.buildCatalogSuggestions(
+		context.Background(),
+		uuid.New(),
+		outfitWithRoles("top", "bottom"),
+		suggestionTestFilterWithScoredOutfit(types.PersonalizationContext{}),
+	)
+
+	if len(got) != 1 || got[0].FashionItem == nil || got[0].FashionItem.ID != freeShoes.ID {
+		t.Fatalf("suggestions = %+v, want only the not-owned footwear item", got)
+	}
+	if len(repo.gotIDs) != 1 || repo.gotIDs[0] != freeShoes.ID {
+		t.Fatalf("retrieval ids = %v, want only the unowned item", repo.gotIDs)
+	}
+}
+
+// TestRetrieveCatalogCandidatesScopesFallbackToGapRoles proves the category
+// fallback is narrow: a footwear-only gap must not pull top/bottom items even
+// though they are catalog items the user does not own.
+func TestRetrieveCatalogCandidatesScopesFallbackToGapRoles(t *testing.T) {
+	shoes := suggestionCatalogItem("giay", "sporty")
+	top := suggestionCatalogItem("ao", "sporty")
+	bottom := suggestionCatalogItem("quan", "sporty")
+	repo := &fakeSuggestionFashionRepo{
+		items: suggestionItemIndex(shoes, top, bottom),
+		hybrid: []repositories.HybridCandidate{
+			suggestionHybrid(top, 0.9),
+			suggestionHybrid(bottom, 0.8),
+			suggestionHybrid(shoes, 0),
+		},
+		queryMatched: map[uuid.UUID]bool{},
+	}
+	contract := &fakeSuggestionWardrobeContract{catalogIDs: []uuid.UUID{shoes.ID, top.ID, bottom.ID}}
+	uc := suggestionTestUseCase(suggestionTestConfig(), repo, contract, &fakeSuggestionCatalogCache{})
+
+	got := uc.retrieveCatalogCandidates(
+		context.Background(),
+		uuid.New(),
+		[]string{"footwear"},
+		suggestionTestFilter(types.PersonalizationContext{}, nil),
+	)
+
+	if want := []string{"giay"}; !reflect.DeepEqual(repo.gotFilters.CategorySlugs, want) {
+		t.Fatalf("category filter = %v, want %v", repo.gotFilters.CategorySlugs, want)
+	}
+	if len(got) != 1 || got[0].Role != "footwear" ||
+		got[0].FashionItem == nil || got[0].FashionItem.ID != shoes.ID {
+		t.Fatalf("candidates = %+v, want only the footwear item", got)
+	}
+}
+
+func TestCategorySlugsForRoles(t *testing.T) {
+	tests := []struct {
+		name  string
+		roles []string
+		want  []string
+	}{
+		{name: "footwear", roles: []string{"footwear"}, want: []string{"giay"}},
+		{name: "bottom includes skirt", roles: []string{"bottom"}, want: []string{"quan", "chan-vay"}},
+		{name: "dedupes repeated roles", roles: []string{"top", "top"}, want: []string{"ao"}},
+		{name: "unknown role adds nothing", roles: []string{"other"}, want: []string{}},
+		{name: "no roles", roles: nil, want: []string{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := categorySlugsForRoles(tt.roles); !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("categorySlugsForRoles(%v) = %v, want %v", tt.roles, got, tt.want)
+			}
+		})
 	}
 }
 

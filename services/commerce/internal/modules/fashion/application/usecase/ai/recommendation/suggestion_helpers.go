@@ -197,9 +197,16 @@ func roleRelevanceScores(
 }
 
 // retrieveCatalogCandidates loads the cached catalog id list, drops items the
-// user already owns, then runs the same hybrid retrieval as the outfit with the
-// same query vector, lexical terms, excluded terms and hard filters (033
-// US2/T039).
+// user already owns, then retrieves the catalog items of the missing-role
+// categories (033 US2/T039).
+//
+// The outfit query vector and lexical terms describe what the user asked for.
+// Reusing them here silently dropped every gap-role item whose catalog wording
+// or embedding differs from the request — a "casual" request found no "Sporty"
+// footwear, so the gap stayed empty even though the category had items. The
+// fallback retrieval therefore keeps the outfit hard filters (season, and the
+// avoided terms) but passes no semantic vector and no lexical terms, which makes
+// the repository return every catalog item inside the missing-role categories.
 func (uc *OutfitRecommendationUseCase) retrieveCatalogCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -235,14 +242,19 @@ func (uc *OutfitRecommendationUseCase) retrieveCatalogCandidates(
 		return nil
 	}
 
+	// Copy the hard filters: the category scope below belongs to this catalog
+	// lookup only and must never leak back into the outfit retrieval state.
+	hardFilters := filter.RetrievalQuery.HardFilters
+	hardFilters.CategorySlugs = categorySlugsForRoles(gapRoles)
+
 	limit := min(catalogSuggestionCandidateLimit, len(catalogIDs))
 	hybridCandidates, err := uc.fashionItemRepo.GetHybridCandidates(
 		ctx,
 		sliceutils.UniqueUUIDs(catalogIDs),
-		[]float32(filter.QueryVector),
-		retrieval.ExtractTermStrings(filter.RetrievalQuery.LexicalTerms),
+		nil,
+		nil,
 		retrieval.ExtractTermStrings(filter.RetrievalQuery.ExcludedTerms),
-		filter.RetrievalQuery.HardFilters,
+		hardFilters,
 		limit,
 		uc.cfg.RAG.RrfKParameter,
 	)
@@ -297,6 +309,43 @@ func (uc *OutfitRecommendationUseCase) retrieveCatalogCandidates(
 		})
 	}
 	return suggestions
+}
+
+// categorySlugsForRoles maps wearing roles to the catalog category slugs that
+// can fill them (033 FR-020/FR-021). It mirrors
+// [mapper.CategorySlugToWearingRole] and dedupes while preserving the role
+// order, so the retrieval filter is stable. Roles without a catalog category are
+// skipped, so an unknown role never widens the retrieval scope.
+func categorySlugsForRoles(roles []string) []string {
+	slugs := make([]string, 0, len(roles))
+	seen := make(map[string]struct{}, len(roles))
+	add := func(slug string) {
+		if _, exists := seen[slug]; exists {
+			return
+		}
+		seen[slug] = struct{}{}
+		slugs = append(slugs, slug)
+	}
+	for _, role := range roles {
+		switch role {
+		case "top":
+			add("ao")
+		case "bottom":
+			add("quan")
+			add("chan-vay")
+		case "fullbody":
+			add("dam")
+		case "footwear":
+			add("giay")
+		case "outerwear":
+			add("ao-khoac")
+		case "headwear":
+			add("mu")
+		case "accessory":
+			add("phu-kien")
+		}
+	}
+	return slugs
 }
 
 // getCatalogFashionItemIDs reads the catalog id list through the fail-soft
