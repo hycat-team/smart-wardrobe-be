@@ -292,35 +292,35 @@ vượt hạn mức → 400 và 0 bản sao; catalog-init cross-user bị từ c
 
 ### Implementation
 
-- [ ] T051 [P] [US3] Sửa `.../ranking/scoring.go`: nới `recently_worn_penalty_days` 3 → 7, penalty tối đa
+- [x] T051 [P] [US3] Sửa `.../ranking/scoring.go`: nới `recently_worn_penalty_days` 3 → 7, penalty tối đa
   0.45; thêm penalty 0.12 cho `last_recommended_at` gần đây; "món mới" theo `created_at`; bỏ điều kiện
   `styleMatched || occasion` cho long-unworn bonus.
-- [ ] T052 [P] [US3] Thêm `CandidateSourceStale`, `RankedCandidate.Cooldown`, các counter
+- [x] T052 [P] [US3] Thêm `CandidateSourceStale`, `RankedCandidate.Cooldown`, các counter
   `StaleSlotsAdded`, `CooldownSubstitutions`, `RecentlyUsedRepeatRatio`,
   `RecentlyRecommendedRepeatRatio`, `PersonalStyleMatchRatio`, `ReturnedItemIDs`, `StaleItemIDs`,
   `StaleEligibleItemIDs`, `CooldownItemIDs` vào `.../recommendation/types/structs.go`.
-- [ ] T053 [US3] Lấy stale candidates qua `wardrobeContract.GetStaleActiveWardrobeItemsByUserID` với
+- [x] T053 [US3] Lấy stale candidates qua `wardrobeContract.GetStaleActiveWardrobeItemsByUserID` với
   `limit = MaxWardrobeItems` (rộng, không phải 4), rồi lọc trong Fashion theo `last_used_at` cũ hơn
   `stale_eligible_days` (30) hoặc null, hard filter và role; sort `last_used_at ASC NULLS FIRST,
   last_recommended_at ASC NULLS FIRST`; lấy `stale_candidate_slots`; tính `hybridLimit = minimumPool -
   brandCandidates - staleSlots`; dedupe theo `fashion_item_id`; gắn source `stale`.
   `stale_eligible_item_ids` = toàn bộ tập đủ điều kiện sau lọc (không cap 4); bảo đảm
   `StaleItemIDs ⊆ StaleEligibleItemIDs`.
-- [ ] T054 [US3] Thêm `ApplyRecencyCooldown` trong `.../ranking/ranking.go`: ưu tiên món ngoài vùng làm
+- [x] T054 [US3] Thêm `ApplyRecencyCooldown` trong `.../ranking/ranking.go`: ưu tiên món ngoài vùng làm
   mát trong `cooldown_score_tolerance`; nếu toàn role trong vùng làm mát thì giữ nguyên; đếm
   `CooldownSubstitutions`.
-- [ ] T055 [US3] Dedupe theo `fashion_item_id` và lấy `max(last_used_at)` trước scoring trong
+- [x] T055 [US3] Dedupe theo `fashion_item_id` và lấy `max(last_used_at)` trước scoring trong
   `workflow_helpers.go`.
-- [ ] T056 [US3] Gọi `wardrobeContract.TouchLastRecommendedAt` best-effort sau khi dựng response trong
+- [x] T056 [US3] Gọi `wardrobeContract.TouchLastRecommendedAt` best-effort sau khi dựng response trong
   `workflow.go` (chỉ primary + alternatives là wardrobe item); lỗi log và lần sau thử lại. Thêm
   structured log với đầy đủ counter + `returned_item_ids`/`stale_item_ids`/`stale_eligible_item_ids`/
   `cooldown_item_ids`.
-- [ ] T057 [US3] Thêm prompt rule ưu tiên món không có tag `recency-cooldown` trong
+- [x] T057 [US3] Thêm prompt rule ưu tiên món không có tag `recency-cooldown` trong
   `.../synthesis/prompt.go`; thêm tag trong `ranking.go`.
-- [ ] T058 [US3] Thêm test: `scoring_test.go` (window/new-item/bonus), `ranking_test.go` (cooldown +
+- [x] T058 [US3] Thêm test: `scoring_test.go` (window/new-item/bonus), `ranking_test.go` (cooldown +
   all-cooldown fallback), `workflow_helpers_test.go` (stale slots, dedupe clone, `StaleItemIDs ⊆
   StaleEligibleItemIDs`). Test order của repo stale nằm ở T022.
-- [ ] T059 [US3] Chạy kịch bản US3 trong `quickstart.md`; kiểm tra log `stale_slots_added`,
+- [x] T059 [US3] Chạy kịch bản US3 trong `quickstart.md`; kiểm tra log `stale_slots_added`,
   `cooldown_substitutions`, `recently_used_repeat_ratio`, `recently_recommended_repeat_ratio`,
   `personal_style_match_ratio`, `returned_item_ids`, `stale_item_ids`, `stale_eligible_item_ids`,
   `cooldown_item_ids`.

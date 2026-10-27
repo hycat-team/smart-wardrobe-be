@@ -2,6 +2,7 @@ package recommendation
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -41,12 +42,12 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 	// the feedback endpoint (033 contracts §2.1, US6).
 	recommendationID := uuid.New()
 
-	activeItems, quotaDTO, err := uc.validateAndGetActiveItems(ctx, userID)
+	activeItems, quotaDTO, maxWardrobeItems, err := uc.validateAndGetActiveItems(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	filterResult, err := uc.filterCandidates(ctx, userID, activeItems, input)
+	filterResult, err := uc.filterCandidates(ctx, userID, activeItems, maxWardrobeItems, input)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +87,18 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 		// attached after the outfit is final, never merge into Items and never
 		// touch the quota below.
 		finalRes.Suggestions = uc.buildCatalogSuggestions(ctx, userID, finalRes, filterResult)
+		// 033 US3/T056: rotation observability + best-effort last_recommended_at.
+		// Both are fail-soft by contract: they log and continue, never blocking
+		// the response (FR-054, FR-068).
+		uc.recordRotationObservability(
+			ctx,
+			userID,
+			recommendationID,
+			finalRes,
+			filterResult,
+			uc.rotationSettings(),
+			time.Now(),
+		)
 	}
 
 	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {

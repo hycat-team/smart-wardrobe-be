@@ -2,6 +2,7 @@ package recommendation
 
 import (
 	"context"
+	"time"
 
 	sub_dto "smart-wardrobe-be/services/account/dto/subscription"
 	brand_dto "smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
@@ -31,6 +32,12 @@ type candidateFilterResult struct {
 	Pool            []types.CandidateForRanking
 	RetrievalQuery  types.RecommendationRetrievalQuery
 	QueryVector     entities.Vector
+	// Stats carries the ranking and rotation counters of this request (033
+	// US3/T052). StaleSlotsAdded / StaleItemIDs / StaleEligibleItemIDs are
+	// filled by filterCandidates; CooldownSubstitutions by RankCandidates; the
+	// ratios and returned/cooldown id lists by the observability step in
+	// workflow.go.
+	Stats types.RerankStats
 }
 
 // validateAndGetActiveItems kiểm tra hạn ngạch hàng ngày của người dùng và truy vấn các món đồ
@@ -48,37 +55,37 @@ type candidateFilterResult struct {
 //
 // Đầu ra mẫu:
 //
-//	([]*wardrobeDto.WardrobeItemRes, *sub_dto.UserSubscriptionDTO, nil)
+//	([]*wardrobeDto.WardrobeItemRes, *sub_dto.UserSubscriptionDTO, 200, nil)
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]*wardrobeDto.WardrobeItemContractDTO, *sub_dto.UserSubscriptionDTO, error) {
+) ([]*wardrobeDto.WardrobeItemContractDTO, *sub_dto.UserSubscriptionDTO, int, error) {
 	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	if quotaDTO.OutfitRecommendCount >= quotaDTO.AiOutfitDailyQuota {
-		return nil, nil, fashioerrors.ErrAiOutfitQuotaExceeded()
+		return nil, nil, 0, fashioerrors.ErrAiOutfitQuotaExceeded()
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	// Lấy active items (InWardrobe + not deleted) qua contract — wardrobe module lọc + giới hạn từ DB,
 	// không load toàn bộ wardrobe lên RAM rồi cắt.
 	activeItems, err := uc.wardrobeContract.GetActiveWardrobeItemsByUserID(ctx, userID, subOverview.MaxWardrobeItems)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	if len(activeItems) < 5 {
-		return nil, nil, fashioerrors.ErrMinimumWardrobeItemsRequired()
+		return nil, nil, 0, fashioerrors.ErrMinimumWardrobeItemsRequired()
 	}
 
-	return activeItems, quotaDTO, nil
+	return activeItems, quotaDTO, subOverview.MaxWardrobeItems, nil
 }
 
 // filterCandidates thực hiện quy trình tìm kiếm lai (hybrid search) và xếp hạng để lọc ra danh sách
@@ -87,14 +94,16 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 // Hành vi:
 //   - 1. Phân tích ý định từ yêu cầu đầu vào thông qua [parseRecommendationIntent] để lấy [ParsedIntent] và xây dựng câu truy vấn ngữ nghĩa.
 //   - 2. Tạo vector nhúng (embedding vector) cho câu truy vấn ngữ nghĩa bằng [buildRecommendationQueryVector].
-//   - 3. Thực hiện truy vấn lai (kết hợp vector và lexical search) thông qua [GetHybridCandidates] của repository tủ đồ.
-//   - 4. Đảm bảo số lượng ứng viên tối thiểu trong bể ứng viên thông qua [EnsureMinimumCandidatePool].
-//   - 5. Tính toán điểm số và xếp hạng ứng viên dựa trên độ tương quan ngữ cảnh và tần suất mặc đồ qua [RankCandidates].
+//   - 3. Dành chỗ cho món lâu không dùng qua [OutfitRecommendationUseCase.fetchStaleCandidates]; số slot này trừ vào ngân sách hybrid.
+//   - 4. Thực hiện truy vấn lai (kết hợp vector và lexical search) thông qua [GetHybridCandidates] của repository tủ đồ.
+//   - 5. Đảm bảo số lượng ứng viên tối thiểu trong bể ứng viên thông qua [EnsureMinimumCandidatePool].
+//   - 6. Tính toán điểm số và xếp hạng ứng viên dựa trên độ tương quan ngữ cảnh và tần suất mặc đồ qua [RankCandidates].
 //
 // Đầu vào mẫu:
 //
 //	userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
 //	activeItems: []*wardrobe_entities.WardrobeItem{...}
+//	maxWardrobeItems: 200
 //	input: dto.RecommendOutfitReq{Occasion: pointer to "casual"}
 //
 // Đầu ra mẫu:
@@ -104,6 +113,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
 	activeItems []*wardrobeDto.WardrobeItemContractDTO,
+	maxWardrobeItems int,
 	input dto.RecommendOutfitReq,
 ) (*candidateFilterResult, error) {
 	intent := uc.parseRecommendationIntent(input)
@@ -253,8 +263,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 
-	// Fetch Wardrobe items
-	wardrobeLimit := minimumPool - brandCandidatesCount
+	// Dedupe trước khi chấm điểm (033 US3/T055, FR-061): các bản sao của cùng một
+	// fashion item chia sẻ tín hiệu gần nhất. Lấy max(last_used_at) và
+	// max(last_recommended_at) để một bản sao vừa dùng không bị bản sao cũ che mất.
+	activeItems = dedupeWardrobeItemsByFashionItemID(activeItems)
 
 	// Rút fashion_item_ids từ chính activeItems (đã lọc + cắt theo giới hạn gói ở validateAndGetActiveItems)
 	// để đảm bảo tập query vector search khớp chính xác với tập wardrobe items khả dụng — không lệch.
@@ -272,6 +284,35 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 	activeByFashionID := sliceutils.IndexBy(filteredItems, func(item *wardrobeDto.WardrobeItemContractDTO) uuid.UUID { return *item.FashionItemID })
+
+	// Dựng metadata fashion cho TOÀN BỘ active items của user (không chỉ các candidate
+	// mà hybrid search trả về), rồi hợp nhất brand items. Nhờ đó bước fallback và
+	// outfit-structure guarantee luôn suy ra được wearing role và áp được filter.
+	// Map phải sẵn sàng trước khi lọc stale vì stale cũng phải qua hard filter/role.
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
+	if len(userFashionItemIDs) > 0 {
+		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, userFashionItemIDs)
+		if err == nil {
+			for _, fi := range fashionItems {
+				fashionItemMap[fi.ID] = fashionItemEntityToContractDTO(fi)
+			}
+		}
+	}
+	for id, fi := range brandFashionMap {
+		fashionItemMap[id] = fi
+	}
+
+	// Stale slots (033 US3/T053) phải được tính TRƯỚC truy vấn hybrid vì số slot
+	// quyết định ngân sách hybrid: stale nằm trong pool, không cộng thêm ứng viên.
+	settings := uc.rotationSettings()
+	now := time.Now()
+	stale := uc.fetchStaleCandidates(ctx, userID, maxWardrobeItems, retrievalQuery, fashionItemMap, settings, now)
+
+	// Fetch Wardrobe items. hybridLimit = minimumPool - brandCandidates - staleSlots.
+	wardrobeLimit := minimumPool - brandCandidatesCount - len(stale.Candidates)
+	if wardrobeLimit < 0 {
+		wardrobeLimit = 0
+	}
 
 	candidates, err := uc.fashionItemRepo.GetHybridCandidates(
 		ctx,
@@ -302,21 +343,11 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 
-	// Dựng metadata fashion cho TOÀN BỘ active items của user (không chỉ các candidate
-	// mà hybrid search trả về), rồi hợp nhất brand items. Nhờ đó bước fallback và
-	// outfit-structure guarantee luôn suy ra được wearing role và áp được filter.
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
-	if len(userFashionItemIDs) > 0 {
-		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, userFashionItemIDs)
-		if err == nil {
-			for _, fi := range fashionItems {
-				fashionItemMap[fi.ID] = fashionItemEntityToContractDTO(fi)
-			}
-		}
-	}
-	for id, fi := range brandFashionMap {
-		fashionItemMap[id] = fi
-	}
+	// Stale slots are appended after the hybrid candidates, then the whole pool
+	// is deduped by fashion_item_id preferring the stale entry so a reserved
+	// slot is never wasted by a duplicate copy of the same item.
+	rankingCandidates = append(rankingCandidates, stale.Candidates...)
+	rankingCandidates = dedupeRankingCandidatesByFashionItemID(rankingCandidates)
 
 	rankingCandidates, _ = ranking.EnsureMinimumCandidatePool(
 		rankingCandidates,
@@ -325,6 +356,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		minimumPool,
 		fashionItemMap,
 	)
+	rankingCandidates = dedupeRankingCandidatesByFashionItemID(rankingCandidates)
 
 	// Ensure all candidates have a context set (fallback candidates will be USER_WARDROBE)
 	for i := range rankingCandidates {
@@ -333,15 +365,18 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 
-	ranked, _ := ranking.RankCandidates(
+	ranked, stats := ranking.RankCandidates(
 		rankingCandidates,
 		intent,
 		retrievalQuery,
-		uc.cfg.RAG.RecentlyWornPenaltyDays,
-		uc.cfg.RAG.LongUnwornBonusDays,
+		settings.recency,
+		settings.cooldownTolerance,
 		minimumPool,
 		fashionItemMap,
 	)
+	stats.StaleSlotsAdded = len(stale.Candidates)
+	stats.StaleItemIDs = stale.SlotIDs
+	stats.StaleEligibleItemIDs = stale.EligibleIDs
 
 	if !ranking.HasValidOutfitStructurePrompts(ranked, fashionItemMap) {
 		return nil, fashioerrors.ErrInsufficientOutfitComponents()
@@ -354,6 +389,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		Pool:            rankingCandidates,
 		RetrievalQuery:  retrievalQuery,
 		QueryVector:     queryVector,
+		Stats:           stats,
 	}, nil
 }
 
