@@ -28,6 +28,7 @@ type Workers struct {
 	FailedItemsCleanup               *fashionworker.FailedItemsCleanupWorker
 	ProcessingRecovery               *fashionworker.ProcessingRecoveryWorker
 	FashionAnalyze                   *fashionworker.FashionAnalyzeWorker
+	StyleLearning                    *fashionworker.StyleLearningWorker
 	DashboardAggregator              *dashboardworker.DashboardAggregatorWorker
 	WardrobeFashionEvent             *wardrobeworker.WardrobeFashionEventWorker
 	BrandFashionEvent                *brandworker.BrandFashionEventWorker
@@ -56,6 +57,7 @@ func (w *Workers) All() []Worker {
 		w.FailedItemsCleanup,
 		w.ProcessingRecovery,
 		w.FashionAnalyze,
+		w.StyleLearning,
 		w.DashboardAggregator,
 		w.WardrobeFashionEvent,
 		w.BrandFashionEvent,

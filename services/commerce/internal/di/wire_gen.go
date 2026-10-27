@@ -44,6 +44,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/category"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/learning"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
 	worker3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/worker"
 	caching3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/caching"
@@ -250,6 +251,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	failedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
 	processingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
 	fashionAnalyzeWorker := worker4.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
+	iStyleSignalRepository := persistence3.NewStyleSignalRepository(gormDB)
+	iStyleLearningUseCase := learning.NewStyleLearningUseCase(cfg, l, iStyleSignalRepository, iUserStyleProfileRepository, iFashionItemRepository, iUnitOfWork)
+	styleLearningWorker := worker4.NewStyleLearningWorker(rabbitMQClient, iStyleLearningUseCase, l)
 	iDashboardAggregatorUseCase := usecase.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
 	dashboardAggregatorWorker := worker5.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
 	redisRealtimePublisher := messaging.NewRedisRealtimePublisher(client, l)
@@ -284,6 +288,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		FailedItemsCleanup:               failedItemsCleanupWorker,
 		ProcessingRecovery:               processingRecoveryWorker,
 		FashionAnalyze:                   fashionAnalyzeWorker,
+		StyleLearning:                    styleLearningWorker,
 		DashboardAggregator:              dashboardAggregatorWorker,
 		WardrobeFashionEvent:             wardrobeFashionEventWorker,
 		BrandFashionEvent:                brandFashionEventWorker,

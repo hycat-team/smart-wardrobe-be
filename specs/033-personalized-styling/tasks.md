@@ -339,23 +339,23 @@ update chỉ đổi tên không tạo signal.
 
 ### Implementation
 
-- [ ] T060 [P] [US4] Implement `.../personalization/learning/learning_uc.go`:
+- [x] T060 [P] [US4] Implement `.../personalization/learning/learning_uc.go`:
   `ApplySignal(ctx, signal)` insert signal idempotent + `UpdateLearnedWithLock`; decay 0.9, top-K 10;
   `learned_embedding` từ `fashionItemRepo.GetByIDs`; weight theo source; nếu
   `personalization.enabled = false` thì ack và bỏ qua.
-- [ ] T061 [P] [US4] Tạo `services/commerce/internal/modules/fashion/presentation/worker/style_learning_worker.go`
+- [x] T061 [P] [US4] Tạo `services/commerce/internal/modules/fashion/presentation/worker/style_learning_worker.go`
   consume `style_learning_queue`, gọi `IStyleLearningUseCase`; dùng `workerlog`.
-- [ ] T062 [US4] Đăng ký worker trong `services/commerce/internal/bootstrap/worker.go` (field + `All()`),
+- [x] T062 [US4] Đăng ký worker trong `services/commerce/internal/bootstrap/worker.go` (field + `All()`),
   `services/commerce/internal/modules/fashion/provider.go`; chạy `make wire svc=commerce`.
-- [ ] T063 [US4] Phát event trong `SaveOutfit` (`outfit_uc.go`): sinh `signalId`, payload, publish
+- [x] T063 [US4] Phát event trong `SaveOutfit` (`outfit_uc.go`): sinh `signalId`, payload, publish
   `TopicOutfitSaved` trong `uow.Execute` cùng transaction.
-- [ ] T064 [US4] Phát event trong `UpdateOutfit` chỉ khi tập item thay đổi; payload chỉ item mới thêm.
-- [ ] T065 [US4] Map feedback `saved` thành source `4 feedback_saved` weight 0.25 (dùng chung usecase) —
+- [x] T064 [US4] Phát event trong `UpdateOutfit` chỉ khi tập item thay đổi; payload chỉ item mới thêm.
+- [x] T065 [US4] Map feedback `saved` thành source `4 feedback_saved` weight 0.25 (dùng chung usecase) —
   phối hợp với US6.
-- [ ] T066 [US4] Thêm test: `learning_uc_test.go` (decay/topK/idempotent/no-embedding),
+- [x] T066 [US4] Thêm test: `learning_uc_test.go` (decay/topK/idempotent/no-embedding),
   worker integration test (`outbox → queue → signal → profile`), `outfit_uc_event_test.go` (retry không
   cộng hai lần, update metadata không signal).
-- [ ] T067 [US4] Chạy kịch bản US4 trong `quickstart.md`; kiểm tra `learned_styles`/`learned_at` bằng SQL.
+- [x] T067 [US4] Chạy kịch bản US4 trong `quickstart.md`; kiểm tra `learned_styles`/`learned_at` bằng SQL.
 
 **Checkpoint**: US4 chạy độc lập; learning bất đồng bộ, idempotent, không đụng gu khai.
 
