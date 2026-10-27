@@ -47,11 +47,12 @@ func (r *UserStyleProfileRepository) GetByUserID(ctx context.Context, userID uui
 // columns are intentionally excluded: a PUT of explicit preferences must never
 // wipe the representation derived from saved outfits.
 //
-// The insert half always writes enabled=true (a profile the user has never
-// saved starts enabled, data-model.md §2), while the conflict half writes the
-// caller's value so PUT enabled=false still turns the profile off (FR-012).
-// The two halves cannot share `excluded.enabled`: the insert copy deliberately
-// differs from the caller's intent.
+// Enabled is written exactly as the caller set it, on both halves: the usecase
+// already resolved the effective value (enabled=true for a brand-new profile
+// unless the request turned it off, data-model.md §2; an explicit false must
+// persist, FR-012). The DDL DEFAULT TRUE therefore only applies to rows created
+// outside this repository, and the entity keeps enabled free of a gorm
+// `default` tag so GORM writes false instead of omitting it.
 func (r *UserStyleProfileRepository) Upsert(ctx context.Context, profile *entities.UserStyleProfile) error {
 	if profile == nil {
 		return nil
@@ -62,22 +63,18 @@ func (r *UserStyleProfileRepository) Upsert(ctx context.Context, profile *entiti
 	}
 	profile.UpdatedAt = now
 
-	requestedEnabled := profile.Enabled
-	insert := *profile
-	insert.Enabled = true
-
 	return r.getDB(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "user_id"}},
 		DoUpdates: clause.Assignments(map[string]any{
 			"styles":          profile.Styles,
 			"excluded_styles": profile.ExcludedStyles,
-			"enabled":         requestedEnabled,
+			"enabled":         profile.Enabled,
 			"style_embedding": profile.StyleEmbedding,
 			"embedding_hash":  profile.EmbeddingHash,
 			"embedding_model": profile.EmbeddingModel,
 			"updated_at":      profile.UpdatedAt,
 		}),
-	}).Create(&insert).Error
+	}).Create(profile).Error
 }
 
 func (r *UserStyleProfileRepository) Delete(ctx context.Context, userID uuid.UUID) error {

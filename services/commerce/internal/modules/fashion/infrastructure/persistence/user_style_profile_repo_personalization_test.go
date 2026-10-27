@@ -48,6 +48,62 @@ func TestIntegrationUserStyleProfileRepositoryInsertAndRead(t *testing.T) {
 	}
 }
 
+// TestIntegrationUserStyleProfileRepositoryInsertHonorsEnabled pins the insert
+// half of FR-012: the usecase has already resolved the effective value, so a
+// first PUT that explicitly turns the profile off must store enabled=false
+// instead of being promoted to the DDL default. The same row must also accept a
+// later upsert that turns the profile back on, and Upsert must leave learned_*
+// alone in both directions.
+func TestIntegrationUserStyleProfileRepositoryInsertHonorsEnabled(t *testing.T) {
+	dbConn := openPersonalizationTestDB(t)
+	repo := NewUserStyleProfileRepository(dbConn)
+	ctx := context.Background()
+
+	userID := createPersonalizationTestUser(t, dbConn)
+
+	if err := repo.Upsert(ctx, &entities.UserStyleProfile{
+		UserID:         userID,
+		Styles:         entities.StyleList{"minimal"},
+		ExcludedStyles: entities.StyleList{},
+		Enabled:        false,
+	}); err != nil {
+		t.Fatalf("insert a disabled profile: %v", err)
+	}
+	created, err := repo.GetByUserID(ctx, userID)
+	if err != nil || created == nil {
+		t.Fatalf("read the profile back: profile=%v err=%v", created, err)
+	}
+	if created.Enabled {
+		t.Fatalf("the first insert with enabled=false stored enabled=true: %+v", created)
+	}
+
+	if _, err := repo.UpdateLearnedWithLock(ctx, userID, func(profile *entities.UserStyleProfile) error {
+		profile.LearnedStyles = entities.StyleWeightMap{"minimal": 0.7}
+		return nil
+	}); err != nil {
+		t.Fatalf("seed the learned state: %v", err)
+	}
+
+	if err := repo.Upsert(ctx, &entities.UserStyleProfile{
+		UserID:         userID,
+		Styles:         entities.StyleList{"formal"},
+		ExcludedStyles: entities.StyleList{},
+		Enabled:        true,
+	}); err != nil {
+		t.Fatalf("re-enable the profile: %v", err)
+	}
+	reEnabled, err := repo.GetByUserID(ctx, userID)
+	if err != nil || reEnabled == nil {
+		t.Fatalf("read the profile after re-enabling: profile=%v err=%v", reEnabled, err)
+	}
+	if !reEnabled.Enabled {
+		t.Fatalf("the upsert did not persist enabled=true: %+v", reEnabled)
+	}
+	if got := reEnabled.LearnedStyles["minimal"]; got != 0.7 {
+		t.Fatalf("the upsert wiped the learned styles: %+v", reEnabled.LearnedStyles)
+	}
+}
+
 // TestIntegrationUserStyleProfileRepositoryLearnedUpdateCreatesRow covers the
 // cold path of D7: the first signal may arrive before the user ever opened the
 // profile screen, so the locked update has to create the row with defaults.
