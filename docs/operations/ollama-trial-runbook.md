@@ -197,11 +197,14 @@ Ghi chú local:
 
 Dựng full stack local (`account`, `commerce`, `ai`, Postgres/Redis/RabbitMQ) và cho container Ollama
 `ollama-in-ai` chạy trong network namespace của `ai-closy-dev`; AI service gọi
-`http://127.0.0.1:11434/v1/chat/completions`. Nginx tạm thời dùng timeout 300s để outfit không bị 504.
+`http://127.0.0.1:11434/v1/chat/completions`. Nginx gốc của local và AWS đã tăng
+`/api/v1/ai/outfit-recommendations` lên 300s (`proxy_send_timeout`/`proxy_read_timeout`); VPS không đổi.
 
 | API cũ | Kết quả | Ghi chú |
 |---|---|---|
-| `POST /api/v1/ai/outfit-recommendations` | **PASS** | 200, `isFallback=false`, attempt `provider=openai`, `model=qwen2.5:3b-instruct-q4_K_M`, `actual_cost=0`, ~19.7s |
+| `POST /api/v1/ai/outfit-recommendations` | **PASS** | 200, `isFallback=false`, attempt `provider=openai`, `model=qwen2.5:3b-instruct-q4_K_M`, `actual_cost=0`; request ấm ~19.7s, request chậm 83.7s vẫn 200 |
+| Outfit AI semantic validation | **PASS** | Trước fix: provider success nhưng commerce fallback `invalid_outfit_structure`. Sau fix dynamic `CORE_STRATEGY`/`ROLE_ALIASES` + UUID-first alias: AI path thật, `isFallback=false`; `includeBrandItems=false` ~75.9s, `true` ~52.1s |
+| Nginx outfit timeout | **PASS** | Local/AWS route có `proxy_send_timeout 300s` + `proxy_read_timeout 300s`; request AI 82.3s không bị 504. VPS giữ 60s |
 | `POST /api/v1/ai/chat/sessions/{id}/messages/stream` (câu hỏi thường) | **PASS** | SSE trả `1+1 bằng 2.` |
 | Chat fashion/greeting trước khi sửa prompt | **FAIL** | Qwen2.5 chỉ trả `ACTION:REDIRECT_OUTFIT`; commerce trả `"Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này."` |
 | Chat fashion/greeting sau khi sửa prompt | **PASS** | Model trả lời tiếng Việt trước; greeting/fashion đều có nội dung, không còn lỗi fullResponse rỗng |
@@ -214,6 +217,9 @@ Ghi chú:
 - User test `user` có 20 món trong tủ nên prompt chat yêu cầu trả lời trực tiếp, không chèn action token.
 - Sau vài lần gọi outfit, quota ngày của user hết → API trả 400 `"Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay."`; đây là quota, không phải lỗi AI.
 - Prompt chat được chỉnh để **luôn trả lời trước**, chỉ chèn `[ACTION:REDIRECT_OUTFIT]` khi cần và không bao giờ chỉ trả token.
+- Container `nginx-local-test` chỉ là workaround tạm; sau khi tăng timeout trong config gốc, đã quay lại `nginx-closy-dev`.
+- Fallback outfit trước đây không phải lỗi Ollama: provider trả JSON thành công nhưng prompt example luôn dạy `top + bottom` trong khi pool chỉ có `fullbody`, khiến commerce từ chối cấu trúc và chạy HSL. Prompt nay phát `CORE_STRATEGY` + `ROLE_ALIASES` và example theo đúng pool.
+- Alias resolver cũng được sửa để ưu tiên UUID trước alias, tránh UUID bắt đầu bằng `a` + chữ số (ví dụ brand item `a5e506ed-...`) bị hiểu nhầm thành alias `A5`.
 
 ### A6. Cổng ra Phase A
 
