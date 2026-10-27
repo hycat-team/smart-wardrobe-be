@@ -2,6 +2,8 @@ package profile
 
 import (
 	"context"
+	"math"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -10,7 +12,10 @@ import (
 	fashioerrors "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/errors"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/shared"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/entities"
+	wardrobe_dto "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/shared/pkg/utils/sliceutils"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/text/unicode/norm"
 )
@@ -215,4 +220,89 @@ func (uc *StyleProfileUseCase) embeddingModel() string {
 		return model
 	}
 	return string([]rune(model)[:embeddingModelMaxLength])
+}
+
+// suggestionRatioDecimals is the rounding used by contracts §1.4
+// ("ratio = itemCount / sampleSize, làm tròn 2 chữ số").
+const suggestionRatioDecimals = 2
+
+// emptyStyleSuggestionRes is the "not enough data" payload of contracts §1.4.
+// Styles is an empty (non-nil) slice so the JSON carries [] instead of null.
+func emptyStyleSuggestionRes() *dto.StyleSuggestionRes {
+	return &dto.StyleSuggestionRes{Styles: []dto.StyleSuggestionItem{}}
+}
+
+// distinctFashionItemIDs collects the distinct fashion item references of the
+// active wardrobe rows. Brand items (and rows whose fashion item is not yet
+// created) carry no FashionItemID and are skipped.
+//
+// A wardrobe row is per owned item, so the same fashion item cannot normally
+// appear twice; de-duplicating keeps sampleSize and the per-label counts
+// consistent if one ever does.
+func distinctFashionItemIDs(items []*wardrobe_dto.WardrobeItemContractDTO) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.FashionItemID == nil {
+			continue
+		}
+		ids = append(ids, *item.FashionItemID)
+	}
+	return sliceutils.UniqueUUIDs(ids)
+}
+
+// buildStyleSuggestions turns the metadata of the owned items into the
+// cold-start suggestion payload (contracts §1.4).
+//
+// Normalisation goes through the shared lexicon, so a known synonym (for
+// example "Tối giản") counts as its canonical label ("minimalist") while an
+// unknown value is counted under its trimmed spelling. sampleSize counts the
+// items that actually carry a style: an item without one is neither counted in
+// sampleSize nor in any label, so every ratio stays within [0, 1].
+//
+// Results are sorted by itemCount descending, then by value ascending, which
+// keeps the output stable for equal counts.
+func buildStyleSuggestions(items []*entities.FashionItem) *dto.StyleSuggestionRes {
+	res := emptyStyleSuggestionRes()
+
+	counts := make(map[string]int, len(items))
+	for _, item := range items {
+		if item == nil || item.Style == nil {
+			continue
+		}
+		// One item carries one style column, so the normalised slice has at
+		// most one element; an empty style normalises to nothing.
+		labels := shared.NormalizeStyleLabels([]string{*item.Style})
+		if len(labels) == 0 {
+			continue
+		}
+		res.SampleSize++
+		counts[labels[0]]++
+	}
+
+	if res.SampleSize == 0 {
+		return res
+	}
+
+	res.Styles = make([]dto.StyleSuggestionItem, 0, len(counts))
+	for value, count := range counts {
+		res.Styles = append(res.Styles, dto.StyleSuggestionItem{
+			Value:     value,
+			ItemCount: count,
+			Ratio:     roundRatio(float64(count) / float64(res.SampleSize)),
+		})
+	}
+
+	sort.Slice(res.Styles, func(i, j int) bool {
+		if res.Styles[i].ItemCount != res.Styles[j].ItemCount {
+			return res.Styles[i].ItemCount > res.Styles[j].ItemCount
+		}
+		return res.Styles[i].Value < res.Styles[j].Value
+	})
+	return res
+}
+
+// roundRatio rounds ratio to suggestionRatioDecimals decimal places.
+func roundRatio(ratio float64) float64 {
+	factor := math.Pow(10, suggestionRatioDecimals)
+	return math.Round(ratio*factor) / factor
 }

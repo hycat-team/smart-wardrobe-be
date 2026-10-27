@@ -369,14 +369,14 @@ update chỉ đổi tên không tạo signal.
 
 ### Implementation
 
-- [ ] T068 [P] [US5] Thêm `SuggestStyles` vào
+- [x] T068 [P] [US5] Thêm `SuggestStyles` vào
   `.../personalization/profile/profile_uc.go`: kiểm tra entitlement (403 nếu thiếu), lấy active items
   qua `IWardrobeContract`, lấy style qua `fashionItemRepo.GetByIDs`, normalize nhãn, đếm top style,
   tính `ratio`.
-- [ ] T069 [US5] Thêm handler `GetStyleSuggestions` trong
+- [x] T069 [US5] Thêm handler `GetStyleSuggestions` trong
   `.../fashion/presentation/handler/style_profile_handler.go` và route
   `GET /me/style-profile/suggestions` trong `router.go`; swagger annotation.
-- [ ] T070 [US5] Thêm test `profile_uc_test.go` (sampleSize=0, normalize, ratio, không tự lưu,
+- [x] T070 [US5] Thêm test `profile_uc_test.go` (sampleSize=0, normalize, ratio, không tự lưu,
   thiếu entitlement → 403) và chạy kịch bản US5 trong `quickstart.md`.
 
 **Checkpoint**: US5 chạy độc lập (phụ thuộc route/CRUD của US1 nhưng không phụ thuộc recommendation).

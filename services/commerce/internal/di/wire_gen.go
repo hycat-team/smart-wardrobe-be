@@ -210,7 +210,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeChatUseCase := chat2.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iWardrobeContract, iUnitOfWork)
 	wardrobeAIHandler := handler4.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
 	categoryHandler := handler4.NewCategoryHandler(iCategoryUseCase)
-	iStyleProfileUseCase := profile.NewStyleProfileUseCase(cfg, l, iaiOrchestrator, iUserStyleProfileRepository, iUserSubscriptionContract)
+	iStyleProfileUseCase := profile.NewStyleProfileUseCase(cfg, l, iaiOrchestrator, iUserStyleProfileRepository, iUserSubscriptionContract, iWardrobeContract, iFashionItemRepository)
 	styleProfileHandler := handler4.NewStyleProfileHandler(iStyleProfileUseCase)
 	router8 := router4.NewRouter(wardrobeAIHandler, categoryHandler, styleProfileHandler, authMiddleware)
 	iPostRepository := persistence5.NewPostRepository(gormDB)
