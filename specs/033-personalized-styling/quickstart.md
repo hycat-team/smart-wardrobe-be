@@ -256,7 +256,7 @@ Ghi tại phase close-out (T085), ngày 2026-10-27. Mục này chỉ ghi **việ
 | SC-002/SC-003/SC-004/SC-013 (log 30 ngày) | Chưa có 30 ngày log vận hành |
 | SC-011 runtime web/mobile | Không chạy web/mobile runtime; đã đối chiếu tĩnh ở `frontend-guide.md` §15.5 |
 | US2 vượt hạn mức / catalog item bị gỡ qua HTTP | Đã có unit/DB test; E2E không lặp qua HTTP |
-| AI text path latency | AI path hoạt động nhưng provider latency 11–24s/request; p95 AI 21.7s → **SC-010 fail**. Fallback HSL p95 0.67s → pass. Cần timeout ngắn (~4s) để fallback trong budget hoặc provider/model nhanh hơn; đo lại ở production |
+| AI text path latency | AI path hoạt động nhưng provider latency 11–24s/request; p95 AI 21.7s → **SC-010 fail**. Fallback HSL p95 0.67s → pass. **Quyết định**: giữ timeout 30s, chấp nhận fail AI path; đo lại ở production khi provider/model tốt hơn |
 | Production | Ngoài phạm vi |
 
 ### 7.5 Artifact sinh tự động đã thay đổi (T086)
