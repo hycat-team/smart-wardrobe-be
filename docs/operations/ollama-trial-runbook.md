@@ -193,6 +193,28 @@ Ghi chú local:
 - `L2` chất lượng câu trả lời 3B chưa tốt với prompt chung; trước khi chốt go/no-go cần chạy prompt thật
   của outfit/rewriter và ghi nhận.
 
+### A5.2 Kiểm chứng API cũ bằng Swagger/HTTP với Ollama local (2026-10-27)
+
+Dựng full stack local (`account`, `commerce`, `ai`, Postgres/Redis/RabbitMQ) và cho container Ollama
+`ollama-in-ai` chạy trong network namespace của `ai-closy-dev`; AI service gọi
+`http://127.0.0.1:11434/v1/chat/completions`. Nginx tạm thời dùng timeout 300s để outfit không bị 504.
+
+| API cũ | Kết quả | Ghi chú |
+|---|---|---|
+| `POST /api/v1/ai/outfit-recommendations` | **PASS** | 200, `isFallback=false`, attempt `provider=openai`, `model=qwen2.5:3b-instruct-q4_K_M`, `actual_cost=0`, ~19.7s |
+| `POST /api/v1/ai/chat/sessions/{id}/messages/stream` (câu hỏi thường) | **PASS** | SSE trả `1+1 bằng 2.` |
+| Chat fashion/greeting trước khi sửa prompt | **FAIL** | Qwen2.5 chỉ trả `ACTION:REDIRECT_OUTFIT`; commerce trả `"Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này."` |
+| Chat fashion/greeting sau khi sửa prompt | **PASS** | Model trả lời tiếng Việt trước; greeting/fashion đều có nội dung, không còn lỗi fullResponse rỗng |
+| Fallback qua API cũ | **PASS** | Stop `ollama-in-ai` → attempt 1 `transport`, attempt 2 `provider=google/gemini-3.1-flash-lite` success, 200 sau ~2.9s, `isFallback=false` |
+| Uppercase JSON schema | **FAIL trước fix** | Ollama trả 400; `normalizeOpenAISchemaTypes` hạ type về lowercase, test pass; fixup `fixup! b9530ef4` |
+| Vision/embedding qua API cũ | **Chưa retest** | Đã xác nhận qua gRPC ở A6: vẫn `provider=google` |
+| Admin AI usage | **Chưa test** | Không có credential admin local (`admin`/`123456` không đúng); không chặn luồng user |
+
+Ghi chú:
+- User test `user` có 20 món trong tủ nên prompt chat yêu cầu trả lời trực tiếp, không chèn action token.
+- Sau vài lần gọi outfit, quota ngày của user hết → API trả 400 `"Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay."`; đây là quota, không phải lỗi AI.
+- Prompt chat được chỉnh để **luôn trả lời trước**, chỉ chèn `[ACTION:REDIRECT_OUTFIT]` khi cần và không bao giờ chỉ trả token.
+
 ### A6. Cổng ra Phase A
 
 Chỉ apply Terraform khi tất cả đạt:
