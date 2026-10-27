@@ -107,3 +107,30 @@ exit condition into being falsified.
   count ở cả hai đường; thêm test đồng thời 2 goroutine trên DB thật.
 - **Ảnh hưởng tới task đã tick**: T043/T044 (clone khi lưu outfit) và T046 (catalog-init) đã đóng đường
   của 033; hai đường còn lại vẫn hở và cần task riêng.
+
+### D-11 — Sửa seed `gemini-3.5-flash-lite` chỉ áp cho DB dựng mới
+
+- **Vấn đề**: Seed AI baseline `20261016213000_adopt_aiexecutor_ownership.sql` được thêm row
+  `('google','gemini-3.5-flash-lite',0.30,2.50,27500)`. DB đã chạy migration này **không chạy lại**,
+  nên row không xuất hiện; recommendation text dùng model đó sẽ `ai_model_configs record not found`
+  và rơi vào fallback.
+- **Vì sao ngoài phạm vi**: Sửa migration đã apply là append-only break được dev chấp nhận cho feature
+  này; data patch cho các DB hiện hữu là việc vận hành, không phải code 033.
+- **Gỡ bằng cách nào**: Chạy tay
+  `INSERT INTO aiexecutor.ai_model_configs (provider, model, input_usd_per_million, output_usd_per_million, usd_to_vnd) SELECT 'google','gemini-3.5-flash-lite',0.30,2.50,27500 WHERE NOT EXISTS (SELECT 1 FROM aiexecutor.ai_model_configs WHERE provider='google' AND model='gemini-3.5-flash-lite');`
+  trên từng DB đã migrate, hoặc dùng model đã seed (`gemini-2.5-flash-lite`); kiểm tra
+  `aiexecutor.ai_model_configs` trước khi deploy.
+- **Ảnh hưởng tới task đã tick**: T090 (p95) — số đo AI path phụ thuộc row này; T086 không bị ảnh hưởng.
+
+### D-12 — SC-010 fail trên AI path do latency provider
+
+- **Vấn đề**: p95 AI path `gemini-2.5-flash-lite` = 21.7 s (n=50), `gemini-3.5-flash-lite` = 50.0 s;
+  fallback HSL = 0.67 s. Ngưỡng SC-010 p95 < 5 s **fail** trên AI path.
+- **Vì sao ngoài phạm vi**: Latency nằm ở provider/model và môi trường, không phải pipeline 033
+  (embedding + retrieval + ranking ~0.5 s). Tối ưu timeout/async hoặc đổi provider là quyết định
+  sản phẩm/config, không phải thay đổi 033.
+- **Gỡ bằng cách nào**: (a) đặt `recommendation_text_timeout_seconds` ~4 s để endpoint fallback HSL
+  trong budget (chấp nhận mất AI path khi provider chậm), hoặc (b) dùng provider/model nhanh hơn;
+  đo lại p95 ở production với `isFallback=false`.
+- **Ảnh hưởng tới task đã tick**: T090/SC-010 — kết quả AI path fail; fallback path pass. Không ảnh
+  hưởng code 033.
