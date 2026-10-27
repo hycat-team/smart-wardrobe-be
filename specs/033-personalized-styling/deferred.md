@@ -132,5 +132,7 @@ exit condition into being falsified.
 - **Gỡ bằng cách nào**: (a) đặt `recommendation_text_timeout_seconds` ~4 s để endpoint fallback HSL
   trong budget (chấp nhận mất AI path khi provider chậm), hoặc (b) dùng provider/model nhanh hơn;
   đo lại p95 ở production với `isFallback=false`.
+- **Quyết định 2026-10-27**: giữ `recommendation_text_timeout_seconds = 30`, chấp nhận **SC-010 fail
+  trên AI path**; fallback HSL pass. Không đổi code 033; đo lại ở production khi provider/model tốt hơn.
 - **Ảnh hưởng tới task đã tick**: T090/SC-010 — kết quả AI path fail; fallback path pass. Không ảnh
   hưởng code 033.

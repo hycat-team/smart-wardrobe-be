@@ -335,6 +335,9 @@ fallback HSL PASS (0.67 s). Nguyên nhân là latency provider/model, không ph�
 - đặt timeout recommendation text ~4 s để fallback HSL trong budget (sẽ mất AI path khi provider chậm);
 - hoặc dùng provider/model nhanh hơn, rồi đo lại ở production.
 
+**Quyết định 2026-10-27**: giữ timeout 30 s, chấp nhận SC-010 fail trên AI path; fallback PASS;
+đo lại ở production khi provider/model tốt hơn.
+
 `gemini-3.5-flash-lite` chậm hơn `gemini-2.5-flash-lite` trong môi trường này. Row pricing
 `gemini-3.5-flash-lite` đã được thêm vào seed AI baseline; DB đã migrate trước đó cần data patch
 (xem `specs/033-personalized-styling/deferred.md` D-11/D-12).
