@@ -434,19 +434,19 @@ rỗng; quota không đổi.
 
 **Purpose**: Tài liệu, ADR, frontend guide (web + mobile), gate cuối, deferred.
 
-- [ ] T080 [P] Cập nhật `docs/system-design/ai-pipeline.md`: thêm gu cá nhân, stale slots/cooldown,
+- [x] T080 [P] Cập nhật `docs/system-design/ai-pipeline.md`: thêm gu cá nhân, stale slots/cooldown,
   suggestions, learning; ghi rõ các tín hiệu recency mới.
-- [ ] T081 [P] Cập nhật `docs/system-design/architecture.md`: inventory bảng mới (fashion 2 bảng + cột
+- [x] T081 [P] Cập nhật `docs/system-design/architecture.md`: inventory bảng mới (fashion 2 bảng + cột
   wardrobe + cột plan), quan hệ, index; ghi rõ dung sai cache quyền lợi 60 giây (FR-004) và cách vận
   hành khi thu hồi quyền lợi.
-- [ ] T082 [P] Cập nhật API docs: `docs/api/fashion/ai-styling-api.md` (recommendation response +
+- [x] T082 [P] Cập nhật API docs: `docs/api/fashion/ai-styling-api.md` (recommendation response +
   feedback + completions + style profile), `docs/api/wardrobe/outfits-api.md` (`itemContext` + clone),
   `docs/api/wardrobe/wardrobe-api.md` (catalog-init chỉ nhận system catalog),
   `docs/api/subscription/subscription-api.md` + `docs/api/subscription/admin-subscription-api.md`
   (`personalizationEnabled`).
-- [ ] T083 [P] Viết `docs/decisions/017-personalization-style-profile.md` (Context/Decision/Consequences,
+- [x] T083 [P] Viết `docs/decisions/017-personalization-style-profile.md` (Context/Decision/Consequences,
   tham chiếu ADR 015) và thêm dòng vào `docs/decisions/README.md`.
-- [ ] T084 [P] Viết `specs/033-personalized-styling/frontend-guide.md` cho **cả web và mobile**:
+- [x] T084 [P] Viết `specs/033-personalized-styling/frontend-guide.md` cho **cả web và mobile**:
   - Đọc source web `../smart-wardrobe-fe`:
     `src/features/ai-stylist/types/index.ts`,
     `src/features/ai-stylist/components/AIStylistClient.tsx`,
@@ -470,35 +470,35 @@ rỗng; quota không đổi.
     `PreferencesClient`; mobile cần thêm `RecommendedOutfitRes.recommendationId/suggestions`, thêm
     `OutfitRepository.updateOutfit` (hiện mobile chưa có PUT), wiring `preferences_screen.dart`, và
     thống nhất model Studio vs Stylist.
-- [ ] T085 [P] Cập nhật `specs/033-personalized-styling/quickstart.md` với mục "Kết quả kiểm chứng" sau khi
+- [x] T085 [P] Cập nhật `specs/033-personalized-styling/quickstart.md` với mục "Kết quả kiểm chứng" sau khi
   chạy hết các kịch bản (kịch bản nào đã chạy, kết quả, lệnh tái lập).
-- [ ] T086 Chạy `make generate` (wire + swagger + nginx route map) và kiểm tra diff chỉ gồm thay đổi của
+- [x] T086 Chạy `make generate` (wire + swagger + nginx route map) và kiểm tra diff chỉ gồm thay đổi của
   feature.
-- [ ] T087 Chạy gate đầy đủ: `make migration-check`, `make lint`,
+- [x] T087 Chạy gate đầy đủ: `make migration-check`, `make lint`,
   `go test -race -count=3` cho các package commerce/fashion, commerce/wardrobe, account/subscription,
   `make test-db-integration` (sau T093, phải chạy cả commerce), `make buf-lint`, `make buf-gen` +
   `git diff --exit-code contracts/`, cuối cùng `make check`.
-- [ ] T088 Rà soát phát hiện ngoài phạm vi và ghi vào `specs/033-personalized-styling/deferred.md`
+- [x] T088 Rà soát phát hiện ngoài phạm vi và ghi vào `specs/033-personalized-styling/deferred.md`
   (là gì, vì sao ngoài phạm vi, gì sẽ gỡ); nếu không, ghi rõ "không có phát hiện ngoài phạm vi". Ghi rõ
   inferred-vector prior là deferred enhancement.
-- [ ] T089 [P] Rà soát bảo mật và ghi kết quả vào `specs/033-personalized-styling/quickstart.md` (hoặc
+- [x] T089 [P] Rà soát bảo mật và ghi kết quả vào `specs/033-personalized-styling/quickstart.md` (hoặc
   `specs/033-personalized-styling/deferred.md`): catalog-init cross-user, ownership feedback/completion,
   không log PII, clone limit race.
-- [ ] T090 [P] Đo p95 recommendation trên scratch DB với catalog cache hit/miss; ghi số đo vào `docs/development/technical-notes.md`:
+- [x] T090 [P] Đo p95 recommendation trên scratch DB với catalog cache hit/miss; ghi số đo vào `docs/development/technical-notes.md`:
   kết luận SC-010 đạt/không đạt và hành động tiếp theo.
 ### Frontend Integration Guide *(required — hiến pháp §Governance)*
 
 **Có đổi bề mặt client** → giữ nhánh này; đã giao cho T084 và T091.
 
-- [ ] T091 Đồng bộ `specs/033-personalized-styling/frontend-guide.md` ở phase cuối, SAU khi mã nguồn ổn
+- [x] T091 Đồng bộ `specs/033-personalized-styling/frontend-guide.md` ở phase cuối, SAU khi mã nguồn ổn
   định: đọc lại guide và đối chiếu với source backend + hai repo client, có đếm số — mọi trường JSON của
   DTO, mọi giá trị enum, mọi route, mọi mã HTTP. Sửa mọi chỗ lệch; nếu phần nào chưa kiểm được, ghi rõ.
 
 ### Phát hiện ngoài phạm vi *(hiến pháp §Governance)*
 
-- [ ] T092 Ghi mọi phát hiện ngoài phạm vi vào `specs/033-personalized-styling/deferred.md`, không để
+- [x] T092 Ghi mọi phát hiện ngoài phạm vi vào `specs/033-personalized-styling/deferred.md`, không để
   nguyên checkbox ở file này; nêu rõ task nào bị ảnh hưởng nếu có.
-- [ ] T093 Mở rộng `Makefile` target `test-db-integration` để chạy
+- [x] T093 Mở rộng `Makefile` target `test-db-integration` để chạy
   `go test -race -p 1 -count=1 -timeout 20m -run Integration ./...` trong `services/commerce` (giữ account/ai); thêm ghi
   chú vào `docs/development/local-setup.md`. Đây là điều kiện để T022/T087 kiểm chứng SC-006.
 

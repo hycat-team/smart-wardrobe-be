@@ -339,9 +339,13 @@ test-integration:
 # together with a session-level advisory lock shared by both openers. `-count=1`
 # disables the test cache: package order matters here, and a cached `ok` from a
 # previous run can hide a cross-package fixture leak (it did once, for D-06).
+#
+# Covers all three services (033 T093 added services/commerce: 033/SC-006 relies on
+# its migration + outbox + repo integration tests actually running in this gate).
 test-db-integration:
 	@echo "Running database-backed integration tests (TEST_DATABASE_URL required)..."
 	@cd services/account && go test -race -p 1 -count=1 -timeout 20m -run Integration ./...
+	@cd services/commerce && go test -race -p 1 -count=1 -timeout 20m -run Integration ./...
 	@cd services/ai && go test -race -p 1 -count=1 -timeout 20m -run Integration ./...
 	@echo Database-backed integration tests finished.
 

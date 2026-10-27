@@ -24,7 +24,7 @@
         "Brand Benefit",
         "Admin Brand"
     ],
-    "fashion": ["Wardrobe AI", "Category", "Admin Category"],
+    "fashion": ["Wardrobe AI", "Category", "Admin Category", "Style Profile"],
     "community": ["Community", "Community Admin"],
     "aiexecutor": ["Admin AI", "AI Health"],
     "admin": ["Admin Audit"]

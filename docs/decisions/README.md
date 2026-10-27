@@ -23,6 +23,7 @@ Mỗi file ghi một quyết định kiến trúc/vận hành đã chốt, kèm 
 | [014](014-relax-grant-ordering-invariant.md) | 2026-10-07 | Nới lỏng bất biến thứ tự của bản ghi mức quyền | Accepted | thay ADR 013 §2 |
 | [015](015-drop-user-style-profiles.md) | 2026-10-11 | Xoá bảng `user_style_profiles` | Accepted | kèm migration `20261011090000_drop_user_style_profiles.sql` |
 | [016](016-ddl-ownership-handover.md) | 2026-10-16 | Bàn giao quyền sở hữu DDL theo schema (Account → AI/Commerce) | Accepted | giải quyết 027/D-06; gate `migration-check` |
+| [017](017-personalization-style-profile.md) | 2026-10-27 | Hồ sơ gu cá nhân hoá và xoay vòng đồ | Accepted | feature 033; tham chiếu 015 |
 
 ## Quy ước
 

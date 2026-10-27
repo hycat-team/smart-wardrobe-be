@@ -154,3 +154,130 @@ The current backend has:
 - Full AI quota management through the aiexecutor module
 
 The chat is powered by a prompt-injection pattern rather than a tool-calling ReAct agent. Data is pre-fetched and embedded in the system prompt, not retrieved dynamically during the conversation. This design is sufficient for the current product scope and avoids the complexity of function-calling orchestration.
+
+---
+
+## II. Cá nhân hoá gu phong cách và xoay vòng đồ (feature 033)
+
+Phần này mô tả các nhánh **bổ sung** vào pipeline gợi ý phối đồ ở mục I.2. Nguyên tắc xuyên suốt: gu
+phong cách là **ưu tiên mềm**, không bao giờ là hard filter; pipeline vẫn giữ nguyên cấu trúc outfit và
+không thêm LLM call vào hot path.
+
+### 1. Hồ sơ gu và áp dụng mềm
+
+- Hồ sơ gu nằm trong `fashion.user_style_profiles` (1 row/user), gồm `styles`, `excluded_styles`,
+  `enabled`, `style_embedding vector(768)`, `embedding_hash`, `embedding_model`, và các cột `learned_*`.
+  Lý do đặt ở Commerce thay vì identity: xem
+  [ADR 017](../decisions/017-personalization-style-profile.md).
+- Vector gu được sinh **một lần khi lưu hồ sơ** (`PUT /api/v1/me/style-profile`), không sinh lúc gợi ý.
+  `embedding_hash` chỉ ghi khi embed thành công; hash không đổi thì bỏ qua gọi AI. Provider lỗi ⇒ vẫn
+  lưu `styles` với `style_embedding = NULL` và `embedding_hash = NULL`, recommendation chuyển sang so
+  khớp từ khoá (fail-soft, FR-010/FR-011).
+- Quyền lợi đọc từ `subscription_plans.personalization_enabled` qua chuỗi
+  plan → benefit snapshot → contract DTO → overview cache (TTL 60 giây) → proto → Commerce. Hết quyền
+  lợi ⇒ hồ sơ vẫn đọc được nhưng không được áp dụng.
+
+### 2. Trộn vector gu (style vector blend)
+
+Trước khi hybrid retrieval, query vector được trộn với vector gu đã chuẩn hoá:
+
+```text
+q = normalize(queryVector)
+q = normalize((1 - w) · q + w · normalize(styleVector))
+```
+
+- `w = personalization.style_blend_weight` (mặc định **0.30**) khi request không có `styleTarget`.
+- `w = personalization.style_blend_weight_with_request` (mặc định **0.10**) khi request có
+  `styleTarget`: request thắng gu lưu sẵn.
+- Nếu có cả vector gu khai báo và vector học được, `styleVector = normalize((1-λ)·explicit + λ·learned)`
+  với `λ = personalization.learned_embedding_weight` (mặc định **0.20**).
+- Vector gu/học được chỉ là **query vector**, không được index HNSW và không dùng để hard-filter SQL.
+- Mọi vector phải được chuẩn hoá lại sau `AdjustVectorLength` (hàm này chỉ truncate/pad).
+
+### 3. Điểm số, prompt và fallback
+
+Scoring bổ sung ba tín hiệu mềm (giữ nguyên các tín hiệu cũ):
+
+| Tín hiệu | Trọng số | Ghi chú |
+|---|---|---|
+| `personal-style-match` | +0.25 (không có request style) / +0.10 (có request style) | khớp gu khai báo |
+| `learned-style-match` | `personalization.learned_style_weight`, mặc định +0.10 | khớp gu hệ thống suy ra |
+| `avoid-style` | −0.30 | khớp gu người dùng muốn tránh |
+
+- `contextPayload` của prompt thêm `personal_style`, `learned_style`, `avoid_styles`; system prompt thêm
+  rule ưu tiên gu khi chất lượng ứng viên tương đương.
+- HSL fallback (`RunLocalHSLMatching`) dùng cùng intent/scoring để mất AI vẫn giữ được mức cá nhân hoá.
+- `enabled = false` trên hồ sơ ⇒ toàn bộ context gu rỗng, kể cả khi gói còn quyền lợi (US1 AS5).
+
+### 4. Gợi ý bổ sung (gap-fill) và hoàn thiện bộ đồ
+
+Sau khi outfit đã được sinh, pipeline phát hiện vai trò **thiếu** hoặc **chỉ có ứng viên dưới ngưỡng**,
+rồi tìm món trong tủ đồ hệ thống để trả về mảng `suggestions` **riêng**:
+
+- Fashion lấy danh sách fashion item ID của tủ hệ thống qua Wardrobe contract
+  (`GetSystemCatalogFashionItemIDs`), cache trong Redis `personalization:catalog:v1` (TTL **5 phút**).
+  Fashion không đọc trực tiếp `wardrobe_items` (Constitution §II).
+- Loại các món người dùng đã sở hữu (định nghĩa "sở hữu": tồn tại row `wardrobe_items` chưa xoá, bất kỳ
+  status), lấy qua `GetOwnedFashionItemIDs`.
+- Ngưỡng gap: `personalization.gap_score_threshold` (mặc định **0.35**). Tối đa
+  `suggestion_max_per_role = 1` món/vai trò và `suggestion_max_total = 3` món/response.
+- Retrieval catalog dùng **cùng** semantic query, style vector và hard filter như outfit; reason là
+  template tiếng Việt, **không chạy LLM** và **không trừ quota**.
+- `POST /api/v1/ai/outfit-completions` tái sử dụng đúng builder này với tập item người dùng gửi lên,
+  chỉ trả suggestions (không tạo outfit, không trừ quota).
+- Khi lưu outfit có món `system_catalog`, Wardrobe clone món đó thành row `wardrobe_items` của user
+  trong **cùng transaction** với outfit; nếu user đã sở hữu fashion item thì tái sử dụng row, không
+  clone thêm.
+
+### 5. Học gu từ hành vi
+
+- Mỗi lần lưu outfit, Wardrobe ghi event `wardrobe.outfit.saved` vào outbox trong cùng transaction.
+  Worker `StyleLearningWorker` (Commerce) consume queue `style_learning_queue` (quorum, delivery-limit
+  5, DLQ `style_learning_queue.dlq`).
+- Worker insert `fashion.style_signals` với PK `id = signalId` (`ON CONFLICT DO NOTHING`) rồi cập nhật
+  hồ sơ trong cùng transaction. Outbox at-least-once nhưng hiệu lực là exactly-once.
+- `learned_styles = topK(decay · learned_styles + sourceWeight · normalizedStyleCounts)`, với
+  `personalization.learning_decay` (mặc định **0.9**) và K = **10**. Trọng số theo nguồn:
+  `outfit_saved = 1.0`, `feedback_like = 0.5`, `feedback_saved = 0.25`, `feedback_dislike = -0.5`
+  (dislike làm giảm ưu tiên, không loại trừ).
+- `learned_embedding = normalize(decay · old + (1 - decay) · mean(item embeddings))`. Item chưa có
+  embedding không làm mất vector đã học.
+- Gu **khai báo** (`styles`) không bao giờ bị ghi đè; learned có trọng số thấp hơn và không tạo hard
+  filter. `UpdateOutfit` chỉ phát signal cho item **mới thêm**.
+- Feedback `POST /api/v1/ai/outfit-recommendations/feedback` dùng chung `ApplySignal`; snapshot
+  recommendation nằm ở Redis `personalization:rec:{recommendationId}` (TTL **7 ngày**). Signal ID
+  deterministic theo `(user, recommendationId, action)` để chống trùng.
+
+### 6. Xoay vòng đồ lâu không dùng (rotation)
+
+- Thêm `wardrobe.wardrobe_items.last_recommended_at`, cập nhật **best-effort** sau khi trả kết quả cho
+  primary + alternatives. Lỗi ghi chỉ log; lần gợi ý kế tiếp thử lại (dung sai FR-054).
+- `last_used_at` chỉ touch cho item **mới thêm** vào outfit, không touch khi chỉ cập nhật metadata.
+  Dedupe theo `fashion_item_id` và lấy `max(last_used_at)` trước khi scoring.
+- Vùng làm mát: mặc định **7 ngày** kể từ lần dùng (`rag.recently_worn_penalty_days`, nới từ 3) và
+  **3 ngày** kể từ lần được gợi ý (`rag.recently_recommended_penalty_days`). Penalty tối đa lần lượt
+  **0.45** và **0.12**, giảm tuyến tính về 0 tại mép cửa sổ.
+- Dành `rag.stale_candidate_slots` (mặc định **4**) slot trong pool 20 cho item thoả hard filter và
+  `last_used_at NULLS FIRST, last_recommended_at NULLS FIRST`; append với source `stale` (không cộng
+  thêm vào prompt budget).
+- `rag.stale_eligible_days` (mặc định **30**) xác định mốc "lâu không dùng"; bonus "món mới" tính theo
+  `created_at` thay vì điều kiện `styleMatched || occasion`.
+- `ApplyRecencyCooldown`: nếu một vai trò có món **ngoài** vùng làm mát với điểm trong ngưỡng
+  `rag.cooldown_score_tolerance` (mặc định **0.15**), món đó được đưa lên trước. Nếu cả vai trò đều
+  trong vùng làm mát, giữ nguyên để không làm mất món duy nhất.
+- `RerankStats`/structured log ghi `stale_slots_added`, `cooldown_substitutions`,
+  `recently_used_repeat_ratio`, `recently_recommended_repeat_ratio`, `personal_style_match_ratio` và
+  danh sách item ID nội bộ, đủ để tính SC-003/SC-004 bằng truy vấn log (không có PII).
+
+### 7. Kill switch
+
+`personalization.enabled = false`:
+
+- `GET /me/style-profile` và `/suggestions` vẫn trả dữ liệu (read-only) để vận hành kiểm tra.
+- `PUT`/`DELETE` trả `403 PERSONALIZATION_DISABLED`.
+- Recommendation bỏ qua toàn bộ gu/learned (như hồ sơ rỗng); vẫn trả outfit + suggestions.
+- Worker learning ack message nhưng **không** ghi signal/profile.
+- Catalog suggestions/completions vẫn hoạt động vì không phụ thuộc hồ sơ gu.
+
+Dữ liệu gu/signal **không** bị xoá khi tắt cờ, nên bật lại không cần backfill.
+

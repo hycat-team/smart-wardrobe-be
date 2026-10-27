@@ -272,17 +272,17 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-m
 
 The system uses a PostgreSQL relational database (with pgvector) as the Single Source of Truth, integrating with GORM for entity management.
 
-> **Trạng thái hiện tại** (đối chiếu trực tiếp với DB thật sau migration 031 `20261020150000_add_user_plan_periods`, 2026-10-20): **58 bảng + 1 sequence** đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`, `community`). Con số này **không tính** 3 bảng `goose_db_version*` trong `public`. DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
+> **Trạng thái hiện tại** (đối chiếu trực tiếp với DB thật sau migration 031 `20261020150000_add_user_plan_periods`, 2026-10-20; delta 033 bổ sung ngày 2026-10-27): **60 bảng + 1 sequence** đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`, `community`). Con số này **không tính** 3 bảng `goose_db_version*` trong `public`. DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
 
-> **Vì sao tăng thêm 6 bảng so với inventory Sprint 2 (52)**: 031 thêm `user_plan_periods` và `plan_history_meta` (+2); inventory cũ chưa cập nhật `identity.user_activity_events` (+1) và 3 bảng campaign của 025 `campaigns`, `campaign_claims`, `campaign_sweep_runs` (+3). Tổng FK thực tế trong DB là **85** (41 FK trỏ `identity.users`), không tính 9 FK xuyên module đã cắt.
+> **Vì sao tăng thêm 6 bảng so với inventory Sprint 2 (52)**: 031 thêm `user_plan_periods` và `plan_history_meta` (+2); inventory cũ chưa cập nhật `identity.user_activity_events` (+1) và 3 bảng campaign của 025 `campaigns`, `campaign_claims`, `campaign_sweep_runs` (+3). 033 thêm 2 bảng `fashion.user_style_profiles` và `fashion.style_signals` (+2, migration `20261027092936_add_personalization.sql`). Tổng FK theo inventory hiện tại là **87** (43 FK trỏ `identity.users`), không tính 9 FK xuyên module đã cắt.
 
-### Tables by Module (58 bảng + 1 sequence)
+### Tables by Module (60 bảng + 1 sequence)
 
 **identity** (3): `users`, `refresh_tokens`, `user_activity_events`
 
 **wardrobe** (3): `wardrobe_items`, `outfits`, `outfit_items`
 
-**fashion** (4): `fashion_items`, `categories`, `conversational_contexts`, `messages`
+**fashion** (6): `fashion_items`, `categories`, `conversational_contexts`, `messages`, `user_style_profiles`, `style_signals`
 
 **brand** (15): `brands`, `brand_members`, `brand_customers`, `brand_customer_claims`, `loyalty_programs`, `loyalty_tiers`, `loyalty_accounts`, `loyalty_point_transactions`, `loyalty_point_lots`, `brand_benefits`, `benefit_redemptions`, `brand_conversations`, `brand_conversation_messages`, `brand_items`, `digital_sample_responses`
 
@@ -323,17 +323,71 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 ### Foreign Keys xuyên module
 
-- **GIỮ (xuyên schema tới `users`, 41 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng). Phân bố 41 FK: `brand` 14 · `subscription` 10 · `community` 6 · `aiexecutor` 4 · `wardrobe` 2 · `identity` 2 · `dashboard` 1 · `shared` 1 · `fashion` 1. Trong đó 031 thêm `user_plan_periods.user_id` (subscription 9 → 10; inventory cũ ghi 8 vì chưa tính `campaign_claims` của 025).
-- **Tổng FK toàn DB: 85** (sau 031), trong đó schema `subscription` có **17 FK**: 10 tới `identity.users` + 7 nội bộ schema. 031 thêm 2 FK: `user_plan_periods.user_id` (→ users) và `user_plan_periods.subscription_plan_id` (→ `subscription.subscription_plans`).
+- **GIỮ (xuyên schema tới `users`, 43 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng). Phân bố 43 FK: `brand` 14 · `subscription` 10 · `community` 6 · `aiexecutor` 4 · `wardrobe` 2 · `identity` 2 · `fashion` 3 · `dashboard` 1 · `shared` 1. Trong đó 031 thêm `user_plan_periods.user_id` (subscription 9 → 10; inventory cũ ghi 8 vì chưa tính `campaign_claims` của 025) và 033 thêm 2 (`fashion.user_style_profiles.user_id`, `fashion.style_signals.user_id`).
+- **Tổng FK toàn DB: 87** (sau 033), trong đó schema `subscription` có **17 FK**: 10 tới `identity.users` + 7 nội bộ schema. 031 thêm 2 FK: `user_plan_periods.user_id` (→ users) và `user_plan_periods.subscription_plan_id` (→ `subscription.subscription_plans`).
 - **CẮT (phi-users, enforce qua contract, 9 FK)**: `ai_policy_grants.plan_id/source_event_id/source_deposit_transaction_id` (aiexecutor→subscription), `subscription_plans.ai_cost_policy_id` (subscription→aiexecutor), `wardrobe_items.fashion_item_id` (wardrobe→fashion), `outfit_items.fashion_item_id` (wardrobe→fashion), `brand_items.fashion_item_id` (brand→fashion), `digital_sample_responses.outfit_id` (brand→wardrobe), `dashboard_brand_daily_snapshots.brand_id` (dashboard→brand). Integrity được đảm bảo qua contract reader/writer ở app layer (không có luồng hard-delete `fashion_items`/`brands` cần cascade bị mất).
 
 ### Chỉ mục vector (pgvector HNSW) — giữ nguyên sau tách schema
 
 - `fitems_embedding_cosine_idx` on `fashion.fashion_items.embedding` (HNSW `vector_cosine_ops`)
 
-> Bảng `identity.user_style_profiles` và index HNSW `ustyles_embedding_cosine_idx` đã bị xoá (ADR 015, migration `20261011090000_drop_user_style_profiles.sql`).
+> Bảng `identity.user_style_profiles` và index HNSW `ustyles_embedding_cosine_idx` đã bị xoá (ADR 015, migration `20261011090000_drop_user_style_profiles.sql`). Feature 033 **không** tái tạo bảng này: hồ sơ gu mới nằm ở `fashion.user_style_profiles` dưới dạng **query vector** (không cần index HNSW vì không dùng để tìm láng giềng), xem [ADR 017](../decisions/017-personalization-style-profile.md).
 
 > Verified (Sprint 2): `EXPLAIN` vector search dùng `Index Scan using fitems_embedding_cosine_idx`; index def schema-qualified.
+
+### Cá nhân hoá gu (033) — bảng, cột, index và dung sai cache quyền lợi
+
+**Account delta — `subscription.subscription_plans`**
+
+| Cột | Kiểu | Ràng buộc | Ý nghĩa |
+|---|---|---|---|
+| `personalization_enabled` | `boolean` | `NOT NULL DEFAULT false` | Quyền lợi cá nhân hoá; free mặc định tắt |
+
+Migration `20261027092637_add_plan_personalization.sql` bật `true` **một lần** cho plan `is_active = true AND price > 0`
+(backfill cho gói premium đang bán). Gói giá 0 và gói tạo sau triển khai mặc định tắt; admin bật thủ công.
+Cờ runtime là nguồn sự thật, **không** suy ra từ `price > 0`.
+
+**Commerce delta — `wardrobe.wardrobe_items`**
+
+| Cột | Kiểu | Ý nghĩa |
+|---|---|---|
+| `last_recommended_at` | `timestamptz` NULL | Lần gần nhất món được trả về trong recommendation (rotation) |
+
+Không backfill và không thêm index riêng: truy vấn stale dựa trên `idx_wardrobe_items_user_status` sẵn có.
+
+**Commerce — `fashion.user_style_profiles`** (1 row/user, PK/FK `user_id → identity.users(id) ON DELETE CASCADE`):
+`styles jsonb`, `excluded_styles jsonb`, `enabled boolean`, `style_embedding vector(768)`,
+`embedding_hash text`, `embedding_model varchar(100)`, `learned_styles jsonb`, `learned_embedding vector(768)`,
+`learned_at timestamptz`, `created_at`, `updated_at`. Checks: `jsonb_typeof` đúng array/object và
+`jsonb_array_length(styles|excluded_styles) <= 50` (safety net; usecase giới hạn theo `personalization.max_styles`, mặc định 4).
+Không index HNSW.
+
+**Commerce — `fashion.style_signals`** (append-only, dùng chung outfit save + feedback): PK `id` = `signalId`,
+`user_id` FK, `source smallint` (1 `outfit_saved`, 2 `feedback_like`, 3 `feedback_dislike`, 4 `feedback_saved`),
+`outfit_id`, `recommendation_id`, `fashion_item_ids uuid[]`, `style_snapshot jsonb`, `created_at`. Check `source IN (1,2,3,4)`
+và `cardinality(fashion_item_ids) > 0`. Index `idx_style_signals_user_created (user_id, created_at DESC)`;
+unique partial `ux_style_signals_feedback (user_id, recommendation_id, source) WHERE recommendation_id IS NOT NULL`.
+`outfit_id`/`recommendation_id` **không** có FK để signal tồn tại như lịch sử sau khi outfit bị xoá.
+
+**Quan hệ**: `fashion.user_style_profiles` 1:1 `identity.users`; `fashion.style_signals` N:1 `identity.users`;
+`fashion.style_signals` N:1 `wardrobe.outfits` (logical, không FK); `wardrobe.wardrobe_items` N:1
+`fashion.fashion_items` (không FK sau 030, giữ nguyên).
+
+**Quyền lợi và dung sai cache 60 giây (FR-004)**: `personalization_enabled` đi theo đúng chuỗi đã có của
+`MaxWardrobeItems`/quota — plan row → `BuildPlanBenefitSnapshot` (lúc grant) **và** plan row →
+`BuildUserSubscriptionOverviewRes` → `UserSubscriptionContractDTO` → `SubscriptionOverviewCacheEntry` →
+proto `UserSubscriptionOverview` field 11 → Commerce. Overview đọc plan row hiện tại, không đọc lại snapshot
+cũ. Vì overview được cache Redis với TTL **60 giây** (`cache.overview_ttl_seconds`), admin bật/tắt quyền lợi
+có thể mất tối đa **60 giây** mới có hiệu lực; đây là dung sai đã biết, không cần sweep cache.
+
+**Vận hành khi thu hồi quyền lợi**:
+
+- Tắt cờ trên plan ⇒ người dùng hết quyền sau tối đa 60 giây: hồ sơ gu vẫn **đọc** được nhưng không được
+  áp dụng; `PUT`/`DELETE` hồ sơ trả `403 PERSONALIZATION_NOT_AVAILABLE`.
+- Dữ liệu gu/signal **không** bị xoá; bật lại cờ là dùng lại được, không cần backfill.
+- Muốn tắt ngay toàn hệ thống (không chờ TTL): dùng kill switch `personalization.enabled = false` trong config.
+- Cache entry cũ thiếu field `personalizationEnabled` được đọc là `false` (an toàn: tính năng tắt cho tới khi
+  cache hết hạn). Proto field 11 là additive nên server cũ trả `false`, không lỗi.
 
 ---
 
