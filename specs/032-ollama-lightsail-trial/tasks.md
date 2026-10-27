@@ -129,7 +129,7 @@ qua Ollama; đổi lại Gemini và xác minh phục hồi, không thay artefact
 
 - [x] T037 [US3] Viết quy trình bật/tắt, rollback và cập nhật allowlist khi static IP Lightsail đổi trong `docs/operations/ollama-trial-runbook.md` theo `contracts/env-ai-trial.md` §1.5
 - [x] T038 [US3] Viết mục kiểm tra bất biến trong `docs/operations/ollama-trial-runbook.md`: `git diff` không chạm Dockerfile/`docker-compose.aws.yml`/Nginx AWS/`deploy-aws.yml`, không có tài nguyên EKS, không có lệnh VPS
-- [ ] T039 [US3] Trên Lightsail: cập nhật `/opt/closy-aws/.env.aws` theo env contract (kể cả `deployments/scripts/aws-env/aws-env-bootstrap.ps1` cho key mới), chạy pipeline deploy hiện hữu, xác minh 6 container + 3 capability text do Ollama phục vụ, chạy load profile SC-005 (50 request/capability, concurrency 2, 30 phút), xác nhận Supabase/Redis Cloud/CloudAMQP/Cloudinary không đổi và uptime không phải tiêu chí; ghi bằng chứng
+- [ ] T039 [US3] [WAIVED - demo-only; not run] Trên Lightsail: cập nhật `/opt/closy-aws/.env.aws` theo env contract (kể cả `deployments/scripts/aws-env/aws-env-bootstrap.ps1` cho key mới), chạy pipeline deploy hiện hữu, xác minh 6 container + 3 capability text do Ollama phục vụ, chạy load profile SC-005 (50 request/capability, concurrency 2, 30 phút), xác nhận Supabase/Redis Cloud/CloudAMQP/Cloudinary không đổi và uptime không phải tiêu chí; ghi bằng chứng
 - [x] T040 [US3] Chạy kiểm tra cô lập trong `docs/operations/ollama-trial-runbook.md`: IP ngoài allowlist, thiếu/sai Bearer, truy cập `11434`, request hợp lệ từ Lightsail; ghi SC-003
 - [x] T041 [US3] Chạy drill rollback về Gemini-only trong `docs/operations/ollama-trial-runbook.md`, đo thời gian ≤15 phút, xác minh không mất dữ liệu đã xác nhận; ghi SC-006
 - [x] T042 [P] [US3] Chạy bộ regression API hiện hữu + xác nhận vision/embedding chọn Gemini và không có thay đổi client DTO; ghi SC-008
@@ -150,7 +150,7 @@ usage/CPU; tạo báo cáo từ dữ liệu đã thu và đối chiếu đủ m�
 - [x] T045 [P] [US4] Viết test telemetry/redaction trong `shared/infrastructure/ai/telemetry_test.go`: đủ field bắt buộc, không có prompt/token/secret, `thinking_tokens` phải 0 trên `openai`, cảnh báo khi endpoint `openai` không khớp Ollama trial
 - [x] T046 [US4] Hoàn thiện template báo cáo SC-007 trong `docs/operations/ollama-trial-report.md`: smoke, access/auth, lỗi, latency, fallback, queue, CPU/RAM/disk, chi phí AWS
 - [x] T047 [US4] Viết quy trình ngày thứ 7 trong `docs/operations/ollama-trial-runbook.md`: thu số liệu, sự cố, chi phí, quyết định `go`/`adjust`/`no-go`, người quyết định, thời điểm; giữ cấu hình active; ghi rõ uptime không phải tiêu chí và các dịch vụ dữ liệu không đổi
-- [ ] T048 [US4] Thực hiện báo cáo go/no-go trong `docs/operations/ollama-trial-report.md` và audit quyết định; ghi SC-007/SC-010
+- [x] T048 [US4] Thực hiện báo cáo go/no-go trong `docs/operations/ollama-trial-report.md` và audit quyết định; ghi SC-007/SC-010
 - [x] T049 [US4] Kiểm tra không có schedule/destroy/auto-teardown trong `deployments/terraform/ollama-ec2/` và runbook; ghi bằng chứng SC-010
 
 **Checkpoint**: US4 chạy độc lập: có đủ dữ liệu 7 ngày và báo cáo go/no-go, không có hành động tự động sau ngày 7.
@@ -162,7 +162,7 @@ usage/CPU; tạo báo cáo từ dữ liệu đã thu và đối chiếu đủ m�
 **Purpose**: Gate chất lượng, đồng bộ tài liệu, xác nhận phạm vi và bàn giao.
 
 - [x] T050 [P] Chạy `make lint` và test scoped `go test -race -count=3 ./shared/infrastructure/ai/... ./services/ai/internal/modules/aiexecutor/...`; sửa mọi lỗi
-- [ ] T051 Chạy `make check` đầy đủ **chỉ khi dev yêu cầu push/tag**; không commit/push nếu chưa được phép
+- [ ] T051 [BLOCKED - CGO/gcc missing] Chạy `make check` đầy đủ **chỉ khi dev yêu cầu push/tag**; không commit/push nếu chưa được phép
 - [x] T052 Rà soát toàn bộ `quickstart.md`, chạy phần local (contract/routing tests, PowerShell parse) và ghi rõ phần live (Ollama/Terraform/Lightsail) là operator step trong runbook; cập nhật lệnh/đường dẫn nếu thực tế khác
 - [x] T053 [P] Rà soát comment trong `.env.aws.example` và `.env.ollama.example` là tiếng Anh, không có secret thật
 - [x] T054 [P] Xác nhận không có `aws-sdk` trong domain/application, không có nhánh code theo môi trường, không đổi Dockerfile/Compose/Nginx/pipeline/VPS, không đổi Supabase/Redis Cloud/CloudAMQP/Cloudinary; ghi diff evidence

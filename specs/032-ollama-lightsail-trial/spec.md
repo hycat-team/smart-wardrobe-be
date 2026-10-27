@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-26
 
-**Status**: Draft
+**Status**: Closed - demo-only validation; decision = adjust
 
 **Input**: Thử nghiệm trong 1 tuần việc chạy Ollama bằng CPU trên một máy EC2 riêng và dùng nó làm
 provider text chính cho Go AI Service, trong khi backend ba dịch vụ tiếp tục chạy trên AWS
