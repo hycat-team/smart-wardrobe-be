@@ -189,14 +189,14 @@ Ghi chú local:
 
 Chỉ apply Terraform khi tất cả đạt:
 
-- [ ] Contract test pass.
-- [ ] Không có reasoning content/token được chứng minh.
-- [ ] Structured output hợp lệ.
-- [ ] Drill fallback pass.
-- [ ] SSE chat không bị cắt: `AI_CHAT_CHUNK_DEADLINE_SECONDS=90` và primary timeout 90 đã đặt.
+- [x] Contract test pass.
+- [x] Không có reasoning content/token được chứng minh.
+- [x] Structured output hợp lệ.
+- [x] Drill fallback pass.
+- [x] SSE chat không bị cắt: `AI_CHAT_CHUNK_DEADLINE_SECONDS=90` và primary timeout 90 đã đặt.
 - [ ] Recommendation: TTFT + thời gian sinh output nằm trong 90 giây, hoặc đã ghi nhận điều chỉnh/
       fallback trước khi đo.
-- [ ] Digest/version đã ghi.
+- [x] Digest/version đã ghi.
 
 Nếu bất kỳ mục nào không đạt: dừng, không apply EC2; đổi model/prompt/digest và cập nhật
 `spec.md`/`plan.md` trước khi thử lại.
