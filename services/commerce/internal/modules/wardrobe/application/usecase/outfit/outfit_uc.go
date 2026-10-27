@@ -362,10 +362,15 @@ func (uc *OutfitUseCase) publishOutfitDeleted(ctx context.Context, outfitID, use
 
 // enforceOutfitCloneLimit rejects the whole save/update when cloning the new
 // catalog rows would exceed the wardrobe quota (FR-032). It runs inside the
-// transaction so a concurrent save cannot slip past the check.
+// transaction and takes the per-user wardrobe lock first, so a concurrent save,
+// update or closet initialization of the same user cannot pass the check while
+// this one is still uncommitted.
 func (uc *OutfitUseCase) enforceOutfitCloneLimit(ctx context.Context, userID uuid.UUID, resolution *outfitResolution, maxWardrobeItems int) error {
 	if resolution == nil || len(resolution.cloneItems) == 0 {
 		return nil
+	}
+	if err := uc.wardrobeRepo.LockUserWardrobe(ctx, userID); err != nil {
+		return err
 	}
 	currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
 	if err != nil {

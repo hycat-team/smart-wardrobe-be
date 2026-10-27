@@ -43,6 +43,22 @@ func (r *WardrobeItemRepository) Create(ctx context.Context, item *entities.Ward
 	return r.GetDB(ctx).Create(item).Error
 }
 
+// LockUserWardrobe takes a transaction-scoped PostgreSQL advisory lock for one
+// user's wardrobe.
+//
+// `pg_advisory_xact_lock(hashtext($1))` is a plain PostgreSQL function: it needs
+// no extension and the server releases it automatically at COMMIT or ROLLBACK.
+// Passing the user id as text gives every transaction of that user the same
+// 64-bit key, so a quota check and the insert it guards serialize against a
+// second request of the same user. The lock is resolved from ctx, so the caller
+// MUST run inside a unit of work: without a transaction it attaches to the
+// implicit transaction of the statement and is released immediately, which
+// serializes nothing.
+func (r *WardrobeItemRepository) LockUserWardrobe(ctx context.Context, userID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Exec("SELECT pg_advisory_xact_lock(hashtext(?))", userID.String()).Error
+}
+
 func (r *WardrobeItemRepository) CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.GetDB(ctx).Model(&entities.WardrobeItem{}).

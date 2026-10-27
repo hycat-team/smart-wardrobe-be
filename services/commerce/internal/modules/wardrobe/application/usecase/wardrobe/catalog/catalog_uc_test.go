@@ -30,20 +30,46 @@ type catalogWardrobeRepo struct {
 	templates    []*entities.WardrobeItem
 	templateErr  error
 	bulkErr      error
+	lockErr      error
 
 	countCalls    int
 	getByIDsCalls int
 	bulkCalls     int
+	lockCalls     int
 	bulkCreated   []*entities.WardrobeItem
+
+	// callOrder records the repository calls in the order they happened, so a
+	// test can prove the lock is taken before the quota count.
+	callOrder []string
+	// inTx mirrors whether the fake unit of work is currently running its
+	// callback; countInTx/bulkInTx snapshot it inside the mocked calls.
+	inTx      bool
+	countInTx bool
+	bulkInTx  bool
+
+	uow *catalogUnitOfWork
+}
+
+func (r *catalogWardrobeRepo) record(call string) {
+	r.callOrder = append(r.callOrder, call)
+}
+
+func (r *catalogWardrobeRepo) LockUserWardrobe(context.Context, uuid.UUID) error {
+	r.lockCalls++
+	r.record("lock")
+	return r.lockErr
 }
 
 func (r *catalogWardrobeRepo) CountByUserID(context.Context, uuid.UUID) (int64, error) {
 	r.countCalls++
+	r.record("count")
+	r.countInTx = r.inTx
 	return r.currentCount, r.countErr
 }
 
 func (r *catalogWardrobeRepo) GetByIDs(context.Context, []uuid.UUID) ([]*entities.WardrobeItem, error) {
 	r.getByIDsCalls++
+	r.record("getByIDs")
 	return r.templates, r.templateErr
 }
 
@@ -52,7 +78,30 @@ func (r *catalogWardrobeRepo) BulkCreate(_ context.Context, items []*entities.Wa
 		return r.bulkErr
 	}
 	r.bulkCalls++
+	r.record("bulk")
+	r.bulkInTx = r.inTx
 	r.bulkCreated = append(r.bulkCreated, items...)
+	return nil
+}
+
+// catalogUnitOfWork records how the catalog use case drives the transaction.
+type catalogUnitOfWork struct {
+	repo      *catalogWardrobeRepo
+	executes  int
+	commits   int
+	rollbacks int
+}
+
+func (u *catalogUnitOfWork) Execute(ctx context.Context, fn func(context.Context) error) error {
+	u.executes++
+	u.repo.inTx = true
+	err := fn(ctx)
+	u.repo.inTx = false
+	if err != nil {
+		u.rollbacks++
+		return err
+	}
+	u.commits++
 	return nil
 }
 
@@ -75,10 +124,13 @@ func (f *catalogFashionContract) ListFashionItemsBrief(context.Context, []uuid.U
 }
 
 func newCatalogUseCase(repo *catalogWardrobeRepo, maxWardrobeItems int) *WardrobeCatalogUseCase {
+	uow := &catalogUnitOfWork{repo: repo}
+	repo.uow = uow
 	return &WardrobeCatalogUseCase{
 		wardrobeRepo:    repo,
 		userSubContract: &catalogSubContract{overview: &sub_dto.UserSubscriptionContractDTO{MaxWardrobeItems: maxWardrobeItems}},
 		fashionContract: &catalogFashionContract{},
+		uow:             uow,
 	}
 }
 
@@ -238,6 +290,76 @@ func TestInitClosetFromCatalogRejectsEmptyIDs(t *testing.T) {
 	if repo.countCalls != 0 || repo.getByIDsCalls != 0 {
 		t.Fatalf("repository called (count=%d, getByIDs=%d) for an empty request", repo.countCalls, repo.getByIDsCalls)
 	}
+	if repo.lockCalls != 0 || repo.uow.executes != 0 {
+		t.Fatalf("lock/transaction started (%d/%d) for an empty request", repo.lockCalls, repo.uow.executes)
+	}
+}
+
+// 033 concurrency fix - the quota check and the insert must share one unit of
+// work, behind the per-user wardrobe lock, so two concurrent initializations
+// cannot both pass the check.
+func TestInitClosetFromCatalogLocksQuotaBeforeCountInsideOneUnitOfWork(t *testing.T) {
+	requesterID := uuid.New()
+	fashionID := uuid.New()
+
+	repo := &catalogWardrobeRepo{
+		currentCount: 1,
+		templates:    []*entities.WardrobeItem{catalogRow(&fashionID, itemtype.SystemCatalogItem, wardrobestatus.InWardrobe, uuid.Nil)},
+	}
+	uc := newCatalogUseCase(repo, 10)
+
+	got, err := uc.InitClosetFromCatalog(context.Background(), requesterID, []uuid.UUID{repo.templates[0].ID})
+	if err != nil {
+		t.Fatalf("InitClosetFromCatalog: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("result = %d items, want 1", len(got))
+	}
+
+	if repo.lockCalls != 1 {
+		t.Fatalf("lock calls = %d, want 1", repo.lockCalls)
+	}
+	want := []string{"lock", "count", "getByIDs", "bulk"}
+	if len(repo.callOrder) != len(want) {
+		t.Fatalf("call order = %v, want %v", repo.callOrder, want)
+	}
+	for i := range want {
+		if repo.callOrder[i] != want[i] {
+			t.Fatalf("call order = %v, want %v", repo.callOrder, want)
+		}
+	}
+	if !repo.countInTx || !repo.bulkInTx {
+		t.Fatalf("count/insert outside the unit of work (count=%v, insert=%v)", repo.countInTx, repo.bulkInTx)
+	}
+	if repo.uow.executes != 1 || repo.uow.commits != 1 || repo.uow.rollbacks != 0 {
+		t.Fatalf("uow executes/commits/rollbacks = %d/%d/%d, want 1/1/0",
+			repo.uow.executes, repo.uow.commits, repo.uow.rollbacks)
+	}
+}
+
+func TestInitClosetFromCatalogPropagatesLockError(t *testing.T) {
+	lockErr := errors.New("advisory lock failed")
+	fashionID := uuid.New()
+	repo := &catalogWardrobeRepo{
+		lockErr:   lockErr,
+		templates: []*entities.WardrobeItem{catalogRow(&fashionID, itemtype.SystemCatalogItem, wardrobestatus.InWardrobe, uuid.Nil)},
+	}
+	uc := newCatalogUseCase(repo, 10)
+
+	got, err := uc.InitClosetFromCatalog(context.Background(), uuid.New(), []uuid.UUID{repo.templates[0].ID})
+
+	if got != nil {
+		t.Fatalf("result = %+v, want nil", got)
+	}
+	if !errors.Is(err, lockErr) {
+		t.Fatalf("error = %v, want %v", err, lockErr)
+	}
+	if repo.countCalls != 0 || repo.bulkCalls != 0 {
+		t.Fatalf("count/insert ran without the lock (count=%d, bulk=%d)", repo.countCalls, repo.bulkCalls)
+	}
+	if repo.uow.rollbacks != 1 {
+		t.Fatalf("rollbacks = %d, want 1", repo.uow.rollbacks)
+	}
 }
 
 func TestInitClosetFromCatalogRejectsOverWardrobeLimit(t *testing.T) {
@@ -260,6 +382,18 @@ func TestInitClosetFromCatalogRejectsOverWardrobeLimit(t *testing.T) {
 	}
 	if repo.getByIDsCalls != 0 {
 		t.Fatalf("templates were read before the quota check (%d calls)", repo.getByIDsCalls)
+	}
+	if repo.lockCalls != 1 {
+		t.Fatalf("lock calls = %d, want 1 (the check must be serialized)", repo.lockCalls)
+	}
+	if len(repo.callOrder) < 2 || repo.callOrder[0] != "lock" || repo.callOrder[1] != "count" {
+		t.Fatalf("call order = %v, want the lock before the count", repo.callOrder)
+	}
+	if !repo.countInTx {
+		t.Fatal("the quota count ran outside the unit of work")
+	}
+	if repo.uow.rollbacks != 1 || repo.uow.commits != 0 {
+		t.Fatalf("uow rollbacks/commits = %d/%d, want 1/0", repo.uow.rollbacks, repo.uow.commits)
 	}
 }
 
@@ -291,5 +425,13 @@ func TestInitClosetFromCatalogPropagatesBulkCreateError(t *testing.T) {
 	}
 	if !errors.Is(err, writeErr) {
 		t.Fatalf("error = %v, want %v", err, writeErr)
+	}
+	// The quota check and the insert share the transaction, so a failed insert
+	// rolls the whole thing back instead of leaving the clones behind.
+	if repo.uow.rollbacks != 1 || repo.uow.commits != 0 {
+		t.Fatalf("uow rollbacks/commits = %d/%d, want 1/0", repo.uow.rollbacks, repo.uow.commits)
+	}
+	if repo.lockCalls != 1 {
+		t.Fatalf("lock calls = %d, want 1", repo.lockCalls)
 	}
 }

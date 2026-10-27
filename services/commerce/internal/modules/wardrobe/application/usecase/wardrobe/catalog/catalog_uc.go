@@ -135,60 +135,75 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		return nil, err
 	}
 
-	currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if int(currentCount)+len(catalogItemIDs) > subOverview.MaxWardrobeItems {
-		return nil, wardrobeerrors.ErrWardrobeLimitExceededForCatalog(int(currentCount), subOverview.MaxWardrobeItems, len(catalogItemIDs))
-	}
-
-	templates, err := uc.wardrobeRepo.GetByIDs(ctx, catalogItemIDs)
-	if err != nil {
-		return nil, err
-	}
-	if len(templates) == 0 {
-		return nil, wardrobeerrors.ErrCatalogItemNotFound()
-	}
-
-	// Only genuine system catalog templates may be cloned: item_type
-	// SystemCatalogItem, status InWardrobe and not soft-deleted. This also
-	// rejects another user's private wardrobe item when its id is supplied
-	// (FR-035); GetByIDs alone would happily return it.
-	templateByID := make(map[uuid.UUID]*entities.WardrobeItem, len(templates))
-	for _, template := range templates {
-		if template == nil || template.IsDeleted ||
-			template.ItemType != itemtype.SystemCatalogItem ||
-			template.Status != wardrobestatus.InWardrobe {
-			continue
+	// The quota check and the insert it guards run in one transaction behind a
+	// per-user wardrobe advisory lock, so two concurrent initializations cannot
+	// both pass the check and exceed the limit. A failed insert rolls the whole
+	// transaction back; the response is mapped after the commit.
+	var newItems []*entities.WardrobeItem
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.wardrobeRepo.LockUserWardrobe(txCtx, userID); err != nil {
+			return err
 		}
-		templateByID[template.ID] = template
-	}
 
-	newItems := make([]*entities.WardrobeItem, 0, len(catalogItemIDs))
-	for _, catalogItemID := range catalogItemIDs {
-		original, ok := templateByID[catalogItemID]
-		if !ok {
-			return nil, wardrobeerrors.ErrCatalogItemNotFound()
+		currentCount, err := uc.wardrobeRepo.CountByUserID(txCtx, userID)
+		if err != nil {
+			return err
 		}
-		// A genuine system catalog template always references a fashion item.
-		// Cloning one without it would leave the new wardrobe row pointing at a
-		// fashion item that does not exist, so reject the whole request instead
-		// of fabricating a reference from the catalog row id.
-		if original.FashionItemID == nil {
-			return nil, wardrobeerrors.ErrCatalogItemUnavailable()
-		}
-		newItems = append(newItems, &entities.WardrobeItem{
-			UserID:        userID,
-			FashionItemID: original.FashionItemID,
-			Price:         original.Price,
-			Status:        wardrobestatus.InWardrobe,
-			ItemType:      itemtype.UserItem,
-		})
-	}
 
-	err = uc.wardrobeRepo.BulkCreate(ctx, newItems)
+		if int(currentCount)+len(catalogItemIDs) > subOverview.MaxWardrobeItems {
+			return wardrobeerrors.ErrWardrobeLimitExceededForCatalog(int(currentCount), subOverview.MaxWardrobeItems, len(catalogItemIDs))
+		}
+
+		templates, err := uc.wardrobeRepo.GetByIDs(txCtx, catalogItemIDs)
+		if err != nil {
+			return err
+		}
+		if len(templates) == 0 {
+			return wardrobeerrors.ErrCatalogItemNotFound()
+		}
+
+		// Only genuine system catalog templates may be cloned: item_type
+		// SystemCatalogItem, status InWardrobe and not soft-deleted. This also
+		// rejects another user's private wardrobe item when its id is supplied
+		// (FR-035); GetByIDs alone would happily return it.
+		templateByID := make(map[uuid.UUID]*entities.WardrobeItem, len(templates))
+		for _, template := range templates {
+			if template == nil || template.IsDeleted ||
+				template.ItemType != itemtype.SystemCatalogItem ||
+				template.Status != wardrobestatus.InWardrobe {
+				continue
+			}
+			templateByID[template.ID] = template
+		}
+
+		clones := make([]*entities.WardrobeItem, 0, len(catalogItemIDs))
+		for _, catalogItemID := range catalogItemIDs {
+			original, ok := templateByID[catalogItemID]
+			if !ok {
+				return wardrobeerrors.ErrCatalogItemNotFound()
+			}
+			// A genuine system catalog template always references a fashion item.
+			// Cloning one without it would leave the new wardrobe row pointing at a
+			// fashion item that does not exist, so reject the whole request instead
+			// of fabricating a reference from the catalog row id.
+			if original.FashionItemID == nil {
+				return wardrobeerrors.ErrCatalogItemUnavailable()
+			}
+			clones = append(clones, &entities.WardrobeItem{
+				UserID:        userID,
+				FashionItemID: original.FashionItemID,
+				Price:         original.Price,
+				Status:        wardrobestatus.InWardrobe,
+				ItemType:      itemtype.UserItem,
+			})
+		}
+
+		if err := uc.wardrobeRepo.BulkCreate(txCtx, clones); err != nil {
+			return err
+		}
+		newItems = clones
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}

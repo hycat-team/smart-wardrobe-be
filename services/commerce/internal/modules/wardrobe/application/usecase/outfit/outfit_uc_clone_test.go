@@ -48,10 +48,22 @@ type cloneWardrobeRepo struct {
 	currentCount int64
 	bulkErr      error
 	touchErr     error
+	lockErr      error
 
 	bulkBatches [][]*entities.WardrobeItem
 	touchCalls  int
 	touchIDs    []uuid.UUID
+	countCalls  int
+	lockCalls   int
+	// callOrder records the quota-related repository calls in order, so a test
+	// can prove the per-user lock is taken before the count.
+	callOrder []string
+}
+
+func (r *cloneWardrobeRepo) LockUserWardrobe(_ context.Context, _ uuid.UUID) error {
+	r.lockCalls++
+	r.callOrder = append(r.callOrder, "lock")
+	return r.lockErr
 }
 
 func (r *cloneWardrobeRepo) GetByUserID(context.Context, uuid.UUID, []uuid.UUID) ([]*entities.WardrobeItem, error) {
@@ -67,6 +79,8 @@ func (r *cloneWardrobeRepo) GetActiveSystemCatalogItemsByIDs(context.Context, []
 }
 
 func (r *cloneWardrobeRepo) CountByUserID(context.Context, uuid.UUID) (int64, error) {
+	r.countCalls++
+	r.callOrder = append(r.callOrder, "count")
 	return r.currentCount, nil
 }
 
@@ -444,6 +458,111 @@ func TestSaveOutfitRejectsCloneOverWardrobeLimitWithoutPartialClone(t *testing.T
 	}
 	if fixture.uow.rollbacks != 1 {
 		t.Fatalf("rollbacks = %d, want 1", fixture.uow.rollbacks)
+	}
+}
+
+// 033 concurrency fix - the quota count is taken under a transaction-scoped
+// per-user advisory lock, so two concurrent saves of the same user cannot both
+// pass the check and exceed max_wardrobe_items.
+func TestOutfitCloneQuotaTakesUserWardrobeLockBeforeCount(t *testing.T) {
+	t.Run("save takes the lock before counting", func(t *testing.T) {
+		fashionID := uuid.New()
+		wardrobe := &cloneWardrobeRepo{catalogRows: []*entities.WardrobeItem{catalogTemplate(fashionID, nil)}}
+		fixture := newCloneFixture(wardrobe, &cloneOutfitRepo{}, 10)
+		systemCatalog := itemContextSystemCatalog
+
+		if _, err := fixture.uc.SaveOutfit(context.Background(), uuid.New(), dto.SaveOutfitReq{
+			Name:  "Bộ khoá",
+			Items: []dto.SaveOutfitItemReq{{FashionItemID: fashionID, ItemContext: &systemCatalog, Scale: 1, LayerOrder: 1}},
+		}); err != nil {
+			t.Fatalf("SaveOutfit: %v", err)
+		}
+
+		assertLockBeforeCount(t, wardrobe)
+	})
+
+	t.Run("update takes the lock before counting", func(t *testing.T) {
+		userID := uuid.New()
+		outfitID := uuid.New()
+		fashionID := uuid.New()
+
+		outfit := &entities.Outfit{UserID: userID, Name: "Bộ cũ"}
+		outfit.ID = outfitID
+		wardrobe := &cloneWardrobeRepo{catalogRows: []*entities.WardrobeItem{catalogTemplate(fashionID, nil)}}
+		outfits := &cloneOutfitRepo{detail: outfit}
+		fixture := newCloneFixture(wardrobe, outfits, 10)
+		systemCatalog := itemContextSystemCatalog
+
+		if _, err := fixture.uc.UpdateOutfit(context.Background(), userID, outfitID, dto.SaveOutfitReq{
+			Name:  "Bộ mới",
+			Items: []dto.SaveOutfitItemReq{{FashionItemID: fashionID, ItemContext: &systemCatalog, Scale: 1, LayerOrder: 1}},
+		}); err != nil {
+			t.Fatalf("UpdateOutfit: %v", err)
+		}
+
+		assertLockBeforeCount(t, wardrobe)
+	})
+
+	t.Run("no clone means no quota check and no lock", func(t *testing.T) {
+		fashionID := uuid.New()
+		wardrobe := &cloneWardrobeRepo{ownedRows: []*entities.WardrobeItem{ownedRow(fashionID, wardrobestatus.InWardrobe)}}
+		fixture := newCloneFixture(wardrobe, &cloneOutfitRepo{}, 10)
+
+		if _, err := fixture.uc.SaveOutfit(context.Background(), uuid.New(), dto.SaveOutfitReq{
+			Name:  "Bộ tái sử dụng",
+			Items: []dto.SaveOutfitItemReq{{FashionItemID: fashionID, Scale: 1, LayerOrder: 1}},
+		}); err != nil {
+			t.Fatalf("SaveOutfit: %v", err)
+		}
+
+		if wardrobe.lockCalls != 0 || wardrobe.countCalls != 0 {
+			t.Fatalf("lock/count calls = %d/%d, want 0/0 when nothing is cloned", wardrobe.lockCalls, wardrobe.countCalls)
+		}
+	})
+
+	t.Run("lock failure aborts the save without writing", func(t *testing.T) {
+		lockErr := errors.New("advisory lock failed")
+		fashionID := uuid.New()
+		wardrobe := &cloneWardrobeRepo{
+			catalogRows: []*entities.WardrobeItem{catalogTemplate(fashionID, nil)},
+			lockErr:     lockErr,
+		}
+		outfits := &cloneOutfitRepo{}
+		fixture := newCloneFixture(wardrobe, outfits, 10)
+		systemCatalog := itemContextSystemCatalog
+
+		res, err := fixture.uc.SaveOutfit(context.Background(), uuid.New(), dto.SaveOutfitReq{
+			Name:  "Bộ khoá lỗi",
+			Items: []dto.SaveOutfitItemReq{{FashionItemID: fashionID, ItemContext: &systemCatalog, Scale: 1, LayerOrder: 1}},
+		})
+
+		if res != nil {
+			t.Fatalf("response = %+v, want nil", res)
+		}
+		if !errors.Is(err, lockErr) {
+			t.Fatalf("error = %v, want %v", err, lockErr)
+		}
+		if wardrobe.countCalls != 0 {
+			t.Fatalf("count calls = %d, want 0: the count is never taken without the lock", wardrobe.countCalls)
+		}
+		if len(wardrobe.bulkBatches) != 0 || outfits.createCalls != 0 {
+			t.Fatal("nothing may be written when the lock fails")
+		}
+		if fixture.uow.rollbacks != 1 {
+			t.Fatalf("rollbacks = %d, want 1", fixture.uow.rollbacks)
+		}
+	})
+}
+
+// assertLockBeforeCount proves the advisory lock is the first quota call and
+// that it was taken exactly once.
+func assertLockBeforeCount(t *testing.T, wardrobe *cloneWardrobeRepo) {
+	t.Helper()
+	if wardrobe.lockCalls != 1 {
+		t.Fatalf("lock calls = %d, want 1", wardrobe.lockCalls)
+	}
+	if len(wardrobe.callOrder) < 2 || wardrobe.callOrder[0] != "lock" || wardrobe.callOrder[1] != "count" {
+		t.Fatalf("call order = %v, want the lock before the count", wardrobe.callOrder)
 	}
 }
 
