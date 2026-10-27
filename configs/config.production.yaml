@@ -347,7 +347,10 @@ ai:
         count_tokens_threshold_ratio: 0.70
         count_tokens_timeout: 1500ms
 rag:
-    recently_worn_penalty_days: 3
+    # Widened from 3 (033): a shorter window made recently worn items crowd out
+    # everything else.
+    recently_worn_penalty_days: 7
+    recently_recommended_penalty_days: 3
     long_unworn_bonus_days: 14
     rrf_k_parameter: 30
     recommendation_candidate_limit: 40
@@ -359,5 +362,22 @@ rag:
     recommendation_rewriter_max_semantic_length: 512
     recommendation_rewriter_max_lexical_terms: 24
     recommendation_rewriter_max_excluded_terms: 24
+    stale_candidate_slots: 4
+    stale_eligible_days: 30
+    cooldown_score_tolerance: 0.15
+personalization:
+    # Kill switch: when false, profile writes and style learning are no-ops and
+    # recommendations ignore the user's style profile.
+    enabled: true
+    max_styles: 4
+    style_blend_weight: 0.30
+    style_blend_weight_with_request: 0.10
+    learned_style_weight: 0.10
+    learned_embedding_weight: 0.20
+    embedding_timeout_seconds: 2
+    learning_decay: 0.9
+    gap_score_threshold: 0.35
+    suggestion_max_per_role: 1
+    suggestion_max_total: 3
 cache:
     overview_ttl_seconds: 60

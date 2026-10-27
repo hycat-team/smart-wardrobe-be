@@ -42,6 +42,7 @@ type Config struct {
 	BrandFeatureAccess  BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
 	Cache               CacheConfig                `mapstructure:"cache"`
 	Ingress             Ingress                    `mapstructure:"ingress"`
+	Personalization     Personalization            `mapstructure:"personalization"`
 }
 
 // App selects the runtime topology of a service binary (FR-044).
@@ -536,8 +537,44 @@ type Community struct {
 	LikeRateLimitPerHour     int     `mapstructure:"like_rate_limit_per_hour"`
 }
 
+// Personalization tunes the soft (never hard-filtering) application of a user's
+// declared style profile to outfit recommendations, plus the surrounding knobs
+// for style learning and catalog suggestions (033).
+//
+// Enabled is the kill switch: false turns profile writes and learning into
+// no-ops and skips the style context in recommendations, so no other key here
+// has to be touched to turn the feature off.
+type Personalization struct {
+	// Enabled is the global kill switch for personalized styling.
+	Enabled bool `mapstructure:"enabled"`
+	// MaxStyles caps how many declared style labels a profile may carry.
+	MaxStyles int `mapstructure:"max_styles"`
+	// StyleBlendWeight is the weight of the style vector when the request has no
+	// explicit style target.
+	StyleBlendWeight float64 `mapstructure:"style_blend_weight"`
+	// StyleBlendWeightWithRequest is the (lower) weight used when the request
+	// carries an explicit style target, because the request wins over the profile.
+	StyleBlendWeightWithRequest float64 `mapstructure:"style_blend_weight_with_request"`
+	// LearnedStyleWeight is the score weight of learned (inferred) styles.
+	LearnedStyleWeight float64 `mapstructure:"learned_style_weight"`
+	// LearnedEmbeddingWeight is the blend weight of the learned style embedding.
+	LearnedEmbeddingWeight float64 `mapstructure:"learned_embedding_weight"`
+	// EmbeddingTimeoutSeconds bounds the style-embedding call made on profile save.
+	EmbeddingTimeoutSeconds int `mapstructure:"embedding_timeout_seconds"`
+	// LearningDecay is the decay factor applied to previously learned styles.
+	LearningDecay float64 `mapstructure:"learning_decay"`
+	// GapScoreThreshold is the score below which an outfit role counts as a gap
+	// worth filling with a catalog suggestion.
+	GapScoreThreshold float64 `mapstructure:"gap_score_threshold"`
+	// SuggestionMaxPerRole caps catalog suggestions per outfit role.
+	SuggestionMaxPerRole int `mapstructure:"suggestion_max_per_role"`
+	// SuggestionMaxTotal caps catalog suggestions per response.
+	SuggestionMaxTotal int `mapstructure:"suggestion_max_total"`
+}
+
 type RAG struct {
 	RecentlyWornPenaltyDays                 int  `mapstructure:"recently_worn_penalty_days"`
+	RecentlyRecommendedPenaltyDays          int  `mapstructure:"recently_recommended_penalty_days"`
 	LongUnwornBonusDays                     int  `mapstructure:"long_unworn_bonus_days"`
 	RrfKParameter                           int  `mapstructure:"rrf_k_parameter"`
 	RecommendationCandidateLimit            int  `mapstructure:"recommendation_candidate_limit"`
@@ -549,6 +586,14 @@ type RAG struct {
 	RecommendationRewriterMaxSemanticLength int  `mapstructure:"recommendation_rewriter_max_semantic_length"`
 	RecommendationRewriterMaxLexicalTerms   int  `mapstructure:"recommendation_rewriter_max_lexical_terms"`
 	RecommendationRewriterMaxExcludedTerms  int  `mapstructure:"recommendation_rewriter_max_excluded_terms"`
+	// StaleCandidateSlots is how many candidate-pool slots are reserved for items
+	// the user has not worn for a long time (033 rotation).
+	StaleCandidateSlots int `mapstructure:"stale_candidate_slots"`
+	// StaleEligibleDays is the age after which an item counts as stale-eligible.
+	StaleEligibleDays int `mapstructure:"stale_eligible_days"`
+	// CooldownScoreTolerance is the score margin within which an item outside the
+	// recency cooldown window is promoted ahead of one inside it (033 rotation).
+	CooldownScoreTolerance float64 `mapstructure:"cooldown_score_tolerance"`
 }
 
 type TokenEstimationConfig struct {

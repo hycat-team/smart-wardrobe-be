@@ -746,3 +746,6 @@ backups/
 *.drawio.bkp
 .zcode/
 
+# Local Spec Kit feature pointer: per-developer state, not shared
+.specify/feature.json
+
