@@ -177,6 +177,18 @@ var Topology = []Binding{
 		Concurrency: 1,
 	},
 	{
+		Queue:       eventconstants.QueueStyleLearning,
+		RoutingKeys: []string{RoutingKeyOutfitSaved},
+		Exchange:    ExchangeName,
+		// 033 T017: quorum with x-delivery-limit 5, same reasoning as
+		// QueueSubscriptionPlanChanged above. The consumer is idempotent by
+		// signal id, so a transient database failure is retried and a poisoned
+		// message is dead-lettered after five attempts instead of looping.
+		Args:        queueArgs(eventconstants.QueueStyleLearning, true),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
 		Queue:       eventconstants.QueueCampaignGrantUserCreated,
 		RoutingKeys: []string{RoutingKeyUserCreated},
 		Exchange:    ExchangeName,
@@ -209,6 +221,7 @@ var DLQTopology = []Binding{
 	{Queue: eventconstants.QueueBrandFashionBind + ".dlq", RoutingKeys: []string{eventconstants.QueueBrandFashionBind + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCommunityOutfitCascade + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityOutfitCascade + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCommunityUserStatus + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityUserStatus + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueStyleLearning + ".dlq", RoutingKeys: []string{eventconstants.QueueStyleLearning + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCampaignGrantUserCreated + ".dlq", RoutingKeys: []string{eventconstants.QueueCampaignGrantUserCreated + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 }
 

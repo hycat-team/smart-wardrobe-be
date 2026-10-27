@@ -22,6 +22,9 @@ message UserSubscriptionOverview {
   int32 max_outfits = 8;
   int32 ai_outfit_daily_quota = 9;
   int32 ai_chat_daily_quota = 10;
+  // Personalization plan entitlement (033 D2). Additive: an old Account server
+  // leaves it false and a new client reads false, i.e. the feature is off.
+  bool personalization_enabled = 11;
 }
 
 // UserSubscription mirrors subscription.UserSubscriptionDTO (quota read model).

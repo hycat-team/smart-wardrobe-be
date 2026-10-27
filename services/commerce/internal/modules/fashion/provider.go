@@ -20,6 +20,10 @@ var ProviderSet = wire.NewSet(
 	persistence.NewCategoryRepository,
 	persistence.NewConversationalContextRepository,
 	persistence.NewMessageRepository,
+	// 033 T021: personalization persistence. The style learning worker and the
+	// style profile use case (later phases) are their consumers.
+	persistence.NewUserStyleProfileRepository,
+	persistence.NewStyleSignalRepository,
 
 	chat.NewWardrobeChatUseCase,
 	recommendation.NewOutfitRecommendationUseCase,

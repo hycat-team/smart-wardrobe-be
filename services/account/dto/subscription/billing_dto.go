@@ -28,6 +28,9 @@ type UserSubscriptionOverviewRes struct {
 	MaxOutfits         int        `json:"maxOutfits"`
 	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
+	// PersonalizationEnabled is the plan entitlement for personalized styling
+	// (033 D2). Additive field: old clients ignore it.
+	PersonalizationEnabled bool `json:"personalizationEnabled"`
 }
 
 type WalletDTO struct {
@@ -100,6 +103,9 @@ type SubscriptionPlanDTO struct {
 	PlanKind           plankind.PlanKind `json:"planKind"`
 	TierRank           int               `json:"tierRank"`
 	IsActive           bool              `json:"isActive"`
+	// PersonalizationEnabled is the plan entitlement for personalized styling
+	// (033 D2). Additive field: old clients ignore it.
+	PersonalizationEnabled bool `json:"personalizationEnabled"`
 }
 
 type SubscriptionPlanBriefRes struct {
@@ -114,6 +120,9 @@ type SubscriptionPlanBriefRes struct {
 	DurationDays       *int              `json:"durationDays,omitempty"`
 	PlanKind           plankind.PlanKind `json:"planKind"`
 	TierRank           int               `json:"tierRank"`
+	// PersonalizationEnabled is the plan entitlement for personalized styling
+	// (033 D2). Additive field: old clients ignore it.
+	PersonalizationEnabled bool `json:"personalizationEnabled"`
 }
 
 type CreateSubscriptionPlanReq struct {
@@ -128,6 +137,8 @@ type CreateSubscriptionPlanReq struct {
 	PlanKind           plankind.PlanKind `json:"planKind" label:"loại gói"`
 	TierRank           int               `json:"tierRank" label:"cấp bậc gói"`
 	IsActive           *bool             `json:"isActive" label:"trạng thái hoạt động"`
+	// PersonalizationEnabled defaults to false when omitted (033 contract §4.2).
+	PersonalizationEnabled *bool `json:"personalizationEnabled" label:"quyền cá nhân hoá"`
 }
 
 type UpdateSubscriptionPlanReq struct {
@@ -140,6 +151,8 @@ type UpdateSubscriptionPlanReq struct {
 	DurationDays       *int     `json:"durationDays" label:"thời hạn gói (ngày)"`
 	TierRank           *int     `json:"tierRank" label:"cấp bậc gói"`
 	IsActive           *bool    `json:"isActive" label:"trạng thái hoạt động"`
+	// PersonalizationEnabled nil means "keep the current value" (033 D2).
+	PersonalizationEnabled *bool `json:"personalizationEnabled" label:"quyền cá nhân hoá"`
 }
 
 type SetPlanActiveReq struct {

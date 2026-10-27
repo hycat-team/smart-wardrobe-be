@@ -32,6 +32,9 @@ const (
 
 	RoutingKeyOutfitDeleted     = eventconstants.TopicOutfitDeleted
 	RoutingKeyUserStatusChanged = eventconstants.TopicUserStatusChanged
+	// 033 T017: outfit-save signal for the style learning worker. References the
+	// topic symbol so the outbox routing key and the binding cannot drift.
+	RoutingKeyOutfitSaved = eventconstants.TopicOutfitSaved
 	// 025 T003 / FR-093 (R7): references the topic SYMBOL, never a raw literal.
 	// The topic also drives the outbox routing key, so two literals would be two
 	// definitions of the same event that can silently drift apart.

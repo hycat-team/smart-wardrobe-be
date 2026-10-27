@@ -12,18 +12,19 @@ func MapToSubscriptionPlanDTO(plan *entities.SubscriptionPlan) *dto.Subscription
 		return nil
 	}
 	return &dto.SubscriptionPlanDTO{
-		ID:                 plan.ID,
-		Slug:               plan.Slug,
-		Name:               plan.Name,
-		Price:              sharedmoney.ToFloat(plan.Price),
-		MaxWardrobeItems:   plan.MaxWardrobeItems,
-		MaxOutfits:         plan.MaxOutfits,
-		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:   plan.AiChatDailyQuota,
-		DurationDays:       plan.DurationDays,
-		PlanKind:           plan.PlanKind,
-		TierRank:           plan.TierRank,
-		IsActive:           plan.IsActive,
+		ID:                     plan.ID,
+		Slug:                   plan.Slug,
+		Name:                   plan.Name,
+		Price:                  sharedmoney.ToFloat(plan.Price),
+		MaxWardrobeItems:       plan.MaxWardrobeItems,
+		MaxOutfits:             plan.MaxOutfits,
+		AiOutfitDailyQuota:     plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:       plan.AiChatDailyQuota,
+		DurationDays:           plan.DurationDays,
+		PlanKind:               plan.PlanKind,
+		TierRank:               plan.TierRank,
+		IsActive:               plan.IsActive,
+		PersonalizationEnabled: plan.PersonalizationEnabled,
 	}
 }
 
@@ -43,17 +44,18 @@ func MapToSubscriptionPlanBrief(plan *entities.SubscriptionPlan) *dto.Subscripti
 		return nil
 	}
 	return &dto.SubscriptionPlanBriefRes{
-		ID:                 plan.ID,
-		Slug:               plan.Slug,
-		Name:               plan.Name,
-		Price:              sharedmoney.ToFloat(plan.Price),
-		MaxWardrobeItems:   plan.MaxWardrobeItems,
-		MaxOutfits:         plan.MaxOutfits,
-		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:   plan.AiChatDailyQuota,
-		DurationDays:       plan.DurationDays,
-		PlanKind:           plan.PlanKind,
-		TierRank:           plan.TierRank,
+		ID:                     plan.ID,
+		Slug:                   plan.Slug,
+		Name:                   plan.Name,
+		Price:                  sharedmoney.ToFloat(plan.Price),
+		MaxWardrobeItems:       plan.MaxWardrobeItems,
+		MaxOutfits:             plan.MaxOutfits,
+		AiOutfitDailyQuota:     plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:       plan.AiChatDailyQuota,
+		DurationDays:           plan.DurationDays,
+		PlanKind:               plan.PlanKind,
+		TierRank:               plan.TierRank,
+		PersonalizationEnabled: plan.PersonalizationEnabled,
 	}
 }
 

@@ -31,6 +31,11 @@ const (
 	TopicOutfitDeleted     = "wardrobe.outfit.deleted"
 	TopicUserStatusChanged = "identity.user.status.changed"
 
+	// Wardrobe events (033): the outfit-save signal consumed by the style
+	// learning worker. Published through the transactional outbox together with
+	// the outfit write, so delivery is at-least-once and keyed by signal id.
+	TopicOutfitSaved = "wardrobe.outfit.saved"
+
 	// Identity events
 	// TopicUserCreated is emitted by the account service for EVERY newly created
 	// account (025, FR-005). It carries no personally identifiable data (FR-087):
