@@ -28,6 +28,7 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
+	builder.WriteString("Your reply MUST contain a helpful natural-language answer for the user. Never reply with only a control token such as '[ACTION:REDIRECT_OUTFIT]'.\n")
 
 	builder.WriteString("CONSTRAINTS & RULES:\n")
 	if len(brandItems) > 0 || len(fashionItemMap) > 0 {
@@ -37,7 +38,7 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 		builder.WriteString("- If an item's color or brand name is unavailable, bold only the available parts.\n")
 		builder.WriteString("- Do not append '[ACTION:REDIRECT_OUTFIT]'.\n")
 	} else {
-		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, append '[ACTION:REDIRECT_OUTFIT]' at the very end.\n")
+		builder.WriteString("- First answer the user's question in natural Vietnamese. Then, if the user asks for outfit coordination or clothing suggestions, append '[ACTION:REDIRECT_OUTFIT]' at the very end. Never output only the token.\n")
 	}
 
 	if strings.TrimSpace(summary) != "" {
