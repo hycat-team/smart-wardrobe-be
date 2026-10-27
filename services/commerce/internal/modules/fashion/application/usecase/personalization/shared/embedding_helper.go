@@ -84,6 +84,46 @@ func MeanVectors(vectors [][]float32) []float32 {
 	return sliceutils.NormalizeVector(mean)
 }
 
+// DecayBlendVector returns normalize(decay·old + (1-decay)·incoming), the
+// learned-embedding update of design decision D7. Both sides are L2-normalised
+// before the blend and the result is normalised again, so the learned column
+// always keeps unit length whichever side is missing.
+//
+// An empty incoming vector returns nil: the caller must leave the stored vector
+// untouched instead of decaying it away when the items carry no embedding yet
+// (an item still being analysed is not a negative signal). An empty old vector
+// returns the normalised incoming vector. Mismatched lengths are truncated or
+// padded to the longer input before blending. Decay is clamped to [0, 1].
+func DecayBlendVector(old, incoming []float32, decay float64) []float32 {
+	incomingVector := sliceutils.NormalizeVector(incoming)
+	if len(incomingVector) == 0 {
+		return nil
+	}
+	oldVector := sliceutils.NormalizeVector(old)
+	if len(oldVector) == 0 {
+		return incomingVector
+	}
+
+	if decay < 0 {
+		decay = 0
+	} else if decay > 1 {
+		decay = 1
+	}
+
+	targetLength := len(oldVector)
+	if len(incomingVector) > targetLength {
+		targetLength = len(incomingVector)
+	}
+	oldVector = sliceutils.AdjustVectorLength(oldVector, targetLength)
+	incomingVector = sliceutils.AdjustVectorLength(incomingVector, targetLength)
+
+	blended := make([]float32, targetLength)
+	for i := range blended {
+		blended[i] = float32(decay*float64(oldVector[i]) + (1-decay)*float64(incomingVector[i]))
+	}
+	return sliceutils.NormalizeVector(blended)
+}
+
 // HashStyleProfile returns a deterministic hash of everything that affects the
 // embedded style text: the normalised style lists plus the embedding model. A
 // profile whose hash is unchanged can skip the embedding provider call
