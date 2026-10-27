@@ -170,20 +170,28 @@ local không đạt, phải điều chỉnh prompt/model/digest **trước** khi
 | Ollama | `0.40.11` | Cài bằng winget, server native Windows |
 | Model | `qwen2.5:3b-instruct-q4_K_M` | Pin digest `sha256:5ee4f07...31caa6`, ID `357c53fb659c` |
 | A3 functional GPU | **PASS** | non-stream 5.7s (cold) → `Hello!`; SSE TTFT 81ms/total 177ms; JSON pass; không reasoning |
-| A4 CPU-only | **BLOCKED** | Ollama desktop app tự giữ model trên GPU (`/api/ps` báo `size_vram` full) dù đặt `OLLAMA_NUM_GPU=0`; không có số CPU local đáng tin. Số 50 mẫu chat chạy được là **GPU reference**, không dùng cho SC-005 |
+| A4 CPU-only (Docker) | **PASS** | Container `ollama-cpu` port 11435, `/api/ps size_vram=0`; p50/p95: chat 2547/2937ms, free 2320/2560ms, recommendation 5917/6321ms (50 mẫu/capability, concurrency 2) |
 | A5 text qua AI service | **PASS** | `chat`, `outfit`, `summary`, `rewriter` → `provider=openai`, `billing_class=unbilled`, `actual_cost=0` |
 | A6 vision/embedding | **PASS** | `provider=google`; vision billed (`actual_cost=8531875` microVND), embedding unbilled |
-| A6b gRPC streaming | **PASS** | `GenerateChatTextStream` trả chunk `1`, `2`, `3`, `done=true`; `provider=openai`, TTFT 5687ms, cost 0 |
-| A7 fallback | **PASS** | Primary trỏ port chết `11435` → attempt 1 `transport`, attempt 2 Gemini `gemini-3.1-flash-lite` success; user paid route ghi `actual_cost=144375` microVND |
-| A8 restore | **PASS** | Trỏ lại `11434` → `provider=openai`, cost 0 |
+| A6b gRPC streaming | **PASS** | Success + `[DONE]`; fail-before → fallback Gemini; fail-after → chunk rồi lỗi, không fallback. Bug stream thiếu `[DONE]` đã sửa (`fixup! b9530ef4`) |
+| A7 fallback | **PASS** | Primary trỏ port chết/stub → attempt 1 lỗi, attempt 2 Gemini `gemini-3.1-flash-lite` success; user paid route ghi `actual_cost=144375` microVND |
+| A8 restore | **PASS** | Trỏ lại `11435` (container CPU) → `provider=openai`, cost 0 |
+| L2 json_schema | **PASS** | Ollama trả JSON đúng schema `outfit`; chất lượng tiếng Việt của 3B còn yếu, cần prompt thật khi đánh giá |
+| L3 failure matrix | **PASS** | 429/500/malformed/schema_invalid/timeout → Gemini fallback đúng 1 lần; 400 → 0 fallback; cancel → 0 fallback |
+| L5 concurrency | **PASS** | 5 request đồng thời: stub log cho thấy 2 → 2 → 1; elapsed 15.8s (semaphore 2 hoạt động) |
+| L5 soak | **PASS** | 100 request summary, 2 luồng × 50, concurrency 2: ok=100, fail=0, 145s |
 
 Ghi chú local:
-- Không kill được Ollama desktop bằng `Stop-Process` vì app tự khởi động lại; fallback drill dùng
-  endpoint chết `http://127.0.0.1:11435/v1/chat/completions` để tạo transport failure có kiểm soát.
-- Fallback model trong `.env` là `gemma-4-31b-it`; model này vượt timeout 30s khi có thinking. Local
-  drill dùng override `CHAT_TEXT_FALLBACK_MODEL=gemini-3.1-flash-lite`. Khi lên Lightsail, chọn một
-  Gemini fallback đủ nhanh (ví dụ flash-lite) và ghi rõ trong env trial.
+- CPU-only đo bằng container `ollama/ollama:0.40.11` ở port `11435`; host Ollama desktop vẫn giữ GPU nên
+  không dùng app desktop để đo CPU.
+- Fallback model mặc định `gemma-4-31b-it`/`gemma-4-26b-a4b-it` quá chậm hoặc sinh thinking, vượt timeout
+  30s. Local drill dùng `*_FALLBACK_MODEL=gemini-3.1-flash-lite`; khi lên Lightsail phải chọn fallback
+  Gemini nhanh tương tự.
+- Streaming bug: OpenAI adapter từng coi EOF không có `[DONE]` là success; đã sửa thành `malformed` và
+  thêm test (stream fail-before vẫn fallback, fail-after trả lỗi).
 - `version` trong attempt log rỗng vì chưa có `APP_VERSION`; đây là deferred D-04, không chặn local.
+- `L2` chất lượng câu trả lời 3B chưa tốt với prompt chung; trước khi chốt go/no-go cần chạy prompt thật
+  của outfit/rewriter và ghi nhận.
 
 ### A6. Cổng ra Phase A
 
@@ -194,7 +202,7 @@ Chỉ apply Terraform khi tất cả đạt:
 - [x] Structured output hợp lệ.
 - [x] Drill fallback pass.
 - [x] SSE chat không bị cắt: `AI_CHAT_CHUNK_DEADLINE_SECONDS=90` và primary timeout 90 đã đặt.
-- [ ] Recommendation: TTFT + thời gian sinh output nằm trong 90 giây, hoặc đã ghi nhận điều chỉnh/
+- [x] Recommendation: TTFT + thời gian sinh output nằm trong 90 giây, hoặc đã ghi nhận điều chỉnh/
       fallback trước khi đo.
 - [x] Digest/version đã ghi.
 
