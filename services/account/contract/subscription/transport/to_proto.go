@@ -22,6 +22,8 @@ func OverviewDTOToProto(d *subscriptiondto.UserSubscriptionContractDTO) *subscri
 		MaxOutfits:         int32(d.MaxOutfits),
 		AiOutfitDailyQuota: int32(d.AiOutfitDailyQuota),
 		AiChatDailyQuota:   int32(d.AiChatDailyQuota),
+		// 033 D2/delta §5: field 11 is additive; false is the safe default.
+		PersonalizationEnabled: d.PersonalizationEnabled,
 	}
 	if d.ExpiresAt != nil {
 		out.ExpiresAt = timestamppb.New(*d.ExpiresAt)

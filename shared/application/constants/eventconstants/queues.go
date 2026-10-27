@@ -20,6 +20,7 @@ const (
 	QueueElasticsearchProcessingExhausted = "elasticsearch_processing_exhausted_queue"
 	QueueCommunityOutfitCascade           = "community_outfit_cascade_queue"
 	QueueCommunityUserStatus              = "community_user_status_queue"
+	QueueStyleLearning                    = "style_learning_queue"
 
 	// QueueCampaignGrantUserCreated consumes TopicUserCreated for the signup
 	// campaign grant (025, FR-093). Named after the FEATURE, never after a

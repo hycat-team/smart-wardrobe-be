@@ -26,6 +26,8 @@ func TestOverviewRoundTrip(t *testing.T) {
 		MaxOutfits:         200,
 		AiOutfitDailyQuota: 20,
 		AiChatDailyQuota:   50,
+		// 033 T008: field 11 must survive the round-trip when enabled.
+		PersonalizationEnabled: true,
 	}
 
 	wire := subscriptiontransport.OverviewDTOToProto(original)
@@ -42,6 +44,53 @@ func TestOverviewRoundTrip(t *testing.T) {
 	}
 	if back.MaxWardrobeItems != original.MaxWardrobeItems || back.AiChatDailyQuota != original.AiChatDailyQuota {
 		t.Fatalf("quota mismatch: %+v", back)
+	}
+	if !back.PersonalizationEnabled {
+		t.Fatalf("personalizationEnabled lost across the wire: %+v", back)
+	}
+}
+
+// 033 T008: the additive field must be number 11 so an older Account server
+// (which does not know it) and a newer client agree on the wire while the
+// unknown-field rule keeps old payloads decodable.
+func TestOverviewPersonalizationFieldNumber(t *testing.T) {
+	field := (&subscriptionv1.UserSubscriptionOverview{}).ProtoReflect().
+		Descriptor().Fields().ByName("personalization_enabled")
+	if field == nil {
+		t.Fatal("personalization_enabled is missing from the proto descriptor")
+	}
+	if got := field.Number(); got != 11 {
+		t.Fatalf("personalization_enabled field number = %d, want 11", got)
+	}
+}
+
+// 033 T008: an old Account server sends no field 11 at all. The client must
+// read false rather than fail, which safely leaves personalization off.
+func TestOverviewOldPayloadDefaultsPersonalizationOff(t *testing.T) {
+	oldWire := &subscriptionv1.UserSubscriptionOverview{
+		PlanId:             uuid.New().String(),
+		PlanName:           "Free",
+		PlanSlug:           "free",
+		MaxWardrobeItems:   50,
+		MaxOutfits:         20,
+		AiOutfitDailyQuota: 3,
+		AiChatDailyQuota:   1,
+	}
+	raw, err := proto.Marshal(oldWire)
+	if err != nil {
+		t.Fatalf("marshal the old payload: %v", err)
+	}
+
+	var decoded subscriptionv1.UserSubscriptionOverview
+	if err := proto.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("decode the old payload: %v", err)
+	}
+	back, err := subscriptiontransport.OverviewToDTO(&decoded)
+	if err != nil {
+		t.Fatalf("from proto: %v", err)
+	}
+	if back.PersonalizationEnabled {
+		t.Fatalf("an absent field 11 must decode as false, got %+v", back)
 	}
 }
 

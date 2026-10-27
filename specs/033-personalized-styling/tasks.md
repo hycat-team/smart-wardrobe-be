@@ -63,25 +63,25 @@ trên nền này.
 
 ### Account - quyền lợi gói
 
-- [ ] T004 [P] Tạo migration `services/account/database/migrations/<ts>_add_plan_personalization.sql`:
+- [x] T004 [P] Tạo migration `services/account/database/migrations/<ts>_add_plan_personalization.sql`:
   thêm cột `subscription.subscription_plans.personalization_enabled boolean NOT NULL DEFAULT false`;
   bật `true` cho plan `is_active = true AND price > 0`; Down drop cột. Dùng `StatementBegin/End`.
-- [ ] T005 [P] Thêm field `PersonalizationEnabled` vào entity
+- [x] T005 [P] Thêm field `PersonalizationEnabled` vào entity
   `services/account/internal/modules/subscription/domain/entities/plan.go`, DTO
   `services/account/dto/subscription/billing_dto.go` (`SubscriptionPlanDTO`, `SubscriptionPlanBriefRes`,
   `UserSubscriptionOverviewRes`, `CreateSubscriptionPlanReq`, `UpdateSubscriptionPlanReq`), mapper
   `services/account/internal/modules/subscription/application/mapper/plan.go`, và usecase
   `services/account/internal/modules/subscription/application/usecase/plan/plan_uc.go`.
-- [ ] T006 [P] Thêm `PersonalizationEnabled` vào `services/account/dto/subscription/contract_dto.go`
+- [x] T006 [P] Thêm `PersonalizationEnabled` vào `services/account/dto/subscription/contract_dto.go`
   (`UserSubscriptionContractDTO`), `services/account/dto/subscription/quota.go` (nếu cần cho read model),
   `services/account/internal/modules/subscription/application/mapper/subscription.go`
   (`BuildUserSubscriptionOverviewRes`, `MapUserSubscriptionOverviewToContractDTO`,
   `ContractDTOToCacheEntry`, `CacheEntryToContractDTO`) và
   `services/account/internal/modules/subscription/application/interface/caching/overview_cache.go`
   (`SubscriptionOverviewCacheEntry`, `json:"personalizationEnabled,omitempty"`).
-- [ ] T007 [P] Thêm key `personalizationEnabled` vào `BuildPlanBenefitSnapshot` trong
+- [x] T007 [P] Thêm key `personalizationEnabled` vào `BuildPlanBenefitSnapshot` trong
   `services/account/internal/modules/subscription/application/usecase/subscription/internal_subscription_apply_workflow.go`.
-- [ ] T008 Thêm field 11 `bool personalization_enabled` vào `contracts/subscription/v1/subscription.proto`;
+- [x] T008 Thêm field 11 `bool personalization_enabled` vào `contracts/subscription/v1/subscription.proto`;
   chạy `make buf-gen`; cập nhật
   `services/account/contract/subscription/transport/to_proto.go`,
   `services/account/contract/subscription/transport/mapper.go`,
@@ -90,35 +90,35 @@ trên nền này.
 
 ### Commerce - schema và entity
 
-- [ ] T009 [P] Tạo migration `services/commerce/database/migrations/<ts>_add_personalization.sql`:
+- [x] T009 [P] Tạo migration `services/commerce/database/migrations/<ts>_add_personalization.sql`:
   `fashion.user_style_profiles` (PK user_id, FK `identity.users` cascade, jsonb arrays, vector 768,
   hash/model, learned_*), `fashion.style_signals` (PK id, source, outfit_id, recommendation_id,
   fashion_item_ids, style_snapshot, index + partial unique), `wardrobe.wardrobe_items.last_recommended_at`;
   checks và Down drop đúng thứ tự. DDL theo `data-model.md`.
-- [ ] T010 [P] Thêm entity `services/commerce/internal/modules/fashion/domain/entities/user_style_profile.go`
+- [x] T010 [P] Thêm entity `services/commerce/internal/modules/fashion/domain/entities/user_style_profile.go`
   và `.../style_signal.go`; đăng ký `TableName()` trong
   `services/commerce/internal/modules/fashion/domain/entities/table_name.go`.
-- [ ] T011 [P] Thêm `IUserStyleProfileRepository` và `IStyleSignalRepository` vào
+- [x] T011 [P] Thêm `IUserStyleProfileRepository` và `IStyleSignalRepository` vào
   `services/commerce/internal/modules/fashion/domain/repositories/interfaces.go`:
   `GetByUserID`, `Upsert`, `Delete`, `UpdateLearnedWithLock`, `InsertIfAbsent`, `CountByUserID`.
-- [ ] T012 [P] Implement `services/commerce/internal/modules/fashion/infrastructure/persistence/user_style_profile_repo.go`
+- [x] T012 [P] Implement `services/commerce/internal/modules/fashion/infrastructure/persistence/user_style_profile_repo.go`
   (GORM; `SELECT ... FOR UPDATE` cho `UpdateLearnedWithLock`; upsert idempotent).
-- [ ] T013 [P] Implement `services/commerce/internal/modules/fashion/infrastructure/persistence/style_signal_repo.go`
+- [x] T013 [P] Implement `services/commerce/internal/modules/fashion/infrastructure/persistence/style_signal_repo.go`
   (`INSERT ... ON CONFLICT (id) DO NOTHING`; partial unique cho feedback).
 
 ### Wardrobe - tín hiệu và contract
 
-- [ ] T014 [P] Thêm `LastRecommendedAt *time.Time` vào entity
+- [x] T014 [P] Thêm `LastRecommendedAt *time.Time` vào entity
   `services/commerce/internal/modules/wardrobe/domain/entities/wardrobe_item.go`, DTO
   `services/commerce/internal/modules/wardrobe/application/dto/contract_dto.go` và mapper
   `services/commerce/internal/modules/wardrobe/application/mapper/wardrobe.go`.
-- [ ] T015 [P] Thêm method vào `IWardrobeItemRepository`
+- [x] T015 [P] Thêm method vào `IWardrobeItemRepository`
   (`services/commerce/internal/modules/wardrobe/domain/repositories/interfaces.go`) và implement trong
   `services/commerce/internal/modules/wardrobe/infrastructure/persistence/wardrobe_repo.go`:
   `TouchLastRecommendedAt(ctx, ids, at)`, `GetStaleActiveItems(ctx, userID, limit)` (status InWardrobe,
   item_type UserItem, order `last_used_at ASC NULLS FIRST, last_recommended_at ASC NULLS FIRST`),
   `GetActiveSystemCatalogItemsByIDs(ctx, ids)` (chỉ SystemCatalogItem + InWardrobe + chưa xoá).
-- [ ] T016 [P] Thêm `GetSystemCatalogFashionItemIDs(ctx, limit)`, `GetOwnedFashionItemIDs(ctx, userID)`
+- [x] T016 [P] Thêm `GetSystemCatalogFashionItemIDs(ctx, limit)`, `GetOwnedFashionItemIDs(ctx, userID)`
   (mọi row chưa xoá, bất kỳ status), `GetStaleActiveWardrobeItemsByUserID(ctx, userID, limit)` (trả DTO)
   và `TouchLastRecommendedAt(ctx, wardrobeItemIDs, at)` vào
   `services/commerce/internal/modules/wardrobe/presentation/contract/wardrobe_contract.go` + impl
@@ -129,38 +129,38 @@ trên nền này.
 
 ### Event hạ tầng
 
-- [ ] T017 [P] Thêm `TopicOutfitSaved = "wardrobe.outfit.saved"` vào
+- [x] T017 [P] Thêm `TopicOutfitSaved = "wardrobe.outfit.saved"` vào
   `shared/application/constants/eventconstants/eventconstants.go`, `QueueStyleLearning` vào
   `.../eventconstants/queues.go`, `RoutingKeyOutfitSaved` vào
   `shared/infrastructure/messaging/rabbitmq_constants.go`; thêm binding quorum + DLQ cho
   `style_learning_queue` trong `shared/infrastructure/messaging/topology.go`.
-- [ ] T018 [P] Tạo `OutfitSavedEventPayload` trong
+- [x] T018 [P] Tạo `OutfitSavedEventPayload` trong
   `services/commerce/internal/modules/wardrobe/application/dto/outfit_event.go` (`signalId`, `userId`,
   `outfitId`, `fashionItemIds`, `source`, `occurredAt`).
 
 ### Helper dùng chung
 
-- [ ] T019 [P] Tạo `services/commerce/internal/modules/fashion/application/usecase/personalization/shared/style_lexicon.go`:
+- [x] T019 [P] Tạo `services/commerce/internal/modules/fashion/application/usecase/personalization/shared/style_lexicon.go`:
   map canonical style → câu mô tả tiếng Việt để enrich embedding; `NormalizeStyleLabels` dùng taxonomy
   hiện có, giữ nguyên giá trị lạ.
-- [ ] T020 [P] Tạo `.../personalization/shared/embedding_helper.go`: `BlendVectors(query, style, weight)`,
+- [x] T020 [P] Tạo `.../personalization/shared/embedding_helper.go`: `BlendVectors(query, style, weight)`,
   `MeanVectors`, `HashStyleProfile`; xử lý dimension 768 và vector rỗng. Đặt `NormalizeVector` duy nhất
   ở `shared/pkg/utils/sliceutils/sliceutils.go`; helper chỉ gọi lại, không định nghĩa bản thứ hai.
 
 ### DI và build
 
-- [ ] T021 Đăng ký repo/usecase/provider mới trong `services/commerce/internal/modules/fashion/provider.go`,
+- [x] T021 Đăng ký repo/usecase/provider mới trong `services/commerce/internal/modules/fashion/provider.go`,
   `services/commerce/internal/modules/wardrobe/provider.go` (nếu cần) và
   `services/commerce/internal/bootstrap/worker.go`; chạy `make wire svc=commerce` và `go build ./...` cho commerce.
-- [ ] T022 [P] DB integration test nền cho migration + repo trong `services/commerce/internal/modules/fashion/infrastructure/persistence/personalization_schema_test.go` và
+- [x] T022 [P] DB integration test nền cho migration + repo trong `services/commerce/internal/modules/fashion/infrastructure/persistence/personalization_schema_test.go` và
   `services/commerce/internal/modules/wardrobe/infrastructure/persistence/wardrobe_repo_personalization_test.go`:
   dùng disposable DB dựng đúng `database/init/*.sql` + `make migrate-up` (không `AutoMigrate`/tự tạo schema),
   DSN có `search_path` theo `docs/development/local-setup.md`; test unique partial feedback, FK cascade,
   `GetStaleActiveItems` order, clone catalog filter; đặt tên `TestIntegration*`.
-- [ ] T023 [P] Contract test cho proto/cache: `services/account/contract/subscription/transport/mapper_test.go`
+- [x] T023 [P] Contract test cho proto/cache: `services/account/contract/subscription/transport/mapper_test.go`
   (field 11 round-trip, client cũ thiếu field → false) và test cache entry cũ trong
   `services/account/internal/modules/subscription/application/mapper/subscription_test.go`.
-- [ ] T024 [P] Test hạ tầng event: `shared/infrastructure/messaging/topology_test.go` xác nhận queue
+- [x] T024 [P] Test hạ tầng event: `shared/infrastructure/messaging/topology_test.go` xác nhận queue
   `style_learning_queue` là quorum + DLQ; test payload marshal/unmarshal trong
   `services/commerce/internal/modules/wardrobe/application/dto/outfit_event_test.go`.
 

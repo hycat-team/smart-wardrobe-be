@@ -37,6 +37,22 @@ type IWardrobeItemRepository interface {
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
+	// TouchLastRecommendedAt marks wardrobe items as recently recommended
+	// (feature 033). Best-effort: a failed write is tolerated and retried by the
+	// next recommendation.
+	TouchLastRecommendedAt(ctx context.Context, ids []uuid.UUID, recommendedAt time.Time) error
+	// GetStaleActiveItems returns the user's own active items ordered by the two
+	// recency signals so the oldest ones surface first.
+	GetStaleActiveItems(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
+	// GetActiveSystemCatalogItemsByIDs returns only valid catalog rows: item_type
+	// SystemCatalogItem, status InWardrobe, not deleted.
+	GetActiveSystemCatalogItemsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
+	// GetSystemCatalogFashionItemIDs lists fashion item ids of the system
+	// catalog rows available for outfit completion.
+	GetSystemCatalogFashionItemIDs(ctx context.Context, limit int) ([]uuid.UUID, error)
+	// GetOwnedFashionItemIDs lists every non-deleted fashion item id the user
+	// owns, regardless of item status (ownership for dedupe/clone).
+	GetOwnedFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*UserWardrobeSummaryStatsDTO, error)
 	GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
 }

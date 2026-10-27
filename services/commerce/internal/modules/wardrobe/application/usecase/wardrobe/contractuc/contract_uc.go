@@ -92,3 +92,32 @@ func (uc *WardrobeContractUseCase) GetWardrobeItemsByFashionItemIDs(ctx context.
 	}
 	return mapper.MapToWardrobeItemContractDTOList(items), nil
 }
+
+// GetSystemCatalogFashionItemIDs returns the fashion item ids of the system
+// catalog rows available for outfit completion. Pure: only the wardrobe
+// repository is read (no other module contract is called).
+func (uc *WardrobeContractUseCase) GetSystemCatalogFashionItemIDs(ctx context.Context, limit int) ([]uuid.UUID, error) {
+	return uc.wardrobeRepo.GetSystemCatalogFashionItemIDs(ctx, limit)
+}
+
+// GetOwnedFashionItemIDs returns every fashion item id the user already owns
+// (non-deleted wardrobe row, any status).
+func (uc *WardrobeContractUseCase) GetOwnedFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	return uc.wardrobeRepo.GetOwnedFashionItemIDs(ctx, userID)
+}
+
+// GetStaleActiveWardrobeItemsByUserID returns the user's own active items
+// ordered by the two recency signals, for rotation stale slots.
+func (uc *WardrobeContractUseCase) GetStaleActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemContractDTO, error) {
+	items, err := uc.wardrobeRepo.GetStaleActiveItems(ctx, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MapToWardrobeItemContractDTOList(items), nil
+}
+
+// TouchLastRecommendedAt records that the given wardrobe items were returned by
+// a recommendation. Callers treat failures as best-effort.
+func (uc *WardrobeContractUseCase) TouchLastRecommendedAt(ctx context.Context, wardrobeItemIDs []uuid.UUID, at time.Time) error {
+	return uc.wardrobeRepo.TouchLastRecommendedAt(ctx, wardrobeItemIDs, at)
+}

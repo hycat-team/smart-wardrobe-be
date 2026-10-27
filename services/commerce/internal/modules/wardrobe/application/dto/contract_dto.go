@@ -34,6 +34,8 @@ type WardrobeItemContractDTO struct {
 	BrandItemID   *uuid.UUID                        `json:"brandItemId,omitempty"`
 	CreatedAt     time.Time                         `json:"createdAt"`
 	LastUsedAt    *time.Time                        `json:"lastUsedAt,omitempty"`
-	IsDeleted     bool                              `json:"isDeleted"`
-	TaskID        *uuid.UUID                        `json:"taskId,omitempty"`
+	// LastRecommendedAt is exposed for the recency rotation (feature 033).
+	LastRecommendedAt *time.Time `json:"lastRecommendedAt,omitempty"`
+	IsDeleted         bool       `json:"isDeleted"`
+	TaskID            *uuid.UUID `json:"taskId,omitempty"`
 }

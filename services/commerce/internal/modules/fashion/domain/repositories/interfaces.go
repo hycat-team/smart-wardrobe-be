@@ -67,6 +67,35 @@ type IConversationalContextRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.ConversationalContext, error)
 }
 
+// IUserStyleProfileRepository owns fashion.user_style_profiles (one row per
+// user). It deliberately does not embed the generic repository: the primary key
+// is user_id, not id, so GetByID would query a column that does not exist.
+type IUserStyleProfileRepository interface {
+	GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserStyleProfile, error)
+	// Upsert inserts the profile or replaces the mutable columns of an existing
+	// row (user_id and created_at are preserved).
+	Upsert(ctx context.Context, profile *entities.UserStyleProfile) error
+	Delete(ctx context.Context, userID uuid.UUID) error
+	// UpdateLearnedWithLock locks the profile row with SELECT ... FOR UPDATE,
+	// creates a default row when the user has none yet, applies mutate under the
+	// lock and persists only the learned_* columns. Explicit preferences
+	// (styles/excluded_styles/enabled) can never be overwritten by this path.
+	UpdateLearnedWithLock(
+		ctx context.Context,
+		userID uuid.UUID,
+		mutate func(profile *entities.UserStyleProfile) error,
+	) (*entities.UserStyleProfile, error)
+}
+
+// IStyleSignalRepository owns fashion.style_signals.
+type IStyleSignalRepository interface {
+	// InsertIfAbsent inserts the signal with ON CONFLICT (id) DO NOTHING and
+	// reports whether a new row was written. It is the idempotency boundary for
+	// at-least-once outbox delivery.
+	InsertIfAbsent(ctx context.Context, signal *entities.StyleSignal) (bool, error)
+	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+}
+
 type IMessageRepository interface {
 	shared_repos.IGenericRepository[entities.Message, uuid.UUID]
 	CountByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)

@@ -41,3 +41,19 @@ func (c *WardrobeContract) CountFashionItemOwnersByFashionIDs(ctx context.Contex
 func (c *WardrobeContract) GetWardrobeItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.WardrobeItemContractDTO, error) {
 	return c.wardrobeContractUC.GetWardrobeItemsByFashionItemIDs(ctx, fashionItemIDs)
 }
+
+func (c *WardrobeContract) GetSystemCatalogFashionItemIDs(ctx context.Context, limit int) ([]uuid.UUID, error) {
+	return c.wardrobeContractUC.GetSystemCatalogFashionItemIDs(ctx, limit)
+}
+
+func (c *WardrobeContract) GetOwnedFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	return c.wardrobeContractUC.GetOwnedFashionItemIDs(ctx, userID)
+}
+
+func (c *WardrobeContract) GetStaleActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemContractDTO, error) {
+	return c.wardrobeContractUC.GetStaleActiveWardrobeItemsByUserID(ctx, userID, limit)
+}
+
+func (c *WardrobeContract) TouchLastRecommendedAt(ctx context.Context, wardrobeItemIDs []uuid.UUID, at time.Time) error {
+	return c.wardrobeContractUC.TouchLastRecommendedAt(ctx, wardrobeItemIDs, at)
+}

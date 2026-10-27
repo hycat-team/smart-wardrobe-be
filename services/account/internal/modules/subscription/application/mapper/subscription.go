@@ -55,6 +55,9 @@ func BuildUserSubscriptionOverviewRes(sub *entities.UserSubscription, plan *enti
 		MaxOutfits:         plan.MaxOutfits,
 		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
 		AiChatDailyQuota:   plan.AiChatDailyQuota,
+		// 033 D2: the overview reads the plan row directly, never the benefit
+		// snapshot, so a retuned entitlement reaches users without a re-grant.
+		PersonalizationEnabled: plan.PersonalizationEnabled,
 	}
 }
 
@@ -65,15 +68,16 @@ func MapUserSubscriptionOverviewToContractDTO(res *dto.UserSubscriptionOverviewR
 		return nil
 	}
 	return &dto.UserSubscriptionContractDTO{
-		PlanID:             res.PlanID,
-		PlanName:           res.PlanName,
-		PlanSlug:           res.PlanSlug,
-		ExpiresAt:          res.ExpiresAt,
-		IsAutoRenewEnabled: res.IsAutoRenewEnabled,
-		MaxWardrobeItems:   res.MaxWardrobeItems,
-		MaxOutfits:         res.MaxOutfits,
-		AiOutfitDailyQuota: res.AiOutfitDailyQuota,
-		AiChatDailyQuota:   res.AiChatDailyQuota,
+		PlanID:                 res.PlanID,
+		PlanName:               res.PlanName,
+		PlanSlug:               res.PlanSlug,
+		ExpiresAt:              res.ExpiresAt,
+		IsAutoRenewEnabled:     res.IsAutoRenewEnabled,
+		MaxWardrobeItems:       res.MaxWardrobeItems,
+		MaxOutfits:             res.MaxOutfits,
+		AiOutfitDailyQuota:     res.AiOutfitDailyQuota,
+		AiChatDailyQuota:       res.AiChatDailyQuota,
+		PersonalizationEnabled: res.PersonalizationEnabled,
 	}
 }
 
@@ -128,16 +132,17 @@ func ContractDTOToCacheEntry(dto *dto.UserSubscriptionContractDTO) *caching.Subs
 		return nil
 	}
 	return &caching.SubscriptionOverviewCacheEntry{
-		PlanID:             dto.PlanID,
-		PlanName:           dto.PlanName,
-		PlanSlug:           dto.PlanSlug,
-		ExpiresAt:          dto.ExpiresAt,
-		IsAutoRenewEnabled: dto.IsAutoRenewEnabled,
-		MaxWardrobeItems:   dto.MaxWardrobeItems,
-		MaxOutfits:         dto.MaxOutfits,
-		AiOutfitDailyQuota: dto.AiOutfitDailyQuota,
-		AiChatDailyQuota:   dto.AiChatDailyQuota,
-		CachedAt:           time.Now().UTC()}
+		PlanID:                 dto.PlanID,
+		PlanName:               dto.PlanName,
+		PlanSlug:               dto.PlanSlug,
+		ExpiresAt:              dto.ExpiresAt,
+		IsAutoRenewEnabled:     dto.IsAutoRenewEnabled,
+		MaxWardrobeItems:       dto.MaxWardrobeItems,
+		MaxOutfits:             dto.MaxOutfits,
+		AiOutfitDailyQuota:     dto.AiOutfitDailyQuota,
+		AiChatDailyQuota:       dto.AiChatDailyQuota,
+		PersonalizationEnabled: dto.PersonalizationEnabled,
+		CachedAt:               time.Now().UTC()}
 }
 
 // CacheEntryToContractDTO converts a cached overview entry back into the
@@ -156,5 +161,8 @@ func CacheEntryToContractDTO(entry *caching.SubscriptionOverviewCacheEntry) *dto
 		MaxOutfits:         entry.MaxOutfits,
 		AiOutfitDailyQuota: entry.AiOutfitDailyQuota,
 		AiChatDailyQuota:   entry.AiChatDailyQuota,
+		// An old cache entry has no such key: decoding leaves it false, which
+		// safely turns personalization off until the entry expires (033 D12).
+		PersonalizationEnabled: entry.PersonalizationEnabled,
 	}
 }

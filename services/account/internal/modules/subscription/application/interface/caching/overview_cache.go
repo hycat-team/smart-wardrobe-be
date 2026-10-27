@@ -20,7 +20,10 @@ type SubscriptionOverviewCacheEntry struct {
 	MaxOutfits         int        `json:"maxOutfits"`
 	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
-	CachedAt           time.Time  `json:"cachedAt"`
+	// PersonalizationEnabled is additive; `omitempty` keeps old payloads
+	// byte-compatible and an absent key decodes as false (033 D12).
+	PersonalizationEnabled bool      `json:"personalizationEnabled,omitempty"`
+	CachedAt               time.Time `json:"cachedAt"`
 }
 
 // ISubscriptionOverviewCache caches the per-user subscription overview served

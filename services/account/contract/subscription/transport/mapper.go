@@ -32,6 +32,9 @@ func OverviewToDTO(pb *subscriptionv1.UserSubscriptionOverview) (*subscriptiondt
 		MaxOutfits:         int(pb.GetMaxOutfits()),
 		AiOutfitDailyQuota: int(pb.GetAiOutfitDailyQuota()),
 		AiChatDailyQuota:   int(pb.GetAiChatDailyQuota()),
+		// 033 D2/delta §5: an old Account server leaves field 11 unset, so this
+		// reads false and personalization stays off instead of erroring.
+		PersonalizationEnabled: pb.GetPersonalizationEnabled(),
 	}
 	if pb.GetHasExpiresAt() && pb.GetExpiresAt() != nil {
 		expiresAt := pb.GetExpiresAt().AsTime()

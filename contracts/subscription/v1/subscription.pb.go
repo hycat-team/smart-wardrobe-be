@@ -100,8 +100,11 @@ type UserSubscriptionOverview struct {
 	MaxOutfits         int32                  `protobuf:"varint,8,opt,name=max_outfits,json=maxOutfits,proto3" json:"max_outfits,omitempty"`
 	AiOutfitDailyQuota int32                  `protobuf:"varint,9,opt,name=ai_outfit_daily_quota,json=aiOutfitDailyQuota,proto3" json:"ai_outfit_daily_quota,omitempty"`
 	AiChatDailyQuota   int32                  `protobuf:"varint,10,opt,name=ai_chat_daily_quota,json=aiChatDailyQuota,proto3" json:"ai_chat_daily_quota,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Personalization plan entitlement (033 D2). Additive: an old Account server
+	// leaves it false and a new client reads false, i.e. the feature is off.
+	PersonalizationEnabled bool `protobuf:"varint,11,opt,name=personalization_enabled,json=personalizationEnabled,proto3" json:"personalization_enabled,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *UserSubscriptionOverview) Reset() {
@@ -202,6 +205,13 @@ func (x *UserSubscriptionOverview) GetAiChatDailyQuota() int32 {
 		return x.AiChatDailyQuota
 	}
 	return 0
+}
+
+func (x *UserSubscriptionOverview) GetPersonalizationEnabled() bool {
+	if x != nil {
+		return x.PersonalizationEnabled
+	}
+	return false
 }
 
 // UserSubscription mirrors subscription.UserSubscriptionDTO (quota read model).
@@ -1213,7 +1223,7 @@ var File_contracts_subscription_v1_subscription_proto protoreflect.FileDescripto
 
 const file_contracts_subscription_v1_subscription_proto_rawDesc = "" +
 	"\n" +
-	",contracts/subscription/v1/subscription.proto\x12\x15closy.subscription.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb2\x03\n" +
+	",contracts/subscription/v1/subscription.proto\x12\x15closy.subscription.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xeb\x03\n" +
 	"\x18UserSubscriptionOverview\x12\x17\n" +
 	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12\x1b\n" +
 	"\tplan_name\x18\x02 \x01(\tR\bplanName\x12\x1b\n" +
@@ -1227,7 +1237,8 @@ const file_contracts_subscription_v1_subscription_proto_rawDesc = "" +
 	"maxOutfits\x121\n" +
 	"\x15ai_outfit_daily_quota\x18\t \x01(\x05R\x12aiOutfitDailyQuota\x12-\n" +
 	"\x13ai_chat_daily_quota\x18\n" +
-	" \x01(\x05R\x10aiChatDailyQuota\"\xfb\x03\n" +
+	" \x01(\x05R\x10aiChatDailyQuota\x127\n" +
+	"\x17personalization_enabled\x18\v \x01(\bR\x16personalizationEnabled\"\xfb\x03\n" +
 	"\x10UserSubscription\x12\x17\n" +
 	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12\x1b\n" +
 	"\tplan_name\x18\x02 \x01(\tR\bplanName\x12\x1b\n" +

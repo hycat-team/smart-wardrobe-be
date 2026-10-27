@@ -405,6 +405,92 @@ func (r *WardrobeItemRepository) TouchLastUsedAt(ctx context.Context, ids []uuid
 		Update("last_used_at", usedAt).Error
 }
 
+// TouchLastRecommendedAt records the moment the given items were returned by a
+// recommendation. Used best-effort after a successful recommendation (FR-054).
+func (r *WardrobeItemRepository) TouchLastRecommendedAt(ctx context.Context, ids []uuid.UUID, recommendedAt time.Time) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	return r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("id IN ?", ids).
+		Update("last_recommended_at", recommendedAt).Error
+}
+
+// GetStaleActiveItems returns the user's own active items, oldest first on both
+// recency signals. Items never used or never recommended sort before the rest
+// so the rotation can pull them into the candidate pool.
+func (r *WardrobeItemRepository) GetStaleActiveItems(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error) {
+	var items []*entities.WardrobeItem
+	query := r.GetDB(ctx).
+		Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.status = ? AND wardrobe_items.item_type = ?",
+			userID, false, wardrobestatus.InWardrobe, itemtype.UserItem).
+		Order("wardrobe_items.last_used_at ASC NULLS FIRST").
+		Order("wardrobe_items.last_recommended_at ASC NULLS FIRST")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if err := query.Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// GetActiveSystemCatalogItemsByIDs returns only rows that may be cloned into a
+// user's wardrobe: system catalog, still in the wardrobe, not deleted.
+func (r *WardrobeItemRepository) GetActiveSystemCatalogItemsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var items []*entities.WardrobeItem
+	err := r.GetDB(ctx).
+		Where("wardrobe_items.fashion_item_id IN ? AND wardrobe_items.item_type = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
+			ids, itemtype.SystemCatalogItem, wardrobestatus.InWardrobe, false).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// GetSystemCatalogFashionItemIDs lists the fashion item ids of available
+// system catalog rows. Callers cache the result; no cross-module join happens
+// here (FR-033, module boundary).
+func (r *WardrobeItemRepository) GetSystemCatalogFashionItemIDs(ctx context.Context, limit int) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	query := r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("wardrobe_items.item_type = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.fashion_item_id IS NOT NULL",
+			itemtype.SystemCatalogItem, wardrobestatus.InWardrobe, false).
+		Distinct().
+		Order("wardrobe_items.fashion_item_id")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if err := query.Pluck("wardrobe_items.fashion_item_id", &ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// GetOwnedFashionItemIDs lists every fashion item id referenced by a non-deleted
+// wardrobe row of the user, whatever its status. This is the "already owned"
+// definition used for suggestion dedupe and catalog clone reuse.
+func (r *WardrobeItemRepository) GetOwnedFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.fashion_item_id IS NOT NULL",
+			userID, false).
+		Distinct().
+		Pluck("wardrobe_items.fashion_item_id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, filterByFashionItems bool, withPreload bool) *gorm.DB {
 	var query *gorm.DB
 	if withPreload {

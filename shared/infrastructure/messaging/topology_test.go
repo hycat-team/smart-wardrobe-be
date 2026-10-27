@@ -92,6 +92,71 @@ func TestCampaignGrantQueueIsNotBoundToAnotherTopic(t *testing.T) {
 	t.Fatalf("queue %s is missing from Topology", eventconstants.QueueCampaignGrantUserCreated)
 }
 
+// TestStyleLearningQueueDeliveryContract guards the 033 T017 delivery decision
+// for the outfit-save signal: quorum with x-delivery-limit 5 plus a matching
+// dead letter queue.
+//
+// The consumer is idempotent by signal id (ON CONFLICT (id) DO NOTHING), so the
+// cost of a redelivery is a no-op — but only if a redelivery happens at all. On
+// a classic queue a transient database failure is redelivered forever, while
+// quorum alone dead-letters it on the first attempt; both halves are required,
+// exactly as for the plan-changed queue.
+func TestStyleLearningQueueDeliveryContract(t *testing.T) {
+	// The broker name is pinned here on purpose: renaming the constant would
+	// leave the old `style_learning_queue` declared on the broker and the new
+	// one empty, and nothing else in the code would notice.
+	if eventconstants.QueueStyleLearning != "style_learning_queue" {
+		t.Fatalf("QueueStyleLearning = %q, want style_learning_queue", eventconstants.QueueStyleLearning)
+	}
+
+	owners := bindingsRoutingTo(Topology, eventconstants.TopicOutfitSaved)
+	if len(owners) != 1 {
+		t.Fatalf("%s is bound by %d queues (%s), want exactly 1: a second consumer would apply the same "+
+			"signal twice", eventconstants.TopicOutfitSaved, len(owners), queueNames(owners))
+	}
+	binding := owners[0]
+	if binding.Queue != eventconstants.QueueStyleLearning {
+		t.Fatalf("%s is bound to queue %q, want %q",
+			eventconstants.TopicOutfitSaved, binding.Queue, eventconstants.QueueStyleLearning)
+	}
+	if got := binding.Args["x-queue-type"]; got != QueueTypeQuorum {
+		t.Errorf("x-queue-type = %v, want %s (a redelivered signal must be bounded)", got, QueueTypeQuorum)
+	}
+	if got, ok := binding.Args["x-delivery-limit"]; !ok || got != 5 {
+		t.Errorf("x-delivery-limit = %v, want 5", got)
+	}
+	if got := binding.Args["x-dead-letter-exchange"]; got != ExchangeDLXName {
+		t.Errorf("x-dead-letter-exchange = %v, want %s", got, ExchangeDLXName)
+	}
+	if got := binding.Args["x-dead-letter-routing-key"]; got != eventconstants.QueueStyleLearning+".dlq" {
+		t.Errorf("x-dead-letter-routing-key = %v, want %s.dlq", got, eventconstants.QueueStyleLearning)
+	}
+	if binding.Prefetch != 20 || binding.Concurrency != 1 {
+		t.Errorf("prefetch/concurrency = %d/%d, want 20/1", binding.Prefetch, binding.Concurrency)
+	}
+
+	// queueArgs routes to <queue>.dlq, so the DLQ binding has to exist or a
+	// rejected message is dropped by the broker with nothing to inspect.
+	dlqName := eventconstants.QueueStyleLearning + ".dlq"
+	deadLetters := bindingsRoutingTo(DLQTopology, dlqName)
+	if len(deadLetters) != 1 {
+		t.Fatalf("%s is bound %d times in DLQTopology, want 1", dlqName, len(deadLetters))
+	}
+	if got := deadLetters[0].Exchange; got != ExchangeDLXName {
+		t.Errorf("%s bound to exchange %q, want %s", dlqName, got, ExchangeDLXName)
+	}
+	if got := deadLetters[0].Args["x-queue-type"]; got != QueueTypeQuorum {
+		t.Errorf("%s x-queue-type = %v, want %s: a dead-letter queue for a quorum queue must be quorum",
+			dlqName, got, QueueTypeQuorum)
+	}
+
+	// The topology drift tool reads this map; it must agree with the binding.
+	if got := DesiredQueueTypes()[eventconstants.QueueStyleLearning]; got != QueueTypeQuorum {
+		t.Errorf("DesiredQueueTypes()[%s] = %q, want %q",
+			eventconstants.QueueStyleLearning, got, QueueTypeQuorum)
+	}
+}
+
 // bindingsRoutingTo returns every binding that routes to key.
 func bindingsRoutingTo(bindings []Binding, key string) []Binding {
 	var matches []Binding
