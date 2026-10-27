@@ -154,6 +154,62 @@ func TestComputeLocationsWidenProxyTimeoutForLongRunningEndpoint(t *testing.T) {
 	}
 }
 
+func TestLongTimeoutPrefixesByProfile(t *testing.T) {
+	has := func(profile, prefix string) bool {
+		for _, p := range longTimeoutPrefixesByProfile[profile] {
+			if p == prefix {
+				return true
+			}
+		}
+		return false
+	}
+	for _, profile := range []string{timeoutProfileLocal, timeoutProfileAWS} {
+		if !has(profile, "/api/v1/ai/outfit-recommendations") {
+			t.Errorf("profile %s must widen the AI outfit route", profile)
+		}
+	}
+	if has(timeoutProfileVPS, "/api/v1/ai/outfit-recommendations") {
+		t.Error("vps profile must not widen the AI outfit route")
+	}
+	for _, profile := range []string{timeoutProfileVPS, timeoutProfileLocal, timeoutProfileAWS} {
+		if !has(profile, "/api/v1/admin/subscription-grants") {
+			t.Errorf("profile %s lost the admin batch grant override", profile)
+		}
+	}
+}
+
+func TestApplyLongTimeoutResetsPreviousFlags(t *testing.T) {
+	locs := []location{
+		{prefix: "/api/v1/ai/outfit-recommendations", owner: "commerce", long: true},
+		{prefix: "/api/v1/health", owner: "ai", long: true},
+	}
+	applyLongTimeout(locs, longTimeoutPrefixesByProfile[timeoutProfileVPS])
+	if locs[0].long || locs[1].long {
+		t.Fatalf("vps profile kept a long flag from another profile: %+v", locs)
+	}
+	applyLongTimeout(locs, longTimeoutPrefixesByProfile[timeoutProfileLocal])
+	if !locs[0].long {
+		t.Fatalf("local profile did not widen the AI outfit route: %+v", locs)
+	}
+	if locs[1].long {
+		t.Fatalf("local profile unexpectedly widened an unrelated route: %+v", locs)
+	}
+}
+
+func TestMarkerFilesUseExpectedTimeoutProfiles(t *testing.T) {
+	want := map[string]string{
+		"deployments/nginx/templates/services/vps-3service.conf.template":          timeoutProfileVPS,
+		"deployments/nginx/templates/services-redirect/vps-3service.conf.template": timeoutProfileVPS,
+		"deployments/nginx/templates/aws/api-v2.conf.template":                     timeoutProfileAWS,
+		"deployments/nginx/local.conf":                                             timeoutProfileLocal,
+	}
+	for _, mf := range markerFiles {
+		if want[mf.path] != mf.timeoutProfile {
+			t.Errorf("%s timeout profile = %q, want %q", mf.path, mf.timeoutProfile, want[mf.path])
+		}
+	}
+}
+
 func TestRenderRegionLongTimeoutKeepsBuffering(t *testing.T) {
 	out := renderRegion([]location{
 		{prefix: "/api/v1/admin/subscription-grants", owner: "account", long: true},
