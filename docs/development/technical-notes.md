@@ -314,28 +314,30 @@ không còn dữ liệu seed.
 
 ---
 
-## p95 của endpoint gợi ý phối đồ (033 SC-010) — **PASS**
+## p95 của endpoint gợi ý phối đồ (033 SC-010) — **FAIL trên AI path, PASS trên fallback**
 
 ### Số đo 2026-10-27
 
 Môi trường: `verify_033` (init + migrate 3 service), account 8081, ai 8082, commerce 8080, 5 active
 item (ao/quan clone), plan `premium-monthly` (`personalization_enabled=true`), catalog footwear chưa
-sở hữu. Recommendation text provider trả `provider_error` nên endpoint dùng HSL fallback
-(`isFallback=true`); embedding provider hoạt động.
+sở hữu. Embedding provider hoạt động.
 
-| Chỉ số | Giá trị |
-|---|---|
-| n | 50 (0 lỗi) |
-| min | 478.1 ms |
-| p50 | 563.4 ms |
-| **p95** | **673.3 ms** |
-| p99 | 766.8 ms |
-| max | 766.8 ms |
-| avg | 572.1 ms |
+| Path | n | p50 | p95 | p99 | max | Kết luận |
+|---|---|---|---|---|---|---|
+| HSL fallback (`provider_error`) | 50 | 563.4 ms | **673.3 ms** | 766.8 ms | 766.8 ms | **PASS** |
+| AI `gemini-2.5-flash-lite` | 50 | 4903.7 ms | **21686.1 ms** | 24526.1 ms | 24526.1 ms | **FAIL** |
+| AI `gemini-3.5-flash-lite` | 50 | 18604.7 ms | **50044.0 ms** | 60576.9 ms | 60576.9 ms | **FAIL** |
 
-**Kết luận SC-010: PASS** trên nhánh fallback (p95 0.673 s < 5 s). Số đo gồm embedding query,
-retrieval, ranking/suggestion builder; **không** gồm latency LLM vì provider lỗi. Khi provider hợp
-lệ, cần đo lại với `isFallback=false` để kết luận luồng AI; nếu p95 AI ≥ 5 s, xem lại timeout/model.
+**Kết luận SC-010**: **FAIL trên AI path** (p95 21.7 s với `gemini-2.5`, 50.0 s với `gemini-3.5`);
+fallback HSL PASS (0.67 s). Nguyên nhân là latency provider/model, không phải pipeline 033
+(embedding + retrieval + ranking ~0.5 s). Hai hướng xử lý cần quyết định:
+
+- đặt timeout recommendation text ~4 s để fallback HSL trong budget (sẽ mất AI path khi provider chậm);
+- hoặc dùng provider/model nhanh hơn, rồi đo lại ở production.
+
+`gemini-3.5-flash-lite` chậm hơn `gemini-2.5-flash-lite` trong môi trường này. Row pricing
+`gemini-3.5-flash-lite` đã được thêm vào seed AI baseline; DB đã migrate trước đó cần data patch
+(xem `specs/033-personalized-styling/deferred.md` D-11/D-12).
 
 ### Lệnh tái lập
 

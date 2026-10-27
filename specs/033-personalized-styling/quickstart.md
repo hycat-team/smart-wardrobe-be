@@ -221,7 +221,7 @@ Ghi tại phase close-out (T085), ngày 2026-10-27. Mục này chỉ ghi **việ
 | DB integration | `verify_it_033` (init `database/init/*.sql` + migrate đủ account/commerce/ai) |
 | Stack E2E | account `8081`, ai `8082`, commerce `8080` (`APP_MODE=all`, chạy từ `bin/*.exe`), DB `verify_033` |
 | Worker learning | chạy cùng commerce (`APP_MODE=all`) |
-| AI provider | embedding OK (`hasEmbedding=true`); recommendation text provider trả `provider_error` → endpoint dùng HSL fallback (`isFallback=true`) trong lần E2E này |
+| AI provider | embedding OK (`hasEmbedding=true`); recommendation text **hoạt động** sau seed fix (`isFallback=false`, title/explanation do LLM). Latency provider cao: `gemini-2.5-flash-lite` p95 21.7s; `gemini-3.5-flash-lite` p95 50s |
 
 ### 7.2 Đã chạy trong close-out
 
@@ -231,6 +231,7 @@ Ghi tại phase close-out (T085), ngày 2026-10-27. Mục này chỉ ghi **việ
 | Thêm tag `Style Profile` vào `shared/tools/swagger-combine/module-mapping.json` | — |
 | `make SHELL=C:/Windows/System32/cmd.exe generate` (lần 2) | **PASS**: wire 3 service, swagger 3 service, combine 3 services/9 modules, nginx 43 locations |
 | `make SHELL=C:/Windows/System32/cmd.exe test-db-integration` với `verify_it_033` | **PASS** (exit 0); account/commerce/ai `TestIntegration*`, gồm personalization schema/signal/profile và wardrobe stale order |
+| Sửa seed AI baseline (`gemini-3.5-flash-lite`) + `make migration-check` | **PASS**; row có trong `verify_033`; migration-check 0 vi phạm |
 | `go test -race -count=3` cho `fashion/...`, `wardrobe/...`, `account/subscription/...` | **PASS** |
 | `make SHELL=C:/Windows/System32/cmd.exe lint` | **PASS** |
 | `make SHELL=C:/Windows/System32/cmd.exe check` (trước khi bổ sung E2E) | **PASS** (fmt, tidy, generate, nginx, vet, race, build) |
@@ -239,14 +240,14 @@ Ghi tại phase close-out (T085), ngày 2026-10-27. Mục này chỉ ghi **việ
 
 | Story | Kết quả |
 |---|---|
-| US1 | GET/PUT `/me/style-profile` 200; `personalizationAvailable=true`, `hasEmbedding=true`; POST recommendation 200, có `recommendationId`, top+bottom, `personalized=true`, `personal_style_match_ratio=1`; `isFallback=true` do provider error (HSL fallback) |
+| US1 | GET/PUT `/me/style-profile` 200; `personalizationAvailable=true`, `hasEmbedding=true`; POST recommendation 200, có `recommendationId`, top+bottom, `personalized=true`, `personal_style_match_ratio=1`; **`isFallback=false`** sau seed fix, title/explanation do LLM |
 | US2 | Sau fix retrieval, `suggestions` có footwear catalog; save outfit với `itemContext=system_catalog` → 201; wardrobe 5→6, clone giày 1 row, không clone mồ côi |
 | US3 | `last_recommended_at` được set; save set `last_used_at`; PUT đổi tên không đổi `last_used_at`; log rotation có `stale_slots_added=2`, `cooldown_substitutions=0`, `personal_style_match_ratio=1` |
 | US4 | `style_signals` source 1 (3 item); `learned_styles={"Casual":0.667,"Sporty":0.333}`, `learned_at` set; `styles=["casual"]`, `excluded=["vintage"]` không đổi |
 | US5 | `sampleSize=3`, `Casual:2 (0.67)`, `Sporty:1 (0.33)`; dedupe theo `fashion_item_id` (D-07) |
 | US6 | like 200; duplicate 200; user khác 403; `style_signals` có source 1 và 2, không nhân đôi |
 | US7 | completions ao+quan → suggestion footwear; quota `outfitRecommendCount` 2→2 |
-| p95 | n=50, 0 lỗi; p50 **563.4ms**, p95 **673.3ms**, p99 766.8ms, max 766.8ms; **SC-010 PASS** (ngưỡng <5s) |
+| p95 | **Fallback**: n=50, p95 **673.3ms** → PASS. **AI path** (`gemini-2.5-flash-lite`): n=50, 0 lỗi, avg 9023ms, p50 4904ms, p95 **21686ms**, p99 24526ms → **FAIL SC-010**. `gemini-3.5-flash-lite`: p95 50044ms |
 
 ### 7.4 Chưa chạy / giới hạn
 
@@ -255,7 +256,7 @@ Ghi tại phase close-out (T085), ngày 2026-10-27. Mục này chỉ ghi **việ
 | SC-002/SC-003/SC-004/SC-013 (log 30 ngày) | Chưa có 30 ngày log vận hành |
 | SC-011 runtime web/mobile | Không chạy web/mobile runtime; đã đối chiếu tĩnh ở `frontend-guide.md` §15.5 |
 | US2 vượt hạn mức / catalog item bị gỡ qua HTTP | Đã có unit/DB test; E2E không lặp qua HTTP |
-| AI text path | Provider trả `provider_error`; E2E dùng HSL fallback. p95 phản ánh nhánh fallback, không có latency LLM |
+| AI text path latency | AI path hoạt động nhưng provider latency 11–24s/request; p95 AI 21.7s → **SC-010 fail**. Fallback HSL p95 0.67s → pass. Cần timeout ngắn (~4s) để fallback trong budget hoặc provider/model nhanh hơn; đo lại ở production |
 | Production | Ngoài phạm vi |
 
 ### 7.5 Artifact sinh tự động đã thay đổi (T086)
