@@ -37,7 +37,7 @@ tiêu uptime.
 
 ### Session 2026-10-26 (chốt trước khi lập kế hoạch)
 
-- Q: Model Ollama nào được dùng và pin thế nào? → A: `qwen3:4b`; pin version Ollama và digest
+- Q: Model Ollama nào được dùng và pin thế nào? → A: `qwen2.5:3b-instruct-q4_K_M`; pin version Ollama và digest
   model. Trước khi lên EC2, chạy cùng model/digest trên máy dev bằng Ollama native (GPU để test
   chức năng, sau đó ép CPU để đo latency).
 - Q: Loại EC2 nào? → A: `c6i.2xlarge` x86 (8 vCPU/16 GiB) tại `ap-southeast-1`, on-demand; ngân
@@ -56,9 +56,10 @@ tiêu uptime.
   apply phần còn lại; Let's Encrypt HTTP-01; cổng 80 chỉ phục vụ ACME challenge/redirect.
 - Q: Terraform state và cách apply? → A: Local state ngoài repo, apply tay từ máy dev; không thêm
   backend S3/DynamoDB và không đụng pipeline.
-- Q: qwen3 có thinking mode, xử lý thế nào? → A: Phải tắt thinking trước khi đo bằng cơ chế được
-  contract test chứng minh (`reasoning_effort: "none"` hoặc tương đương); response trả client
-  không được chứa thinking token và structured output vẫn phải hợp lệ.
+- Q: Model có thinking mode, xử lý thế nào? → A: Model trial là `qwen2.5:3b-instruct-q4_K_M`
+  (non-thinking). `AI_OPENAI_REASONING_EFFORT` để trống; contract test vẫn phải chứng minh response
+  không có reasoning content/token và structured output hợp lệ. Không dùng model thinking như
+  qwen3 vì Ollama 0.40.11 không tắt được thinking qua `/v1`.
 - Q: Attempt `openai` có tiêu thụ daily attempt cap hiện hữu không? → A: Có — giữ nguyên quota
   hiện hữu, không thêm quota mới; `openai` chỉ được miễn phần tính tiền, không được miễn giới hạn
   vận hành. Fallback Gemini dùng lại đúng usage event của request, không tạo event thứ hai.
@@ -206,8 +207,9 @@ tra báo cáo có đủ chỉ số, sự cố và kết luận đạt/không đ�
   đúng để fallback hoạt động và trạng thái model/proxy phải quan sát được.
 - Model hoặc version Ollama bị thay đổi ngoài ý muốn: phải phát hiện qua kiểm tra version/digest
   và không âm thầm đổi hành vi của thử nghiệm.
-- qwen3 bật thinking ngoài ý muốn: response chứa reasoning token, structured output lệch hoặc độ
-  trễ tăng; phải phát hiện bằng contract test và tắt thinking trước khi bắt đầu đo.
+- Model bật thinking ngoài ý muốn (hoặc bị đổi sang model thinking): response chứa reasoning
+  token/field, structured output lệch hoặc độ trễ tăng; phải phát hiện bằng contract test và dừng
+  trước khi bắt đầu đo.
 - Thay đổi code dùng chung được phát hành lên Lightsail nhưng VPS vẫn giữ image cũ: hai môi
   trường phải tiếp tục hoạt động độc lập, không đòi hỏi nâng cấp đồng thời.
 
@@ -286,8 +288,8 @@ tra báo cáo có đủ chỉ số, sự cố và kết luận đạt/không đ�
 - **FR-025**: Thử nghiệm MUST kéo dài một tuần trong môi trường AWS môn học không có request hoặc
   người dùng thật; uptime MUST NOT là tiêu chí quyết định.
 - **FR-026**: Model Ollama MUST được pin cả version runtime và digest; tuần thử nghiệm dùng
-  `qwen3:4b`. Thinking của qwen3 MUST được tắt trước khi đo bằng cơ chế được contract test chứng
-  minh; response trả client MUST NOT chứa thinking token và structured output vẫn MUST hợp lệ.
+  `qwen2.5:3b-instruct-q4_K_M` (non-thinking). Contract test MUST chứng minh response trả client
+  không chứa reasoning content/token và structured output vẫn hợp lệ.
 - **FR-027**: Trước khi lên EC2, nhóm MUST chạy cùng model/digest trên máy dev qua Ollama native,
   hoàn tất contract test của adapter và các kịch bản fallback; latency đo bằng GPU local chỉ là
   tham chiếu chức năng và MUST NOT được dùng thay cho SC-005.

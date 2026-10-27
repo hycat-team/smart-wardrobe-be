@@ -21,7 +21,7 @@ Mỗi attempt ghi một dòng JSON với các khóa sau (tên cố định):
 | `capability` | string | Có | `chat_text`/`recommendation_text`/`free_text`/`vision`/`embedding` |
 | `attempt_index` | int | Có | 1 hoặc 2 |
 | `provider` | string | Có | `openai`/`google` |
-| `model` | string | Có | qwen3:4b hoặc model Gemini |
+| `model` | string | Có | qwen2.5:3b-instruct-q4_K_M hoặc model Gemini |
 | `billing_class` | string | Có | `unbilled`/`billed` |
 | `outcome` | string | Có | Theo contract Ollama §4 |
 | `http_status` | int | Không | Khi có response |

@@ -26,7 +26,7 @@ và [quickstart.md](../../specs/032-ollama-lightsail-trial/quickstart.md).
 > và Ollama CLI **chưa được cài** trên máy tạo tài liệu. Mọi lệnh `terraform`, `ollama`, `aws ssm`
 > và lệnh trên Lightsail dưới đây là việc của người vận hành, chạy trên máy dev hoặc box tương ứng.
 > Không lệnh nào trong số đó được chạy tự động bởi worker. Nếu `ollama` không có trong `PATH`, cài
-> Ollama native và pull `qwen3:4b` là **bước thủ công bắt buộc** trước A1; không có đường tắt tự
+> Ollama native và pull `qwen2.5:3b-instruct-q4_K_M` là **bước thủ công bắt buộc** trước A1; không có đường tắt tự
 > động.
 
 ## 0. Điều kiện tiên quyết
@@ -54,8 +54,8 @@ vận hành lấy từ nguồn thật; không suy đoán, không bịa số, kh�
 | Gemini text model đang dùng | `TODO(operator)` | Đọc `/opt/closy-aws/.env.aws`: ghi **tên model** và **endpoint** của `*_TEXT_FALLBACK_*` hiện hữu | Chưa điền |
 | Tham chiếu key Gemini text (không ghi giá trị) | `TODO(operator)` | Chỉ ghi: "`<CAP>_TEXT_FALLBACK_API_KEY` trong `/opt/closy-aws/.env.aws` (managed secret, không copy vào repo)". **Không** dán key | Chưa điền |
 | AWS account / region | `TODO(operator)` | Account dùng cho EC2 trial; region cố định `ap-southeast-1`. Không đưa account ID vào Terraform hay tài liệu nếu không cần | Chưa điền |
-| Ollama version local (A1) | `TODO(operator)` | `ollama --version` sau khi cài tay | Chưa điền |
-| Digest `qwen3:4b` local (A1) | `TODO(operator)` | `ollama list` / output `ollama pull` → `sha256:...` | Chưa điền |
+| Ollama version local (A1) | `0.40.11` | `ollama --version` ngày 2026-10-27 | Đã điền |
+| Digest `qwen2.5:3b-instruct-q4_K_M` local (A1) | `sha256:5ee4f07cdb9beadbbb293e85803c569b01bd37ed059d2715faa7bb405f31caa6` (ID `357c53fb659c`) | `ollama list` / `ollama show --modelfile` ngày 2026-10-27 | Đã điền |
 | Xác nhận không truy cập VPS | `TODO(operator)` | Tick sau khi rà lại phiên làm việc: không SSH, không deploy, không đọc secret, không đổi DNS VPS | Chưa xác nhận |
 
 **Nguyên tắc baseline**
@@ -71,9 +71,9 @@ vận hành lấy từ nguồn thật; không suy đoán, không bịa số, kh�
 
 ```powershell
 ollama --version
-ollama pull qwen3:4b
+ollama pull qwen2.5:3b-instruct-q4_K_M
 ollama list
-ollama show qwen3:4b --modelfile
+ollama show qwen2.5:3b-instruct-q4_K_M --modelfile
 ```
 
 - Nếu `ollama` không có trong `PATH`: cài Ollama native cho Windows trước, rồi chạy lại. Đây là
@@ -91,7 +91,7 @@ go test ./shared/infrastructure/ai/openai/... -count=1
 
 **Đạt khi**: toàn bộ contract test của
 [contracts/ollama-openai-subset.md](../../specs/032-ollama-lightsail-trial/contracts/ollama-openai-subset.md)
-§5 pass (thinking off, structured output, SSE, usage thiếu/0, lỗi 4xx/429/5xx, cancellation).
+§5 pass (không reasoning, structured output, SSE, usage thiếu/0, lỗi 4xx/429/5xx, cancellation).
 
 ### A3. Probe thủ công
 
@@ -99,7 +99,7 @@ Non-stream:
 
 ```powershell
 $body = @{
-  model = "qwen3:4b"
+  model = "qwen2.5:3b-instruct-q4_K_M"
   messages = @(
     @{ role = "system"; content = "Trả lời ngắn gọn." },
     @{ role = "user"; content = "Xin chào" }
@@ -107,7 +107,6 @@ $body = @{
   stream = $false
   max_tokens = 50
   temperature = 0
-  reasoning_effort = "none"
 } | ConvertTo-Json -Depth 5
 
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:11434/v1/chat/completions" `
@@ -132,7 +131,8 @@ Dùng compose local hiện hữu cho PostgreSQL/Redis/RabbitMQ; **không** sửa
    Gemini; đặt `AI_TEXT_PRIMARY_TIMEOUT_SECONDS=90`, `AI_TEXT_FALLBACK_TIMEOUT_SECONDS=30`,
    `AI_CHAT_CHUNK_DEADLINE_SECONDS=90`.
 2. Gọi một request text → provider thắng phải là `openai`.
-3. Dừng Ollama (`Stop-Process -Name ollama` hoặc kill tiến trình phục vụ).
+3. Dừng Ollama hoặc trỏ primary endpoint sang một port chết (ví dụ `http://127.0.0.1:11435/v1/chat/completions`);
+   nếu Ollama desktop tự khởi động lại, dùng port chết làm transport failure có kiểm soát.
 4. Gọi lại → fallback Gemini đúng một lần, không treo.
 5. Bật Ollama lại → request trở về Ollama, không cần đổi cấu hình.
 
@@ -150,7 +150,7 @@ $env:OLLAMA_NUM_GPU = "0"
   -Prompt "<prompt recommendation thực tế>"
 ```
 
-`local-test.ps1` chạy kiểm tra chức năng (non-stream, streaming, structured output, thinking off)
+`local-test.ps1` chạy kiểm tra chức năng (non-stream, streaming, structured output, không reasoning)
 rồi lấy mẫu latency ghi ra `docs/temp/ollama-trial/local-latency-<capability>.csv` và
 `local-test-summary-<capability>.json` (thư mục này đã bị gitignore). Xem tham số bằng
 `Get-Help .\deployments\ollama\local-test.ps1 -Full`. Kịch bản đo tham chiếu theo SC-005: 50 request
@@ -163,12 +163,33 @@ fallback reason và provider thắng phải lấy thêm từ log AI service ở 
 **Đạt khi**: có số liệu tham chiếu và raw sample. **KHÔNG** dùng số GPU local thay SC-005; nếu CPU
 local không đạt, phải điều chỉnh prompt/model/digest **trước** khi lên EC2.
 
+### A5.1 Kết quả local ngày 2026-10-27 (bằng chứng thật trên máy dev)
+
+| Hạng mục | Kết quả | Ghi chú |
+|---|---|---|
+| Ollama | `0.40.11` | Cài bằng winget, server native Windows |
+| Model | `qwen2.5:3b-instruct-q4_K_M` | Pin digest `sha256:5ee4f07...31caa6`, ID `357c53fb659c` |
+| A3 functional GPU | **PASS** | non-stream 5.7s (cold) → `Hello!`; SSE TTFT 81ms/total 177ms; JSON pass; không reasoning |
+| A4 CPU-only | **BLOCKED** | Ollama desktop app tự giữ model trên GPU (`/api/ps` báo `size_vram` full) dù đặt `OLLAMA_NUM_GPU=0`; không có số CPU local đáng tin. Số 50 mẫu chat chạy được là **GPU reference**, không dùng cho SC-005 |
+| A5 text qua AI service | **PASS** | `chat`, `outfit`, `summary`, `rewriter` → `provider=openai`, `billing_class=unbilled`, `actual_cost=0` |
+| A6 vision/embedding | **PASS** | `provider=google`; vision billed (`actual_cost=8531875` microVND), embedding unbilled |
+| A7 fallback | **PASS** | Primary trỏ port chết `11435` → attempt 1 `transport`, attempt 2 Gemini `gemini-3.1-flash-lite` success; user paid route ghi `actual_cost=144375` microVND |
+| A8 restore | **PASS** | Trỏ lại `11434` → `provider=openai`, cost 0 |
+
+Ghi chú local:
+- Không kill được Ollama desktop bằng `Stop-Process` vì app tự khởi động lại; fallback drill dùng
+  endpoint chết `http://127.0.0.1:11435/v1/chat/completions` để tạo transport failure có kiểm soát.
+- Fallback model trong `.env` là `gemma-4-31b-it`; model này vượt timeout 30s khi có thinking. Local
+  drill dùng override `CHAT_TEXT_FALLBACK_MODEL=gemini-3.1-flash-lite`. Khi lên Lightsail, chọn một
+  Gemini fallback đủ nhanh (ví dụ flash-lite) và ghi rõ trong env trial.
+- `version` trong attempt log rỗng vì chưa có `APP_VERSION`; đây là deferred D-04, không chặn local.
+
 ### A6. Cổng ra Phase A
 
 Chỉ apply Terraform khi tất cả đạt:
 
 - [ ] Contract test pass.
-- [ ] Thinking off được chứng minh.
+- [ ] Không có reasoning content/token được chứng minh.
 - [ ] Structured output hợp lệ.
 - [ ] Drill fallback pass.
 - [ ] SSE chat không bị cắt: `AI_CHAT_CHUNK_DEADLINE_SECONDS=90` và primary timeout 90 đã đặt.
@@ -297,7 +318,7 @@ text (8 key/nhóm), 16 key `VISION_*`/`EMBEDDING_*`, và 7 key điều khiển t
 
 | # | Nhóm | Key (đủ) | Giá trị trial |
 |---|---|---|---|
-| 1 | `CHAT_TEXT` primary | `CHAT_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | `openai` / `<bearer-token>` / `https://<ollama-host>/v1/chat/completions` / `qwen3:4b` |
+| 1 | `CHAT_TEXT` primary | `CHAT_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | `openai` / `<bearer-token>` / `https://<ollama-host>/v1/chat/completions` / `qwen2.5:3b-instruct-q4_K_M` |
 | 2 | `RECOMMENDATION_TEXT` primary | `RECOMMENDATION_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | như nhóm 1 (cùng endpoint/token/model) |
 | 3 | `FREE_TEXT` primary | `FREE_TEXT_PRIMARY_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | như nhóm 1 (cùng endpoint/token/model) |
 | 4 | Ba nhóm fallback | `{CHAT,RECOMMENDATION,FREE}_TEXT_FALLBACK_PROVIDER`, `..._API_KEY`, `..._ENDPOINT`, `..._MODEL` | `google` + **đúng** key/endpoint/model Gemini đang chạy (lấy từ block `*_TEXT_FALLBACK_*` hiện hữu, không đổi giá trị) |
@@ -312,7 +333,7 @@ Chi tiết nhóm 6 (giá trị là hợp đồng, không phải gợi ý):
 | `AI_TEXT_MAX_CONCURRENCY` | `2` | `>= 1` (default code 2) |
 | `AI_TEXT_PRIMARY_TIMEOUT_SECONDS` | `90` | `> 0`; `+ AI_TEXT_FALLBACK_TIMEOUT_SECONDS <= 120`; `<= AI_CHAT_CHUNK_DEADLINE_SECONDS` |
 | `AI_TEXT_FALLBACK_TIMEOUT_SECONDS` | `30` | `> 0` |
-| `AI_OPENAI_REASONING_EFFORT` | `none` | chỉ `none`/`low`/`medium`/`high` hoặc trống (trống = không gửi field) |
+| `AI_OPENAI_REASONING_EFFORT` | `(trống)` | chỉ `none`/`low`/`medium`/`high` hoặc trống (trống = không gửi field) |
 | `AI_CHAT_CHUNK_DEADLINE_SECONDS` | `90` | `> 0`; override field có sẵn `server.sse.ai_chat_chunk_deadline_seconds` (default 30 ngoài trial) |
 | `AI_OPENAI_TRIAL_EXPECTED_HOSTS` | `<ollama-host>` | CSV **host** (không scheme/path); trống = tắt cảnh báo "openai trỏ sai host" |
 
@@ -321,7 +342,7 @@ Ghi chú hợp đồng:
 - `ENDPOINT` của `openai` phải là URL **đầy đủ** tới `/v1/chat/completions` (adapter POST nguyên
   chuỗi, không tự nối path) và phải là `https`. Ngoại lệ duy nhất: drill local
   `http://127.0.0.1:<port>/v1/chat/completions` — path vẫn bắt buộc.
-- `MODEL` phải đúng `qwen3:4b` và khớp digest đã pin trên EC2 (mục 1, B2).
+- `MODEL` phải đúng `qwen2.5:3b-instruct-q4_K_M` và khớp digest đã pin trên EC2 (mục 1, B2).
 - `API_KEY` của ba nhóm primary phải **trùng** Bearer token của proxy (Secrets Manager trên EC2).
   Không log, không dán vào tài liệu.
 - `summary`/`rewriter` không có nhóm env riêng: route free dùng nhóm `free_text`, route paid dùng
@@ -402,7 +423,7 @@ docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-
 
   ```text
   AI_CHAT_CHUNK_DEADLINE_SECONDS=90
-  AI_OPENAI_REASONING_EFFORT=none
+  AI_OPENAI_REASONING_EFFORT=
   AI_OPENAI_TRIAL_EXPECTED_HOSTS=<ollama-host>
   AI_TEXT_FALLBACK_TIMEOUT_SECONDS=30
   AI_TEXT_MAX_CONCURRENCY=2
@@ -434,10 +455,10 @@ docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-
 
 | operation | capability | attempt_index | provider | model | billing_class | outcome |
 |---|---|---|---|---|---|---|
-| `chat` | `chat_text` | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
-| `outfit` | `recommendation_text` | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
-| `summary` | `free_text` (route free) hoặc `chat_text` (route paid) | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
-| `rewriter` | `free_text` hoặc `chat_text` | 1 | `openai` | `qwen3:4b` | `unbilled` | `success` |
+| `chat` | `chat_text` | 1 | `openai` | `qwen2.5:3b-instruct-q4_K_M` | `unbilled` | `success` |
+| `outfit` | `recommendation_text` | 1 | `openai` | `qwen2.5:3b-instruct-q4_K_M` | `unbilled` | `success` |
+| `summary` | `free_text` (route free) hoặc `chat_text` (route paid) | 1 | `openai` | `qwen2.5:3b-instruct-q4_K_M` | `unbilled` | `success` |
+| `rewriter` | `free_text` hoặc `chat_text` | 1 | `openai` | `qwen2.5:3b-instruct-q4_K_M` | `unbilled` | `success` |
 
 **Vision và embedding KHÔNG có dòng `ai provider attempt`**: hook attempt chỉ được gắn cho request
 text trial (`attachTrialHooks` chỉ chạy khi `plan.Provider == openai`). Bằng chứng cho
@@ -861,7 +882,7 @@ chứng thay cho live run. Các phát hiện ngoài phạm vi nằm ở
 
 ### 8.1 T025 — kiểm tra chức năng + latency local (thủ công, chưa chạy)
 
-Điều kiện: Ollama native đã cài và `qwen3:4b` đã pull (A1). Nếu thiếu, đó là bước thủ công;
+Điều kiện: Ollama native đã cài và `qwen2.5:3b-instruct-q4_K_M` đã pull (A1). Nếu thiếu, đó là bước thủ công;
 `deployments/ollama/local-test.ps1` **không** cài Ollama và **không** pull model — nó dừng với
 exit code 2 và thông báo rõ.
 
@@ -869,7 +890,7 @@ exit code 2 và thông báo rõ.
 # Bắt buộc ép CPU trước khi đo tham chiếu, rồi khởi động lại Ollama.
 $env:OLLAMA_NUM_GPU = "0"
 
-# 1) Kiểm tra chức năng (non-stream, SSE, structured JSON, thinking off) + 50 mẫu chat_text
+# 1) Kiểm tra chức năng (non-stream, SSE, structured JSON, không reasoning) + 50 mẫu chat_text
 .\deployments\ollama\local-test.ps1 -Capability chat_text -Samples 50 -Concurrency 2
 
 # 2) free_text và recommendation_text (bỏ kiểm tra chức năng để không lặp lại)
@@ -878,7 +899,7 @@ $env:OLLAMA_NUM_GPU = "0"
   -Prompt "<prompt recommendation thực tế>"
 ```
 
-**Kết quả kỳ vọng**: exit code `0`; log có `thinking off OK`, `structured output OK`, `stream OK`;
+**Kết quả kỳ vọng**: exit code `0`; log có `thinking off OK` (assert không reasoning), `structured output OK`, `stream OK`;
 mỗi capability sinh `docs/temp/ollama-trial/local-latency-<capability>.csv` + `local-test-summary-<capability>.json`
 (thư mục đã gitignore) và in `ttft p50/p95`, `total p50/p95`.
 
@@ -1107,7 +1128,7 @@ Quy ước: `<ollama-host>` là subdomain Ollama (không phải domain API), `<e
 | A2 | IP ngoài allowlist, Bearer **đúng** | máy ngoài allowlist | `curl.exe -sv --max-time 15 -H "Authorization: Bearer <bearer-token>" https://<ollama-host>/v1/chat/completions` | vẫn bị chặn như A1 — chứng minh chặn theo IP, không phải theo token |
 | B1 | Thiếu Bearer | **trên box Lightsail** | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Content-Type: application/json" -d '{}'` | `401` (Nginx trả trước khi tới Ollama) |
 | B2 | Sai Bearer | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Authorization: Bearer wrong-token" -H "Content-Type: application/json" -d '{}'` | `401` |
-| B3 | Request hợp lệ từ Lightsail | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Authorization: Bearer <bearer-token>" -H "Content-Type: application/json" -d '{"model":"qwen3:4b","messages":[{"role":"user","content":"ping"}],"stream":false,"max_tokens":8}'` | `200` |
+| B3 | Request hợp lệ từ Lightsail | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<ollama-host>/v1/chat/completions -H "Authorization: Bearer <bearer-token>" -H "Content-Type: application/json" -d '{"model":"qwen2.5:3b-instruct-q4_K_M","messages":[{"role":"user","content":"ping"}],"stream":false,"max_tokens":8}'` | `200` |
 | C1 | Truy cập trực tiếp `11434` | máy ngoài (và lặp lại từ box Lightsail) | `curl.exe -sv --max-time 10 http://<elastic-ip>:11434/api/version` | `curl: (28)` timeout hoặc `(7)` refused; **không** có HTTP status, không có JSON version |
 | C2 | Ollama chỉ loopback | SSM trên EC2 | `sudo ss -lntH \| grep 11434` | chỉ `127.0.0.1:11434` |
 | D1 | Path không hỗ trợ | trên box Lightsail | `curl -s -o /dev/null -w "%{http_code}\n" https://<ollama-host>/api/version` | `404` (proxy đóng mọi path khác) |

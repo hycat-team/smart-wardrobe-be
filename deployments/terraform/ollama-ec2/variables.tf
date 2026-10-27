@@ -195,7 +195,7 @@ variable "ollama_version" {
 variable "ollama_model" {
   description = "Pinned model tag for the trial."
   type        = string
-  default     = "qwen3:4b"
+  default     = "qwen2.5:3b-instruct-q4_K_M"
 }
 
 variable "model_digest" {

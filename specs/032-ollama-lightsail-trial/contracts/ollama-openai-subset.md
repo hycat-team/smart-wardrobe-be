@@ -21,7 +21,7 @@ Ollama. Adapter hiện POST nguyên `endpoint` nên endpoint phải là URL đ�
 
 ```json
 {
-  "model": "qwen3:4b",
+  "model": "qwen2.5:3b-instruct-q4_K_M",
   "messages": [
     {"role": "system", "content": "<system prompt>"},
     {"role": "user", "content": "<user prompt>"}
@@ -29,21 +29,20 @@ Ollama. Adapter hiện POST nguyên `endpoint` nên endpoint phải là URL đ�
   "stream": false,
   "max_tokens": 500,
   "temperature": 0,
-  "response_format": {"type": "json_object"},
-  "reasoning_effort": "none"
+  "response_format": {"type": "json_object"}
 }
 ```
 
 | Trường | Bắt buộc | Quy tắc |
 |--------|----------|---------|
-| `model` | Có | `qwen3:4b` |
+| `model` | Có | `qwen2.5:3b-instruct-q4_K_M` |
 | `messages` | Có | `system` + `user`; không gửi history ngoài phạm vi hiện hữu |
 | `stream` | Có | `false` cho non-stream, `true` cho SSE |
 | `stream_options.include_usage` | Khi stream | Phải gửi để nhận usage nếu có |
 | `max_tokens` | Khi > 0 | Giữ nguyên `MaxOutputTokens` hiện hữu |
 | `temperature` | Không | Phải truyền cả `0` (không được bỏ qua giá trị 0) |
 | `response_format` | Khi cần JSON | `json_schema` nếu có `ResponseSchema`, ngược lại `json_object` |
-| `reasoning_effort` | Không | Chỉ gửi khi `AI_OPENAI_REASONING_EFFORT` khác rỗng; trial đặt `"none"` |
+| `reasoning_effort` | Không | Chỉ gửi khi `AI_OPENAI_REASONING_EFFORT` khác rỗng; trial để trống vì model non-thinking |
 | `format` | Không | Không dùng; chỉ dùng `response_format` qua `/v1` |
 
 ## 3. Response

@@ -24,9 +24,9 @@ Không cần và không được: SSH vào EC2, sửa `docker-compose.aws.yml`, 
 
 ```powershell
 ollama --version
-ollama pull qwen3:4b
+ollama pull qwen2.5:3b-instruct-q4_K_M
 ollama list
-ollama show qwen3:4b --modelfile
+ollama show qwen2.5:3b-instruct-q4_K_M --modelfile
 ```
 
 Ghi lại `ollama --version` và digest `sha256:...` lấy từ `ollama list` (hoặc output của `ollama
@@ -42,7 +42,7 @@ go test ./shared/infrastructure/ai/openai/... -count=1
 ```
 
 **Đạt khi**: toàn bộ contract test trong [contracts/ollama-openai-subset.md](./contracts/ollama-openai-subset.md)
-§5 pass, gồm thinking off, structured output, SSE, usage thiếu/0, lỗi 4xx/429/5xx, cancellation.
+§5 pass, gồm không reasoning, structured output, SSE, usage thiếu/0, lỗi 4xx/429/5xx, cancellation.
 
 ### A3. Probe thủ công
 
@@ -50,7 +50,7 @@ Non-stream:
 
 ```powershell
 $body = @{
-  model = "qwen3:4b"
+  model = "qwen2.5:3b-instruct-q4_K_M"
   messages = @(
     @{ role = "system"; content = "Trả lời ngắn gọn." },
     @{ role = "user"; content = "Xin chào" }
@@ -58,7 +58,6 @@ $body = @{
   stream = $false
   max_tokens = 50
   temperature = 0
-  reasoning_effort = "none"
 } | ConvertTo-Json -Depth 5
 
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:11434/v1/chat/completions" `
@@ -110,7 +109,7 @@ CPU local đã không đạt, phải điều chỉnh prompt/model trước khi l
 Chỉ apply Terraform khi:
 
 - [ ] Contract test pass.
-- [ ] Thinking off được chứng minh.
+- [ ] Không có reasoning content/token được chứng minh.
 - [ ] Structured output hợp lệ.
 - [ ] Drill fallback pass.
 - [ ] SSE chat không bị cắt: `AI_CHAT_CHUNK_DEADLINE_SECONDS=90` và primary timeout 90 đã được đặt

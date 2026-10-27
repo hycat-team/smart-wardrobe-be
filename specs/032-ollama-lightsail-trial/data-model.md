@@ -28,7 +28,7 @@ Không có entity nghiệp vụ mới trong PostgreSQL. `AIProviderAttempt`, `Tr
 | `hostname` | string | Terraform output / A record | Subdomain riêng; không phải domain API |
 | `elastic_ip` | string | Terraform output `elastic_ip` | Tĩnh trong tuần trial |
 | `base_url` | string | env `*_TEXT_PRIMARY_ENDPOINT` | Phải là URL đầy đủ kết thúc `/v1/chat/completions` |
-| `model` | string | env `*_TEXT_PRIMARY_MODEL` | Đúng `qwen3:4b` |
+| `model` | string | env `*_TEXT_PRIMARY_MODEL` | Đúng `qwen2.5:3b-instruct-q4_K_M` |
 | `ollama_version` | string | cloud-init variable | Pin version; không auto-update |
 | `model_digest` | string | `ollama list` / output `ollama pull` | Pin `sha256:...`; so khớp trước khi bật trial |
 | `bearer_secret_ref` | string | Secrets Manager ARN / env | Không xuất hiện trong log, repo hoặc workflow output |
@@ -39,7 +39,7 @@ Không có entity nghiệp vụ mới trong PostgreSQL. `AIProviderAttempt`, `Tr
 | `ollama_max_queue` | int | EC2 env | Hữu hạn, đủ cho tải 2 đồng thời |
 | `primary_timeout_seconds` | int | env AI | 90 |
 | `fallback_timeout_seconds` | int | env AI | 30 |
-| `reasoning_effort` | string | env `AI_OPENAI_REASONING_EFFORT` | `none` trong tuần trial; trống = không gửi |
+| `reasoning_effort` | string | env `AI_OPENAI_REASONING_EFFORT` | Trống trong tuần trial (model non-thinking); trống = không gửi |
 | `trial_started_at` | timestamp | runbook | Mốc bắt đầu tính ngày 1 |
 | `expires_on` | date | tag `ExpiresOn` | Ngày 7; chỉ nhắc báo cáo, không teardown |
 
@@ -63,12 +63,12 @@ Không có entity nghiệp vụ mới trong PostgreSQL. `AIProviderAttempt`, `Tr
 | `request_id` | UUID | Khóa liên kết với `ai_usage_events.request_id` |
 | `attempt_index` | int | 1 = primary Ollama, 2 = Gemini fallback; không có 3 |
 | `provider` | enum | `openai` hoặc `google` |
-| `model` | string | `qwen3:4b` hoặc model Gemini thực tế |
+| `model` | string | `qwen2.5:3b-instruct-q4_K_M` hoặc model Gemini thực tế |
 | `operation` | enum nghiệp vụ | `chat`, `outfit`, `summary`, `rewriter`, `vision`, `embedding` |
 | `capability` | enum cấu hình | `chat_text`, `recommendation_text`, `free_text`, `vision`, `embedding`; `summary`/`rewriter` là `free_text` khi route free, `chat_text` khi route paid |
 | `route` | enum | `paid` hoặc `free` (route nghiệp vụ hiện hữu) |
 | `billing_class` | enum | `unbilled` khi `provider=openai`; ngược lại theo capability như hiện hữu |
-| `reasoning_effort` | string | `none` trong trial; lấy từ `AI_OPENAI_REASONING_EFFORT`, trống = không gửi |
+| `reasoning_effort` | string | Trống trong trial; lấy từ `AI_OPENAI_REASONING_EFFORT`, trống = không gửi |
 | `started_at` / `first_token_at` / `finished_at` | timestamp | `first_token_at` rỗng với non-stream |
 | `ttft_ms` | int | Chỉ có khi streaming |
 | `latency_ms` | int | Từ started đến finished |
@@ -80,7 +80,8 @@ Không có entity nghiệp vụ mới trong PostgreSQL. `AIProviderAttempt`, `Tr
 
 **Quy tắc**
 
-- `thinking_tokens` phải bằng 0 trên đường `openai`/qwen3 trong trial; nếu khác 0, trial chưa hợp lệ.
+- `thinking_tokens` phải bằng 0 trên đường `openai` trong trial vì model là non-thinking; nếu khác 0,
+  trial chưa hợp lệ.
 - `attempt_index` không vượt quá 2. Mọi retry thêm là vi phạm FR-023.
 - Attempt thất bại không tạo chi phí tiền tệ; chỉ attempt thắng mới đi vào confirm.
 - State machine 2 attempt và timeout 90/30 chỉ áp dụng cho **text**. Vision/embedding vẫn là
@@ -210,7 +211,7 @@ attempt 2 (Gemini) ── success ──> Confirm(actual) ──> response
 | Gemini billed reserve trước, confirm sau | FR-016 |
 | Fallback tối đa 1 lần, chỉ cho lỗi đủ điều kiện | FR-023, SC-009 |
 | Client cancel/4xx không fallback | FR-023, SC-009 |
-| qwen3 thinking off, JSON hợp lệ | FR-026, SC-011 |
+| Model non-thinking: không reasoning content/token, JSON hợp lệ | FR-026, SC-011 |
 | Model/version/digest khớp local ↔ EC2 | FR-007, FR-026 |
 | Không log prompt/secret | FR-020 |
 | Concurrency 2, timeout 90/30 | FR-019, SC-005 |

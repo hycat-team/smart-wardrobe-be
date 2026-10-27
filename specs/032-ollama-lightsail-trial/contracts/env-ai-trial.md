@@ -17,7 +17,7 @@ phải mẫu gợi ý.
 | `<CAP>_TEXT_PRIMARY_PROVIDER` | `openai` | Bắt buộc; adapter OpenAI-compatible |
 | `<CAP>_TEXT_PRIMARY_API_KEY` | `<bearer-token>` | Trùng token proxy; không log |
 | `<CAP>_TEXT_PRIMARY_ENDPOINT` | `https://<ollama-host>/v1/chat/completions` | URL đầy đủ, adapter không nối path |
-| `<CAP>_TEXT_PRIMARY_MODEL` | `qwen3:4b` | Phải khớp digest đã pin |
+| `<CAP>_TEXT_PRIMARY_MODEL` | `qwen2.5:3b-instruct-q4_K_M` | Phải khớp digest đã pin |
 | `<CAP>_TEXT_FALLBACK_PROVIDER` | `google` | Gemini fallback |
 | `<CAP>_TEXT_FALLBACK_API_KEY` | `<gemini-key-hiện-hữu>` | Lấy từ cấu hình Gemini hiện tại |
 | `<CAP>_TEXT_FALLBACK_ENDPOINT` | `<gemini-endpoint-hiện-hữu>` | Giữ nguyên giá trị đang chạy |
@@ -38,7 +38,7 @@ embedding sang endpoint Ollama.
 | `AI_TEXT_MAX_CONCURRENCY` | `2` | int | Semaphore trong Go AI Service; mặc định 2 nếu trống |
 | `AI_TEXT_PRIMARY_TIMEOUT_SECONDS` | `90` | int | Attempt `openai`/Ollama (trial); default code 30 |
 | `AI_TEXT_FALLBACK_TIMEOUT_SECONDS` | `30` | int | Attempt Gemini fallback; tổng hai timeout ≤ 120 |
-| `AI_OPENAI_REASONING_EFFORT` | `none` | string | Gửi `reasoning_effort` cho provider `openai`; trống = không gửi field |
+| `AI_OPENAI_REASONING_EFFORT` | `(trống)` | string | Model trial non-thinking; để trống = không gửi `reasoning_effort` |
 | `AI_CHAT_CHUNK_DEADLINE_SECONDS` | `90` | int | Override field hiện hữu `server.sse.ai_chat_chunk_deadline_seconds`; default 30 ở nơi khác |
 | `AI_OPENAI_TRIAL_EXPECTED_HOSTS` | `<ollama-host>` | CSV | Host được coi là Ollama trial; trống = tắt cảnh báo cấu hình sai |
 
@@ -51,7 +51,8 @@ embedding sang endpoint Ollama.
 - `AI_TEXT_PRIMARY_TIMEOUT_SECONDS + AI_TEXT_FALLBACK_TIMEOUT_SECONDS <= 120`.
 - `AI_TEXT_PRIMARY_TIMEOUT_SECONDS <= AI_CHAT_CHUNK_DEADLINE_SECONDS`.
 - `AI_TEXT_MAX_CONCURRENCY >= 1`.
-- `AI_OPENAI_REASONING_EFFORT` chỉ nhận `none`, `low`, `medium`, `high` hoặc trống.
+- `AI_OPENAI_REASONING_EFFORT` chỉ nhận `none`, `low`, `medium`, `high` hoặc trống; trial để
+  trống vì `qwen2.5:3b-instruct-q4_K_M` là non-thinking.
 - `AI_CHAT_CHUNK_DEADLINE_SECONDS` > 0.
 - Default code ngoài trial: primary 30, fallback 30, chunk 30; trial đặt 90/30/90.
 - `AI_OPENAI_TRIAL_EXPECTED_HOSTS` là CSV host (không gồm scheme/path); trống = không cảnh báo.
@@ -73,7 +74,7 @@ với fallback), giữ nguyên `AI_UNBILLED_CAPABILITIES`, không cần đổi C
 | Biến | Giá trị mặc định | Ghi chú |
 |------|------------------|---------|
 | `OLLAMA_HOST` | `127.0.0.1:11434` | Chỉ loopback |
-| `OLLAMA_MODEL` | `qwen3:4b` | Pin tag |
+| `OLLAMA_MODEL` | `qwen2.5:3b-instruct-q4_K_M` | Pin tag |
 | `OLLAMA_MODEL_DIGEST` | `sha256:<digest>` | So khớp sau khi pull |
 | `OLLAMA_VERSION` | `<version-pin>` | Cài đúng version, không auto-update |
 | `OLLAMA_NUM_PARALLEL` | `2` | Khớp concurrency phía Go |

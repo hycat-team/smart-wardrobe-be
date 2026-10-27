@@ -7,14 +7,15 @@
 ## Summary
 
 Giữ nguyên backend ba dịch vụ (sáu container) trên box AWS Lightsail hiện hữu và chỉ thay đổi cấu
-hình môi trường AI. Thêm một EC2 CPU-only `c6i.2xlarge` chạy Ollama `qwen3:4b` (pin version +
+hình môi trường AI. Thêm một EC2 CPU-only `c6i.2xlarge` chạy Ollama `qwen2.5:3b-instruct-q4_K_M` (pin version +
 digest), đặt sau Nginx proxy có TLS và Bearer, chỉ cho static IP của box Lightsail truy cập qua
 security group; EC2, Elastic IP, EBS và secret được quản lý bằng một module Terraform tối giản
 (local state) và quản trị qua Systems Manager.
 
 Trước khi lên EC2, cùng model/digest được chạy local bằng Ollama native (GPU để test chức năng,
 sau đó ép CPU để đo latency tham chiếu). Go AI Service tiếp tục dùng adapter OpenAI-compatible
-nhưng phải bổ sung contract test, phân loại lỗi, vòng đời attempt và tắt thinking của qwen3.
+nhưng phải bổ sung contract test, phân loại lỗi, vòng đời attempt; model trial là
+`qwen2.5:3b-instruct-q4_K_M` (non-thinking, `reasoning_effort` để trống).
 Ollama là primary cho `chat_text`, `recommendation_text`, `free_text`; Gemini chỉ fallback tối đa
 một lần cho lỗi đủ điều kiện và vẫn là primary cho vision/embedding. Attempt `provider=openai` đi
 qua nhánh usage vận hành không tính tiền, không gọi pricing hay reserve/confirm chi phí. Attempt
@@ -34,7 +35,7 @@ scope), không sửa worker contract trong feature này.
 **Language/Version**: Go 1.26.0; Terraform HCL; Docker Compose (Lightsail hiện hữu); Nginx; shell
 
 **Primary Dependencies**: Gin 1.12, GORM 1.31, gRPC 1.83, RabbitMQ client 1.15, Redis client 9.22,
-Goose 3.28, Ollama `qwen3:4b` (pin runtime version + digest) qua OpenAI-compatible API, AWS
+Goose 3.28, Ollama `qwen2.5:3b-instruct-q4_K_M` (pin runtime version + digest) qua OpenAI-compatible API, AWS
 EC2/Elastic IP/EBS/SSM/Secrets Manager
 
 **Storage**: Giữ nguyên Supabase PostgreSQL, Redis Cloud, CloudAMQP và Cloudinary; EBS gp3 trên
@@ -42,7 +43,8 @@ EC2 giữ model Ollama; AWS Secrets Manager chỉ giữ Bearer token của proxy
 vụ hoặc migration database.
 
 **Testing**: `go test`, `go test -race`, `httptest`, contract/integration test adapter AI (bao gồm
-thinking off và structured output), Terraform `validate`/`plan`, kiểm tra cấu hình Nginx proxy,
+thinking/reasoning off và structured output), Terraform `validate`/`plan`, kiểm tra cấu hình Nginx
+proxy,
 smoke test local trước, smoke test trên Lightsail và drill bật/tắt Ollama có kiểm soát
 
 **Target Platform**: Box Lightsail hiện hữu; một EC2 Linux CPU-only `c6i.2xlarge` (8 vCPU/16 GiB)
@@ -70,7 +72,7 @@ tồn tại** và phải được override qua env `AI_CHAT_CHUNK_DEADLINE_SECON
 `http.Client.Timeout` 30/45/30 giây; phải bỏ timeout toàn cục cho text và dùng deadline từng attempt.
 
 **Scale/Scope**: Sáu container Lightsail giữ nguyên; một EC2 Ollama `c6i.2xlarge` 8 vCPU/16 GiB,
-EBS gp3 50 GiB, model `qwen3:4b` pin version/digest; concurrency 2 ở cả Go AI Service và Ollama.
+EBS gp3 50 GiB, model `qwen2.5:3b-instruct-q4_K_M` pin version/digest; concurrency 2 ở cả Go AI Service và Ollama.
 
 ## Constitution Check
 
@@ -162,7 +164,7 @@ shared/infrastructure/ai/
 ├── core.go                          # semaphore dùng chung cho text + timeout riêng mỗi attempt
 ├── telemetry.go                     # mới: field chuẩn + redaction
 ├── telemetry_test.go                # mới: redaction/required fields
-├── openai/openai.go                 # typed error, temperature, thinking off, usage winner
+├── openai/openai.go                 # typed error, temperature, reasoning off, usage winner
 ├── openai/errors.go                 # mới: typed upstream error + max_tokens
 ├── openai/openai_test.go            # mới: contract test
 ├── google/google_text.go            # luôn stamp provider/model khi usage thiếu
@@ -199,17 +201,17 @@ không thay thế Nginx gateway của Lightsail. Cây trên liệt kê các file
 - Truyền `temperature` kể cả giá trị 0; giữ `response_format`/`json_schema`, `stream_options`.
 - Plumbing `reasoning_effort`: thêm `ReasoningEffort` vào `config.APIProviderConfig` và
   `app_ai.TextProviderConfig`, map qua `overrideProvider`/`toTextProviderConfig`, rồi truyền vào
-  payload OpenAI. Giá trị rỗng = không gửi field; contract test cả hai trường hợp.
+  payload OpenAI. Trial dùng `qwen2.5:3b-instruct-q4_K_M` nên giá trị để **trống = không gửi**;
+  contract test vẫn phủ cả trường hợp có giá trị và rỗng.
 - Luôn phát provider/model winner ngay cả khi usage bằng 0 hoặc thiếu; áp dụng cho cả
   `openai.CallTextStream` và `google.CallTextStream` (hoặc stamp tại `text_service` sau attempt),
   để fallback Gemini không bị ghi nhầm provider Ollama.
 - Validate structured response theo `ResponseSchema` trước khi trả content.
 - Contract test: request/header, non-stream, SSE, `[DONE]`, usage-only, zero/missing usage,
   cancellation, malformed body, pinned Ollama version/model.
-- qwen3: gửi `reasoning_effort: "none"` (env `AI_OPENAI_REASONING_EFFORT`, trống = không gửi) để
-  tắt thinking; contract test phải chứng minh response không chứa thinking/reasoning content và
-  JSON vẫn hợp lệ. Nếu Ollama/version được pin bỏ qua field này, dùng `/no_think` ở prompt và ghi
-  lại bằng chứng; không bắt đầu đo khi chưa chứng minh.
+- `qwen2.5:3b-instruct-q4_K_M` là model non-thinking: `reasoning_effort` để trống. Contract test
+  phải chứng minh response không chứa reasoning content/token và JSON vẫn hợp lệ. Nếu model bị đổi
+  sang model thinking, dừng trial và cập nhật artifact trước khi đo.
 - Timeout: mỗi attempt có deadline riêng (Ollama 90 giây, Gemini 30 giây), không dùng chung
   `client.Timeout` cho primary và fallback; context của attempt bị hủy khi hết hạn để fallback còn
   ngân sách trong `write_timeout_seconds = 120`.
@@ -288,9 +290,9 @@ stream; orchestrator (services/ai) cài đặt callback để gọi `AdmitUnbill
 - DNS: apply hai bước — cấp Elastic IP trước, tạo tay A record của subdomain trỏ tới IP đó, rồi
   apply phần còn lại. Terraform chỉ xuất Elastic IP; không dùng Route53 provider, không đụng DNS
   của API.
-- Cloud-init: cài Ollama pin version, pull `qwen3:4b` pin digest, chạy Nginx proxy TLS, bind Ollama
+- Cloud-init: cài Ollama pin version, pull `qwen2.5:3b-instruct-q4_K_M` pin digest, chạy Nginx proxy TLS, bind Ollama
   `127.0.0.1:11434`, đặt `OLLAMA_NUM_PARALLEL=2`/`OLLAMA_MAX_QUEUE`, pre-warm model và chứng minh
-  thinking đã tắt trước khi đánh dấu trial-ready.
+  response không có reasoning content/token trước khi đánh dấu trial-ready.
 - Env Lightsail chỉ đổi nhóm `*_TEXT_PRIMARY_*=openai`, endpoint/model/token tương ứng,
   `*_TEXT_FALLBACK_*=google`, concurrency và timeout; vision/embedding giữ Gemini. `free_text`
   vẫn nằm trong `AI_UNBILLED_CAPABILITIES` cùng `embedding`; rule miễn phí cho `openai` nằm ở code
@@ -312,10 +314,10 @@ stream; orchestrator (services/ai) cài đặt callback để gọi `AdmitUnbill
 
 ### 5. Kiểm chứng local trước khi lên EC2
 
-- Cùng `qwen3:4b` pin version/digest chạy bằng Ollama native trên máy dev; GPU dùng để chạy
+- Cùng `qwen2.5:3b-instruct-q4_K_M` pin version/digest chạy bằng Ollama native trên máy dev; GPU dùng để chạy
   contract test và drill fallback trước, sau đó `OLLAMA_NUM_GPU=0` để đo latency CPU tham chiếu.
 - Contract test phải chứng minh: endpoint `/v1/chat/completions`, Bearer, non-stream, SSE,
-  structured JSON, usage thiếu/0, thinking off, lỗi 4xx/429/5xx và cancellation.
+  structured JSON, usage thiếu/0, không có reasoning content/token, lỗi 4xx/429/5xx và cancellation.
 - Trước khi bắt đầu tuần đo trên EC2, benchmark recommendation prompt thực tế; nếu p95 TTFT vượt
   60 giây, giảm `recommendation_prompt_candidate_limit` hoặc ghi nhận điều chỉnh trong báo cáo
   trước khi đo — không hạ SC-005 sau khi đã bắt đầu.

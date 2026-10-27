@@ -82,13 +82,12 @@ phát provider/model winner ngay cả khi usage token bằng 0, validate structu
 `ResponseSchema`, và contract test cho request/header, non-stream, SSE, `[DONE]`, usage-only,
 zero/missing usage, cancellation, malformed body và pinned Ollama version/model.
 
-Model được pin là `qwen3:4b`; vì qwen3 mặc định có thể bật thinking, adapter gửi
-`reasoning_effort: "none"` (env `AI_OPENAI_REASONING_EFFORT`, trống = không gửi) và contract test
-phải chứng minh không có reasoning/thinking content, JSON vẫn hợp lệ. `ReasoningEffort` phải được
-plumb từ `config.APIProviderConfig` → `app_ai.TextProviderConfig` → payload; không có đường tắt.
-Nếu version Ollama được pin bỏ qua field này, dùng `/no_think` trong prompt và ghi lại bằng chứng
-trước khi đo. Timeout thuộc về từng attempt: Ollama 90 giây, Gemini fallback 30 giây, tổng nằm
-trong write timeout 120 giây hiện hữu; text client không đặt `Timeout` toàn cục 30/45/30 giây nữa.
+Model được pin là `qwen2.5:3b-instruct-q4_K_M` (non-thinking); `reasoning_effort` để trống và
+không gửi field. Contract test phải chứng minh không có reasoning content/token, JSON vẫn hợp lệ.
+`ReasoningEffort` vẫn được plumb từ `config.APIProviderConfig` → `app_ai.TextProviderConfig` →
+payload để giữ tương thích provider khác, nhưng trial không dùng. Timeout thuộc về từng attempt:
+Ollama 90 giây, Gemini fallback 30 giây, tổng nằm trong write timeout 120 giây hiện hữu; text
+client không đặt `Timeout` toàn cục 30/45/30 giây nữa.
 
 **Rationale**: Code hiện có đã gửi Bearer, `response_format` và `stream_options.include_usage`,
 nhưng chưa có test adapter; mọi non-2xx bị ép thành lỗi 503 mất phân loại; temperature chưa được
@@ -101,8 +100,9 @@ subset của OpenAI API nên tương thích phải được chứng minh bằng 
   sai.
 - Viết Ollama adapter native `/api/chat`: nhân đôi integration trong khi contract OpenAI đủ cho
   scope.
-- Giữ thinking mặc định của qwen3: response có thể chứa reasoning token, structured output lệch và
-  TTFT tăng; không phù hợp với SC-005 mới.
+- Dùng model thinking như `qwen3:4b`: Ollama 0.40.11 không tắt được thinking qua `/v1` (và
+  `think:false` native cũng không), reasoning lẫn vào content, structured output và latency không
+  đạt; bị loại sau local test.
 
 ## R5. Routing và fallback tối đa hai attempt
 
@@ -236,25 +236,26 @@ chứng VPS bằng diff/allowlist phía repository là đủ; probe trực tiế
 - Dùng VPS làm proxy/DNS/rollback automation: tạo phụ thuộc bị cấm.
 - Thay base URL/frontend code: domain API giữ nguyên nên không cần.
 
-## R10. Model qwen3:4b, pin digest và kiểm chứng local trước
+## R10. Model qwen2.5:3b-instruct-q4_K_M, pin digest và kiểm chứng local trước
 
-**Decision**: Dùng `qwen3:4b` cho cả test local và EC2, pin version Ollama và digest model; mọi
-request text gửi `reasoning_effort: "none"` để tắt thinking trước khi đo. Trước khi lên EC2, chạy
-cùng model/digest bằng Ollama native trên máy dev: GPU để chạy contract test và drill fallback,
-sau đó `OLLAMA_NUM_GPU=0` để đo latency CPU tham chiếu. Chỉ khi contract test và fallback drill
-local đạt mới apply Terraform; latency GPU local không được dùng thay SC-005.
+**Decision**: Dùng `qwen2.5:3b-instruct-q4_K_M` (non-thinking) cho cả test local và EC2, pin
+version Ollama và digest model; `reasoning_effort` để trống. Trước khi lên EC2, chạy cùng
+model/digest bằng Ollama native trên máy dev: GPU để chạy contract test và drill fallback, sau đó
+`OLLAMA_NUM_GPU=0` để đo latency CPU tham chiếu. Chỉ khi contract test và fallback drill local đạt
+mới apply Terraform; latency GPU local không được dùng thay SC-005.
 
-**Rationale**: qwen3:4b vừa 6 GiB VRAM của máy dev nên test chức năng nhanh, đồng thời vẫn có khả
-năng chạy trên 8 vCPU của `c6i.2xlarge`. Pin digest bảo đảm hành vi giữa local và EC2 giống nhau.
-Thinking mặc định của qwen3 làm tăng TTFT, có thể chèn reasoning token và phá JSON schema, nên
-phải tắt và chứng minh bằng test thay vì giả định. Test local trước giảm rủi ro phát hiện lỗi
-contract sau khi đã trả tiền EC2. Nếu benchmark cho thấy recommendation không thể hoàn tất trong
-90 giây, phải giảm prompt/output hoặc chấp nhận fallback và ghi rõ SC-001 không đạt — không hạ
-ngưỡng sau khi đã bắt đầu đo.
+**Rationale**: `qwen2.5:3b-instruct-q4_K_M` vừa 6 GiB VRAM của máy dev nên test chức năng nhanh,
+đồng thời vẫn có khả năng chạy trên 8 vCPU của `c6i.2xlarge`; local test cho thấy nó trả lời không
+reasoning và ổn định. `qwen3:4b` đã bị loại vì Ollama 0.40.11 không tắt được thinking qua `/v1`,
+reasoning lẫn vào content và phá JSON/latency. Pin digest bảo đảm hành vi giữa local và EC2 giống
+nhau. Test local trước giảm rủi ro phát hiện lỗi contract sau khi đã trả tiền EC2. Nếu benchmark
+cho thấy recommendation không thể hoàn tất trong 90 giây, phải giảm prompt/output hoặc chấp nhận
+fallback và ghi rõ SC-001 không đạt — không hạ ngưỡng sau khi đã bắt đầu đo.
 
 **Alternatives considered**:
 
-- qwen2.5:3b: nhanh hơn và tiếng Việt ổn, nhưng ít năng lực suy luận hơn qwen3:4b.
-- gemma3:4b: đa ngôn ngữ tốt nhưng chậm hơn trên CPU.
+- `qwen3:4b`: mạnh hơn nhưng không tắt được thinking trên Ollama 0.40.11; reasoning lẫn content,
+  structured output sai và latency cao — bị loại sau local test.
+- `gemma3:4b`: đa ngôn ngữ tốt nhưng chậm hơn trên CPU; chưa thử.
 - Chỉ test trên EC2: phát hiện lỗi contract/chứng chỉ/thinking muộn, tốn thời gian và tiền EC2.
 - Dùng GPU local làm bằng chứng latency: không đại diện cho CPU-only, dễ chốt timeout sai.

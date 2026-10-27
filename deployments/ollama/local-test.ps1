@@ -21,8 +21,8 @@
 [CmdletBinding()]
 param(
     [string]$BaseUrl = "http://127.0.0.1:11434",
-    [string]$Model = "qwen3:4b",
-    [string]$ReasoningEffort = "none",
+    [string]$Model = "qwen2.5:3b-instruct-q4_K_M",
+    [string]$ReasoningEffort = "",
     [int]$MaxTokens = 64,
     [int]$Samples = 5,
     [int]$Concurrency = 2,
@@ -239,7 +239,7 @@ Write-Step "preflight"
 
 $ollamaCmd = Get-Command ollama -ErrorAction SilentlyContinue
 if ($null -eq $ollamaCmd) {
-    Fail "Ollama CLI not found in PATH. Install Ollama natively and pull qwen3:4b first (runbook A1, manual step). This script does not install or pull anything." 2
+    Fail "Ollama CLI not found in PATH. Install Ollama natively and pull qwen2.5:3b-instruct-q4_K_M first (runbook A1, manual step). This script does not install or pull anything." 2
 }
 
 try {

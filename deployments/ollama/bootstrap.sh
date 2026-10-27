@@ -366,7 +366,7 @@ render_nginx_config() {
 prewarm_and_assert_thinking_off() {
   log "pre-warming ${OLLAMA_MODEL} and asserting thinking is off"
   local payload response
-  payload="$(printf '{"model":"%s","messages":[{"role":"user","content":"ping"}],"stream":false,"max_tokens":16,"temperature":0,"reasoning_effort":"none"}' "${OLLAMA_MODEL}")"
+  payload="$(printf '{"model":"%s","messages":[{"role":"user","content":"ping"}],"stream":false,"max_tokens":16,"temperature":0}' "${OLLAMA_MODEL}")"
 
   response="$(curl -fsS --max-time 300 "http://${OLLAMA_HOST}/v1/chat/completions" \
     -H 'Content-Type: application/json' \
@@ -381,7 +381,7 @@ prewarm_and_assert_thinking_off() {
     fail "pre-warm response has no content"
 
   if printf '%s' "${response}" | jq -e '((.choices[0].message.reasoning_content // "") | length > 0) or ((.choices[0].message.thinking // "") | length > 0)' >/dev/null; then
-    fail "thinking is ON: the pre-warm response carried reasoning content. Use /no_think or change the pinned model/version before measuring."
+    fail "thinking is ON: the pre-warm response carried reasoning content. Change the pinned model/version before measuring."
   fi
 
   if printf '%s' "${response}" | jq -e '(.usage.completion_tokens_details.reasoning_tokens // 0) > 0' >/dev/null; then

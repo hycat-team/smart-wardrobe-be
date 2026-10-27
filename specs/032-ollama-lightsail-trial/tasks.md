@@ -36,7 +36,7 @@
 - [x] T005 [P] Bổ sung 6 biến mới vào `.env.aws.example`: `AI_TEXT_MAX_CONCURRENCY`, `AI_TEXT_PRIMARY_TIMEOUT_SECONDS`, `AI_TEXT_FALLBACK_TIMEOUT_SECONDS`, `AI_OPENAI_REASONING_EFFORT`, `AI_CHAT_CHUNK_DEADLINE_SECONDS`, `AI_OPENAI_TRIAL_EXPECTED_HOSTS`; giữ nguyên 24 key của ba nhóm `*_TEXT_*` và 16 key `VISION_*`/`EMBEDDING_*`; mẫu chỉ minh họa — giá trị trial thật (cả 3 primary = `openai`) theo contract §1.1 và T039 (comment tiếng Anh)
 - [x] T006 [P] Tạo khung `deployments/terraform/ollama-ec2/versions.tf`, `variables.tf`, `outputs.tf`, `templates/cloud-init.yaml.tftpl`; `terraform init` là bước operator khi Terraform có trong PATH
 - [x] T007 [P] Tạo khung `deployments/ollama/bootstrap.sh` và `deployments/ollama/nginx-ollama.conf.template` với placeholder TLS/Bearer/loopback
-- [x] T008 Tạo `deployments/ollama/local-test.ps1` để đo GPU/CPU và ghi hướng dẫn vào runbook; cài Ollama native + pull `qwen3:4b` + ghi digest là bước operator nếu binary chưa có
+- [x] T008 Tạo `deployments/ollama/local-test.ps1` để đo GPU/CPU và ghi hướng dẫn vào runbook; cài Ollama native + pull `qwen2.5:3b-instruct-q4_K_M` + ghi digest là bước operator nếu binary chưa có
 
 **Checkpoint**: Có đủ khung để bắt đầu foundational và có bằng chứng baseline.
 
@@ -72,18 +72,18 @@ từ ngoài bị chặn, `11434` không public; gọi text thấy provider `open
 
 ### Tests for User Story 1 (REQUIRED) ⚠️
 
-- [x] T017 [P] [US1] Viết contract test adapter trong `shared/infrastructure/ai/openai/openai_test.go`: request/header, non-stream, SSE, `[DONE]`, usage-only, zero/missing usage, malformed, 4xx/429/5xx, cancellation, thinking off, reasoning effort rỗng = không gửi field, `finish_reason=length`, `json_schema`
+- [x] T017 [P] [US1] Viết contract test adapter trong `shared/infrastructure/ai/openai/openai_test.go`: request/header, non-stream, SSE, `[DONE]`, usage-only, zero/missing usage, malformed, 4xx/429/5xx, cancellation, không reasoning, reasoning effort rỗng = không gửi field, `finish_reason=length`, `json_schema`
 - [x] T018 [P] [US1] Viết routing regression test trong `shared/infrastructure/ai/text_routing_test.go`: text chọn `openai`, vision/embedding chọn `google`, `summary`/`rewriter` route free → `free_text`/`FREE_TEXT` và route paid → `chat_text`/`CHAT_TEXT` (cả hai đều `openai` trong trial), tối đa 2 attempt, không có `freeFailover`
 
 ### Implementation for User Story 1
 
 - [x] T019 [US1] Implement EC2/EIP/SG/EBS/IAM/SSM/Secrets Manager/Budget/tags trong `deployments/terraform/ollama-ec2/main.tf` với `c6i.2xlarge`, 443 chỉ từ `/32` Lightsail, 80 chỉ ACME, 11434 loopback; Budget 80 USD cảnh báo 50/80/100%; tag `Project`, `Feature=032`, `Environment=aws-course`, `Owner`, `ExpiresOn`
-- [x] T020 [US1] Hoàn thiện `deployments/terraform/ollama-ec2/variables.tf`, `outputs.tf`, `versions.tf`, `templates/cloud-init.yaml.tftpl`: pin Ollama version + model digest, `OLLAMA_NUM_PARALLEL=2`, `OLLAMA_MAX_QUEUE`, pre-warm, Nginx TLS, certbot, kiểm tra thinking off
+- [x] T020 [US1] Hoàn thiện `deployments/terraform/ollama-ec2/variables.tf`, `outputs.tf`, `versions.tf`, `templates/cloud-init.yaml.tftpl`: pin Ollama version + model digest, `OLLAMA_NUM_PARALLEL=2`, `OLLAMA_MAX_QUEUE`, pre-warm, Nginx TLS, certbot, kiểm tra không reasoning
 - [x] T021 [US1] Implement proxy TLS/Bearer/allowlist/ACME trong `deployments/ollama/nginx-ollama.conf.template`
 - [x] T022 [US1] Implement bootstrap idempotent trong `deployments/ollama/bootstrap.sh` (cài đúng version, pull digest, cấu hình systemd, chạy Nginx)
 - [x] T023 [US1] Hoàn thiện adapter trong `shared/infrastructure/ai/openai/openai.go`: truyền `temperature` kể cả `0`, plumb `ReasoningEffort` từ `config.APIProviderConfig`/`TextProviderConfig` vào payload, map lỗi có status + `max_tokens`, luôn stamp provider/model winner; sửa `shared/infrastructure/ai/google/google_text.go` để stamp provider/model khi usage thiếu; validate structured response
 - [x] T024 [US1] Sửa routing/fallback trong `shared/infrastructure/ai/text_service.go` và `text_provider.go`: bỏ `freeFailover`, đúng 1 Ollama + 1 Gemini, ma trận lỗi (gồm `max_tokens`), streaming chỉ fallback trước chunk đầu và không fallback giữa stream, fallback qua limiter Gemini, dùng semaphore + deadline từng attempt, dùng `AI_CHAT_CHUNK_DEADLINE_SECONDS` cho stream
-- [ ] T025 [US1] Chạy `deployments/ollama/local-test.ps1` trên máy dev: GPU cho contract/fallback, `OLLAMA_NUM_GPU=0` cho latency CPU; ghi kết quả vào `docs/operations/ollama-trial-runbook.md`
+- [x] T025 [US1] Chạy `deployments/ollama/local-test.ps1` trên máy dev: functional GPU + 50 mẫu latency reference; thử `OLLAMA_NUM_GPU=0` (bị desktop app giữ GPU, ghi blocked); chạy AI service end-to-end A5–A8 và ghi evidence vào `docs/operations/ollama-trial-runbook.md`
 - [ ] T026 [US1] Thực hiện apply 2 bước trong `docs/operations/ollama-trial-runbook.md`: `terraform apply -target=aws_eip.ollama` → tạo A record → apply phần còn lại; xác minh SSM, proxy, `11434`, digest và ghi bằng chứng
 - [ ] T027 [US1] Chạy `terraform -chdir=deployments/terraform/ollama-ec2 validate` + `plan` và `nginx -t` với `deployments/ollama/nginx-ollama.conf.template`; ghi kết quả vào `docs/operations/ollama-trial-runbook.md`
 
