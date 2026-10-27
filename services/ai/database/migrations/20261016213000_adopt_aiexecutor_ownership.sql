@@ -231,6 +231,7 @@ INSERT INTO aiexecutor.ai_model_configs (provider, model, input_usd_per_million,
 SELECT v.provider, v.model, v.inusd, v.outusd, v.tovnd
 FROM (VALUES
     ('google', 'gemini-3.1-flash-lite', 0.25, 1.50, 27500),
+    ('google', 'gemini-3.5-flash-lite', 0.30, 2.50, 27500),
     ('google', 'gemini-2.5-flash-lite', 0.10, 0.40, 27500),
     ('google', 'gemini-embedding-2', 0.20, 0.20, 27500),
     ('google', 'gemini-embedding-001', 0.15, 0.15, 27500),
