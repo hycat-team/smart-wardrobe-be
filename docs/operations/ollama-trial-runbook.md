@@ -173,6 +173,7 @@ local không đạt, phải điều chỉnh prompt/model/digest **trước** khi
 | A4 CPU-only | **BLOCKED** | Ollama desktop app tự giữ model trên GPU (`/api/ps` báo `size_vram` full) dù đặt `OLLAMA_NUM_GPU=0`; không có số CPU local đáng tin. Số 50 mẫu chat chạy được là **GPU reference**, không dùng cho SC-005 |
 | A5 text qua AI service | **PASS** | `chat`, `outfit`, `summary`, `rewriter` → `provider=openai`, `billing_class=unbilled`, `actual_cost=0` |
 | A6 vision/embedding | **PASS** | `provider=google`; vision billed (`actual_cost=8531875` microVND), embedding unbilled |
+| A6b gRPC streaming | **PASS** | `GenerateChatTextStream` trả chunk `1`, `2`, `3`, `done=true`; `provider=openai`, TTFT 5687ms, cost 0 |
 | A7 fallback | **PASS** | Primary trỏ port chết `11435` → attempt 1 `transport`, attempt 2 Gemini `gemini-3.1-flash-lite` success; user paid route ghi `actual_cost=144375` microVND |
 | A8 restore | **PASS** | Trỏ lại `11434` → `provider=openai`, cost 0 |
 
