@@ -5,6 +5,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/category"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/worker"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/persistence"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/contract"
@@ -33,12 +34,15 @@ var ProviderSet = wire.NewSet(
 
 	fashion_item.NewFashionItemUseCase,
 	category.NewCategoryUseCase,
+	// 033 T027/T028: style profile read/update/delete (US1).
+	profile.NewStyleProfileUseCase,
 	contract.NewFashionContract,
 	contract.NewCategoryContract,
 	contract.NewFashionDashboardReader,
 
 	handler.NewWardrobeAIHandler,
 	handler.NewCategoryHandler,
+	handler.NewStyleProfileHandler,
 	router.NewRouter,
 	presentation_worker.NewFailedItemsCleanupWorker,
 	presentation_worker.NewProcessingRecoveryWorker,

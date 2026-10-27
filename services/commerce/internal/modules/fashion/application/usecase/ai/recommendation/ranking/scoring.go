@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	personalization_shared "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/shared"
 	wardrobeDto "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
 
 	"github.com/google/uuid"
@@ -21,6 +22,23 @@ const (
 	recommendationWeatherColdLike    = "cold-like"
 	recommendationWeatherHotLike     = "hot-like"
 	recommendationWeatherRainy       = "rainy"
+)
+
+// Personal profile score deltas (033 plan D4, T031). They are soft signals: a
+// matched item gets a bonus or a penalty, never an inclusion/exclusion decision.
+const (
+	// personalStyleMatchScore applies when the request carries no style target,
+	// so the saved profile is the only style signal.
+	personalStyleMatchScore = 0.25
+	// personalStyleMatchWithRequestScore applies when the request already chose
+	// a style: the request wins and the profile only nudges the ranking.
+	personalStyleMatchWithRequestScore = 0.10
+	// learnedStyleMatchScore is the default weight of a learned-style match. The
+	// effective weight comes from personalization.learned_style_weight (carried
+	// on the intent); this constant only applies when it is not configured.
+	learnedStyleMatchScore = 0.10
+	// avoidStylePenalty applies to items matching a declared excluded style.
+	avoidStylePenalty = 0.30
 )
 
 // ScoreCandidateItem chấm điểm một món đồ ứng viên dựa trên mức độ phù hợp của nó với phong cách, dịp, tông màu và thời tiết yêu cầu.
@@ -40,6 +58,13 @@ const (
 // 8. **Tần suất sử dụng**:
 //   - Trừ điểm phạt (tối đa 0.4) nếu món đồ vừa mới mặc gần đây (trong khoảng [recentlyWornDays]).
 //   - Cộng điểm thưởng 0.15 nếu món đồ đã lâu không mặc hoặc là đồ mới chưa từng mặc.
+//
+// 9. **Gu cá nhân (mềm, 033 US1)**:
+//   - Cộng 0.25 (hoặc 0.10 nếu request đã có style target) khi món đồ khớp gu khai báo.
+//   - Cộng theo trọng số `personalization.learned_style_weight` (mặc định 0.10) khi món đồ khớp gu
+//     học được từ hành vi lưu outfit.
+//   - Trừ 0.30 khi món đồ khớp gu người dùng muốn tránh.
+//   - Không bao giờ loại món đồ khỏi pool vì gu.
 //
 // Đầu vào mẫu:
 //
@@ -140,6 +165,25 @@ func ScoreCandidateItem(
 				break
 			}
 		}
+	}
+
+	// Soft personal profile signals (033 US1/T031). They never filter a
+	// candidate out; they only move it up or down the ranked pool.
+	if itemMatchesAnyStyleLabel(fashion, intent.AvoidStyle) {
+		score -= avoidStylePenalty
+		reasonTags = append(reasonTags, "avoid-style")
+	}
+	if itemMatchesAnyStyleLabel(fashion, intent.PersonalStyle) {
+		if len(intent.StyleTarget) > 0 {
+			score += personalStyleMatchWithRequestScore
+		} else {
+			score += personalStyleMatchScore
+		}
+		reasonTags = append(reasonTags, "personal-style-match")
+	}
+	if itemMatchesAnyStyleLabel(fashion, intent.LearnedStyle) {
+		score += learnedStyleWeight(intent)
+		reasonTags = append(reasonTags, "learned-style-match")
 	}
 
 	if fashion != nil && len(intent.ExcludedColorTones) > 0 && fashion.ColorLightness != nil {
@@ -245,6 +289,52 @@ func ScoreCandidateItem(
 	}
 
 	return score, reasonTags
+}
+
+// learnedStyleWeight returns the effective score bonus of a learned-style
+// match: personalization.learned_style_weight when the personalization helper
+// supplied it, otherwise the built-in default.
+func learnedStyleWeight(intent dto.ParsedIntent) float64 {
+	if intent.LearnedStyleWeight > 0 {
+		return intent.LearnedStyleWeight
+	}
+	return learnedStyleMatchScore
+}
+
+// itemMatchesAnyStyleLabel reports whether the item's style metadata matches any
+// of the given style labels. It normalises both sides with the existing parser
+// and expands each label through the style taxonomy, so a Vietnamese item style
+// ("Tối giản") matches the canonical label ("minimalist") and vice versa.
+//
+// The profile labels were already normalised when the context was built; this
+// helper repeats the normalisation so it is also correct when called directly.
+func itemMatchesAnyStyleLabel(fashion *dto.FashionItemContractDTO, labels []string) bool {
+	if fashion == nil || fashion.Style == nil || len(labels) == 0 {
+		return false
+	}
+	itemStyle := parser.NormalizeText(*fashion.Style)
+	if itemStyle == "" {
+		return false
+	}
+	for _, label := range personalization_shared.NormalizeStyleLabels(labels) {
+		if styleLabelMatchesItemStyle(label, itemStyle) {
+			return true
+		}
+	}
+	return false
+}
+
+// styleLabelMatchesItemStyle checks one canonical style label (and its taxonomy
+// synonyms) against the already-normalised item style text.
+func styleLabelMatchesItemStyle(label, itemStyle string) bool {
+	terms := append([]string{label}, retrieval.ExpandTaxonomyTermValues("style", []string{label})...)
+	for _, term := range terms {
+		normalized := parser.NormalizeText(term)
+		if normalized != "" && strings.Contains(itemStyle, normalized) {
+			return true
+		}
+	}
+	return false
 }
 
 // recommendationWeatherState phân loại các từ khóa mô tả thời tiết thành các trạng thái chuẩn hóa (cold-like, hot-like, rainy, hoặc unspecified).

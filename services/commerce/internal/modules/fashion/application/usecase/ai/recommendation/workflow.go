@@ -37,17 +37,21 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 	userID uuid.UUID,
 	input dto.RecommendOutfitReq,
 ) (*dto.RecommendedOutfitRes, error) {
+	// The id is generated once per request so the response can be fed back to
+	// the feedback endpoint (033 contracts §2.1, US6).
+	recommendationID := uuid.New()
+
 	activeItems, quotaDTO, err := uc.validateAndGetActiveItems(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	candidates, fashionItemMap, err := uc.filterCandidates(ctx, userID, activeItems, input)
+	candidates, fashionItemMap, personalization, err := uc.filterCandidates(ctx, userID, activeItems, input)
 	if err != nil {
 		return nil, err
 	}
 
-	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input, fashionItemMap)
+	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input, fashionItemMap, personalization)
 	if err != nil {
 		failureKind, providerHint, promptLen, responsePreview := synthesis.ClassifyFallbackTrace(err)
 		uc.logger.Warn("Outfit recommendation AI fallback triggered",
@@ -55,11 +59,17 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 			zap.String("provider_hint", providerHint),
 			zap.Error(err),
 			zap.String("user_id", userID.String()),
+			zap.String("recommendation_id", recommendationID.String()),
+			zap.Bool("personalized", personalization.Active),
 			zap.Int("candidate_count", len(candidates)),
 			zap.Int("prompt_len", promptLen),
 			zap.String("response_preview", responsePreview),
 		)
-		finalRes = ranking.RunLocalHSLMatching(candidates, input, fashionItemMap)
+		finalRes = ranking.RunLocalHSLMatchingWithPersonalization(candidates, input, fashionItemMap, personalization)
+	}
+
+	if finalRes != nil {
+		finalRes.RecommendationID = recommendationID
 	}
 
 	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {

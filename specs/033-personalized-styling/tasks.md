@@ -179,12 +179,12 @@ kiểm tra thứ hạng, explanation, và user free bị 403.
 
 ### Implementation
 
-- [ ] T025 [P] [US1] Tạo DTO `services/commerce/internal/modules/fashion/application/dto/style_profile.go`:
+- [x] T025 [P] [US1] Tạo DTO `services/commerce/internal/modules/fashion/application/dto/style_profile.go`:
   `UpdateStyleProfileReq` (pointer fields), `StyleProfileRes`, `StyleSuggestionItem`,
   `StyleSuggestionRes`; validation tags cho độ dài từng giá trị.
-- [ ] T026 [P] [US1] Tạo mapper `services/commerce/internal/modules/fashion/application/mapper/style_profile.go`
+- [x] T026 [P] [US1] Tạo mapper `services/commerce/internal/modules/fashion/application/mapper/style_profile.go`
   map entity → response (không trả embedding/hash).
-- [ ] T027 [US1] Implement `.../profile/profile_uc.go`: `GetProfile`, `UpdateProfile` (thứ tự: trim →
+- [x] T027 [US1] Implement `.../profile/profile_uc.go`: `GetProfile`, `UpdateProfile` (thứ tự: trim →
   bỏ rỗng → dedupe → kiểm độ dài → từ chối khi vượt `max_styles` → embed fail-soft, hash skip),
   `DeleteProfile`; đọc entitlement qua
   `IUserSubscriptionContract`; nếu thiếu entitlement thì PUT/DELETE trả `ErrPersonalizationNotAvailable`
@@ -192,31 +192,31 @@ kiểm tra thứ hạng, explanation, và user free bị 403.
   `ErrPersonalizationDisabled` (403), GET vẫn đọc. Tạo các constructor lỗi
   `ErrPersonalizationNotAvailable`, `ErrPersonalizationDisabled`, `ErrStyleLimitExceeded`,
   `ErrStyleValueInvalid` trong `.../fashion/application/errors/` (dùng `apperror`).
-- [ ] T028 [US1] Tạo handler `services/commerce/internal/modules/fashion/presentation/handler/style_profile_handler.go`
+- [x] T028 [US1] Tạo handler `services/commerce/internal/modules/fashion/presentation/handler/style_profile_handler.go`
   (GET/PUT/DELETE `/me/style-profile`) + swagger annotation; đăng ký route trong
   `services/commerce/internal/modules/fashion/presentation/router/router.go` dưới `privateApi` với
   `/me/style-profile`.
-- [ ] T029 [US1] Implement `services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/personalization_helper.go`:
+- [x] T029 [US1] Implement `services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/personalization_helper.go`:
   load profile theo `subOverview.PersonalizationEnabled`; nếu `profile.enabled = false` hoặc không có
   quyền lợi thì trả `PersonalizationContext` rỗng; nếu bật, merge intent (request style thắng), tính
   `styleVector` từ explicit + learned với trọng số config.
-- [ ] T030 [US1] Sửa `.../recommendation/candidate_helpers.go`:
+- [x] T030 [US1] Sửa `.../recommendation/candidate_helpers.go`:
   `buildRecommendationQueryVector` blend style vector + normalize; fallback text-only khi không có vector.
-- [ ] T031 [US1] Sửa `.../recommendation/ranking/scoring.go`:
+- [x] T031 [US1] Sửa `.../recommendation/ranking/scoring.go`:
   thêm `personal-style-match`, `learned-style-match`, `avoid-style`; không hard filter.
-- [ ] T032 [US1] Sửa `.../recommendation/synthesis/prompt.go` (context `personal_style`, `learned_style`,
+- [x] T032 [US1] Sửa `.../recommendation/synthesis/prompt.go` (context `personal_style`, `learned_style`,
   `avoid_styles`) và `.../synthesis/generation.go` (system prompt rule ưu tiên gu).
-- [ ] T033 [US1] Sửa `.../recommendation/ranking/fallback_hsl.go` để áp dụng cùng style scoring.
-- [ ] T034 [US1] Thêm `RecommendationID uuid.UUID` vào `RecommendedOutfitRes` trong
+- [x] T033 [US1] Sửa `.../recommendation/ranking/fallback_hsl.go` để áp dụng cùng style scoring.
+- [x] T034 [US1] Thêm `RecommendationID uuid.UUID` vào `RecommendedOutfitRes` trong
   `.../application/dto/recommendation.go`; sinh `recommendationId` trong
   `.../recommendation/workflow.go`; nối `PersonalizationContext` vào workflow/`workflow_helpers.go`;
   đảm bảo `filterCandidates` nhận context, không đổi chữ ký handler.
-- [ ] T035 [US1] Thêm test: `style_profile_uc_test.go` (normalize/cap/dedupe/fail-soft; embed lỗi không
+- [x] T035 [US1] Thêm test: `style_profile_uc_test.go` (normalize/cap/dedupe/fail-soft; embed lỗi không
   ghi `embedding_hash`; PUT lại thì thử lại; PUT/DELETE thiếu entitlement → 403; kill switch → 403),
   `personalization_helper_test.go` (request thắng, weight, request rỗng, `enabled=false` → context rỗng,
   mất quyền lợi → context rỗng), `candidate_helpers_test.go` (blend/normalize),
   `scoring_test.go` (cộng/trừ điểm), `synthesis_test.go` (context key).
-- [ ] T036 [US1] Chạy `make wire svc=commerce`, `go test -race -count=3` cho
+- [x] T036 [US1] Chạy `make wire svc=commerce`, `go test -race -count=3` cho
   `./services/commerce/internal/modules/fashion/...` và `./services/account/internal/modules/subscription/...`;
   chạy kịch bản US1 trong `quickstart.md` và ghi kết quả.
 

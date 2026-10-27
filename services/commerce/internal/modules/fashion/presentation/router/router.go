@@ -11,20 +11,23 @@ import (
 )
 
 type Router struct {
-	aiHandler       *fashion_handler.WardrobeAIHandler
-	categoryHandler *fashion_handler.CategoryHandler
-	auth            identity_contract.IAuthMiddleware
+	aiHandler           *fashion_handler.WardrobeAIHandler
+	categoryHandler     *fashion_handler.CategoryHandler
+	styleProfileHandler *fashion_handler.StyleProfileHandler
+	auth                identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	aiHandler *fashion_handler.WardrobeAIHandler,
 	categoryHandler *fashion_handler.CategoryHandler,
+	styleProfileHandler *fashion_handler.StyleProfileHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		aiHandler:       aiHandler,
-		categoryHandler: categoryHandler,
-		auth:            auth,
+		aiHandler:           aiHandler,
+		categoryHandler:     categoryHandler,
+		styleProfileHandler: styleProfileHandler,
+		auth:                auth,
 	}
 }
 
@@ -47,6 +50,13 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		aiApi.DELETE("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.DeleteChatSession))
 		aiApi.PATCH("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.UpdateChatSession))
 		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.aiHandler.StreamChatMessage))
+	}
+
+	styleProfileApi := privateApi.Group("/me/style-profile")
+	{
+		styleProfileApi.GET("", shared_pres.WrapHandler(r.styleProfileHandler.GetStyleProfile))
+		styleProfileApi.PUT("", shared_pres.WrapHandler(r.styleProfileHandler.UpdateStyleProfile))
+		styleProfileApi.DELETE("", shared_pres.WrapHandler(r.styleProfileHandler.DeleteStyleProfile))
 	}
 
 	admin := group.Group("/admin")
