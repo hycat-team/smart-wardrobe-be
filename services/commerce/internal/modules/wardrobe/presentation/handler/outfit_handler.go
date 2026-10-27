@@ -52,6 +52,9 @@ func (h *OutfitHandler) GetUploadSignature(c *gin.Context) error {
 // SaveOutfit creates a new outfit coordinate canvas
 // @Summary Tạo bộ phối đồ mới
 // @Description Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.
+// @Description Mỗi item có thể gửi kèm itemContext (user_wardrobe | brand_item | system_catalog).
+// @Description Khi bỏ trống, hệ thống tự dò theo thứ tự: tủ đồ người dùng -> món thương hiệu đủ điều kiện -> bộ sưu tập hệ thống.
+// @Description Món system_catalog được sao chép vào tủ đồ trong cùng giao dịch (không chạy lại phân tích ảnh) và trả về với itemContext = user_wardrobe.
 // @Tags Outfits
 // @Accept json
 // @Produce json
@@ -81,6 +84,8 @@ func (h *OutfitHandler) SaveOutfit(c *gin.Context) error {
 // UpdateOutfit updates coordinates of outfits on canvas board
 // @Summary Cập nhật bộ phối đồ
 // @Description Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối đồ.
+// @Description Áp dụng cùng quy tắc itemContext như khi tạo: món system_catalog được sao chép vào tủ đồ nếu chưa sở hữu.
+// @Description Chỉ các món mới thêm mới được cập nhật last_used_at và phát tín hiệu học gu.
 // @Tags Outfits
 // @Accept json
 // @Produce json

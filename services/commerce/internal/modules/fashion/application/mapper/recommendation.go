@@ -86,6 +86,28 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.
 	return res
 }
 
+// MapOutfitSuggestionRes maps one catalog fashion item plus its generated
+// reason into the additive `suggestions` entry of the recommendation response
+// (033 US2, contracts §2.1).
+func MapOutfitSuggestionRes(role, reason string, fi *dto.FashionItemContractDTO) dto.OutfitSuggestionRes {
+	res := dto.OutfitSuggestionRes{
+		Role:   role,
+		Reason: reason,
+	}
+	if fi == nil {
+		return res
+	}
+	res.FashionItem = &dto.RecommendedFashionItemBriefRes{
+		ID:       fi.ID,
+		Category: fi.Category,
+		ImageUrl: fi.ImageUrl,
+		Color:    fi.Color,
+		ColorHex: fi.ColorHex,
+		Style:    fi.Style,
+	}
+	return res
+}
+
 func FashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) *dto.FashionItemContractDTO {
 	if item == nil {
 		return nil

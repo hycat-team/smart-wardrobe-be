@@ -50,6 +50,19 @@ type RecommendedOutfitRes struct {
 	Items            []*RecommendedItemGroup `json:"items"`
 	IsFallback       bool                    `json:"isFallback"`
 	RemainingQuota   int                     `json:"remainingQuota"`
+	// Suggestions lists catalog items that fill a missing or low-quality outfit
+	// role (033 US2, contracts §2.1). It is additive: suggestions are NOT part
+	// of Items, are NOT counted as outfit items and do NOT consume quota.
+	Suggestions []OutfitSuggestionRes `json:"suggestions,omitempty"`
+}
+
+// OutfitSuggestionRes is one catalog item proposed to fill a gap in the
+// generated outfit (033 US2, contracts §2.1). The item is a system catalog
+// fashion item the user does not own yet; saving it later clones it.
+type OutfitSuggestionRes struct {
+	Role        string                          `json:"role"`
+	Reason      string                          `json:"reason"`
+	FashionItem *RecommendedFashionItemBriefRes `json:"fashionItem"`
 }
 
 type RecommendedItemGroup struct {

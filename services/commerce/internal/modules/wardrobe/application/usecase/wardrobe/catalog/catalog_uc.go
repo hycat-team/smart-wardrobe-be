@@ -152,19 +152,40 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		return nil, wardrobeerrors.ErrCatalogItemNotFound()
 	}
 
-	newItems := make([]*entities.WardrobeItem, len(templates))
-	for i, original := range templates {
-		fashionItemID := original.FashionItemID
-		if fashionItemID == nil {
-			fashionItemID = &original.ID
+	// Only genuine system catalog templates may be cloned: item_type
+	// SystemCatalogItem, status InWardrobe and not soft-deleted. This also
+	// rejects another user's private wardrobe item when its id is supplied
+	// (FR-035); GetByIDs alone would happily return it.
+	templateByID := make(map[uuid.UUID]*entities.WardrobeItem, len(templates))
+	for _, template := range templates {
+		if template == nil || template.IsDeleted ||
+			template.ItemType != itemtype.SystemCatalogItem ||
+			template.Status != wardrobestatus.InWardrobe {
+			continue
 		}
-		newItems[i] = &entities.WardrobeItem{
+		templateByID[template.ID] = template
+	}
+
+	newItems := make([]*entities.WardrobeItem, 0, len(catalogItemIDs))
+	for _, catalogItemID := range catalogItemIDs {
+		original, ok := templateByID[catalogItemID]
+		if !ok {
+			return nil, wardrobeerrors.ErrCatalogItemNotFound()
+		}
+		// A genuine system catalog template always references a fashion item.
+		// Cloning one without it would leave the new wardrobe row pointing at a
+		// fashion item that does not exist, so reject the whole request instead
+		// of fabricating a reference from the catalog row id.
+		if original.FashionItemID == nil {
+			return nil, wardrobeerrors.ErrCatalogItemUnavailable()
+		}
+		newItems = append(newItems, &entities.WardrobeItem{
 			UserID:        userID,
-			FashionItemID: fashionItemID,
+			FashionItemID: original.FashionItemID,
 			Price:         original.Price,
 			Status:        wardrobestatus.InWardrobe,
 			ItemType:      itemtype.UserItem,
-		}
+		})
 	}
 
 	err = uc.wardrobeRepo.BulkCreate(ctx, newItems)

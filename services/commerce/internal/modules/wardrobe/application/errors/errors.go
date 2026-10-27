@@ -2,8 +2,11 @@ package wardrobeerrors
 
 import (
 	"fmt"
+	"strings"
 
 	"smart-wardrobe-be/shared/application/constants/apperror"
+
+	"github.com/google/uuid"
 )
 
 // ErrWardrobeLimitExceededForClone returns a quota error for clone requests.
@@ -114,4 +117,35 @@ func ErrUploadImagesEmpty() *apperror.Error {
 
 func ErrOutfitNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
+}
+
+// ErrCatalogItemUnavailable returns a 400 when a system catalog item is no
+// longer eligible to be saved in an outfit (removed, not InWardrobe, or without
+// a fashion item). Feature 033 FR-029/FR-033.
+func ErrCatalogItemUnavailable() *apperror.Error {
+	return apperror.NewBadRequest("Món đồ trong bộ sưu tập hệ thống không còn khả dụng. Vui lòng chọn món khác.")
+}
+
+// ErrWardrobeLimitExceededForOutfit returns a 400 when cloning the requested
+// catalog items would push the user's wardrobe over the plan limit. The whole
+// save is rejected and the offending fashion item ids are listed (FR-032).
+func ErrWardrobeLimitExceededForOutfit(itemIDs []uuid.UUID) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Không thể lưu bộ phối đồ vì các món đồ hệ thống cần thêm vào tủ vượt quá giới hạn của gói dịch vụ hiện tại (Mã: %s).", formatItemIDs(itemIDs)))
+}
+
+// ErrDuplicateOutfitItem returns a 400 when the same fashion item appears more
+// than once in the outfit payload (FR-033).
+func ErrDuplicateOutfitItem(fashionItemID uuid.UUID) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Bộ phối đồ không được chứa hai mục trùng nhau cho cùng một trang phục (Mã: %s).", fashionItemID))
+}
+
+func formatItemIDs(ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = id.String()
+	}
+	return strings.Join(parts, ", ")
 }

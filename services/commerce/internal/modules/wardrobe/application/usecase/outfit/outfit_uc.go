@@ -15,7 +15,6 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/outfitstatus"
-	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/shared/application/constants/eventconstants"
@@ -82,7 +81,12 @@ func (uc *OutfitUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.Up
 }
 
 func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
-	// 1. Check outfit limit of the subscription plan
+	// 1. Reject a payload that references the same fashion item twice (FR-033).
+	if err := ensureUniqueOutfitItems(input.Items); err != nil {
+		return nil, err
+	}
+
+	// 2. Check outfit limit of the subscription plan.
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -97,76 +101,20 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		return nil, wardrobeerrors.ErrOutfitLimitReached(len(existingOutfits), subOverview.MaxOutfits)
 	}
 
-	// 2. Resolve requested fashion items to concrete user wardrobe items.
-	fashionItemIDs := make([]uuid.UUID, len(input.Items))
-	for idx, itemReq := range input.Items {
-		fashionItemIDs[idx] = itemReq.FashionItemID
-	}
-
-	verifiedItems, err := uc.wardrobeRepo.GetByUserIDAndFashionItemIDs(ctx, userID, fashionItemIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	verifiedMap := make(map[uuid.UUID]*entities.WardrobeItem)
-	for _, item := range verifiedItems {
-		if item.Status == wardrobestatus.Sold {
-			return nil, wardrobeerrors.ErrOutfitItemSold(item.FashionItemID)
-		}
-		if item.FashionItemID != nil {
-			verifiedMap[*item.FashionItemID] = item
-		}
-	}
-
+	// 3. Resolve each item to a wardrobe row, brand item or catalog clone
+	// (explicit itemContext restricts the source, omitted auto-resolves).
 	userItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
 		return nil, err
 	}
 	lockedMap := shared.BuildLockedMap(userItems, subOverview.MaxWardrobeItems)
 
-	// Verify that all items are valid
-	outfitItems := make([]*entities.OutfitItem, len(input.Items))
-	wardrobeItemIDs := make([]uuid.UUID, 0, len(input.Items))
-	for idx, itemReq := range input.Items {
-		verifiedItem, ok := verifiedMap[itemReq.FashionItemID]
-		if ok && verifiedItem.FashionItemID != nil {
-			if lockedMap[verifiedItem.ID] {
-				return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-			}
-			wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
-
-			if verifiedItem.FashionItemID != nil {
-				outfitItems[idx] = &entities.OutfitItem{
-					FashionItemID: *verifiedItem.FashionItemID,
-					ItemContext:   outfititemcontext.UserWardrobe,
-					PositionX:     itemReq.PositionX,
-					PositionY:     itemReq.PositionY,
-					Scale:         itemReq.Scale,
-					LayerOrder:    itemReq.LayerOrder,
-				}
-			}
-		} else {
-			// Check brand item eligibility
-			isEligible, _, _, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
-			if err != nil {
-				return nil, err
-			}
-			if !isEligible {
-				return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
-			}
-
-			outfitItems[idx] = &entities.OutfitItem{
-				FashionItemID: itemReq.FashionItemID,
-				ItemContext:   outfititemcontext.BrandItem,
-				PositionX:     itemReq.PositionX,
-				PositionY:     itemReq.PositionY,
-				Scale:         itemReq.Scale,
-				LayerOrder:    itemReq.LayerOrder,
-			}
-		}
+	resolution, err := uc.resolveOutfitItems(ctx, userID, uuid.Nil, input.Items, subOverview.MaxWardrobeItems, lockedMap)
+	if err != nil {
+		return nil, err
 	}
 
-	// 3. Perform Transaction to create Outfit
+	// 4. Outfit + clone + touch + outbox signal commit atomically (D6/D7).
 	outfit := &entities.Outfit{
 		UserID:        userID,
 		Name:          input.Name,
@@ -176,38 +124,43 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		Status:        outfitstatus.Active,
 	}
 
-	err = uc.outfitRepo.CreateWithItems(ctx, outfit, outfitItems)
+	now := time.Now().UTC()
+	err = uc.executeInUnitOfWork(ctx, func(txCtx context.Context) error {
+		if err := uc.enforceOutfitCloneLimit(txCtx, userID, resolution, subOverview.MaxWardrobeItems); err != nil {
+			return err
+		}
+
+		if err := uc.outfitRepo.CreateWithItems(txCtx, outfit, resolution.items); err != nil {
+			return err
+		}
+		if len(resolution.cloneItems) > 0 {
+			if err := uc.wardrobeRepo.BulkCreate(txCtx, resolution.cloneItems); err != nil {
+				return err
+			}
+		}
+		if err := uc.wardrobeRepo.TouchLastUsedAt(txCtx, resolution.touchIDs(), now); err != nil {
+			return err
+		}
+		return uc.publishOutfitSaved(txCtx, outfit.ID, userID, resolution.allFashionItemIDs())
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := uc.touchLastUsedAt(ctx, wardrobeItemIDs); err != nil {
-		uc.logger.Warn("Failed to update wardrobe last_used_at after saving outfit")
-	}
-
-	fashionIDs := make([]uuid.UUID, 0, len(outfitItems))
-	for _, oi := range outfitItems {
-		fashionIDs = append(fashionIDs, oi.FashionItemID)
-	}
-	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
-	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
-		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
-		}
-	}
-
-	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap, nil), nil
+	return uc.mapOutfitResponse(ctx, outfit, resolution.items), nil
 }
 
 func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
+	if err := ensureUniqueOutfitItems(input.Items); err != nil {
+		return nil, err
+	}
+
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 1. Check if the Outfit exists and belongs to the User
+	// 1. Check if the Outfit exists and belongs to the User (items preloaded).
 	outfit, err := uc.outfitRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -216,105 +169,64 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, wardrobeerrors.ErrOutfitNotFound()
 	}
 
-	// 2. Resolve requested fashion items to concrete user wardrobe items.
-	fashionItemIDs := make([]uuid.UUID, len(input.Items))
-	for idx, itemReq := range input.Items {
-		fashionItemIDs[idx] = itemReq.FashionItemID
-	}
-
-	verifiedItems, err := uc.wardrobeRepo.GetByUserIDAndFashionItemIDs(ctx, userID, fashionItemIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	verifiedMap := make(map[uuid.UUID]*entities.WardrobeItem)
-	for _, item := range verifiedItems {
-		if item.Status == wardrobestatus.Sold {
-			return nil, wardrobeerrors.ErrOutfitItemSold(item.FashionItemID)
-		}
-		if item.FashionItemID != nil {
-			verifiedMap[*item.FashionItemID] = item
-		}
-	}
-
+	// 2. Resolve requested items with the same rules as SaveOutfit (FR-034).
 	userItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
 		return nil, err
 	}
 	lockedMap := shared.BuildLockedMap(userItems, subOverview.MaxWardrobeItems)
 
-	outfitItems := make([]*entities.OutfitItem, len(input.Items))
-	wardrobeItemIDs := make([]uuid.UUID, 0, len(input.Items))
-	for idx, itemReq := range input.Items {
-		verifiedItem, ok := verifiedMap[itemReq.FashionItemID]
-		if ok && verifiedItem.FashionItemID != nil {
-			if lockedMap[verifiedItem.ID] {
-				return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-			}
-			wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
-
-			if verifiedItem.FashionItemID != nil {
-				outfitItems[idx] = &entities.OutfitItem{
-					OutfitID:      id,
-					FashionItemID: *verifiedItem.FashionItemID,
-					ItemContext:   outfititemcontext.UserWardrobe,
-					PositionX:     itemReq.PositionX,
-					PositionY:     itemReq.PositionY,
-					Scale:         itemReq.Scale,
-					LayerOrder:    itemReq.LayerOrder,
-				}
-			}
-		} else {
-			// Check brand item eligibility
-			isEligible, _, _, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
-			if err != nil {
-				return nil, err
-			}
-			if !isEligible {
-				return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
-			}
-
-			outfitItems[idx] = &entities.OutfitItem{
-				OutfitID:      id,
-				FashionItemID: itemReq.FashionItemID,
-				ItemContext:   outfititemcontext.BrandItem,
-				PositionX:     itemReq.PositionX,
-				PositionY:     itemReq.PositionY,
-				Scale:         itemReq.Scale,
-				LayerOrder:    itemReq.LayerOrder,
-			}
-		}
+	resolution, err := uc.resolveOutfitItems(ctx, userID, id, input.Items, subOverview.MaxWardrobeItems, lockedMap)
+	if err != nil {
+		return nil, err
 	}
 
-	// 3. Perform Update
+	// 3. Diff the item set: only newly added items are touched and signalled
+	// (FR-034/FR-062).
+	previousFashionIDs := fashionItemIDsOf(outfit.Items)
+	nextFashionIDs := resolution.allFashionItemIDs()
+	addedFashionIDs := newlyAddedFashionItemIDs(previousFashionIDs, nextFashionIDs)
+	addedSet := make(map[uuid.UUID]struct{}, len(addedFashionIDs))
+	for _, fashionID := range addedFashionIDs {
+		addedSet[fashionID] = struct{}{}
+	}
+
+	// Preserve the existing outfit status; only the editable metadata changes.
 	outfit.Name = input.Name
 	outfit.Description = input.Description
 	outfit.CoverImageUrl = input.CoverImageUrl
 	outfit.CoverPublicID = input.CoverPublicID
 
-	err = uc.outfitRepo.UpdateWithItems(ctx, outfit, outfitItems)
+	now := time.Now().UTC()
+	err = uc.executeInUnitOfWork(ctx, func(txCtx context.Context) error {
+		if err := uc.enforceOutfitCloneLimit(txCtx, userID, resolution, subOverview.MaxWardrobeItems); err != nil {
+			return err
+		}
+
+		if err := uc.outfitRepo.UpdateWithItems(txCtx, outfit, resolution.items); err != nil {
+			return err
+		}
+		if len(resolution.cloneItems) > 0 {
+			if err := uc.wardrobeRepo.BulkCreate(txCtx, resolution.cloneItems); err != nil {
+				return err
+			}
+		}
+		if err := uc.wardrobeRepo.TouchLastUsedAt(txCtx, resolution.touchIDsFor(addedSet), now); err != nil {
+			return err
+		}
+
+		// No new items => no learning signal. Only the newly added fashion
+		// items are published when the set did change.
+		if len(addedFashionIDs) == 0 {
+			return nil
+		}
+		return uc.publishOutfitSaved(txCtx, outfit.ID, userID, addedFashionIDs)
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := uc.touchLastUsedAt(ctx, wardrobeItemIDs); err != nil {
-		uc.logger.Warn("Failed to update wardrobe last_used_at after updating outfit")
-	}
-
-	fashionIDs := make([]uuid.UUID, 0, len(outfitItems))
-	for _, oi := range outfitItems {
-		fashionIDs = append(fashionIDs, oi.FashionItemID)
-	}
-	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
-	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
-		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
-		}
-	}
-
-	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap, nil), nil
+	return uc.mapOutfitResponse(ctx, outfit, resolution.items), nil
 }
 
 func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitBriefRes], error) {
@@ -448,7 +360,33 @@ func (uc *OutfitUseCase) publishOutfitDeleted(ctx context.Context, outfitID, use
 	return nil
 }
 
-func (uc *OutfitUseCase) touchLastUsedAt(ctx context.Context, itemIDs []uuid.UUID) error {
-	now := time.Now().UTC()
-	return uc.wardrobeRepo.TouchLastUsedAt(ctx, itemIDs, now)
+// enforceOutfitCloneLimit rejects the whole save/update when cloning the new
+// catalog rows would exceed the wardrobe quota (FR-032). It runs inside the
+// transaction so a concurrent save cannot slip past the check.
+func (uc *OutfitUseCase) enforceOutfitCloneLimit(ctx context.Context, userID uuid.UUID, resolution *outfitResolution, maxWardrobeItems int) error {
+	if resolution == nil || len(resolution.cloneItems) == 0 {
+		return nil
+	}
+	currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if exceedsWardrobeLimit(int(currentCount), len(resolution.cloneItems), maxWardrobeItems) {
+		return wardrobeerrors.ErrWardrobeLimitExceededForOutfit(resolution.cloneFashionItemIDs())
+	}
+	return nil
+}
+
+// mapOutfitResponse keeps the existing response shape: items are always shown
+// as outfit items keyed by fashion item, even when the wardrobe row was cloned.
+func (uc *OutfitUseCase) mapOutfitResponse(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) *dto.OutfitRes {
+	fashionIDs := fashionItemIDsOf(items)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
+		}
+	}
+	return mapper.MapToOutfitRes(outfit, items, fashionMap, nil)
 }

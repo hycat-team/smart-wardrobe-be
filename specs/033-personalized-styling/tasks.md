@@ -235,48 +235,48 @@ vượt hạn mức → 400 và 0 bản sao; catalog-init cross-user bị từ c
 
 ### Implementation
 
-- [ ] T037 [P] [US2] Thêm DTO `OutfitSuggestionRes` và field `Suggestions []OutfitSuggestionRes`
+- [x] T037 [P] [US2] Thêm DTO `OutfitSuggestionRes` và field `Suggestions []OutfitSuggestionRes`
   (`omitempty`) vào `services/commerce/internal/modules/fashion/application/dto/recommendation.go`;
   thêm mapper trong `.../application/mapper/recommendation.go`.
-- [ ] T038 [P] [US2] Tạo hai port `IPersonalizationCatalogCache` và `IRecommendationSnapshotCache` trong
+- [x] T038 [P] [US2] Tạo hai port `IPersonalizationCatalogCache` và `IRecommendationSnapshotCache` trong
   `services/commerce/internal/modules/fashion/application/interface/caching/`, impl Redis trong
   `services/commerce/internal/modules/fashion/infrastructure/caching/`; key `personalization:catalog:v1`
   (TTL 5 phút) và `personalization:rec:{recommendationId}` (TTL 7 ngày), fail-soft; đăng ký trong
   `services/commerce/internal/modules/fashion/provider.go`.
-- [ ] T039 [US2] Implement retrieval catalog trong `services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`:
+- [x] T039 [US2] Implement retrieval catalog trong `services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`:
   lấy ID qua `wardrobeContract.GetSystemCatalogFashionItemIDs`, cache, gọi
   `fashionItemRepo.GetHybridCandidates`, loại `fashion_item_id` user đã sở hữu (lấy qua
   `wardrobeContract.GetOwnedFashionItemIDs`, mọi status chưa xoá).
-- [ ] T040 [US2] Implement gap detection + suggestion builder trong `services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`:
+- [x] T040 [US2] Implement gap detection + suggestion builder trong `services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`:
   role thiếu hoặc score dưới `gap_score_threshold`; tối đa 1 món/role, 3 món/response; reason template
   tiếng Việt; dùng cùng semantic query/style vector/hard filters.
-- [ ] T041 [US2] Nối suggestions vào `.../recommendation/workflow.go` sau khi có outfit cuối (AI hoặc HSL)
+- [x] T041 [US2] Nối suggestions vào `.../recommendation/workflow.go` sau khi có outfit cuối (AI hoặc HSL)
   và trước khi dựng response; đảm bảo không trừ quota.
-- [ ] T042 [US2] Thêm `ItemContext *string` vào `SaveOutfitItemReq` trong
+- [x] T042 [US2] Thêm `ItemContext *string` vào `SaveOutfitItemReq` trong
   `services/commerce/internal/modules/wardrobe/application/dto/outfit.go` với
   `binding:"omitempty,oneof=user_wardrobe brand_item system_catalog"`.
-- [ ] T043 [US2] Sửa `services/commerce/internal/modules/wardrobe/application/usecase/outfit/outfit_uc.go`:
+- [x] T043 [US2] Sửa `services/commerce/internal/modules/wardrobe/application/usecase/outfit/outfit_uc.go`:
   resolve theo `itemContext` hoặc auto (wardrobe → brand → catalog); validate catalog qua
   `GetActiveSystemCatalogItemsByIDs`; nếu user đã sở hữu `fashion_item_id` (row chưa xoá, bất kỳ status)
   thì tái sử dụng row, không clone; nếu chưa, clone row `wardrobe_items`; kiểm tra `MaxWardrobeItems`;
   dedupe input; lỗi mới.
-- [ ] T044 [US2] Bọc `CreateWithItems` + clone + `TouchLastUsedAt` + outbox publish trong `uow.Execute`
+- [x] T044 [US2] Bọc `CreateWithItems` + clone + `TouchLastUsedAt` + outbox publish trong `uow.Execute`
   trong `outfit_uc.go`; đảm bảo `GetDB(ctx)` dùng transaction.
-- [ ] T045 [US2] Áp dụng cùng logic cho `UpdateOutfit` trong `outfit_uc.go`; chỉ touch `last_used_at` cho
+- [x] T045 [US2] Áp dụng cùng logic cho `UpdateOutfit` trong `outfit_uc.go`; chỉ touch `last_used_at` cho
   item mới thêm; diff item cũ/mới từ `outfitRepo.GetByID` (preload items).
-- [ ] T046 [US2] Fix `InitClosetFromCatalog` trong
+- [x] T046 [US2] Fix `InitClosetFromCatalog` trong
   `services/commerce/internal/modules/wardrobe/application/usecase/wardrobe/catalog/catalog_uc.go`:
   chỉ nhận `item_type = SystemCatalogItem`, `is_deleted = false`, `status = InWardrobe`.
-- [ ] T047 [US2] Thêm lỗi mới vào `services/commerce/internal/modules/wardrobe/application/errors/errors.go`:
+- [x] T047 [US2] Thêm lỗi mới vào `services/commerce/internal/modules/wardrobe/application/errors/errors.go`:
   `ErrCatalogItemUnavailable`, `ErrWardrobeLimitExceededForOutfit`, `ErrDuplicateOutfitItem`.
-- [ ] T048 [US2] Cập nhật swagger annotation + response trong `services/commerce/internal/modules/wardrobe/presentation/handler/outfit_handler.go` và
+- [x] T048 [US2] Cập nhật swagger annotation + response trong `services/commerce/internal/modules/wardrobe/presentation/handler/outfit_handler.go` và
   `services/commerce/internal/modules/fashion/presentation/handler/fashion_ai_handler.go`; chạy
   `make swagger svc=commerce`.
-- [ ] T049 [US2] Thêm test: `workflow_helpers_test.go` (gap/suggestion limit/dedupe; suggestion thoả
+- [x] T049 [US2] Thêm test: `workflow_helpers_test.go` (gap/suggestion limit/dedupe; suggestion thoả
   hard filter + gu → SC-014; user free vẫn có suggestions), `catalog_cache_test.go` (miss/hit),
   `outfit_uc_clone_test.go` (clone + limit + rollback + không tạo job analyze; reuse row nếu đã sở hữu),
   `catalog_uc_test.go` (cross-user bị từ chối). Chạy `go test -race -count=3` scoped.
-- [ ] T050 [US2] Chạy kịch bản US2 trong `quickstart.md` (bao gồm kiểm tra SQL không có clone mồ côi) và
+- [x] T050 [US2] Chạy kịch bản US2 trong `quickstart.md` (bao gồm kiểm tra SQL không có clone mồ côi) và
   ghi kết quả.
 
 **Checkpoint**: US2 chạy độc lập: suggestions đúng role, clone atomic, limit reject, catalog-init an toàn.

@@ -46,12 +46,19 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 		return nil, err
 	}
 
-	candidates, fashionItemMap, personalization, err := uc.filterCandidates(ctx, userID, activeItems, input)
+	filterResult, err := uc.filterCandidates(ctx, userID, activeItems, input)
 	if err != nil {
 		return nil, err
 	}
 
-	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input, fashionItemMap, personalization)
+	finalRes, err := uc.generateOutfitRecommendation(
+		ctx,
+		userID,
+		filterResult.Candidates,
+		input,
+		filterResult.FashionItemMap,
+		filterResult.Personalization,
+	)
 	if err != nil {
 		failureKind, providerHint, promptLen, responsePreview := synthesis.ClassifyFallbackTrace(err)
 		uc.logger.Warn("Outfit recommendation AI fallback triggered",
@@ -60,16 +67,25 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 			zap.Error(err),
 			zap.String("user_id", userID.String()),
 			zap.String("recommendation_id", recommendationID.String()),
-			zap.Bool("personalized", personalization.Active),
-			zap.Int("candidate_count", len(candidates)),
+			zap.Bool("personalized", filterResult.Personalization.Active),
+			zap.Int("candidate_count", len(filterResult.Candidates)),
 			zap.Int("prompt_len", promptLen),
 			zap.String("response_preview", responsePreview),
 		)
-		finalRes = ranking.RunLocalHSLMatchingWithPersonalization(candidates, input, fashionItemMap, personalization)
+		finalRes = ranking.RunLocalHSLMatchingWithPersonalization(
+			filterResult.Candidates,
+			input,
+			filterResult.FashionItemMap,
+			filterResult.Personalization,
+		)
 	}
 
 	if finalRes != nil {
 		finalRes.RecommendationID = recommendationID
+		// 033 US2/T041: catalog gap-fill suggestions are additive. They are
+		// attached after the outfit is final, never merge into Items and never
+		// touch the quota below.
+		finalRes.Suggestions = uc.buildCatalogSuggestions(ctx, userID, finalRes, filterResult)
 	}
 
 	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {

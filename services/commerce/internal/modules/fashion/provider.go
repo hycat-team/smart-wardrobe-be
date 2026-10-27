@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/worker"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/caching"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/persistence"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/handler"
@@ -25,6 +26,11 @@ var ProviderSet = wire.NewSet(
 	// style profile use case (later phases) are their consumers.
 	persistence.NewUserStyleProfileRepository,
 	persistence.NewStyleSignalRepository,
+
+	// 033 T038: Redis caches for catalog suggestions and recommendation
+	// snapshots. Both implement fail-soft application ports.
+	caching.NewRedisPersonalizationCatalogCache,
+	caching.NewRedisRecommendationSnapshotCache,
 
 	chat.NewWardrobeChatUseCase,
 	recommendation.NewOutfitRecommendationUseCase,
