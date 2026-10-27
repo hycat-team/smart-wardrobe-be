@@ -99,6 +99,10 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 			uc.rotationSettings(),
 			time.Now(),
 		)
+		// 033 US6/T071: the final outfit (AI or HSL) is now fixed, so store the
+		// snapshot the feedback endpoint authenticates against. Best-effort: a
+		// cache error is logged and never fails the recommendation (plan D8).
+		uc.recordRecommendationSnapshot(ctx, userID, recommendationID, finalRes, filterResult, time.Now())
 	}
 
 	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {

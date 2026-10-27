@@ -71,6 +71,24 @@ type RecommendedItemGroup struct {
 	Alternatives []*RecommendedItemRes `json:"alternatives"`
 }
 
+// SubmitRecommendationFeedbackReq is the body of
+// POST /ai/outfit-recommendations/feedback (033 US6, contracts §2.2). The
+// client only sends the id it received and one action; the fashion item ids
+// and styles are read from the server-side snapshot and never trusted from the
+// client (plan D8).
+type SubmitRecommendationFeedbackReq struct {
+	// Mã gợi ý nhận được từ response của endpoint gợi ý phối đồ
+	RecommendationID uuid.UUID `json:"recommendationId" binding:"required" label:"mã gợi ý" example:"5b0c9f54-7d61-4f7a-9a4e-9f1f7f4f3a21"`
+	// Hành động phản hồi đối với bộ đồ được gợi ý
+	Action string `json:"action" binding:"required,oneof=like dislike saved" enums:"like,dislike,saved" label:"hành động phản hồi" example:"like"`
+}
+
+// SubmitRecommendationFeedbackRes acknowledges a feedback submission. The
+// contract only promises `{"accepted": true}` (contracts §2.2).
+type SubmitRecommendationFeedbackRes struct {
+	Accepted bool `json:"accepted" example:"true"`
+}
+
 type ParsedIntent struct {
 	SemanticQuery       string   `json:"semanticQuery"`
 	LexicalTerms        []string `json:"lexicalTerms"`

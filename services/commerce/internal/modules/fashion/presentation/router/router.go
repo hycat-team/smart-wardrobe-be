@@ -43,6 +43,8 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	aiApi := privateApi.Group("/ai")
 	{
 		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.aiHandler.RecommendOutfit))
+		// 033 US6: feedback on a previously returned recommendation.
+		aiApi.POST("/outfit-recommendations/feedback", shared_pres.WrapHandler(r.aiHandler.SubmitRecommendationFeedback))
 		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.CreateChatSession))
 		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.GetChatSessions))
 		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.aiHandler.GetChatMessages))
