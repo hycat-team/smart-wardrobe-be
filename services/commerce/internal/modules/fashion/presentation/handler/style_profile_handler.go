@@ -14,6 +14,11 @@ const (
 	msgStyleProfileGetSuccess    = "Lấy hồ sơ phong cách thành công"
 	msgStyleProfileUpdateSuccess = "Cập nhật hồ sơ phong cách thành công"
 	msgStyleProfileDeleteSuccess = "Xoá hồ sơ phong cách thành công"
+	// msgStyleSuggestionEmpty accompanies the empty payload of a user whose
+	// wardrobe has no styled item yet (contracts §1.4: the wording belongs to
+	// the envelope, not to `data`).
+	msgStyleSuggestionEmpty   = "Chưa đủ dữ liệu để gợi ý phong cách. Hãy thêm món đồ có phong cách vào tủ đồ."
+	msgStyleSuggestionSuccess = "Lấy gợi ý phong cách thành công"
 )
 
 // StyleProfileHandler exposes the style profile of the authenticated user.
@@ -101,5 +106,34 @@ func (h *StyleProfileHandler) DeleteStyleProfile(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, msgStyleProfileDeleteSuccess, nil)
+	return nil
+}
+
+// GetStyleSuggestions returns cold-start style suggestions derived from the wardrobe
+// @Summary Gợi ý phong cách từ tủ đồ hiện có
+// @Description Gợi ý gu từ những món đồ đang hoạt động trong tủ (cold start). Không tự áp dụng: người dùng xác nhận bằng PUT /me/style-profile.
+// @Description Chưa đủ dữ liệu: data là {"styles": [], "sampleSize": 0} và thông báo nằm ở message của envelope.
+// @Description Endpoint read-only: công tắc vận hành personalization.enabled không chặn, nhưng gói không có quyền lợi thì trả 403.
+// @Tags Style Profile
+// @Accept json
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.StyleSuggestionRes} "Lấy gợi ý phong cách thành công"
+// @Router /api/v1/me/style-profile/suggestions [get]
+func (h *StyleProfileHandler) GetStyleSuggestions(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	response, err := h.styleProfileUseCase.SuggestStyles(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	message := msgStyleSuggestionSuccess
+	if response.SampleSize == 0 {
+		message = msgStyleSuggestionEmpty
+	}
+	shared_pres.Success(c, message, response)
 	return nil
 }

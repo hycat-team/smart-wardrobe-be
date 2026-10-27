@@ -13,6 +13,9 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	fashioerrors "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/errors"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
+	wardrobe_dto "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
+	wardrobe_contract "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/contract"
 	"smart-wardrobe-be/shared/application/constants/apperror"
 	"smart-wardrobe-be/shared/config"
 
@@ -206,30 +209,84 @@ func unitEmbedding(first float32) []float32 {
 }
 
 type profileHarness struct {
-	uc   *StyleProfileUseCase
-	repo *fakeStyleProfileRepo
-	sub  *fakeSubscriptionContract
-	ai   *fakeStyleEmbeddingAI
+	uc       *StyleProfileUseCase
+	repo     *fakeStyleProfileRepo
+	sub      *fakeSubscriptionContract
+	ai       *fakeStyleEmbeddingAI
+	wardrobe *fakeWardrobeContract
+	items    *fakeStyleItemRepo
 }
+
+// testMaxWardrobeItems is the plan cap the fake contract records; the use case
+// must pass it through to GetActiveWardrobeItemsByUserID.
+const testMaxWardrobeItems = 50
 
 func newProfileHarness(cfg *config.Config, entitled bool) *profileHarness {
 	repo := newFakeStyleProfileRepo()
 	sub := &fakeSubscriptionContract{overview: &sub_dto.UserSubscriptionContractDTO{
 		PersonalizationEnabled: entitled,
+		MaxWardrobeItems:       testMaxWardrobeItems,
 	}}
 	ai := &fakeStyleEmbeddingAI{vector: unitEmbedding(1)}
+	wardrobe := &fakeWardrobeContract{}
+	items := &fakeStyleItemRepo{}
 	return &profileHarness{
 		uc: &StyleProfileUseCase{
-			cfg:             cfg,
-			logger:          nopProfileLogger{},
-			aiService:       ai,
-			profileRepo:     repo,
-			userSubContract: sub,
+			cfg:              cfg,
+			logger:           nopProfileLogger{},
+			aiService:        ai,
+			profileRepo:      repo,
+			userSubContract:  sub,
+			wardrobeContract: wardrobe,
+			fashionItemRepo:  items,
 		},
-		repo: repo,
-		sub:  sub,
-		ai:   ai,
+		repo:     repo,
+		sub:      sub,
+		ai:       ai,
+		wardrobe: wardrobe,
+		items:    items,
 	}
+}
+
+// fakeWardrobeContract answers only GetActiveWardrobeItemsByUserID; the rest of
+// the contract interface is never reached by the style profile use case.
+type fakeWardrobeContract struct {
+	wardrobe_contract.IWardrobeContract
+	rows  []*wardrobe_dto.WardrobeItemContractDTO
+	err   error
+	calls int
+	limit int
+}
+
+func (c *fakeWardrobeContract) GetActiveWardrobeItemsByUserID(
+	_ context.Context,
+	_ uuid.UUID,
+	limit int,
+) ([]*wardrobe_dto.WardrobeItemContractDTO, error) {
+	c.calls++
+	c.limit = limit
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c.rows, nil
+}
+
+// fakeStyleItemRepo answers only GetByIDs, which is all SuggestStyles needs.
+type fakeStyleItemRepo struct {
+	repositories.IFashionItemRepository
+	items []*entities.FashionItem
+	ids   []uuid.UUID
+	err   error
+	calls int
+}
+
+func (r *fakeStyleItemRepo) GetByIDs(_ context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
+	r.calls++
+	r.ids = append([]uuid.UUID(nil), ids...)
+	if r.err != nil {
+		return nil, r.err
+	}
+	return r.items, nil
 }
 
 func assertAppErrorStatus(t *testing.T, err error, wantStatus int) {
@@ -644,4 +701,215 @@ func TestDeleteProfileIsIdempotentWhenEntitled(t *testing.T) {
 	if h.repo.deletes != 2 {
 		t.Fatalf("expected two delete calls, got %d", h.repo.deletes)
 	}
+}
+
+// --- US5 / T070: cold-start style suggestions -------------------------------
+
+func ptrUUID(id uuid.UUID) *uuid.UUID {
+	return &id
+}
+
+func ptrStringValue(value string) *string {
+	return &value
+}
+
+// wardrobeRow builds one active wardrobe row pointing at a fashion item.
+func wardrobeRow(fashionItemID uuid.UUID) *wardrobe_dto.WardrobeItemContractDTO {
+	return &wardrobe_dto.WardrobeItemContractDTO{
+		ID:            uuid.New(),
+		FashionItemID: ptrUUID(fashionItemID),
+	}
+}
+
+// styledItem builds the metadata the fashion repository would return. A nil
+// style models an item the AI has not labelled yet.
+func styledItem(style *string) *entities.FashionItem {
+	return &entities.FashionItem{Style: style}
+}
+
+func assertSuggestion(t *testing.T, got dto.StyleSuggestionItem, value string, count int, ratio float64) {
+	t.Helper()
+	if got.Value != value || got.ItemCount != count || got.Ratio != ratio {
+		t.Fatalf("expected {%s %d %v}, got %+v", value, count, ratio, got)
+	}
+}
+
+func TestSuggestStylesReturnsEmptySampleWithoutStyledItems(t *testing.T) {
+	cases := []struct {
+		name  string
+		rows  []*wardrobe_dto.WardrobeItemContractDTO
+		items []*entities.FashionItem
+	}{
+		{name: "no active wardrobe item"},
+		{
+			name:  "items whose style is missing or blank",
+			rows:  []*wardrobe_dto.WardrobeItemContractDTO{wardrobeRow(uuid.New()), wardrobeRow(uuid.New())},
+			items: []*entities.FashionItem{styledItem(nil), styledItem(ptrStringValue("   "))},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newProfileHarness(testProfileConfig(true, 4), true)
+			h.wardrobe.rows = tc.rows
+			h.items.items = tc.items
+
+			res, err := h.uc.SuggestStyles(context.Background(), uuid.New())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if res.SampleSize != 0 {
+				t.Fatalf("expected sampleSize=0, got %d", res.SampleSize)
+			}
+			// The envelope contract requires "styles": [] rather than null.
+			if res.Styles == nil {
+				t.Fatal("expected an empty non-nil styles slice")
+			}
+			if len(res.Styles) != 0 {
+				t.Fatalf("expected no suggestion, got %v", res.Styles)
+			}
+			if h.wardrobe.limit != testMaxWardrobeItems {
+				t.Fatalf("expected the plan limit %d, got %d", testMaxWardrobeItems, h.wardrobe.limit)
+			}
+			if tc.rows == nil && h.items.calls != 0 {
+				t.Fatalf("expected no fashion lookup without an active item, got %d", h.items.calls)
+			}
+		})
+	}
+}
+
+func TestSuggestStylesNormalizesLabelsAndSortsByCount(t *testing.T) {
+	h := newProfileHarness(testProfileConfig(true, 4), true)
+
+	repeated := uuid.New()
+	rows := []*wardrobe_dto.WardrobeItemContractDTO{
+		wardrobeRow(repeated),
+		wardrobeRow(uuid.New()),
+		wardrobeRow(uuid.New()),
+		wardrobeRow(uuid.New()),
+		wardrobeRow(uuid.New()),
+		// A second wardrobe row for an already counted fashion item must not
+		// inflate the sample or the distinct id list.
+		wardrobeRow(repeated),
+	}
+	h.wardrobe.rows = rows
+	h.items.items = []*entities.FashionItem{
+		styledItem(ptrStringValue("Tối giản")),   // known synonym -> minimalist
+		styledItem(ptrStringValue("minimalist")), // canonical
+		styledItem(ptrStringValue("  MINIMALIST ")),
+		styledItem(ptrStringValue("casual")), // unknown passes through
+		styledItem(ptrStringValue(" Elegant")),
+	}
+
+	res, err := h.uc.SuggestStyles(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res.SampleSize != 5 {
+		t.Fatalf("expected sampleSize=5 (only styled items count), got %d", res.SampleSize)
+	}
+	if len(res.Styles) != 3 {
+		t.Fatalf("expected 3 distinct labels, got %v", res.Styles)
+	}
+	// Sorted by itemCount desc, then value asc.
+	assertSuggestion(t, res.Styles[0], "minimalist", 3, 0.6)
+	assertSuggestion(t, res.Styles[1], "casual", 1, 0.2)
+	assertSuggestion(t, res.Styles[2], "elegant", 1, 0.2)
+
+	// The duplicate wardrobe row must collapse to a single fashion item id.
+	if len(h.items.ids) != 5 {
+		t.Fatalf("expected 5 distinct fashion item ids, got %v", h.items.ids)
+	}
+	seen := make(map[uuid.UUID]struct{}, len(h.items.ids))
+	for _, id := range h.items.ids {
+		if _, duplicated := seen[id]; duplicated {
+			t.Fatalf("expected distinct fashion item ids, got %v", h.items.ids)
+		}
+		seen[id] = struct{}{}
+	}
+}
+
+func TestSuggestStylesRoundsRatioToTwoDecimals(t *testing.T) {
+	h := newProfileHarness(testProfileConfig(true, 4), true)
+	h.wardrobe.rows = []*wardrobe_dto.WardrobeItemContractDTO{
+		wardrobeRow(uuid.New()),
+		wardrobeRow(uuid.New()),
+		wardrobeRow(uuid.New()),
+	}
+	h.items.items = []*entities.FashionItem{
+		styledItem(ptrStringValue("minimalist")),
+		styledItem(ptrStringValue("minimalist")),
+		styledItem(ptrStringValue("casual")),
+	}
+
+	res, err := h.uc.SuggestStyles(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.SampleSize != 3 {
+		t.Fatalf("expected sampleSize=3, got %d", res.SampleSize)
+	}
+	// 2/3 -> 0.67 and 1/3 -> 0.33, not the raw repeating decimals.
+	assertSuggestion(t, res.Styles[0], "minimalist", 2, 0.67)
+	assertSuggestion(t, res.Styles[1], "casual", 1, 0.33)
+}
+
+func TestSuggestStylesRequiresPersonalizationEntitlement(t *testing.T) {
+	h := newProfileHarness(testProfileConfig(true, 4), false)
+	h.wardrobe.rows = []*wardrobe_dto.WardrobeItemContractDTO{wardrobeRow(uuid.New())}
+
+	_, err := h.uc.SuggestStyles(context.Background(), uuid.New())
+
+	if !errors.Is(err, fashioerrors.ErrPersonalizationNotAvailable()) {
+		t.Fatalf("expected PERSONALIZATION_NOT_AVAILABLE, got %v", err)
+	}
+	assertAppErrorStatus(t, err, http.StatusForbidden)
+	if h.wardrobe.calls != 0 {
+		t.Fatalf("expected no wardrobe read without entitlement, got %d", h.wardrobe.calls)
+	}
+	if h.items.calls != 0 {
+		t.Fatalf("expected no fashion lookup without entitlement, got %d", h.items.calls)
+	}
+}
+
+func TestSuggestStylesNeverPersistsTheResult(t *testing.T) {
+	h := newProfileHarness(testProfileConfig(true, 4), true)
+	userID := uuid.New()
+	h.wardrobe.rows = []*wardrobe_dto.WardrobeItemContractDTO{wardrobeRow(uuid.New())}
+	h.items.items = []*entities.FashionItem{styledItem(ptrStringValue("streetwear"))}
+
+	res, err := h.uc.SuggestStyles(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.SampleSize != 1 || len(res.Styles) != 1 {
+		t.Fatalf("expected one suggestion, got %+v", res)
+	}
+	// FR-046: a suggestion is never applied implicitly.
+	if h.repo.upserts != 0 {
+		t.Fatalf("expected no profile write, got %d", h.repo.upserts)
+	}
+	if _, exists := h.repo.rows[userID]; exists {
+		t.Fatal("expected no profile row to be created")
+	}
+	if h.ai.calls != 0 {
+		t.Fatalf("expected no embedding call, got %d", h.ai.calls)
+	}
+}
+
+func TestSuggestStylesIsReadableWhileKillSwitchIsOff(t *testing.T) {
+	// contracts §8: personalization.enabled=false blocks writes, not reads.
+	h := newProfileHarness(testProfileConfig(false, 4), true)
+	h.wardrobe.rows = []*wardrobe_dto.WardrobeItemContractDTO{wardrobeRow(uuid.New())}
+	h.items.items = []*entities.FashionItem{styledItem(ptrStringValue("elegant"))}
+
+	res, err := h.uc.SuggestStyles(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("the kill switch must not block suggestions: %v", err)
+	}
+	if res.SampleSize != 1 {
+		t.Fatalf("expected a suggestion, got %+v", res)
+	}
+	assertSuggestion(t, res.Styles[0], "elegant", 1, 1)
 }

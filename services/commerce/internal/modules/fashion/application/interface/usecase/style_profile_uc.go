@@ -19,4 +19,8 @@ type IStyleProfileUseCase interface {
 	UpdateProfile(ctx context.Context, userID uuid.UUID, input dto.UpdateStyleProfileReq) (*dto.StyleProfileRes, error)
 	// DeleteProfile removes the profile row. It is idempotent.
 	DeleteProfile(ctx context.Context, userID uuid.UUID) error
+	// SuggestStyles derives cold-start style suggestions from the user's active
+	// wardrobe. It never persists anything and never applies a suggestion
+	// (US5, contracts §1.4).
+	SuggestStyles(ctx context.Context, userID uuid.UUID) (*dto.StyleSuggestionRes, error)
 }

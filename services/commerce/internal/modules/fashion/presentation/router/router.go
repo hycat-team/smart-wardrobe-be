@@ -55,6 +55,8 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	styleProfileApi := privateApi.Group("/me/style-profile")
 	{
 		styleProfileApi.GET("", shared_pres.WrapHandler(r.styleProfileHandler.GetStyleProfile))
+		// 033 US5: cold-start suggestions derived from the active wardrobe.
+		styleProfileApi.GET("/suggestions", shared_pres.WrapHandler(r.styleProfileHandler.GetStyleSuggestions))
 		styleProfileApi.PUT("", shared_pres.WrapHandler(r.styleProfileHandler.UpdateStyleProfile))
 		styleProfileApi.DELETE("", shared_pres.WrapHandler(r.styleProfileHandler.DeleteStyleProfile))
 	}
