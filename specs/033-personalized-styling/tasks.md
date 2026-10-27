@@ -392,17 +392,17 @@ hết hạn → 404.
 
 ### Implementation
 
-- [ ] T071 [US6] Ghi snapshot qua port `IRecommendationSnapshotCache` (impl Redis ở T038) với key
+- [x] T071 [US6] Ghi snapshot qua port `IRecommendationSnapshotCache` (impl Redis ở T038) với key
   `personalization:rec:{recommendationId}`, TTL 7 ngày, trong `.../recommendation/workflow.go` (ID đã
   được sinh ở T034); snapshot gồm userId, fashionItemIds, styles, createdAt.
-- [ ] T072 [US6] Thêm DTO `SubmitRecommendationFeedbackReq` + `.../personalization/feedback/feedback_uc.go`:
+- [x] T072 [US6] Thêm DTO `SubmitRecommendationFeedbackReq` + `.../personalization/feedback/feedback_uc.go`:
   đọc snapshot qua `IRecommendationSnapshotCache`, xác thực user, signal ID deterministic, gọi
   `IStyleLearningUseCase.ApplySignal`.
-- [ ] T073 [US6] Thêm handler + route `POST /ai/outfit-recommendations/feedback` trong `services/commerce/internal/modules/fashion/presentation/handler/fashion_ai_handler.go`
+- [x] T073 [US6] Thêm handler + route `POST /ai/outfit-recommendations/feedback` trong `services/commerce/internal/modules/fashion/presentation/handler/fashion_ai_handler.go`
   và `services/commerce/internal/modules/fashion/presentation/router/router.go`; swagger.
-- [ ] T074 [US6] Thêm lỗi `ErrRecommendationSnapshotNotFound`/`ErrFeedbackForbidden` vào
+- [x] T074 [US6] Thêm lỗi `ErrRecommendationSnapshotNotFound`/`ErrFeedbackForbidden` vào
   `.../fashion/application/errors/`; test snapshot/dedupe/ownership.
-- [ ] T075 [US6] Chạy kịch bản US6 trong `quickstart.md` (bao gồm xoá key Redis để test 404).
+- [x] T075 [US6] Chạy kịch bản US6 trong `quickstart.md` (bao gồm xoá key Redis để test 404).
 
 **Checkpoint**: US6 chạy độc lập sau US4 (dùng chung learning usecase).
 

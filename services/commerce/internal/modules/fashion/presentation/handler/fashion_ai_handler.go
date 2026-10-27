@@ -27,19 +27,23 @@ const (
 	msgAiArchiveChatSessionSuccess = "Lưu trữ cuộc trò chuyện thành công"
 	msgAiDeleteChatSessionSuccess  = "Xoá cuộc trò chuyện thành công"
 	msgAiUpdateChatSessionSuccess  = "Cập nhật cuộc trò chuyện thành công"
+	msgAiSubmitFeedbackSuccess     = "Ghi nhận phản hồi gợi ý thành công"
 )
 
 type WardrobeAIHandler struct {
 	recommendationUseCase usecase_interfaces.IOutfitRecommendationUseCase
+	feedbackUseCase       usecase_interfaces.IRecommendationFeedbackUseCase
 	chatUseCase           usecase_interfaces.IWardrobeChatUseCase
 }
 
 func NewWardrobeAIHandler(
 	recommendationUseCase usecase_interfaces.IOutfitRecommendationUseCase,
+	feedbackUseCase usecase_interfaces.IRecommendationFeedbackUseCase,
 	chatUseCase usecase_interfaces.IWardrobeChatUseCase,
 ) *WardrobeAIHandler {
 	return &WardrobeAIHandler{
 		recommendationUseCase: recommendationUseCase,
+		feedbackUseCase:       feedbackUseCase,
 		chatUseCase:           chatUseCase,
 	}
 }
@@ -78,6 +82,40 @@ func (h *WardrobeAIHandler) RecommendOutfit(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, msgAiRecommendOutfitSuccess, response)
+	return nil
+}
+
+// SubmitRecommendationFeedback records the user's opinion of one recommendation
+// @Summary Gửi phản hồi cho gợi ý phối đồ
+// @Description Ghi nhận phản hồi like/dislike/saved cho một bộ đồ đã được gợi ý trước đó, phục vụ học gu thời trang.
+// @Description Client chỉ gửi recommendationId nhận từ response gợi ý và action; danh sách món được lấy từ snapshot phía server.
+// @Description Endpoint idempotent theo (người dùng, recommendationId, action): gửi lặp lại không tạo tín hiệu thứ hai.
+// @Tags Wardrobe AI
+// @Accept json
+// @Produce json
+// @Param body body dto.SubmitRecommendationFeedbackReq true "Phản hồi cho gợi ý phối đồ"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.SubmitRecommendationFeedbackRes} "Ghi nhận phản hồi thành công"
+// @Failure 400 {object} shared_pres.APIResponse "Hành động phản hồi không hợp lệ"
+// @Failure 403 {object} shared_pres.APIResponse "Gợi ý thuộc người dùng khác"
+// @Failure 404 {object} shared_pres.APIResponse "Không tìm thấy gợi ý hoặc gợi ý đã hết hạn"
+// @Router /api/v1/ai/outfit-recommendations/feedback [post]
+func (h *WardrobeAIHandler) SubmitRecommendationFeedback(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.SubmitRecommendationFeedbackReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.feedbackUseCase.SubmitFeedback(c.Request.Context(), userID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAiSubmitFeedbackSuccess, response)
 	return nil
 }
 

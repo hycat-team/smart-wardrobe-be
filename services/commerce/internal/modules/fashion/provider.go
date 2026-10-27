@@ -5,6 +5,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/category"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/feedback"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/learning"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/worker"
@@ -46,6 +47,9 @@ var ProviderSet = wire.NewSet(
 	// 033 T060: style learning shared by the outfit-saved worker (US4) and the
 	// feedback endpoint (US6).
 	learning.NewStyleLearningUseCase,
+	// 033 T072: recommendation feedback (US6) reads the snapshot and reuses the
+	// shared learning use case.
+	feedback.NewRecommendationFeedbackUseCase,
 	contract.NewFashionContract,
 	contract.NewCategoryContract,
 	contract.NewFashionDashboardReader,
