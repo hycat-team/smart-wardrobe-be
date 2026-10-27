@@ -84,8 +84,8 @@ từ ngoài bị chặn, `11434` không public; gọi text thấy provider `open
 - [x] T023 [US1] Hoàn thiện adapter trong `shared/infrastructure/ai/openai/openai.go`: truyền `temperature` kể cả `0`, plumb `ReasoningEffort` từ `config.APIProviderConfig`/`TextProviderConfig` vào payload, map lỗi có status + `max_tokens`, luôn stamp provider/model winner; sửa `shared/infrastructure/ai/google/google_text.go` để stamp provider/model khi usage thiếu; validate structured response
 - [x] T024 [US1] Sửa routing/fallback trong `shared/infrastructure/ai/text_service.go` và `text_provider.go`: bỏ `freeFailover`, đúng 1 Ollama + 1 Gemini, ma trận lỗi (gồm `max_tokens`), streaming chỉ fallback trước chunk đầu và không fallback giữa stream, fallback qua limiter Gemini, dùng semaphore + deadline từng attempt, dùng `AI_CHAT_CHUNK_DEADLINE_SECONDS` cho stream
 - [x] T025 [US1] Chạy `deployments/ollama/local-test.ps1` trên máy dev: functional GPU + 50 mẫu latency reference; thử `OLLAMA_NUM_GPU=0` (bị desktop app giữ GPU, ghi blocked); chạy AI service end-to-end A5–A8 và ghi evidence vào `docs/operations/ollama-trial-runbook.md`
-- [ ] T026 [US1] Thực hiện apply 2 bước trong `docs/operations/ollama-trial-runbook.md`: `terraform apply -target=aws_eip.ollama` → tạo A record → apply phần còn lại; xác minh SSM, proxy, `11434`, digest và ghi bằng chứng
-- [ ] T027 [US1] Chạy `terraform -chdir=deployments/terraform/ollama-ec2 validate` + `plan` và `nginx -t` với `deployments/ollama/nginx-ollama.conf.template`; ghi kết quả vào `docs/operations/ollama-trial-runbook.md`
+- [x] T026 [US1] Thực hiện apply 2 bước trong `docs/operations/ollama-trial-runbook.md`: `terraform apply -target=aws_eip.ollama` → tạo A record → apply phần còn lại; xác minh SSM, proxy, `11434`, digest và ghi bằng chứng
+- [x] T027 [US1] Chạy `terraform -chdir=deployments/terraform/ollama-ec2 validate` + `plan` và `nginx -t` với `deployments/ollama/nginx-ollama.conf.template`; ghi kết quả vào `docs/operations/ollama-trial-runbook.md`
 
 **Checkpoint**: US1 chạy độc lập: text do Ollama phục vụ, vision/embedding vẫn Gemini, truy cập ngoài bị chặn.
 
@@ -130,8 +130,8 @@ qua Ollama; đổi lại Gemini và xác minh phục hồi, không thay artefact
 - [x] T037 [US3] Viết quy trình bật/tắt, rollback và cập nhật allowlist khi static IP Lightsail đổi trong `docs/operations/ollama-trial-runbook.md` theo `contracts/env-ai-trial.md` §1.5
 - [x] T038 [US3] Viết mục kiểm tra bất biến trong `docs/operations/ollama-trial-runbook.md`: `git diff` không chạm Dockerfile/`docker-compose.aws.yml`/Nginx AWS/`deploy-aws.yml`, không có tài nguyên EKS, không có lệnh VPS
 - [ ] T039 [US3] Trên Lightsail: cập nhật `/opt/closy-aws/.env.aws` theo env contract (kể cả `deployments/scripts/aws-env/aws-env-bootstrap.ps1` cho key mới), chạy pipeline deploy hiện hữu, xác minh 6 container + 3 capability text do Ollama phục vụ, chạy load profile SC-005 (50 request/capability, concurrency 2, 30 phút), xác nhận Supabase/Redis Cloud/CloudAMQP/Cloudinary không đổi và uptime không phải tiêu chí; ghi bằng chứng
-- [ ] T040 [US3] Chạy kiểm tra cô lập trong `docs/operations/ollama-trial-runbook.md`: IP ngoài allowlist, thiếu/sai Bearer, truy cập `11434`, request hợp lệ từ Lightsail; ghi SC-003
-- [ ] T041 [US3] Chạy drill rollback về Gemini-only trong `docs/operations/ollama-trial-runbook.md`, đo thời gian ≤15 phút, xác minh không mất dữ liệu đã xác nhận; ghi SC-006
+- [x] T040 [US3] Chạy kiểm tra cô lập trong `docs/operations/ollama-trial-runbook.md`: IP ngoài allowlist, thiếu/sai Bearer, truy cập `11434`, request hợp lệ từ Lightsail; ghi SC-003
+- [x] T041 [US3] Chạy drill rollback về Gemini-only trong `docs/operations/ollama-trial-runbook.md`, đo thời gian ≤15 phút, xác minh không mất dữ liệu đã xác nhận; ghi SC-006
 - [x] T042 [P] [US3] Chạy bộ regression API hiện hữu + xác nhận vision/embedding chọn Gemini và không có thay đổi client DTO; ghi SC-008
 
 **Checkpoint**: US3 chạy độc lập: bật/tắt chỉ bằng env, rollback trong 15 phút, không đổi artefact deployment.

@@ -358,6 +358,15 @@ curl.exe -v http://<elastic-ip>:11434/api/version
 **Đạt khi**: request ngoài allowlist bị chặn/timeout; `11434` không truy cập được; thiếu/sai Bearer
 trả 401/403; request hợp lệ từ Lightsail trả 200. Ghi bằng chứng cho SC-003.
 
+### B5.1 Kết quả kiểm tra cách ly ngày 2026-10-27
+
+- Từ máy ngoài allowlist: `https://ollama.hycat.online/healthz` và
+  `http://13.213.185.178:11434/api/version` đều timeout.
+- Từ Lightsail: `healthz=200`, Bearer đúng `200`, thiếu Bearer `401`, sai Bearer `401`.
+- Security Group cuối: `443` chỉ `54.251.248.132/32`, `80` cho ACME, không có `22`/`11434`.
+- EC2: Ollama chỉ listen `127.0.0.1:11434`; Nginx chỉ `allow 54.251.248.132/32` và
+  `deny all`.
+
 ### B6. Drill fallback và tải
 
 - Stop Ollama qua SSM → gọi text → Gemini phục vụ đúng một lần → restart Ollama.
@@ -367,6 +376,13 @@ trả 401/403; request hợp lệ từ Lightsail trả 200. Ghi bằng chứng c
 
 **Đạt khi**: SC-005 và SC-009 có số liệu; semaphore/Ollama queue hoạt động.
 
+### B6.1 Quyết định load test SC-005 ngày 2026-10-27
+
+Không chạy load profile 50 request/capability trong cửa sổ 30 phút. Lý do: trial
+được dùng cho demo, người vận hành chọn monitor trực tiếp thay vì tạo tải tổng hợp.
+T039 vì vậy giữ trạng thái **not run by choice**, không đánh dấu PASS và không dùng
+để tính p95.
+
 ### B7. Drill rollback Gemini-only
 
 Đổi ba `*_TEXT_PRIMARY_*` về Gemini như §1.5 của env contract rồi chạy lại deploy hiện hữu. Quy
@@ -375,6 +391,15 @@ SC-006 ở §9.3. Regression API phục vụ SC-008 ở §9.4.
 
 **Đạt khi**: trong ≤15 phút, text phục vụ bằng Gemini; sáu container healthy; không mất dữ liệu đã
 xác nhận; không thao tác VPS. Ghi bằng chứng cho SC-006.
+
+### B7.1 Kết quả drill rollback ngày 2026-10-27
+
+- Backup `.env.aws` trước drill; chuyển ba nhóm primary sang giá trị fallback Gemini.
+- Recreate `ai-http` + `ai-worker` mất ~8 giây; AI healthy sau ~8 giây.
+- Gọi outfit qua API thật: `200`, `isFallback=false`; request AI/Commerce ~2.2 giây.
+- Khôi phục `.env.aws` từ backup, recreate lại AI mất ~9 giây; warm-up Ollama `200`.
+- Tổng thời gian rollback + restore dưới 15 phút; các container còn lại không bị recreate.
+- Trạng thái cuối: primary trở lại `openai`/Ollama; app chat trả lời bình thường.
 
 ## 4. Chuyển cấu hình (bật/tắt), rollback và cập nhật allowlist
 
