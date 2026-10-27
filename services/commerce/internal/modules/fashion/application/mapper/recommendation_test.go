@@ -247,3 +247,41 @@ func TestCategorySlugToWearingRoleTrimsWhitespace(t *testing.T) {
 		}
 	}
 }
+
+func TestParseAliasIndexRejectsUUID(t *testing.T) {
+	if _, ok := parseAliasIndex("a5e506ed-52ad-4e29-8462-65d6dbd07ae9"); ok {
+		t.Fatal("UUID starting with a digit after A must not be parsed as an alias")
+	}
+	if idx, ok := parseAliasIndex("A12"); !ok || idx != 11 {
+		t.Fatalf("parseAliasIndex(A12) = (%d, %v), want (11, true)", idx, ok)
+	}
+	if _, ok := parseAliasIndex("A12x"); ok {
+		t.Fatal("alias with trailing characters must be rejected")
+	}
+}
+
+func TestResolvePrimaryCandidatePrefersUUIDOverAliasIndex(t *testing.T) {
+	targetUUID := uuid.MustParse("a5e506ed-52ad-4e29-8462-65d6dbd07ae9")
+	target, fTarget := newTestCandidate(t, "ao")
+	target.Item.ID = targetUUID
+	target.Item.FashionItemID = &fTarget.ID
+
+	other, fOther := newTestCandidate(t, "quan")
+	candidates := []types.CandidateForPrompt{
+		target,
+		other,
+		{Item: &wardrobeDto.WardrobeItemContractDTO{ID: uuid.New()}},
+		{Item: &wardrobeDto.WardrobeItemContractDTO{ID: uuid.New()}},
+		{Item: &wardrobeDto.WardrobeItemContractDTO{ID: uuid.New()}},
+	}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		fTarget.ID: fTarget,
+		fOther.ID:  fOther,
+	}
+	candidateMap, _ := indexPromptCandidates(candidates)
+
+	got := resolvePrimaryCandidate(candidateMap, candidates, "top", targetUUID.String(), fashionItemMap)
+	if got == nil || got.ID != targetUUID {
+		t.Fatalf("resolved primary = %+v, want UUID %s", got, targetUUID)
+	}
+}

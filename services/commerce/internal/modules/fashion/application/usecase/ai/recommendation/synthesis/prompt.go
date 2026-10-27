@@ -18,6 +18,98 @@ type PromptLimits struct {
 	CandidateLimit, DescriptionMaxCharacters, TagsLimit, PromptMaxCharacters int
 }
 
+// candidateRoleInventory summarizes which wearing roles are actually available
+// in the prompt candidate pool. The small local model needs this explicit
+// contract: when the pool only has a fullbody item, the example must show a
+// fullbody outfit instead of teaching it to invent top/bottom aliases.
+type candidateRoleInventory struct {
+	aliases                        map[string][]string
+	hasTop, hasBottom, hasFullbody bool
+}
+
+var promptWearingRoles = map[string]bool{
+	"top": true, "bottom": true, "fullbody": true, "outerwear": true,
+	"footwear": true, "headwear": true, "accessory": true,
+}
+
+func inventoryCandidateRoles(candidates []types.CandidateForPrompt, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) candidateRoleInventory {
+	inventory := candidateRoleInventory{aliases: map[string][]string{}}
+	for i, candidate := range candidates {
+		if candidate.Item == nil || candidate.Item.FashionItemID == nil {
+			continue
+		}
+		fashion := fashionItemMap[*candidate.Item.FashionItemID]
+		if fashion == nil || fashion.Category == nil {
+			continue
+		}
+		role := fashion_mapper.CategorySlugToWearingRole(fashion.Category.Slug)
+		if !promptWearingRoles[role] {
+			continue
+		}
+		inventory.aliases[role] = append(inventory.aliases[role], fmt.Sprintf("A%d", i+1))
+		switch role {
+		case "top":
+			inventory.hasTop = true
+		case "bottom":
+			inventory.hasBottom = true
+		case "fullbody":
+			inventory.hasFullbody = true
+		}
+	}
+	return inventory
+}
+
+func (inventory candidateRoleInventory) coreStrategy() string {
+	if inventory.hasTop && inventory.hasBottom {
+		return "separates"
+	}
+	if inventory.hasFullbody {
+		return "fullbody"
+	}
+	return ""
+}
+
+func buildPromptExample(inventory candidateRoleInventory, strategy string) string {
+	items := make([]map[string]any, 0, 5)
+	add := func(role string) {
+		aliases := inventory.aliases[role]
+		if len(aliases) == 0 {
+			return
+		}
+		items = append(items, map[string]any{
+			"role":            role,
+			"primary_id":      aliases[0],
+			"alternative_ids": []string{},
+		})
+	}
+
+	switch strategy {
+	case "fullbody":
+		add("fullbody")
+	case "separates":
+		add("top")
+		add("bottom")
+	default:
+		if len(inventory.aliases["top"]) > 0 && len(inventory.aliases["bottom"]) > 0 {
+			add("top")
+			add("bottom")
+		} else {
+			add("fullbody")
+		}
+	}
+	add("footwear")
+	add("headwear")
+	add("accessory")
+
+	example := map[string]any{
+		"title":       "Bộ đồ phù hợp",
+		"explanation": "Mô tả ngắn gọn vì sao các món đồ này hợp với bối cảnh.",
+		"items":       items,
+	}
+	raw, _ := json.Marshal(example)
+	return string(raw)
+}
+
 // BuildRecommendationPrompt định dạng vai trò của stylist, các ràng buộc của prompt, ngữ cảnh yêu cầu và danh sách các ứng viên món đồ thành một prompt người dùng hoàn chỉnh gửi cho LLM.
 //
 // Hành vi:
@@ -55,6 +147,10 @@ func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, 
 }
 
 func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
+	inventory := inventoryCandidateRoles(candidates, fashionItemMap)
+	strategy := inventory.coreStrategy()
+	roleAliases, _ := json.Marshal(inventory.aliases)
+
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
 	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
@@ -68,6 +164,8 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
 	builder.WriteString("Outfit rules:\n")
 	builder.WriteString("- CORE roles define a complete outfit: exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
+	builder.WriteString("- Follow CORE_STRATEGY exactly: \"separates\" means exactly one top and one bottom and NO fullbody; \"fullbody\" means exactly one fullbody and NO top or bottom.\n")
+	builder.WriteString("- primary_id MUST be chosen from ROLE_ALIASES for the same role. Never use an alias from another role.\n")
 	builder.WriteString("- Each role must appear at most once. Do NOT output two items with the same role.\n")
 	builder.WriteString("- If the recommended outfit contains a fullbody item (\"fullbody\"), it MUST NOT include any top (\"top\") or bottom (\"bottom\").\n")
 	builder.WriteString("- Outerwear (e.g., jackets, coats) can be layered over either a fullbody dress (\"fullbody\") OR a top-and-bottom combination (\"top\" + \"bottom\").\n")
@@ -99,7 +197,15 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)
-	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố thoải mái\",\"explanation\":\"Chiếc áo thun trắng nhẹ nhàng kết hợp cùng quần jeans xanh tạo tổng thể hài hòa và thoải mái.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]},{\"role\":\"footwear\",\"primary_id\":\"A4\",\"alternative_ids\":[]},{\"role\":\"headwear\",\"primary_id\":\"A5\",\"alternative_ids\":[]},{\"role\":\"accessory\",\"primary_id\":\"A6\",\"alternative_ids\":[]}]}\n")
+	builder.WriteString("CORE_STRATEGY=")
+	builder.WriteString(strategy)
+	builder.WriteString("\n")
+	builder.WriteString("ROLE_ALIASES=")
+	builder.Write(roleAliases)
+	builder.WriteString("\n")
+	builder.WriteString("Required JSON shape example: ")
+	builder.WriteString(buildPromptExample(inventory, strategy))
+	builder.WriteString("\n")
 	builder.WriteString("CONTEXT=")
 	builder.Write(contextBytes)
 	builder.WriteString("\n")

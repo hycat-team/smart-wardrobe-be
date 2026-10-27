@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
@@ -39,13 +39,19 @@ func CategorySlugToWearingRole(slug string) string {
 
 func parseAliasIndex(alias string) (int, bool) {
 	alias = strings.TrimSpace(strings.ToUpper(alias))
-	if len(alias) > 1 && alias[0] == 'A' {
-		var index int
-		if _, err := fmt.Sscanf(alias[1:], "%d", &index); err == nil {
-			return index - 1, true
+	if len(alias) < 2 || alias[0] != 'A' {
+		return -1, false
+	}
+	for _, r := range alias[1:] {
+		if r < '0' || r > '9' {
+			return -1, false
 		}
 	}
-	return -1, false
+	index, err := strconv.Atoi(alias[1:])
+	if err != nil || index < 1 {
+		return -1, false
+	}
+	return index - 1, true
 }
 
 func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.FashionItemContractDTO, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
@@ -265,15 +271,15 @@ func resolvePrimaryCandidate(
 	primaryID string,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) *wardrobeDto.WardrobeItemContractDTO {
-	if idx, ok := parseAliasIndex(primaryID); ok {
-		if idx >= 0 && idx < len(candidates) {
-			return candidates[idx].Item
-		}
-	}
-
 	if id, err := uuid.Parse(primaryID); err == nil {
 		if item := candidateMap[id]; item != nil {
 			return item
+		}
+	}
+
+	if idx, ok := parseAliasIndex(primaryID); ok {
+		if idx >= 0 && idx < len(candidates) {
+			return candidates[idx].Item
 		}
 	}
 
@@ -301,15 +307,15 @@ func resolveAlternativeCandidates(
 	alternatives := make([]*dto.RecommendedItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
 		var altItem *wardrobeDto.WardrobeItemContractDTO
-		if idx, ok := parseAliasIndex(altID); ok {
-			if idx >= 0 && idx < len(candidates) {
-				altItem = candidates[idx].Item
-			}
+		if altUUID, err := uuid.Parse(altID); err == nil {
+			altItem = candidateMap[altUUID]
 		}
 
 		if altItem == nil {
-			if altUUID, err := uuid.Parse(altID); err == nil {
-				altItem = candidateMap[altUUID]
+			if idx, ok := parseAliasIndex(altID); ok {
+				if idx >= 0 && idx < len(candidates) {
+					altItem = candidates[idx].Item
+				}
 			}
 		}
 

@@ -50,8 +50,66 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 	}
 }
 
+func TestBuildRecommendationPromptUsesFullbodyStrategyWhenOnlyFullbodyExists(t *testing.T) {
+	dress, fDress := newSynthItem()
+	fDress.Category.Slug = "dam"
+	shoes, fShoes := newSynthItem()
+	fShoes.Category.Slug = "giay"
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		fDress.ID: fDress,
+		fShoes.ID: fShoes,
+	}
+	candidates := []types.CandidateForPrompt{{Item: dress}, {Item: shoes}}
+
+	prompt := BuildRecommendationPrompt(candidates, dto.RecommendOutfitReq{}, fashionItemMap)
+	if !strings.Contains(prompt, "CORE_STRATEGY=fullbody") {
+		t.Fatalf("expected fullbody strategy, got:\n%s", prompt)
+	}
+	a := strings.Index(prompt, `"fullbody":["A1"]`)
+	if a < 0 {
+		t.Fatalf("expected fullbody alias inventory, got:\n%s", prompt)
+	}
+	example := prompt[strings.Index(prompt, "Required JSON shape example:"):]
+	if !strings.Contains(example, `"role":"fullbody"`) {
+		t.Fatalf("expected fullbody example, got:\n%s", example)
+	}
+	if strings.Contains(example, `"role":"top"`) || strings.Contains(example, `"role":"bottom"`) {
+		t.Fatalf("fullbody example must not teach top/bottom roles, got:\n%s", example)
+	}
+}
+
+func TestBuildRecommendationPromptUsesSeparatesStrategyWhenTopAndBottomExist(t *testing.T) {
+	top, fTop := newSynthItem()
+	fTop.Category.Slug = "ao"
+	pants, fPants := newSynthItem()
+	fPants.Category.Slug = "quan"
+	shoes, fShoes := newSynthItem()
+	fShoes.Category.Slug = "giay"
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		fTop.ID:   fTop,
+		fPants.ID: fPants,
+		fShoes.ID: fShoes,
+	}
+	candidates := []types.CandidateForPrompt{{Item: top}, {Item: pants}, {Item: shoes}}
+
+	prompt := BuildRecommendationPrompt(candidates, dto.RecommendOutfitReq{}, fashionItemMap)
+	if !strings.Contains(prompt, "CORE_STRATEGY=separates") {
+		t.Fatalf("expected separates strategy, got:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, `"top":["A1"]`) || !strings.Contains(prompt, `"bottom":["A2"]`) {
+		t.Fatalf("expected role alias inventory, got:\n%s", prompt)
+	}
+	example := prompt[strings.Index(prompt, "Required JSON shape example:"):]
+	if !strings.Contains(example, `"role":"top"`) || !strings.Contains(example, `"role":"bottom"`) {
+		t.Fatalf("expected separates example, got:\n%s", example)
+	}
+	if strings.Contains(example, `"role":"fullbody"`) {
+		t.Fatalf("separates example must not teach fullbody, got:\n%s", example)
+	}
+}
+
 func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.T) {
-	longDescription := strings.Repeat("á", 300)
+	longDescription := strings.Repeat("Ã¡", 300)
 	candidates := make([]types.CandidateForPrompt, 4)
 	fashionItemMap := make(map[uuid.UUID]*dto.FashionItemContractDTO)
 	for i := range candidates {
@@ -80,7 +138,7 @@ func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.
 	if strings.Contains(prompt, "three") {
 		t.Fatalf("expected excess tags to be omitted")
 	}
-	if longDescription != strings.Repeat("á", 300) {
+	if longDescription != strings.Repeat("Ã¡", 300) {
 		t.Fatal("source description was mutated")
 	}
 	if len([]rune(prompt)) > 5000 {
@@ -89,20 +147,20 @@ func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.
 }
 
 func TestParseOutfitRecommendationJSONExtractsBalancedJSON(t *testing.T) {
-	responseText := "Sure, here is the outfit: ```json\n{\n  \"title\": \"Dạo phố xuân\",\n  \"explanation\": \"Bộ trang phục thoải mái cho dạo phố.\",\n  \"items\": [\n    {\n      \"role\": \"ao\",\n      \"primary_id\": \"11111111-1111-1111-1111-111111111111\",\n      \"alternative_ids\": []\n    }\n  ]\n}\n``` Enjoy!"
+	responseText := "Sure, here is the outfit: ```json\n{\n  \"title\": \"Dáº¡o phá»‘ xuÃ¢n\",\n  \"explanation\": \"Bá»™ trang phá»¥c thoáº£i mÃ¡i cho dáº¡o phá»‘.\",\n  \"items\": [\n    {\n      \"role\": \"ao\",\n      \"primary_id\": \"11111111-1111-1111-1111-111111111111\",\n      \"alternative_ids\": []\n    }\n  ]\n}\n``` Enjoy!"
 
 	res, _, err := ParseOutfitRecommendationJSON(responseText)
 	if err != nil {
 		t.Fatalf("expected successful parse, got: %v", err)
 	}
-	if res.Title != "Dạo phố xuân" {
-		t.Fatalf("expected title 'Dạo phố xuân', got: %q", res.Title)
+	if res.Title != "Dáº¡o phá»‘ xuÃ¢n" {
+		t.Fatalf("expected title 'Dáº¡o phá»‘ xuÃ¢n', got: %q", res.Title)
 	}
 }
 
 func TestValidateOutfitRecommendationPayloadRejectsPlaceholders(t *testing.T) {
 	invalidPayload := types.LlmOutfitResponse{
-		Title:       "Bộ đồ xuân",
+		Title:       "Bá»™ Ä‘á»“ xuÃ¢n",
 		Explanation: "explanation", // placeholder word
 	}
 
@@ -230,13 +288,13 @@ func TestSanitizeOutfitNarrativeRemovesAliases(t *testing.T) {
 	}{
 		{
 			name:     "parenthesized aliases",
-			input:    "Lựa chọn chiếc váy ngắn màu xám than (A7) với thiết kế tối giản. Kết hợp cùng giày sneaker Onitsuka Tiger (A2) hài hòa.",
-			contains: []string{"váy ngắn màu xám than", "Onitsuka Tiger"},
+			input:    "Lá»±a chá»n chiáº¿c vÃ¡y ngáº¯n mÃ u xÃ¡m than (A7) vá»›i thiáº¿t káº¿ tá»‘i giáº£n. Káº¿t há»£p cÃ¹ng giÃ y sneaker Onitsuka Tiger (A2) hÃ i hÃ²a.",
+			contains: []string{"vÃ¡y ngáº¯n mÃ u xÃ¡m than", "Onitsuka Tiger"},
 		},
 		{
 			name:     "bare alias",
-			input:    "Phối áo A1 cùng quần A3 rất đẹp.",
-			contains: []string{"Phối áo", "quần"},
+			input:    "Phá»‘i Ã¡o A1 cÃ¹ng quáº§n A3 ráº¥t Ä‘áº¹p.",
+			contains: []string{"Phá»‘i Ã¡o", "quáº§n"},
 		},
 		{
 			name:     "empty string",
