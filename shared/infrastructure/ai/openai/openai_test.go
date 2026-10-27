@@ -249,6 +249,41 @@ func TestCallTextStreamsChunksInOrderUntilDone(t *testing.T) {
 	}
 }
 
+// A provider that closes the connection after some content chunks but before
+// sending [DONE] has truncated the answer. The contract treats [DONE] as the
+// stream terminator, so EOF without it must surface as malformed (fallback
+// eligible) rather than a successful, silently cut answer.
+func TestCallTextStreamTruncatedWithoutDoneIsMalformed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeSSE(w,
+			`{"choices":[{"delta":{"content":"Xin"}}]}`,
+			`{"choices":[{"delta":{"content":" chào"}}]}`,
+		)
+		// The handler returns without writing [DONE]; the body ends here.
+	}))
+	defer server.Close()
+
+	text, errc := CallTextStream(context.Background(), server.Client(), trialProvider(server, trialEffort), "s", "u", app_ai.TextGenerationOptions{})
+	got, err := collectStream(t, text, errc)
+	if err == nil {
+		t.Fatal("a stream that ends without [DONE] must report an error, not done")
+	}
+	if got != "Xin chào" {
+		t.Errorf("streamed text = %q, want the chunks emitted before the truncation", got)
+	}
+
+	upstream, ok := AsUpstreamError(err)
+	if !ok {
+		t.Fatalf("error %T is not a typed UpstreamError: %v", err, err)
+	}
+	if upstream.Outcome != OutcomeMalformed {
+		t.Errorf("outcome = %q, want malformed", upstream.Outcome)
+	}
+	if !upstream.FallbackEligible() {
+		t.Error("a truncated stream must be eligible for the single fallback attempt")
+	}
+}
+
 func TestCallTextStreamReportsUsageFromFinalChunkOnce(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeSSE(w,
@@ -535,6 +570,11 @@ func TestCallTextStreamCancellationStopsQuietly(t *testing.T) {
 	_, err := collectStream(t, text, errc)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want nil or context.Canceled after a client cancel", err)
+	}
+	// A real cancellation ends without [DONE] too; it must never be reclassified
+	// as a malformed/fallback-eligible stream.
+	if upstream, ok := AsUpstreamError(err); ok && upstream.Outcome == OutcomeMalformed {
+		t.Fatalf("canceled stream was misclassified as malformed: %v", err)
 	}
 }
 

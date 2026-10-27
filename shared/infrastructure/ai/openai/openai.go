@@ -101,10 +101,12 @@ func CallTextStream(
 			usage      app_ai.TokenUsage
 			usageSeen  bool
 			sawContent bool
+			sawDone    bool
 		)
 
 		err = parseSSEStream(resp.Body, func(data string) error {
 			if data == "[DONE]" {
+				sawDone = true
 				return io.EOF
 			}
 
@@ -145,6 +147,12 @@ func CallTextStream(
 		// [DONE] aborts the parser with io.EOF; that is a clean end, not a failure.
 		if err == io.EOF {
 			err = nil
+		}
+		// EOF without [DONE] is a truncated stream, not a success: the provider
+		// may have closed mid-answer. A canceled attempt is left alone so the
+		// caller still classifies it as cancellation rather than malformed.
+		if err == nil && !sawDone && ctx.Err() == nil {
+			err = NewMalformedError(fmt.Errorf("SSE stream ended without [DONE]"))
 		}
 		// The winning provider must be reported even when Ollama sends no usage
 		// payload; the caller stamps provider/model from this callback. A canceled
