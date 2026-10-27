@@ -104,7 +104,7 @@ Gemini không sửa được cấu hình. Phải cảnh báo vận hành.
 | Non-stream JSON hợp lệ | Trả content; usage stamp provider/model |
 | Structured `json_object` | Parse JSON, validate theo schema |
 | Structured `json_schema` | Gửi đúng schema; validate trước khi trả |
-| Thinking off | Không có `reasoning_content`/thinking token; TTFT không bị đội |
+| Không reasoning | Không có `reasoning_content`/thinking token; TTFT không bị đội |
 | SSE nhiều chunk + `[DONE]` | Ghép đúng thứ tự, không lặp |
 | SSE usage-only ở cuối | Success, usage ghi nhận |
 | Zero usage / missing usage | Success, `usage_reported=false` |
