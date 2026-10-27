@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
@@ -327,6 +328,7 @@ func suggestionTestUseCase(
 		logger:           nopRecommendationLogger{},
 		wardrobeContract: contract,
 		fashionItemRepo:  repo,
+		nlpParser:        parser.NewLocalNLPParser(),
 	}
 	if cache != nil {
 		uc.catalogCache = cache
@@ -711,4 +713,72 @@ func suggestionRoles(suggestions []dto.OutfitSuggestionRes) []string {
 		roles = append(roles, suggestion.Role)
 	}
 	return roles
+}
+
+// TestBuildOutfitCompletionSuggestionsFillsOnlyGapRoles proves the completion
+// endpoint drives the SAME US2 builder (033 US7/T077): the retrieval, ownership
+// exclusion and cap rules come from the recommendation package, and a catalog
+// item whose role is not a gap is never returned.
+func TestBuildOutfitCompletionSuggestionsFillsOnlyGapRoles(t *testing.T) {
+	shoes := suggestionCatalogItem("giay", "")
+	top := suggestionCatalogItem("ao", "")
+	repo := &fakeSuggestionFashionRepo{
+		items: suggestionItemIndex(shoes, top),
+		hybrid: []repositories.HybridCandidate{
+			suggestionHybrid(top, 0.95),
+			suggestionHybrid(shoes, 0.90),
+		},
+	}
+	contract := &fakeSuggestionWardrobeContract{catalogIDs: []uuid.UUID{shoes.ID, top.ID}}
+	uc := suggestionTestUseCase(suggestionTestConfig(), repo, contract, &fakeSuggestionCatalogCache{})
+	uc.aiService = &fakeQueryEmbeddingAI{vector: []float32{0.1}}
+
+	occasion := "work"
+	got := uc.BuildOutfitCompletionSuggestions(
+		context.Background(),
+		uuid.New(),
+		dto.RecommendOutfitReq{Occasion: &occasion},
+		[]string{"footwear"},
+	)
+
+	if want := []string{"footwear"}; !reflect.DeepEqual(suggestionRoles(got), want) {
+		t.Fatalf("roles = %v, want %v (only the requested gap role)", suggestionRoles(got), want)
+	}
+	if got[0].FashionItem == nil || got[0].FashionItem.ID != shoes.ID {
+		t.Fatalf("suggested %+v, want the footwear catalog item", got[0].FashionItem)
+	}
+	if got[0].Reason == "" {
+		t.Fatal("completion suggestion must carry a Vietnamese reason (FR-023)")
+	}
+}
+
+// TestBuildOutfitCompletionSuggestionsSkipsOwnedItems proves the completion
+// path keeps the FR-021 ownership exclusion of the recommendation builder.
+func TestBuildOutfitCompletionSuggestionsSkipsOwnedItems(t *testing.T) {
+	ownedShoes := suggestionCatalogItem("giay", "")
+	freeShoes := suggestionCatalogItem("giay", "")
+	repo := &fakeSuggestionFashionRepo{
+		items: suggestionItemIndex(ownedShoes, freeShoes),
+		hybrid: []repositories.HybridCandidate{
+			suggestionHybrid(ownedShoes, 0.95),
+			suggestionHybrid(freeShoes, 0.90),
+		},
+	}
+	contract := &fakeSuggestionWardrobeContract{
+		catalogIDs: []uuid.UUID{ownedShoes.ID, freeShoes.ID},
+		ownedIDs:   []uuid.UUID{ownedShoes.ID},
+	}
+	uc := suggestionTestUseCase(suggestionTestConfig(), repo, contract, &fakeSuggestionCatalogCache{})
+	uc.aiService = &fakeQueryEmbeddingAI{vector: []float32{0.1}}
+
+	got := uc.BuildOutfitCompletionSuggestions(
+		context.Background(),
+		uuid.New(),
+		dto.RecommendOutfitReq{},
+		[]string{"footwear"},
+	)
+
+	if len(got) != 1 || got[0].FashionItem == nil || got[0].FashionItem.ID != freeShoes.ID {
+		t.Fatalf("suggestions = %+v, want only the not-owned footwear item", got)
+	}
 }

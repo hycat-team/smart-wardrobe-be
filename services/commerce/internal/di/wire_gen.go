@@ -44,6 +44,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/category"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/completion"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/feedback"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/learning"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
@@ -205,14 +206,15 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserStyleProfileRepository := persistence3.NewUserStyleProfileRepository(gormDB)
 	iPersonalizationCatalogCache := caching3.NewRedisPersonalizationCatalogCache(iCacheService)
 	iRecommendationSnapshotCache := caching3.NewRedisRecommendationSnapshotCache(iCacheService)
-	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUserStyleProfileRepository, iPersonalizationCatalogCache, iRecommendationSnapshotCache, iUnitOfWork)
+	outfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUserStyleProfileRepository, iPersonalizationCatalogCache, iRecommendationSnapshotCache, iUnitOfWork)
+	iOutfitCompletionUseCase := completion.NewOutfitCompletionUseCase(l, iWardrobeContract, iFashionItemRepository, outfitRecommendationUseCase)
 	iStyleSignalRepository := persistence3.NewStyleSignalRepository(gormDB)
 	iStyleLearningUseCase := learning.NewStyleLearningUseCase(cfg, l, iStyleSignalRepository, iUserStyleProfileRepository, iFashionItemRepository, iUnitOfWork)
 	iRecommendationFeedbackUseCase := feedback.NewRecommendationFeedbackUseCase(l, iRecommendationSnapshotCache, iStyleLearningUseCase)
 	iConversationalContextRepository := persistence3.NewConversationalContextRepository(gormDB)
 	iMessageRepository := persistence3.NewMessageRepository(gormDB)
 	iWardrobeChatUseCase := chat2.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iWardrobeContract, iUnitOfWork)
-	wardrobeAIHandler := handler4.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iRecommendationFeedbackUseCase, iWardrobeChatUseCase)
+	wardrobeAIHandler := handler4.NewWardrobeAIHandler(outfitRecommendationUseCase, iOutfitCompletionUseCase, iRecommendationFeedbackUseCase, iWardrobeChatUseCase)
 	categoryHandler := handler4.NewCategoryHandler(iCategoryUseCase)
 	iStyleProfileUseCase := profile.NewStyleProfileUseCase(cfg, l, iaiOrchestrator, iUserStyleProfileRepository, iUserSubscriptionContract, iWardrobeContract, iFashionItemRepository)
 	styleProfileHandler := handler4.NewStyleProfileHandler(iStyleProfileUseCase)

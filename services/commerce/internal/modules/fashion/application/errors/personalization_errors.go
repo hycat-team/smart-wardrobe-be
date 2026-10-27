@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"smart-wardrobe-be/shared/application/constants/apperror"
+
+	"github.com/google/uuid"
 )
 
 // ErrPersonalizationNotAvailable refuses a profile write for a user whose
@@ -51,4 +53,25 @@ func ErrFeedbackForbidden() *apperror.Error {
 // guard so a direct caller cannot pass an action with no learning weight.
 func ErrFeedbackActionInvalid() *apperror.Error {
 	return apperror.NewBadRequest("Hành động phản hồi không hợp lệ. Chỉ chấp nhận like, dislike hoặc saved.")
+}
+
+// ErrOutfitCompletionItemForbidden refuses an outfit-completion request that
+// names a fashion item the user does not own through an active wardrobe row
+// (contracts/personalization-api.md §2.3, §7).
+//
+// The contract pins the status to 400 and keeps the wording of the existing
+// `ErrOutfitItemInvalidOrForbidden`. That constructor lives in the Wardrobe
+// module's application layer, which is not an allowed cross-module import
+// (Constitution §II), so the fashion module owns an equivalent constructor
+// instead of borrowing it.
+func ErrOutfitCompletionItemForbidden(fashionItemID uuid.UUID) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", fashionItemID))
+}
+
+// ErrOutfitCompletionItemsInvalid refuses an empty or oversized completion set
+// when the use case is called directly. The HTTP binding already enforces the
+// 1-10 range (contracts §2.3); the guard keeps a direct caller from asking for
+// "the gap roles of nothing".
+func ErrOutfitCompletionItemsInvalid(maxItems int) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Vui lòng chọn từ 1 đến %d món đồ bạn đã sở hữu để hoàn thiện bộ.", maxItems))
 }

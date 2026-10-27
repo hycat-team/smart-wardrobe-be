@@ -76,40 +76,58 @@ func (uc *OutfitRecommendationUseCase) buildCatalogSuggestions(
 		return nil
 	}
 
-	maxTotal := uc.cfg.Personalization.SuggestionMaxTotal
-	if maxTotal <= 0 {
-		maxTotal = defaultSuggestionMaxTotal
-	}
-	// FR-023 caps a role at one suggestion; a larger config value is ignored.
-	maxPerRole := uc.cfg.Personalization.SuggestionMaxPerRole
-	if maxPerRole <= 0 {
-		maxPerRole = defaultSuggestionMaxPerRole
-	}
-	if maxPerRole > 1 {
-		maxPerRole = 1
-	}
 	candidates := uc.retrieveCatalogCandidates(ctx, userID, gapRoles, filter)
 	if len(candidates) == 0 {
 		return nil
 	}
+	return uc.pickCatalogSuggestions(gapRoles, candidates, outfitPresentRoles(finalOutfit), filter.Personalization)
+}
 
-	used := map[uuid.UUID]bool{}
-	suggestions := make([]dto.OutfitSuggestionRes, 0, maxTotal)
-	for _, role := range gapRoles {
-		for picked := 0; picked < maxPerRole && len(suggestions) < maxTotal; picked++ {
-			best := bestCatalogSuggestion(candidates, role, used, filter.Personalization)
-			if best == nil {
-				break
-			}
-			used[best.FashionItem.ID] = true
-			suggestions = append(suggestions, mapper.MapOutfitSuggestionRes(
-				role,
-				suggestionReason(role, outfitHasRole(finalOutfit, role), filter.Personalization),
-				best.FashionItem,
-			))
-		}
+// BuildOutfitCompletionSuggestions implements
+// usecase.IOutfitSuggestionBuilder for the outfit-completion endpoint (033
+// US7/T077).
+//
+// It rebuilds the retrieval context from the completion request exactly as a
+// recommendation does — same intent parser, same style-vector blend, same hard
+// filters, same personalization entitlement and same catalog id cache — and then
+// reuses [OutfitRecommendationUseCase.pickCatalogSuggestions] so the shipped
+// US2 rules apply unchanged: at most one suggestion per role, at most three per
+// response and never an item the user already owns.
+//
+// It never runs the LLM, never synthesizes an outfit and never touches quota.
+func (uc *OutfitRecommendationUseCase) BuildOutfitCompletionSuggestions(
+	ctx context.Context,
+	userID uuid.UUID,
+	input dto.RecommendOutfitReq,
+	gapRoles []string,
+) []dto.OutfitSuggestionRes {
+	if uc == nil || uc.cfg == nil || len(gapRoles) == 0 {
+		return nil
 	}
-	return suggestions
+
+	intent := uc.parseRecommendationIntent(input)
+	personalization := uc.loadPersonalizationContext(ctx, userID, intent)
+	intent = mergePersonalizationIntoIntent(intent, personalization)
+	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
+	// Same soft-preference rule as the outfit pipeline: category is never a hard
+	// filter, otherwise a complete outfit could not be assembled.
+	retrievalQuery.HardFilters.CategorySlugs = nil
+	queryVector := uc.buildRecommendationQueryVector(
+		ctx,
+		retrievalQuery.SemanticQuery,
+		personalization.StyleVector,
+		personalization.StyleWeight,
+	)
+
+	candidates := uc.retrieveCatalogCandidates(ctx, userID, gapRoles, &candidateFilterResult{
+		Personalization: personalization,
+		RetrievalQuery:  retrievalQuery,
+		QueryVector:     queryVector,
+	})
+	if len(candidates) == 0 {
+		return nil
+	}
+	return uc.pickCatalogSuggestions(gapRoles, candidates, map[string]bool{}, personalization)
 }
 
 // detectOutfitGapRoles returns the structural roles that count as "not
@@ -126,15 +144,7 @@ func detectOutfitGapRoles(
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 	threshold float64,
 ) []string {
-	present := map[string]bool{}
-	for _, group := range finalOutfit.Items {
-		if group == nil || group.Primary == nil {
-			continue
-		}
-		if group.Role != "" {
-			present[group.Role] = true
-		}
-	}
+	present := outfitPresentRoles(finalOutfit)
 
 	requiredRoles := []string{"top", "bottom", "footwear"}
 	if present["fullbody"] {
@@ -429,13 +439,20 @@ func suggestionRoleLabel(role string) string {
 	}
 }
 
-func outfitHasRole(finalOutfit *dto.RecommendedOutfitRes, role string) bool {
+func outfitPresentRoles(finalOutfit *dto.RecommendedOutfitRes) map[string]bool {
+	present := map[string]bool{}
+	if finalOutfit == nil {
+		return present
+	}
 	for _, group := range finalOutfit.Items {
-		if group != nil && group.Primary != nil && group.Role == role {
-			return true
+		if group == nil || group.Primary == nil {
+			continue
+		}
+		if group.Role != "" {
+			present[group.Role] = true
 		}
 	}
-	return false
+	return present
 }
 
 // wearingRoleForFashionItem resolves the wearing role from fashion metadata,

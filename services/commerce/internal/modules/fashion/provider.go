@@ -1,10 +1,12 @@
 package fashion
 
 import (
+	usecase_interfaces "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/chat"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/category"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/completion"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/feedback"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/learning"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
@@ -36,6 +38,12 @@ var ProviderSet = wire.NewSet(
 
 	chat.NewWardrobeChatUseCase,
 	recommendation.NewOutfitRecommendationUseCase,
+	// 033 T077: the recommendation use case is the shared catalog suggestion
+	// builder of US2 and US7, exposed through two interfaces from one instance.
+	wire.Bind(new(usecase_interfaces.IOutfitRecommendationUseCase), new(*recommendation.OutfitRecommendationUseCase)),
+	wire.Bind(new(usecase_interfaces.IOutfitSuggestionBuilder), new(*recommendation.OutfitRecommendationUseCase)),
+	// 033 T077: outfit completion validates ownership and reuses that builder.
+	completion.NewOutfitCompletionUseCase,
 	worker.NewVisionCategoryCache,
 	worker.NewFashionWorkerUseCase,
 	worker.NewFashionInitUseCase,

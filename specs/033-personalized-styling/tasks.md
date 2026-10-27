@@ -417,13 +417,13 @@ rỗng; quota không đổi.
 
 ### Implementation
 
-- [ ] T076 [US7] Thêm DTO `CompleteOutfitReq`/`CompleteOutfitRes` trong
+- [x] T076 [US7] Thêm DTO `CompleteOutfitReq`/`CompleteOutfitRes` trong
   `.../fashion/application/dto/style_profile.go` (hoặc file mới `outfit_completion.go`).
-- [ ] T077 [US7] Implement `.../personalization/completion/completion_uc.go`: validate ownership qua
+- [x] T077 [US7] Implement `.../personalization/completion/completion_uc.go`: validate ownership qua
   `IWardrobeContract`, xác định role hiện có/thiếu, tái sử dụng suggestion builder của US2.
-- [ ] T078 [US7] Thêm handler + route `POST /ai/outfit-completions` trong
+- [x] T078 [US7] Thêm handler + route `POST /ai/outfit-completions` trong
   `fashion_ai_handler.go` / `router.go`; swagger; đảm bảo không gọi `GetAndResetDailyQuota`.
-- [ ] T079 [US7] Thêm test ownership/completion + chạy kịch bản US7 trong `quickstart.md`, xác nhận
+- [x] T079 [US7] Thêm test ownership/completion + chạy kịch bản US7 trong `quickstart.md`, xác nhận
   `remainingQuota` không đổi.
 
 **Checkpoint**: US7 chạy độc lập sau US2 (dùng chung suggestion builder).

@@ -45,6 +45,9 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.aiHandler.RecommendOutfit))
 		// 033 US6: feedback on a previously returned recommendation.
 		aiApi.POST("/outfit-recommendations/feedback", shared_pres.WrapHandler(r.aiHandler.SubmitRecommendationFeedback))
+		// 033 US7: gap suggestions for a set of items the user already owns.
+		// Never runs the LLM and never consumes the daily outfit quota.
+		aiApi.POST("/outfit-completions", shared_pres.WrapHandler(r.aiHandler.CompleteOutfit))
 		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.CreateChatSession))
 		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.GetChatSessions))
 		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.aiHandler.GetChatMessages))
