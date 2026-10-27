@@ -634,6 +634,106 @@ func TestCallTextStructuredJSONSchemaRequestAndValidation(t *testing.T) {
 	}
 }
 
+func TestCallTextNormalizesSchemaTypesForOpenAI(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema map[string]any
+		want   map[string]any
+	}{
+		{
+			name: "uppercase nested schema becomes lowercase",
+			schema: map[string]any{
+				"type":     "OBJECT",
+				"required": []any{"summary", "tags", "meta"},
+				"properties": map[string]any{
+					"summary": map[string]any{"type": "STRING"},
+					"tags": map[string]any{
+						"type":  "ARRAY",
+						"items": map[string]any{"type": "STRING"},
+					},
+					"meta": map[string]any{
+						"type": "OBJECT",
+						"properties": map[string]any{
+							"score": map[string]any{"type": "NUMBER"},
+						},
+					},
+				},
+			},
+			want: map[string]any{
+				"type":     "object",
+				"required": []any{"summary", "tags", "meta"},
+				"properties": map[string]any{
+					"summary": map[string]any{"type": "string"},
+					"tags": map[string]any{
+						"type":  "array",
+						"items": map[string]any{"type": "string"},
+					},
+					"meta": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"score": map[string]any{"type": "number"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "lowercase schema is unchanged",
+			schema: map[string]any{
+				"type":     "object",
+				"required": []any{"summary"},
+				"properties": map[string]any{
+					"summary": map[string]any{"type": "string"},
+				},
+			},
+			want: map[string]any{
+				"type":     "object",
+				"required": []any{"summary"},
+				"properties": map[string]any{
+					"summary": map[string]any{"type": "string"},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotSchema any
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body := readJSONBody(t, r)
+				format, _ := body["response_format"].(map[string]any)
+				jsonSchema, _ := format["json_schema"].(map[string]any)
+				gotSchema = jsonSchema["schema"]
+
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"choices":[{"message":{"content":"{\"summary\":\"ok\",\"tags\":[],\"meta\":{\"score\":1}}"},"finish_reason":"stop"}]}`)
+			}))
+			defer server.Close()
+
+			_, err := CallText(context.Background(), server.Client(), trialProvider(server, trialEffort), "s", "u",
+				app_ai.TextGenerationOptions{
+					ResponseMIMEType: "application/json",
+					ResponseSchema:   tt.schema,
+				})
+			if err != nil {
+				t.Fatalf("CallText returned error: %v", err)
+			}
+
+			gotJSON, err := json.Marshal(gotSchema)
+			if err != nil {
+				t.Fatalf("marshal outgoing schema: %v", err)
+			}
+			wantJSON, err := json.Marshal(tt.want)
+			if err != nil {
+				t.Fatalf("marshal expected schema: %v", err)
+			}
+			if string(gotJSON) != string(wantJSON) {
+				t.Errorf("outgoing schema = %s, want %s", gotJSON, wantJSON)
+			}
+		})
+	}
+}
+
 func TestCallTextStructuredValidationFailures(t *testing.T) {
 	schema := map[string]any{"type": "object", "required": []string{"summary"}}
 

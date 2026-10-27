@@ -493,10 +493,40 @@ func applyOpenAIStructuredOutput(payload map[string]any, options app_ai.TextGene
 		return
 	}
 	if options.ResponseSchema != nil {
-		payload["response_format"] = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "structured_response", "strict": true, "schema": options.ResponseSchema}}
+		schema := normalizeOpenAISchemaTypes(options.ResponseSchema)
+		payload["response_format"] = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "structured_response", "strict": true, "schema": schema}}
 		return
 	}
 	payload["response_format"] = map[string]any{"type": "json_object"}
+}
+
+// normalizeOpenAISchemaTypes lowercases every JSON-schema "type" value because
+// OpenAI-compatible servers such as Ollama reject the uppercase names Gemini
+// uses. It copies maps and slices so the caller's schema stays untouched for
+// providers that expect the uppercase form.
+func normalizeOpenAISchemaTypes(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		normalized := make(map[string]any, len(typed))
+		for key, item := range typed {
+			if key == "type" {
+				if name, ok := item.(string); ok {
+					normalized[key] = strings.ToLower(name)
+					continue
+				}
+			}
+			normalized[key] = normalizeOpenAISchemaTypes(item)
+		}
+		return normalized
+	case []any:
+		normalized := make([]any, len(typed))
+		for index, item := range typed {
+			normalized[index] = normalizeOpenAISchemaTypes(item)
+		}
+		return normalized
+	default:
+		return value
+	}
 }
 
 func parseSSEStream(r io.Reader, callback func(data string) error) error {
