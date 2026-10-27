@@ -154,7 +154,7 @@ Trong phiên SSM, kiểm tra:
 - `certbot certificates` còn hạn
 - security group chỉ mở 443 cho `<lightsail-ip>/32`
 
-**Đạt khi**: proxy TLS sẵn sàng, model đúng digest, thinking off, Ollama không public.
+**Đạt khi**: proxy TLS sẵn sàng, model đúng digest, không reasoning, Ollama không public.
 
 ### B3. Bật trial trên Lightsail
 
