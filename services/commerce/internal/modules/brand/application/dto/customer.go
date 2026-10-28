@@ -57,6 +57,7 @@ type LoyaltyTierBriefRes struct {
 }
 
 type CreateClaimTokenRes struct {
+	ID         uuid.UUID `json:"id"`
 	ClaimToken string    `json:"claimToken"`
 	ExpiresAt  time.Time `json:"expiresAt"`
 }

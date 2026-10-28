@@ -29,6 +29,8 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 
 	target := targetdashboard.TargetDashboard(strings.ToLower(string(req.TargetDashboard)))
 
+	var brandID *uuid.UUID
+
 	// RBAC Security Enforcement
 	switch target {
 	case targetdashboard.Admin:
@@ -36,11 +38,15 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 			return nil, apperror.NewForbidden("Bạn không có quyền truy cập Admin Dashboard.")
 		}
 	case targetdashboard.Brand:
-		if req.BrandID == nil {
+		if req.BrandID == nil || strings.TrimSpace(*req.BrandID) == "" {
 			return nil, apperror.NewBadRequest("Thiếu thông tin brandId để truy vấn Brand Dashboard.")
 		}
-		_, err := uc.brandReader.GetUserBrandRole(ctx, userID, *req.BrandID)
+		resolvedBrandID, err := uc.brandReader.ResolveBrandRef(ctx, *req.BrandID)
 		if err != nil {
+			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		}
+		brandID = &resolvedBrandID
+		if _, err := uc.brandReader.GetUserBrandRole(ctx, userID, resolvedBrandID); err != nil {
 			return nil, apperror.NewForbidden("Bạn không có quyền truy cập thông tin nhãn hàng này.")
 		}
 	case targetdashboard.User:
@@ -123,8 +129,8 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		}
 
 	case targetdashboard.Brand:
-		if req.BrandID != nil {
-			snapshots, err := uc.dashboardRepo.GetBrandSnapshots(ctx, *req.BrandID, fromDate, toDate)
+		if brandID != nil {
+			snapshots, err := uc.dashboardRepo.GetBrandSnapshots(ctx, *brandID, fromDate, toDate)
 			if err != nil {
 				return nil, err
 			}
@@ -154,19 +160,19 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 					case metrickey.PointsLiabilityValueVND:
 						metricValues[m] = s.PointsLiabilityValueVND
 					case metrickey.NewCustomers:
-						val, _ := uc.brandReader.GetBrandNewCustomerCount(ctx, *req.BrandID, fromDate, toDate)
+						val, _ := uc.brandReader.GetBrandNewCustomerCount(ctx, *brandID, fromDate, toDate)
 						metricValues[m] = float64(val)
 					case metrickey.CustomerClaimRate:
-						val, _ := uc.brandReader.GetBrandCustomerClaimRate(ctx, *req.BrandID)
+						val, _ := uc.brandReader.GetBrandCustomerClaimRate(ctx, *brandID)
 						metricValues[m] = val
 					case metrickey.BenefitRedemptionCount:
-						val, _ := uc.brandReader.GetBrandRedemptionCount(ctx, *req.BrandID, fromDate, toDate)
+						val, _ := uc.brandReader.GetBrandRedemptionCount(ctx, *brandID, fromDate, toDate)
 						metricValues[m] = float64(val)
 					case metrickey.BrandItemCount:
-						val, _ := uc.brandReader.GetBrandItemCount(ctx, *req.BrandID)
+						val, _ := uc.brandReader.GetBrandItemCount(ctx, *brandID)
 						metricValues[m] = float64(val)
 					case metrickey.BrandItemCountByType:
-						rows, _ := uc.brandReader.GetBrandItemCountByType(ctx, *req.BrandID)
+						rows, _ := uc.brandReader.GetBrandItemCountByType(ctx, *brandID)
 						for _, row := range rows {
 							metricValues[metrickey.MetricKey("brand_item_count_"+row.Label)] = float64(row.Count)
 						}
@@ -229,7 +235,7 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		}
 
 		// Query previous period snapshots from DB for accurate comparison
-		prevSum := uc.sumPreviousPeriod(ctx, target, req, prevFromDate, prevToDate)
+		prevSum := uc.sumPreviousPeriod(ctx, target, req, brandID, prevFromDate, prevToDate)
 
 		deltaMap := map[metrickey.MetricKey]float64{}
 		for _, m := range req.Metrics {

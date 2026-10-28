@@ -3,6 +3,7 @@ package item
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
@@ -13,6 +14,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/branditem/branditemtype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/repositories"
 	fashion_dto "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/constants/fashionitemtype"
 	"smart-wardrobe-be/shared/application/constants/eventconstants"
@@ -56,8 +58,8 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 		Name:          input.Name,
 		Description:   input.Description,
 		Price:         input.Price,
-		ItemType:      branditemtype.BrandItemType(input.ItemType),
-		Status:        branditemstatus.BrandItemStatus(input.Status),
+		ItemType:      branditemtype.BrandItemType(strings.ToLower(strings.TrimSpace(input.ItemType))),
+		Status:        branditemstatus.BrandItemStatus(strings.ToLower(strings.TrimSpace(input.Status))),
 		TaskID:        &taskID,
 	}
 	if item.Status == "" {
@@ -111,12 +113,68 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 	return mapper.MapToBrandItemRes(item, fi), nil
 }
 
-func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
-	items, err := uc.brandItemRepo.GetByBrandID(ctx, brandID)
+func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) ([]*dto.BrandItemRes, error) {
+	filter := repositories.BrandItemFilter{BrandID: brandID}
+	if query.ItemType != nil && *query.ItemType != "" {
+		itemType := branditemtype.BrandItemType(strings.ToLower(strings.TrimSpace(*query.ItemType)))
+		filter.ItemType = &itemType
+	}
+	if query.Status != nil && *query.Status != "" {
+		status := branditemstatus.BrandItemStatus(strings.ToLower(strings.TrimSpace(*query.Status)))
+		filter.Status = &status
+	}
+	items, err := uc.brandItemRepo.GetByBrandIDFiltered(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 	return uc.mapSliceToRes(ctx, items), nil
+}
+
+func (uc *BrandItemUseCase) ConvertSampleToProduct(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
+	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	if item.ItemType == branditemtype.Product {
+		return nil, branderrors.ErrBrandItemAlreadyProduct()
+	}
+	if item.ItemType != branditemtype.Sample {
+		return nil, branderrors.ErrBrandItemNotSample()
+	}
+	if item.Status == branditemstatus.Failed {
+		return nil, branderrors.ErrBrandItemStatusLocked()
+	}
+	if item.FashionItemID == nil {
+		return nil, branderrors.ErrBrandItemNotReadyForProduct()
+	}
+	fi, err := uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+	if err != nil {
+		return nil, err
+	}
+	if fi == nil || fi.Category == nil {
+		return nil, branderrors.ErrBrandItemNotReadyForProduct()
+	}
+
+	item.ItemType = branditemtype.Product
+	item.UpdatedAt = time.Now().UTC()
+	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
+		return nil, err
+	}
+	return uc.mapToRes(ctx, item), nil
+}
+
+func (uc *BrandItemUseCase) AssertTaskBelongsToBrand(ctx context.Context, brandID uuid.UUID, taskID uuid.UUID) error {
+	item, err := uc.brandItemRepo.GetByTaskID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if item == nil || item.BrandID != brandID {
+		return branderrors.ErrBrandNotFound()
+	}
+	return nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
@@ -142,8 +200,8 @@ func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 	if err != nil {
 		return nil, err
 	}
-	if brand == nil || brand.Status != brandstatus.Active {
-		return nil, branderrors.ErrBrandNotActive()
+	if brand == nil || !strings.EqualFold(string(brand.Status), string(brandstatus.Active)) {
+		return nil, branderrors.ErrBrandNotFound()
 	}
 	if item.ItemType == branditemtype.Sample {
 		if userID == uuid.Nil {
@@ -168,11 +226,12 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	if item.Status == branditemstatus.Failed {
+	statusInput := branditemstatus.BrandItemStatus(strings.ToLower(strings.TrimSpace(input.Status)))
+	if item.Status == branditemstatus.Failed && statusInput != "" {
 		return nil, branderrors.ErrBrandItemStatusLocked()
 	}
-	if input.Status != "" && input.Status != string(branditemstatus.Draft) &&
-		input.Status != string(branditemstatus.Active) && input.Status != string(branditemstatus.Archived) {
+	if statusInput != "" && statusInput != branditemstatus.Draft &&
+		statusInput != branditemstatus.Active && statusInput != branditemstatus.Archived {
 		return nil, branderrors.ErrBrandItemInvalidStatus()
 	}
 	if input.ProductCode != nil && (item.ProductCode == nil || *input.ProductCode != *item.ProductCode) {
@@ -188,8 +247,8 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	item.Name = input.Name
 	item.Description = input.Description
 	item.Price = input.Price
-	if input.Status != "" {
-		item.Status = branditemstatus.BrandItemStatus(input.Status)
+	if statusInput != "" {
+		item.Status = statusInput
 	}
 	item.UpdatedAt = time.Now().UTC()
 

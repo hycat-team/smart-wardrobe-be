@@ -71,7 +71,7 @@ func (r *BrandRepository) GetBySlug(ctx context.Context, slug string) (*entities
 func (r *BrandRepository) GetActive(ctx context.Context) ([]*entities.Brand, error) {
 	var brands []*entities.Brand
 	err := r.GetDB(ctx).
-		Where("status = ?", brandstatus.Active).
+		Where("LOWER(status) = ?", string(brandstatus.Active)).
 		Order("created_at DESC").
 		Find(&brands).Error
 	return brands, err
@@ -91,7 +91,7 @@ func (r *BrandRepository) getBrands(ctx context.Context, filter repositories.Bra
 	db := r.GetDB(ctx).Model(&entities.Brand{})
 
 	if filter.Status != nil && *filter.Status != "" {
-		db = db.Where("status = ?", *filter.Status)
+		db = db.Where("LOWER(status) = ?", strings.ToLower(string(*filter.Status)))
 	}
 
 	if filter.Query != nil && *filter.Query != "" {
@@ -131,7 +131,7 @@ func (r *BrandRepository) GetAdminBrandStats(ctx context.Context, snapshotDate t
 	}
 
 	var pendingBrands int64
-	if err := db.Model(&entities.Brand{}).Where("status = ?", string(brandstatus.PendingReview)).Count(&pendingBrands).Error; err != nil {
+	if err := db.Model(&entities.Brand{}).Where("LOWER(status) = ?", string(brandstatus.PendingReview)).Count(&pendingBrands).Error; err != nil {
 		return nil, err
 	}
 
@@ -223,7 +223,7 @@ func (r *BrandRepository) GetSampleLabFeedbacksDrillDown(ctx context.Context, it
 		BrandItemID uuid.UUID `gorm:"column:brand_item_id"`
 		UserID      uuid.UUID `gorm:"column:user_id"`
 		Rating      float64   `gorm:"column:rating"`
-		Comment     string    `gorm:"column:comment"`
+		Comment     string    `gorm:"column:feedback_text"`
 		CreatedAt   time.Time `gorm:"column:created_at"`
 	}
 

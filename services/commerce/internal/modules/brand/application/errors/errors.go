@@ -42,6 +42,10 @@ func ErrInvalidBrandMemberRole(role any) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Vai trò brand member không hợp lệ: %v.", role))
 }
 
+func ErrInvalidBrandMemberStatus(status any) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Trạng thái brand member không hợp lệ: %v.", status))
+}
+
 func ErrPhoneRequired() *apperror.Error {
 	return apperror.NewBadRequest("Số điện thoại offline customer không được để trống.")
 }

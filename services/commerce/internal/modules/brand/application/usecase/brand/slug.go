@@ -55,7 +55,7 @@ func (uc *BrandUseCase) ResolveActiveBrandRef(ctx context.Context, ref string) (
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if brand == nil || brand.Status != brandstatus.Active {
+	if brand == nil || !strings.EqualFold(string(brand.Status), string(brandstatus.Active)) {
 		return uuid.Nil, branderrors.ErrBrandNotFound()
 	}
 	return brand.ID, nil

@@ -3178,6 +3178,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Item"
+                ],
+                "summary": "Chuyển mẫu thử thành sản phẩm",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID hoặc slug brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID item",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks": {
             "get": {
                 "consumes": [
@@ -8187,7 +8237,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "itemType": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "product",
+                        "sample"
+                    ]
                 },
                 "name": {
                     "type": "string",
@@ -8201,7 +8255,12 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "active",
+                        "archived"
+                    ]
                 }
             }
         },
@@ -8238,6 +8297,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 }
             }
@@ -8923,8 +8985,7 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandItemReq": {
             "type": "object",
             "required": [
-                "name",
-                "status"
+                "name"
             ],
             "properties": {
                 "description": {
@@ -8941,7 +9002,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "active",
+                        "archived"
+                    ]
                 }
             }
         },
@@ -10162,6 +10228,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "brandId": {
+                    "description": "UUID hoặc slug brand",
                     "type": "string"
                 },
                 "compareWithPrevious": {

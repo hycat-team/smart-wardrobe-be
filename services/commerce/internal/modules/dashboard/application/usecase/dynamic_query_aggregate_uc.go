@@ -11,9 +11,11 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/domain/constants/metrickey"
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/domain/constants/targetdashboard"
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/domain/entities"
+
+	"github.com/google/uuid"
 )
 
-func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target targetdashboard.TargetDashboard, req *dto.DynamicQueryReq, prevFrom, prevTo time.Time) map[metrickey.MetricKey]float64 {
+func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target targetdashboard.TargetDashboard, req *dto.DynamicQueryReq, brandID *uuid.UUID, prevFrom, prevTo time.Time) map[metrickey.MetricKey]float64 {
 	prevSum := map[metrickey.MetricKey]float64{}
 	prevCount := map[metrickey.MetricKey]int{}
 
@@ -42,10 +44,10 @@ func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target tar
 		}
 
 	case targetdashboard.Brand:
-		if req.BrandID == nil {
+		if brandID == nil {
 			return prevSum
 		}
-		prevSnapshots, err := uc.dashboardRepo.GetBrandSnapshots(ctx, *req.BrandID, prevFrom, prevTo)
+		prevSnapshots, err := uc.dashboardRepo.GetBrandSnapshots(ctx, *brandID, prevFrom, prevTo)
 		if err != nil || len(prevSnapshots) == 0 {
 			return prevSum
 		}

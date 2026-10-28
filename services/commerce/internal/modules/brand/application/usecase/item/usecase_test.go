@@ -249,6 +249,30 @@ func (m *mockBrandItemRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID)
 	}
 	return res, nil
 }
+func (m *mockBrandItemRepo) GetByBrandIDFiltered(ctx context.Context, filter repositories.BrandItemFilter) ([]*entities.BrandItem, error) {
+	var res []*entities.BrandItem
+	for _, item := range m.items {
+		if item.BrandID != filter.BrandID {
+			continue
+		}
+		if filter.ItemType != nil && *filter.ItemType != "" && item.ItemType != *filter.ItemType {
+			continue
+		}
+		if filter.Status != nil && *filter.Status != "" && item.Status != *filter.Status {
+			continue
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+func (m *mockBrandItemRepo) GetByTaskID(ctx context.Context, taskID uuid.UUID) (*entities.BrandItem, error) {
+	for _, item := range m.items {
+		if item.TaskID != nil && *item.TaskID == taskID {
+			return item, nil
+		}
+	}
+	return nil, nil
+}
 func (m *mockBrandItemRepo) GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error) {
 	for _, item := range m.items {
 		if item.FashionItemID != nil && *item.FashionItemID == fashionItemID {

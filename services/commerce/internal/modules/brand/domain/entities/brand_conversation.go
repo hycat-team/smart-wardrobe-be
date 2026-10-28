@@ -14,7 +14,7 @@ type BrandConversation struct {
 	BrandID         uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
 	Brand           *Brand                                `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	UserID          uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
-	Status          conversationstatus.ConversationStatus `gorm:"type:varchar(50);not null;default:OPEN"`
+	Status          conversationstatus.ConversationStatus `gorm:"type:varchar(50);not null;default:open"`
 	LastMessageAt   *time.Time                            `gorm:"type:timestamp with time zone"`
 	UserLastReadAt  *time.Time                            `gorm:"type:timestamp with time zone"`
 	StaffLastReadAt *time.Time                            `gorm:"type:timestamp with time zone"`

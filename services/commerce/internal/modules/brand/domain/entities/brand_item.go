@@ -20,7 +20,7 @@ type BrandItem struct {
 	Description   *string                         `gorm:"type:text"`
 	Price         *float64                        `gorm:"type:decimal(12,2)"`
 	ItemType      branditemtype.BrandItemType     `gorm:"type:varchar(50);not null"`
-	Status        branditemstatus.BrandItemStatus `gorm:"type:varchar(50);not null;default:DRAFT"`
+	Status        branditemstatus.BrandItemStatus `gorm:"type:varchar(50);not null;default:draft"`
 	TaskID        *uuid.UUID                      `gorm:"column:task_id;type:uuid"`
 }
 
