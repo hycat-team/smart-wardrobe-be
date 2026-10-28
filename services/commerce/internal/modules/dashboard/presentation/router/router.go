@@ -18,6 +18,7 @@ type Router struct {
 	brandDashboardHandler *dashboard_handler.BrandDashboardHandler
 	userDashboardHandler  *dashboard_handler.UserDashboardHandler
 	brandRole             brand_contract.IBrandRoleMiddleware
+	brandRef              brand_contract.IBrandRefMiddleware
 	auth                  identity_contract.IAuthMiddleware
 }
 
@@ -27,6 +28,7 @@ func NewRouter(
 	brandDashboardHandler *dashboard_handler.BrandDashboardHandler,
 	userDashboardHandler *dashboard_handler.UserDashboardHandler,
 	brandRole brand_contract.IBrandRoleMiddleware,
+	brandRef brand_contract.IBrandRefMiddleware,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
@@ -35,6 +37,7 @@ func NewRouter(
 		brandDashboardHandler: brandDashboardHandler,
 		userDashboardHandler:  userDashboardHandler,
 		brandRole:             brandRole,
+		brandRef:              brandRef,
 		auth:                  auth,
 	}
 }
@@ -54,7 +57,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	brandDashboard := group.Group("/brand/dashboard")
-	brandDashboard.Use(r.auth.Handle(), r.brandRole.QueryAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
+	brandDashboard.Use(r.brandRef.Query("brandId"), r.auth.Handle(), r.brandRole.QueryAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
 	{
 		brandDashboard.GET("/kpi-cards", shared_pres.WrapHandler(r.brandDashboardHandler.GetKPICards))
 		brandDashboard.GET("/financials/points-liability", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointsLiability))
@@ -88,7 +91,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	brandDrill := group.Group("/brand/dashboard/drilldown")
-	brandDrill.Use(r.auth.Handle(), r.brandRole.QueryAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
+	brandDrill.Use(r.brandRef.Query("brandId"), r.auth.Handle(), r.brandRole.QueryAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
 	{
 		brandDrill.GET("/sample-lab-feedbacks", shared_pres.WrapHandler(r.analyticsHandler.GetSampleLabFeedbacksDrillDown))
 	}

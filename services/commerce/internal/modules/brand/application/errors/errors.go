@@ -18,6 +18,14 @@ func ErrBrandSlugExists() *apperror.Error {
 	return apperror.NewConflict("Slug brand đã tồn tại.")
 }
 
+func ErrBrandSlugInvalid() *apperror.Error {
+	return apperror.NewBadRequest("Slug brand phải dài 2-100 ký tự, chỉ gồm chữ thường, số và dấu gạch ngang.")
+}
+
+func ErrBrandSlugReserved(slug string) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Slug \"%s\" là đường dẫn hệ thống, vui lòng chọn slug khác.", slug))
+}
+
 func ErrBrandPortalForbidden() *apperror.Error {
 	return apperror.NewForbidden("Bạn không có quyền quản trị brand này.")
 }

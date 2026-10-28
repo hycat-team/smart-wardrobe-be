@@ -12,6 +12,8 @@ import (
 )
 
 type IBrandUseCase interface {
+	ResolveBrandRef(ctx context.Context, ref string) (uuid.UUID, error)
+	ResolveActiveBrandRef(ctx context.Context, ref string) (uuid.UUID, error)
 	CreateBrandRequest(ctx context.Context, userID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error)
 	CreateBrandByAdmin(ctx context.Context, adminID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error)
 	UpdateBrandStatus(ctx context.Context, adminID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandStatusReq) (*dto.BrandRes, error)

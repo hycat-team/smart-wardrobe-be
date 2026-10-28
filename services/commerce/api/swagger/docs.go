@@ -331,7 +331,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2060,7 +2060,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2103,7 +2103,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2168,7 +2168,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2220,7 +2220,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2279,7 +2279,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2322,7 +2322,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2372,7 +2372,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2432,7 +2432,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2488,7 +2488,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2535,7 +2535,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2583,7 +2583,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2651,7 +2651,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2700,7 +2700,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2917,7 +2917,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2961,7 +2961,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3011,7 +3011,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3046,7 +3046,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3086,7 +3086,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3134,7 +3134,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3193,7 +3193,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3305,7 +3305,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3361,7 +3361,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3447,7 +3447,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3498,7 +3498,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3547,7 +3547,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3588,7 +3588,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3637,7 +3637,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3681,7 +3681,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3730,7 +3730,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3778,7 +3778,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3835,7 +3835,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3878,7 +3878,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3930,7 +3930,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3982,7 +3982,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4591,7 +4591,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4634,7 +4634,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4701,7 +4701,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4756,7 +4756,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4805,7 +4805,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4845,7 +4845,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4897,7 +4897,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4950,7 +4950,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4990,7 +4990,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5033,7 +5033,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5267,7 +5267,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5308,7 +5308,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5372,7 +5372,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5439,7 +5439,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -7935,6 +7935,9 @@ const docTemplate = `{
                 "brandName": {
                     "type": "string"
                 },
+                "brandSlug": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -8224,8 +8227,7 @@ const docTemplate = `{
                     "maxLength": 255
                 },
                 "slug": {
-                    "type": "string",
-                    "maxLength": 100
+                    "type": "string"
                 }
             }
         },

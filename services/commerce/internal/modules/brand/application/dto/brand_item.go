@@ -46,6 +46,7 @@ type BrandItemRes struct {
 	ID            uuid.UUID                           `json:"id"`
 	BrandID       uuid.UUID                           `json:"brandId"`
 	BrandName     string                              `json:"brandName,omitempty"`
+	BrandSlug     string                              `json:"brandSlug,omitempty"`
 	FashionItemID uuid.UUID                           `json:"fashionItemId"`
 	ProductCode   *string                             `json:"productCode"`
 	Name          string                              `json:"name"`

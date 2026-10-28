@@ -29,6 +29,11 @@ func (m *mockBrandRepo) Create(ctx context.Context, brand *entities.Brand) error
 func (m *mockBrandRepo) Update(ctx context.Context, brand *entities.Brand) error { return nil }
 func (m *mockBrandRepo) Delete(ctx context.Context, id uuid.UUID) error          { return nil }
 func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
+	for _, b := range m.brands {
+		if b.Slug == slug {
+			return b, nil
+		}
+	}
 	return nil, nil
 }
 func (m *mockBrandRepo) GetActive(ctx context.Context) ([]*entities.Brand, error) { return nil, nil }

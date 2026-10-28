@@ -64,7 +64,7 @@ func (h *BrandPortalHandler) CreateBrandAdmin(c *gin.Context) error {
 // @Tags Admin Brand
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.UpdateBrandStatusReq true "Trạng thái mới"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/admin/brands/{brandId}/status [patch]
@@ -136,7 +136,7 @@ func (h *BrandPortalHandler) GetActiveBrands(c *gin.Context) error {
 // @Summary Lấy chi tiết brand active
 // @Tags Brand
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/brands/{brandId} [get]
 func (h *BrandPortalHandler) GetActiveBrand(c *gin.Context) error {
@@ -195,7 +195,7 @@ func (h *BrandPortalHandler) GetBrandLogoUploadSignature(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.UpdateBrandImagesReq true "Thông tin logo và ảnh nền"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/profile-images [patch]
@@ -225,7 +225,7 @@ func (h *BrandPortalHandler) UpdateBrandImages(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.UpdateBrandProfileReq true "Tên và mô tả thương hiệu"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/profile [patch]
@@ -254,7 +254,7 @@ func (h *BrandPortalHandler) UpdateBrandProfile(c *gin.Context) error {
 // @Summary Lấy thông tin brand portal
 // @Tags Brand Portal
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.PortalBrandRes}
 // @Router /api/v1/brand-portal/brands/{brandId} [get]
 func (h *BrandPortalHandler) GetBrandForPortal(c *gin.Context) error {

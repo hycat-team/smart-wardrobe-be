@@ -491,6 +491,8 @@ definitions:
         type: string
       brandName:
         type: string
+      brandSlug:
+        type: string
       createdAt:
         type: string
       description:
@@ -683,7 +685,6 @@ definitions:
         maxLength: 255
         type: string
       slug:
-        maxLength: 100
         type: string
     required:
     - name
@@ -3166,7 +3167,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4265,7 +4266,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4290,7 +4291,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4331,7 +4332,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4362,7 +4363,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4398,7 +4399,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4423,7 +4424,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/close:
     post:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4453,7 +4454,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4490,7 +4491,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4524,7 +4525,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/read:
     post:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4552,7 +4553,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/reopen:
     post:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4581,7 +4582,7 @@ paths:
     get:
       description: Lấy danh sách các khách hàng đã liên kết với brand
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4620,7 +4621,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/customers/{customerId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4755,7 +4756,7 @@ paths:
       description: Cho phép nhân viên/chủ brand ghi nhận thông tin khách hàng mua
         hàng offline
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4786,7 +4787,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4812,7 +4813,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4841,7 +4842,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/items/{itemId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4870,7 +4871,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4906,7 +4907,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -4976,7 +4977,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5012,7 +5013,7 @@ paths:
       description: Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh
         của Brand Item Task ID
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5035,7 +5036,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/items/upload-signature:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5058,7 +5059,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/lots:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5112,7 +5113,7 @@ paths:
         in: query
         name: limit
         type: integer
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5144,7 +5145,7 @@ paths:
       description: API thống nhất để brand staff ghi nhận điểm bằng userId, phone
         hoặc externalCustomerCode
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5173,7 +5174,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/loyalty/program:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5197,7 +5198,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5226,7 +5227,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/loyalty/tiers:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5252,7 +5253,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5281,7 +5282,7 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5310,7 +5311,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5345,7 +5346,7 @@ paths:
     get:
       description: Lấy danh sách tất cả các thành viên trực thuộc brand này
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5371,7 +5372,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5401,7 +5402,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5432,7 +5433,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5789,7 +5790,7 @@ paths:
   /api/v1/brands/{brandId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5814,7 +5815,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5856,7 +5857,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5889,7 +5890,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5918,7 +5919,7 @@ paths:
   /api/v1/brands/{brandId}/conversation/read:
     post:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5941,7 +5942,7 @@ paths:
   /api/v1/brands/{brandId}/items:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -5972,7 +5973,7 @@ paths:
   /api/v1/brands/{brandId}/items/samples:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6004,7 +6005,7 @@ paths:
     post:
       description: Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6027,7 +6028,7 @@ paths:
   /api/v1/brands/{brandId}/loyalty/tiers:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6052,7 +6053,7 @@ paths:
   /api/v1/brands/{brandId}/loyalty/tiers/{tierId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6221,7 +6222,7 @@ paths:
   /api/v1/me/brand-loyalties/{brandId}:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6247,7 +6248,7 @@ paths:
         theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện
         tại.
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6287,7 +6288,7 @@ paths:
   /api/v1/me/brand-loyalties/{brandId}/lots:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true
@@ -6328,7 +6329,7 @@ paths:
   /api/v1/me/brand-loyalties/{brandId}/transactions:
     get:
       parameters:
-      - description: ID brand
+      - description: ID hoặc slug brand
         in: path
         name: brandId
         required: true

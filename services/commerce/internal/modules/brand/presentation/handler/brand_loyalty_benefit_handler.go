@@ -17,7 +17,7 @@ import (
 // @Tags Brand Benefit
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.CreateBrandBenefitReq true "Thông tin quyền lợi"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandBenefitRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/benefits [post]
@@ -47,7 +47,7 @@ func (h *BrandLoyaltyHandler) CreateBrandBenefit(c *gin.Context) error {
 // @Tags Brand Benefit
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Số trang"
 // @Param limit query int false "Số lượng mỗi trang"
 // @Param unlockType query string false "Loại mở khóa (tier_privilege, point_redemption, manual_grant)"
@@ -80,7 +80,7 @@ func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 // @Tags Brand Benefit
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param benefitId path string true "ID quyền lợi"
 // @Param body body dto.UpdateBenefitStatusReq true "Trạng thái mới"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitRes}
@@ -115,7 +115,7 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 // @Tags Brand Benefit
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Số trang"
 // @Param limit query int false "Số lượng mỗi trang"
 // @Param unlockType query string false "Loại mở khóa (tier_privilege, point_redemption, manual_grant)"
@@ -194,7 +194,7 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 // @Description Trả về các quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện tại.
 // @Tags Brand Benefit
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Số trang"
 // @Param limit query int false "Số lượng mỗi trang"
 // @Param unlockType query string false "Loại mở khoá (tier_privilege, point_redemption, manual_grant)"

@@ -36,6 +36,7 @@ const (
 	errMsgDateTime           = "%s phải đúng định dạng ngày %s"
 	errMsgOneOf              = "%s phải là một trong các giá trị: %s"
 	errMsgNumeric            = "%s chỉ được chứa các ký tự số"
+	errMsgBrandSlug          = "%s phải dài 2-100 ký tự, chỉ gồm chữ thường, số và dấu gạch ngang"
 	errMsgDefault            = "%s: %s không hợp lệ"
 )
 
@@ -45,6 +46,7 @@ func init() {
 		v.RegisterValidation("neqfield", NotEqualField)
 		v.RegisterValidation("password_complexity", IsPasswordComplex)
 		v.RegisterValidation("nfcmax", NFCMax)
+		v.RegisterValidation("brand_slug", IsBrandSlug)
 		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 			if name == "" {
@@ -162,6 +164,8 @@ func validationMessage(fe validator.FieldError, fieldName, paramName string) str
 		return fmt.Sprintf(errMsgOneOf, fieldName, paramName)
 	case "numeric":
 		return fmt.Sprintf(errMsgNumeric, fieldName)
+	case "brand_slug":
+		return fmt.Sprintf(errMsgBrandSlug, fieldName)
 	default:
 		return fmt.Sprintf(errMsgDefault, fieldName, fe.Tag())
 	}

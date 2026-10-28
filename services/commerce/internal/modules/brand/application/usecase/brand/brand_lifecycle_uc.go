@@ -2,6 +2,7 @@ package brand
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,7 +30,10 @@ func (uc *BrandUseCase) CreateBrandByAdmin(ctx context.Context, adminID uuid.UUI
 }
 
 func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid.UUID, input dto.CreateBrandReq, status brandstatus.BrandStatus, approverID *uuid.UUID, approvedAt *time.Time) (*dto.BrandRes, error) {
-	slug := strings.TrimSpace(strings.ToLower(input.Slug))
+	slug, err := normalizedBrandSlugOrError(input.Slug)
+	if err != nil {
+		return nil, err
+	}
 	if existing, err := uc.brandRepo.GetBySlug(ctx, slug); err != nil {
 		return nil, err
 	} else if existing != nil {
@@ -60,6 +64,9 @@ func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid
 		member.BrandID = brand.ID
 		return uc.memberRepo.Create(txCtx, member)
 	}); err != nil {
+		if errors.Is(err, repositories.ErrBrandSlugConflict) {
+			return nil, branderrors.ErrBrandSlugExists()
+		}
 		return nil, err
 	}
 
