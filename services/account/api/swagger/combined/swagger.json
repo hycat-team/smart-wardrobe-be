@@ -3906,6 +3906,25 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq": {
+      "properties": {
+        "status": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+            }
+          ],
+          "enum": [
+            "active",
+            "disabled"
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandProfileReq": {
       "properties": {
         "description": {
@@ -13107,6 +13126,98 @@
             }
           }
         },
+        "tags": [
+          "Brand Member"
+        ]
+      }
+    },
+    "/api/v1/brand-portal/brands/{brandId}/members/{memberId}": {
+      "delete": {
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID thành viên",
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Xóa thành viên thương hiệu",
+        "tags": [
+          "Brand Member"
+        ]
+      },
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID thành viên",
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Trạng thái mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandMemberRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Cập nhật trạng thái thành viên thương hiệu",
         "tags": [
           "Brand Member"
         ]

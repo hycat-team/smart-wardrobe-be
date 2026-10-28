@@ -3906,6 +3906,25 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq": {
+      "properties": {
+        "status": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+            }
+          ],
+          "enum": [
+            "active",
+            "disabled"
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandProfileReq": {
       "properties": {
         "description": {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/middleware"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	"smart-wardrobe-be/shared/domain/constants/brandmemberrole"
@@ -77,6 +78,12 @@ func (m *mockBrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID
 }
 func (m *mockBrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandMemberRes, error) {
 	return nil, nil
+}
+func (m *mockBrandUseCase) UpdateBrandMemberStatus(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID, status brandmemberstatus.BrandMemberStatus) (*dto.BrandMemberRes, error) {
+	return nil, nil
+}
+func (m *mockBrandUseCase) RemoveBrandMember(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID) error {
+	return nil
 }
 func (m *mockBrandUseCase) RequireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {
 	return nil

@@ -181,6 +181,13 @@ func ErrBrandMemberNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy thành viên nhãn hàng này.")
 }
 
+func ErrCannotModifyBrandOwner() *apperror.Error {
+	return apperror.NewForbidden("Không thể thay đổi trạng thái chủ sở hữu thương hiệu. Vui lòng dùng luồng chuyển quyền sở hữu.")
+}
+
+func ErrCannotRemoveBrandOwner() *apperror.Error {
+	return apperror.NewForbidden("Không thể xóa chủ sở hữu thương hiệu. Vui lòng dùng luồng chuyển quyền sở hữu.")
+}
 func ErrMemberAlreadyExists() *apperror.Error {
 	return apperror.NewConflict("Người dùng này đã là thành viên của nhãn hàng.")
 }

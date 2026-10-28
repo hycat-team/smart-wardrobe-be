@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"encoding/json"
+	"strings"
 
 	identity_dto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
@@ -126,6 +127,8 @@ func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.Use
 	}
 	res := MapBrandMember(member)
 	if user != nil {
+		res.UserFullName = strings.TrimSpace(strings.TrimSpace(user.FirstName) + " " + strings.TrimSpace(user.LastName))
+		res.UserEmail = user.Email
 		res.User = MapIdentityUserBrief(user)
 	}
 	return res

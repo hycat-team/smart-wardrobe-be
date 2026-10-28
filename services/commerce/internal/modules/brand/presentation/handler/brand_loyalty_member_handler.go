@@ -185,3 +185,66 @@ func (h *BrandLoyaltyHandler) CreateOfflineCustomer(c *gin.Context) error {
 	shared_pres.Created(c, msgBrandOfflineCustomerSuccess, res)
 	return nil
 }
+
+// UpdateBrandMemberStatus updates a staff member's status (owner only).
+// @Summary Cập nhật trạng thái thành viên thương hiệu
+// @Tags Brand Member
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID hoặc slug brand"
+// @Param memberId path string true "ID thành viên"
+// @Param body body dto.UpdateBrandMemberStatusReq true "Trạng thái mới"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandMemberRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/members/{memberId} [patch]
+func (h *BrandLoyaltyHandler) UpdateBrandMemberStatus(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	memberID, err := validation.GetUUIDParam(c, "memberId")
+	if err != nil {
+		return err
+	}
+	var input dto.UpdateBrandMemberStatusReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.UpdateBrandMemberStatus(c.Request.Context(), userID, brandID, memberID, input.Status)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandMemberUpdateSuccess, res)
+	return nil
+}
+
+// RemoveBrandMember removes a staff member from the brand (owner only).
+// @Summary Xóa thành viên thương hiệu
+// @Tags Brand Member
+// @Produce json
+// @Param brandId path string true "ID hoặc slug brand"
+// @Param memberId path string true "ID thành viên"
+// @Success 200 {object} shared_pres.APIResponse
+// @Router /api/v1/brand-portal/brands/{brandId}/members/{memberId} [delete]
+func (h *BrandLoyaltyHandler) RemoveBrandMember(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	memberID, err := validation.GetUUIDParam(c, "memberId")
+	if err != nil {
+		return err
+	}
+	if err := h.brandUC.RemoveBrandMember(c.Request.Context(), userID, brandID, memberID); err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandMemberRemoveSuccess, nil)
+	return nil
+}

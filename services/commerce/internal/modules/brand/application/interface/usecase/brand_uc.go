@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandmemberstatus"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	"smart-wardrobe-be/shared/domain/constants/brandmemberrole"
 
@@ -27,6 +28,8 @@ type IBrandUseCase interface {
 	UpdateBrandProfile(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandProfileReq) (*dto.BrandRes, error)
 	AddBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMembersReq) (*dto.AddBrandMembersRes, error)
 	GetBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandMemberRes, error)
+	UpdateBrandMemberStatus(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID, status brandmemberstatus.BrandMemberStatus) (*dto.BrandMemberRes, error)
+	RemoveBrandMember(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID) error
 	RequireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error
 	GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error)
 	GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error)

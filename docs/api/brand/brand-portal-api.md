@@ -462,3 +462,15 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 - `GET /api/v1/brand-portal/brands/{brandId}/items?itemType=product|sample&status=...`: lọc theo loại/trạng thái, sắp xếp `created_at DESC`.
 - `POST /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-token`: response có thêm `id` để client thu hồi token khi đóng dialog hoặc hết hạn.
 - Status của brand/member/brand item được chuẩn hóa lowercase; migration `20261028120000_normalize_brand_status_case.sql` chuyển dữ liệu cũ (UPPERCASE) về lowercase.
+
+---
+
+## Quản lý thành viên thương hiệu (owner-only)
+
+- `GET /api/v1/brand-portal/brands/{brandId}/members` trả kèm thông tin user:
+    - `userFullName`, `userEmail` (field phẳng) và object `user` đầy đủ.
+- `PATCH /api/v1/brand-portal/brands/{brandId}/members/{memberId}` — body `{ "status": "active" | "disabled" }`.
+    - Chỉ owner; **không thể đổi trạng thái owner** (dùng luồng chuyển quyền sở hữu ở Admin).
+    - Trả `dto.BrandMemberRes`.
+- `DELETE /api/v1/brand-portal/brands/{brandId}/members/{memberId}` — chỉ owner; **không thể xóa owner**.
+- Staff vẫn xem/thêm thành viên theo matrix, nhưng không có quyền sửa/xóa.

@@ -148,6 +148,8 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portalOwner.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))
 		portalOwner.POST("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.CreateLoyaltyTier))
 		portalOwner.PUT("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.UpdateLoyaltyTier))
+		portalOwner.PATCH("/brands/:brandId/members/:memberId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandMemberStatus))
+		portalOwner.DELETE("/brands/:brandId/members/:memberId", shared_pres.WrapHandler(r.brandHandler.RemoveBrandMember))
 	}
 
 	admin := group.Group("/admin/brands")

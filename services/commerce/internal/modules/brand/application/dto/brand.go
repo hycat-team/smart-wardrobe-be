@@ -37,6 +37,10 @@ type UpdateBrandProfileReq struct {
 	Description *string `json:"description" binding:"omitempty,max=2000" label:"mô tả thương hiệu"`
 }
 
+type UpdateBrandMemberStatusReq struct {
+	Status brandmemberstatus.BrandMemberStatus `json:"status" binding:"required,oneof=active disabled" label:"trạng thái thành viên"`
+}
+
 type UpdateBrandStatusReq struct {
 	Status brandstatus.BrandStatus `json:"status" binding:"required" label:"trạng thái thương hiệu"`
 }

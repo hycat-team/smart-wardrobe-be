@@ -54,3 +54,6 @@ Ma trận này là nguồn duy nhất cho middleware Brand RBAC và tài liệu 
 | **Brand items / Sample Lab** | `GET /items/:itemId` (chi tiết), `POST /items/:itemId/retry-analysis` | ✔ | ✔ |
 
 Ghi chú: sau migration chuẩn hóa status/role, middleware so sánh không phân biệt hoa/thường để tránh 403 với dữ liệu cũ.
+
+| **Members** | `PATCH /members/:memberId` (status active/disabled) | ✔ | ✘ |
+| **Members** | `DELETE /members/:memberId` (không áp dụng cho owner) | ✔ | ✘ |

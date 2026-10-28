@@ -8,6 +8,8 @@ const (
 	msgBrandDetailSuccess           = "Lấy thông tin brand thành công"
 	msgBrandMemberCreateSuccess     = "Thêm thành viên brand thành công"
 	msgBrandMemberListSuccess       = "Lấy danh sách thành viên brand thành công"
+	msgBrandMemberUpdateSuccess     = "Cập nhật thành viên thương hiệu thành công"
+	msgBrandMemberRemoveSuccess     = "Xóa thành viên thương hiệu thành công"
 	msgBrandCustomerDetailSuccess   = "Lấy thông tin khách hàng brand thành công"
 	msgBrandCustomerListSuccess     = "Lấy danh sách khách hàng brand thành công"
 	msgBrandJoinLoyaltySuccess      = "Tham gia loyalty brand thành công"
