@@ -3,6 +3,7 @@ package mapper
 import (
 	identity_dto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
 	fashion_dto "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 
@@ -23,6 +24,10 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemCont
 	if item.FashionItemID != nil {
 		fashionItemID = *item.FashionItemID
 	}
+	var taskID *uuid.UUID
+	if item.Status == branditemstatus.Draft {
+		taskID = item.TaskID
+	}
 	return &dto.BrandItemRes{
 		ID:            item.ID,
 		BrandID:       item.BrandID,
@@ -38,7 +43,7 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemCont
 		FashionItem:   fi,
 		CreatedAt:     item.CreatedAt,
 		UpdatedAt:     item.UpdatedAt,
-		TaskID:        item.TaskID,
+		TaskID:        taskID,
 	}
 }
 
@@ -114,6 +119,10 @@ func MapToBrandItemContractDTO(item *entities.BrandItem, brandName string) *dto.
 	if item.FashionItemID != nil {
 		fashionItemID = *item.FashionItemID
 	}
+	var taskID *uuid.UUID
+	if item.Status == branditemstatus.Draft {
+		taskID = item.TaskID
+	}
 	name := brandName
 	if name == "" && item.Brand != nil {
 		name = item.Brand.Name
@@ -131,7 +140,7 @@ func MapToBrandItemContractDTO(item *entities.BrandItem, brandName string) *dto.
 		Status:        item.Status,
 		CreatedAt:     item.CreatedAt,
 		UpdatedAt:     item.UpdatedAt,
-		TaskID:        item.TaskID,
+		TaskID:        taskID,
 	}
 }
 

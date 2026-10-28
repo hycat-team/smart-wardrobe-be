@@ -252,3 +252,42 @@ func TestBrandHandleFashionItemCreated_Idempotent(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestBrandHandleFashionProcessingExhausted_ClearsTaskID(t *testing.T) {
+	itemID := uuid.New()
+	taskUUID := uuid.New()
+	item := &entities.BrandItem{
+		Name:     "Brand Shirt",
+		ItemType: branditemtype.Product,
+		Status:   branditemstatus.Draft,
+		TaskID:   &taskUUID,
+	}
+	item.ID = itemID
+
+	var updated *entities.BrandItem
+	repo := &mockBrandItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.BrandItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, next *entities.BrandItem) error {
+			updated = next
+			return nil
+		},
+	}
+
+	uc := NewBrandFashionEventUseCase(repo, &mockBrandSSEManagerForEvent{}, &mockBrandLoggerForEvent{})
+	if err := uc.HandleFashionProcessingExhausted(context.Background(), fashion_dto.FashionProcessingExhaustedEventPayload{
+		ItemID: itemID,
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated == nil {
+		t.Fatal("expected item update")
+	}
+	if updated.Status != branditemstatus.Failed {
+		t.Fatalf("expected failed status, got %s", updated.Status)
+	}
+	if updated.TaskID != nil {
+		t.Fatal("expected task id cleared for exhausted analysis")
+	}
+}

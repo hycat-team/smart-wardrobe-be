@@ -242,10 +242,11 @@ func (uc *BrandFashionEventUseCase) HandleFashionProcessingExhausted(ctx context
 		)
 		return nil
 	}
-	if item.Status == branditemstatus.Failed {
+	if item.Status == branditemstatus.Failed && item.TaskID == nil {
 		return nil
 	}
 	item.Status = branditemstatus.Failed
+	item.TaskID = nil
 	item.UpdatedAt = time.Now().UTC()
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		uc.logger.Error("Failed to update brand item status to Failed for processing exhausted",

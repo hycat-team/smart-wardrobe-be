@@ -249,6 +249,9 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	item.Price = input.Price
 	if statusInput != "" {
 		item.Status = statusInput
+		if statusInput != branditemstatus.Draft {
+			item.TaskID = nil
+		}
 	}
 	item.UpdatedAt = time.Now().UTC()
 
@@ -274,6 +277,9 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 		return nil, branderrors.ErrBrandItemInvalidStatus()
 	}
 	item.Status = status
+	if status != branditemstatus.Draft {
+		item.TaskID = nil
+	}
 	item.UpdatedAt = time.Now().UTC()
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		return nil, err
