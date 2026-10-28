@@ -1,5 +1,7 @@
 # Brand Portal API Specs
 
+> **Tham chiếu brand (`{brandId}`):** mọi endpoint nhận `brandId` trong path/query đều chấp nhận **UUID hoặc slug** của brand (ví dụ `GET /api/v1/brands/mori-studio`). URL công khai dùng slug (`/brands/{slug}`); UUID vẫn hợp lệ để tương thích ngược. Response của brand (`GET /brands`, `GET /brands/{brandId}`, `GET /brand-portal/me/brands`) luôn trả kèm `slug`.
+
 Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (Brand Portal), bao gồm đăng ký xét duyệt, quản lý hồ sơ/thành viên, khách hàng offline, và các endpoint công khai của thương hiệu.
 
 ## Feature 023 — thay đổi hành vi (trước → sau)

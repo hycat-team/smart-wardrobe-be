@@ -29,6 +29,16 @@ func (m *mockBrandUseCase) GetUserBrandRole(ctx context.Context, userID, brandID
 	return args.Get(0).(brandmemberrole.BrandMemberRole), args.Error(1)
 }
 
+func (m *mockBrandUseCase) ResolveBrandRef(ctx context.Context, ref string) (uuid.UUID, error) {
+	args := m.Called(ctx, ref)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockBrandUseCase) ResolveActiveBrandRef(ctx context.Context, ref string) (uuid.UUID, error) {
+	args := m.Called(ctx, ref)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
 func (m *mockBrandUseCase) CreateBrandRequest(ctx context.Context, userID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error) {
 	return nil, nil
 }

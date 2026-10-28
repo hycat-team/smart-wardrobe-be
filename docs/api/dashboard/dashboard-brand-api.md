@@ -1,5 +1,7 @@
 # Dashboard Brand API
 
+> **Tham chiếu brand (`brandId` query):** chấp nhận **UUID hoặc slug** của brand. Dashboard frontend truyền slug từ URL `/brand-portal/{slug}`; UUID vẫn hợp lệ để tương thích ngược.
+
 Tài liệu đặc tả các API Dashboard dành cho **Brand Manager (B2B Portal)**. Bao gồm các endpoints từ dashboard-api.md và dashboard-api-v2.md.
 
 Xem thêm hằng số tại [constants.md](constants.md).

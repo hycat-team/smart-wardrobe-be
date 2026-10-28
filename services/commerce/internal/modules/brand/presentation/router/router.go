@@ -17,6 +17,7 @@ type Router struct {
 	brandHandler      *brand_handler.BrandHandler
 	adminBrandHandler *brand_handler.AdminBrandHandler
 	brandRole         brand_contract.IBrandRoleMiddleware
+	brandRef          brand_contract.IBrandRefMiddleware
 	auth              identity_contract.IAuthMiddleware
 }
 
@@ -24,18 +25,21 @@ func NewRouter(
 	brandHandler *brand_handler.BrandHandler,
 	adminBrandHandler *brand_handler.AdminBrandHandler,
 	brandRole brand_contract.IBrandRoleMiddleware,
+	brandRef brand_contract.IBrandRefMiddleware,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
 		brandHandler:      brandHandler,
 		adminBrandHandler: adminBrandHandler,
 		brandRole:         brandRole,
+		brandRef:          brandRef,
 		auth:              auth,
 	}
 }
 
 func (r *Router) Init(group *gin.RouterGroup) {
 	publicBrands := group.Group("/brands")
+	publicBrands.Use(r.brandRef.PublicPath("brandId"))
 	{
 		publicBrands.GET("", shared_pres.WrapHandler(r.brandHandler.GetActiveBrands))
 		publicBrands.GET("/:brandId", shared_pres.WrapHandler(r.brandHandler.GetActiveBrand))
@@ -46,7 +50,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	userBrands := group.Group("/brands")
-	userBrands.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
+	userBrands.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		userBrands.POST("/claim", shared_pres.WrapHandler(r.brandHandler.ClaimOfflineAccount))
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
@@ -76,7 +80,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	meBrands := group.Group("/me")
-	meBrands.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
+	meBrands.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		meBrands.GET("/brand-loyalties", shared_pres.WrapHandler(r.brandHandler.ListUserBrandLoyalties))
 		meBrands.GET("/brand-loyalties/:brandId", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyalty))
@@ -98,7 +102,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	// real brand membership (owner/staff) go under memberGroup; owner-only
 	// configuration routes (loyalty program/tiers) go under ownerGroup.
 	portalMember := group.Group("/brand-portal")
-	portalMember.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
+	portalMember.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
 	{
 		portalMember.GET("/brands/:brandId", shared_pres.WrapHandler(r.brandHandler.GetBrandForPortal))
 		portalMember.PATCH("/brands/:brandId/profile-images", shared_pres.WrapHandler(r.brandHandler.UpdateBrandImages))
@@ -137,7 +141,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	portalOwner := group.Group("/brand-portal")
-	portalOwner.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner))
+	portalOwner.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner))
 	{
 		portalOwner.PATCH("/brands/:brandId/profile", shared_pres.WrapHandler(r.brandHandler.UpdateBrandProfile))
 		portalOwner.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))

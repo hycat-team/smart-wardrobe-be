@@ -1,5 +1,7 @@
 # Loyalty & Membership API Specs
 
+> **Tham chiếu brand (`{brandId}`):** path/query `brandId` chấp nhận **UUID hoặc slug** của brand. URL công khai dùng slug (`/brands/{slug}`); UUID vẫn hợp lệ để tương thích ngược.
+
 Tài liệu thiết kế các API liên quan đến chương trình loyalty, tích điểm thành viên, đặc quyền/voucher và cơ chế feature access trong mô hình B2B2C. Tất cả các giá trị hằng số sử dụng trong request/response tham chiếu chi tiết tại [constants.md](constants.md). Ma trận phân quyền owner/staff của brand portal tham chiếu tại [Brand Permission Matrix](../../../system-design/brand-permission-matrix.md).
 
 ---

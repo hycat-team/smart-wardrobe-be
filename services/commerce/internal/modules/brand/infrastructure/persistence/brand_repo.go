@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -20,7 +21,19 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+const postgresUniqueViolation = "23505"
+
+type sqlStateCarrier interface {
+	SQLState() string
+}
+
+func isUniqueViolation(err error) bool {
+	var carrier sqlStateCarrier
+	return errors.As(err, &carrier) && carrier.SQLState() == postgresUniqueViolation
+}
 
 type BrandRepository struct {
 	shared_persist.GenericRepository[entities.Brand, uuid.UUID]
@@ -31,6 +44,16 @@ func NewBrandRepository(db *gorm.DB) repositories.IBrandRepository {
 	return &BrandRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Brand, uuid.UUID](db, relations),
 	}
+}
+
+func (r *BrandRepository) Create(ctx context.Context, brand *entities.Brand) error {
+	if err := r.GetDB(ctx).Omit(clause.Associations).Create(brand).Error; err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("%w: %s", repositories.ErrBrandSlugConflict, brand.Slug)
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *BrandRepository) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {

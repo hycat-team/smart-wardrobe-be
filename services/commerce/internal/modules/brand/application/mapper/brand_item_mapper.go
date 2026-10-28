@@ -14,8 +14,10 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemCont
 		return nil
 	}
 	brandName := ""
+	brandSlug := ""
 	if item.Brand != nil {
 		brandName = item.Brand.Name
+		brandSlug = item.Brand.Slug
 	}
 	var fashionItemID uuid.UUID
 	if item.FashionItemID != nil {
@@ -25,6 +27,7 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemCont
 		ID:            item.ID,
 		BrandID:       item.BrandID,
 		BrandName:     brandName,
+		BrandSlug:     brandSlug,
 		FashionItemID: fashionItemID,
 		ProductCode:   item.ProductCode,
 		Name:          item.Name,

@@ -15,7 +15,7 @@ import (
 // @Tags Brand Item
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.CreateBrandItemReq true "Thông tin sản phẩm"
 // @Success 202 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items [post]
@@ -44,7 +44,7 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 // @Summary Đăng ký nhận thông báo realtime cho Brand Item Task ID qua SSE
 // @Description Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Brand Item Task ID
 // @Tags Brand Item
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param taskId path string true "Mã Task ID"
 // @Success 200 {string} string "SSE event stream"
 // @Produce text/event-stream
@@ -84,7 +84,7 @@ func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
 // @Tags Brand Item
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items [get]
 func (h *BrandPortalHandler) GetBrandItemsForStaff(c *gin.Context) error {
@@ -108,7 +108,7 @@ func (h *BrandPortalHandler) GetBrandItemsForStaff(c *gin.Context) error {
 // @Summary Lấy chữ ký upload ảnh sản phẩm brand
 // @Tags Brand Item
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult}
 // @Router /api/v1/brand-portal/brands/{brandId}/items/upload-signature [get]
 func (h *BrandPortalHandler) GetBrandItemUploadSignature(c *gin.Context) error {
@@ -132,7 +132,7 @@ func (h *BrandPortalHandler) GetBrandItemUploadSignature(c *gin.Context) error {
 // @Summary Lấy chi tiết sản phẩm brand cho staff
 // @Tags Brand Item
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param itemId path string true "ID item"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId} [get]
@@ -162,7 +162,7 @@ func (h *BrandPortalHandler) GetBrandItemForStaff(c *gin.Context) error {
 // @Tags Brand Item
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param itemId path string true "ID sản phẩm"
 // @Param body body dto.UpdateBrandItemReq true "Thông tin cập nhật"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
@@ -197,7 +197,7 @@ func (h *BrandPortalHandler) UpdateBrandItem(c *gin.Context) error {
 // @Tags Brand Item
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param itemId path string true "ID item"
 // @Param body body dto.UpdateBrandItemStatusReq true "Trang thai moi"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}

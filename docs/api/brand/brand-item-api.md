@@ -1,5 +1,7 @@
 ﻿# Brand Item API Specs
 
+> **Tham chiếu brand (`{brandId}`):** path/query `brandId` chấp nhận **UUID hoặc slug** của brand. URL công khai dùng slug (`/brands/{slug}`); UUID vẫn hợp lệ để tương thích ngược. Response item có thêm `brandSlug` (khi brand được preload).
+
 Tài liệu thiết kế các API liên quan đến sản phẩm/mẫu thử của nhãn hàng (Brand Items): bao gồm sản phẩm thương mại thực tế, các mẫu thử thiết kế kỹ thuật số (3D/phác thảo), luồng thu nhận ý kiến khảo sát/bình chọn (feedback/vote) của khách hàng và quy trình quản trị sản phẩm trên cổng Brand Portal.
 
 ---

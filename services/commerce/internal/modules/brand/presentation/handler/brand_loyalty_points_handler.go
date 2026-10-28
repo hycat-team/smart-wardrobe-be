@@ -15,7 +15,7 @@ import (
 // @Tags Brand Loyalty
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.GrantLoyaltyPointsReq true "Thông tin giao dịch điểm"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.LoyaltyPointsTransactionRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/points [post]
@@ -63,7 +63,7 @@ func (h *BrandLoyaltyHandler) ListUserBrandLoyalties(c *gin.Context) error {
 // @Summary Lấy chi tiết điểm loyalty của tôi theo brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandLoyaltyRes}
 // @Router /api/v1/me/brand-loyalties/{brandId} [get]
 func (h *BrandLoyaltyHandler) GetUserBrandLoyalty(c *gin.Context) error {
@@ -87,7 +87,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyalty(c *gin.Context) error {
 // @Summary Lấy lịch sử điểm loyalty của tôi theo brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyPointTransactionBriefRes}
 // @Router /api/v1/me/brand-loyalties/{brandId}/transactions [get]
 func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) error {
@@ -113,7 +113,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) er
 // @Param limit query int false "Số lượng bản ghi trên mỗi trang (mặc định: 20)"
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param accountId path string true "ID loyalty account"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTransactionListRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/transactions [get]
@@ -148,7 +148,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountTransactionsForStaff(c *gin.Conte
 // @Summary Lấy danh sách lô điểm loyalty của tôi theo brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param status query string false "Trạng thái lô điểm"
 // @Param expiresAt query string false "Ngày hết hạn tối đa"
 // @Param page query int false "Trang"
@@ -180,7 +180,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyLots(c *gin.Context) error {
 // @Summary Lấy danh sách lô điểm của loyalty account
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param accountId path string true "ID loyalty account"
 // @Param status query string false "Trạng thái lô điểm"
 // @Param expiresAt query string false "Ngày hết hạn tối đa"

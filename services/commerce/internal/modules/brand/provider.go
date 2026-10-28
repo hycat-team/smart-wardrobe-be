@@ -24,6 +24,8 @@ var ProviderSet = wire.NewSet(
 	handler.NewBrandHandler,
 	middleware.NewBrandRoleMiddleware,
 	wire.Bind(new(contract.IBrandRoleMiddleware), new(*middleware.BrandRoleMiddleware)),
+	middleware.NewBrandRefMiddleware,
+	wire.Bind(new(contract.IBrandRefMiddleware), new(*middleware.BrandRefMiddleware)),
 	router.NewRouter,
 	worker.NewLoyaltyPointExpiryWorker,
 	worker.NewBrandFashionEventWorker,

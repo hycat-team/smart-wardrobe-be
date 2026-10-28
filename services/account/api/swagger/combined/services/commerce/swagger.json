@@ -746,6 +746,9 @@
         "brandName": {
           "type": "string"
         },
+        "brandSlug": {
+          "type": "string"
+        },
         "createdAt": {
           "type": "string"
         },
@@ -1031,7 +1034,6 @@
           "type": "string"
         },
         "slug": {
-          "maxLength": 100,
           "type": "string"
         }
       },
@@ -4706,7 +4708,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6435,7 +6437,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6478,7 +6480,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6543,7 +6545,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6595,7 +6597,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6654,7 +6656,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6697,7 +6699,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6747,7 +6749,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6807,7 +6809,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6863,7 +6865,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6910,7 +6912,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6958,7 +6960,7 @@
         "description": "Lấy danh sách các khách hàng đã liên kết với brand",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7026,7 +7028,7 @@
         "description": "Cho phép nhân viên/chủ brand ghi nhận thông tin khách hàng mua hàng offline",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7075,7 +7077,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7292,7 +7294,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7336,7 +7338,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7386,7 +7388,7 @@
         "description": "Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Brand Item Task ID",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7421,7 +7423,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7461,7 +7463,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7509,7 +7511,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7568,7 +7570,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7680,7 +7682,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7736,7 +7738,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7822,7 +7824,7 @@
             "type": "integer"
           },
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7873,7 +7875,7 @@
         "description": "API thống nhất để brand staff ghi nhận điểm bằng userId, phone hoặc externalCustomerCode",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7922,7 +7924,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7963,7 +7965,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8012,7 +8014,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8056,7 +8058,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8105,7 +8107,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8153,7 +8155,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8210,7 +8212,7 @@
         "description": "Lấy danh sách tất cả các thành viên trực thuộc brand này",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8254,7 +8256,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8305,7 +8307,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8357,7 +8359,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8966,7 +8968,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9009,7 +9011,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9076,7 +9078,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9131,7 +9133,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9180,7 +9182,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9220,7 +9222,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9272,7 +9274,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9325,7 +9327,7 @@
         "description": "Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9365,7 +9367,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9408,7 +9410,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9642,7 +9644,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9683,7 +9685,7 @@
         "description": "Trả về các quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện tại.",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9747,7 +9749,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9814,7 +9816,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,

@@ -13,7 +13,7 @@ import (
 )
 
 type CreateBrandReq struct {
-	Slug         string  `json:"slug" binding:"required,max=100" label:"slug thương hiệu"`
+	Slug         string  `json:"slug" binding:"required,brand_slug" label:"slug thương hiệu"`
 	Name         string  `json:"name" binding:"required,max=255" label:"tên thương hiệu"`
 	Description  *string `json:"description" binding:"omitempty" label:"mô tả"`
 	LogoURL      *string `json:"logoUrl" binding:"omitempty,url" label:"logo thương hiệu"`
