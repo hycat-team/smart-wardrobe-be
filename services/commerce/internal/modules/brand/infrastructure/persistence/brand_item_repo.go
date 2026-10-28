@@ -27,11 +27,38 @@ func NewBrandItemRepository(db *gorm.DB) repositories.IBrandItemRepository {
 
 func (r *BrandItemRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error) {
 	var items []*entities.BrandItem
-	err := r.GetDB(ctx).Where("brand_id = ?", brandID).Find(&items).Error
+	err := r.GetDB(ctx).Where("brand_id = ?", brandID).Order("created_at DESC, id DESC").Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
 	return items, nil
+}
+
+func (r *BrandItemRepository) GetByBrandIDFiltered(ctx context.Context, filter repositories.BrandItemFilter) ([]*entities.BrandItem, error) {
+	db := r.GetDB(ctx).Where("brand_id = ?", filter.BrandID)
+	if filter.ItemType != nil && *filter.ItemType != "" {
+		db = db.Where("item_type = ?", *filter.ItemType)
+	}
+	if filter.Status != nil && *filter.Status != "" {
+		db = db.Where("status = ?", *filter.Status)
+	}
+	var items []*entities.BrandItem
+	if err := db.Order("created_at DESC, id DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *BrandItemRepository) GetByTaskID(ctx context.Context, taskID uuid.UUID) (*entities.BrandItem, error) {
+	var item entities.BrandItem
+	err := r.GetDB(ctx).Where("task_id = ?", taskID).First(&item).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &item, nil
 }
 
 func (r *BrandItemRepository) GetByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) ([]*entities.BrandItem, error) {

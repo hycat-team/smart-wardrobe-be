@@ -98,6 +98,7 @@ func (uc *BrandClaimUseCase) CreateBrandCustomerClaim(ctx context.Context, staff
 	}
 
 	return &dto.CreateClaimTokenRes{
+		ID:         claim.ID,
 		ClaimToken: token,
 		ExpiresAt:  expiresAt,
 	}, nil

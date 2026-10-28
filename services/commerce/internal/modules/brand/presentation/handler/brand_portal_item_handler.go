@@ -3,6 +3,7 @@ package handler
 import (
 	"io"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
+	branderrors "smart-wardrobe-be/services/commerce/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/shared/pkg/utils/contextutils"
 	"smart-wardrobe-be/shared/pkg/utils/validation"
 	shared_pres "smart-wardrobe-be/shared/presentation"
@@ -50,10 +51,18 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 // @Produce text/event-stream
 // @Router /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse [get]
 func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
-	taskId, err := validation.GetStringParam(c, "taskId")
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
+	taskID, err := validation.GetUUIDParam(c, "taskId")
+	if err != nil {
+		return branderrors.ErrBrandNotFound()
+	}
+	if err := h.itemUC.AssertTaskBelongsToBrand(c.Request.Context(), brandID, taskID); err != nil {
+		return err
+	}
+	taskId := taskID.String()
 
 	shared_pres.InitSSE(c)
 
@@ -96,7 +105,11 @@ func (h *BrandPortalHandler) GetBrandItemsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.itemUC.GetBrandItemsForStaff(c.Request.Context(), userID, brandID)
+	var query dto.GetBrandItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.itemUC.GetBrandItemsForStaff(c.Request.Context(), userID, brandID, query)
 	if err != nil {
 		return err
 	}
@@ -189,6 +202,36 @@ func (h *BrandPortalHandler) UpdateBrandItem(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Success(c, msgBrandItemUpdateSuccess, res)
+	return nil
+}
+
+// ConvertSampleToProduct converts a digital sample item into a commercial product.
+// @Summary Chuyển mẫu thử thành sản phẩm
+// @Tags Brand Item
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID hoặc slug brand"
+// @Param itemId path string true "ID item"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product [post]
+func (h *BrandPortalHandler) ConvertSampleToProduct(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	itemID, err := validation.GetUUIDParam(c, "itemId")
+	if err != nil {
+		return err
+	}
+	res, err := h.itemUC.ConvertSampleToProduct(c.Request.Context(), userID, brandID, itemID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandItemConvertSuccess, res)
 	return nil
 }
 

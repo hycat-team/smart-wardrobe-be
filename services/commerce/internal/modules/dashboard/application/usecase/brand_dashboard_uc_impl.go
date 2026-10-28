@@ -7,6 +7,7 @@ import (
 	brand_dto "smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
 	brandContract "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/dto"
+	dashboarderrors "smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/dashboard/domain/constants/feedbacksentiment"
@@ -333,6 +334,18 @@ func (uc *BrandDashboardUseCase) GetCustomerSpendSegmentation(ctx context.Contex
 
 func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*dto.DigitalSampleLabAnalyticsRes, error) {
 	// Lazy load: đọc feedback summary từ brand reader
+	var ownedItem *brand_dto.BrandItemContractDTO
+	if uc.brandItem != nil {
+		item, err := uc.brandItem.GetBrandItemByID(ctx, itemID)
+		if err != nil {
+			return nil, err
+		}
+		if item == nil || item.BrandID != brandID {
+			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		}
+		ownedItem = item
+	}
+
 	feedback, err := uc.brandReader.GetItemFeedbackSummary(ctx, itemID)
 	if err != nil {
 		return nil, err
@@ -341,6 +354,9 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 	if feedback == nil {
 		return &dto.DigitalSampleLabAnalyticsRes{
 			ItemID:              itemID,
+			BrandItemID:         &itemID,
+			BrandItemName:       brandItemName(ownedItem),
+			BrandItemImageURL:   uc.brandItemImageURL(ctx, ownedItem),
 			VotesCount:          0,
 			AvgRating:           0,
 			FeedbackSentiment:   feedbacksentiment.Neutral,
@@ -381,24 +397,36 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 		}
 	}
 
-	var brandItemName *string
-	var brandItemImageURL *string
 	brandItemID := &itemID
-	if uc.brandItem != nil {
-		if bi, err := uc.brandItem.GetBrandItemByID(ctx, itemID); err == nil && bi != nil {
-			name := bi.Name
-			brandItemName = &name
-		}
-	}
 
 	return &dto.DigitalSampleLabAnalyticsRes{
 		ItemID:              itemID,
 		BrandItemID:         brandItemID,
-		BrandItemName:       brandItemName,
-		BrandItemImageURL:   brandItemImageURL,
+		BrandItemName:       brandItemName(ownedItem),
+		BrandItemImageURL:   uc.brandItemImageURL(ctx, ownedItem),
 		VotesCount:          feedback.VotesCount,
 		AvgRating:           feedback.AvgRating,
 		FeedbackSentiment:   feedbacksentiment.FeedbackSentiment(feedback.FeedbackSentiment),
 		TopPairedCategories: pairedCategories,
 	}, nil
+}
+
+func brandItemName(item *brand_dto.BrandItemContractDTO) *string {
+	if item == nil {
+		return nil
+	}
+	name := item.Name
+	return &name
+}
+
+func (uc *BrandDashboardUseCase) brandItemImageURL(ctx context.Context, item *brand_dto.BrandItemContractDTO) *string {
+	if item == nil || uc.fashionContract == nil || item.FashionItemID == uuid.Nil {
+		return nil
+	}
+	fashionItem, err := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
+	if err != nil || fashionItem == nil || fashionItem.ImageUrl == "" {
+		return nil
+	}
+	url := fashionItem.ImageUrl
+	return &url
 }

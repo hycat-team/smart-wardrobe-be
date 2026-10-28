@@ -74,7 +74,8 @@ func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid
 }
 
 func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandStatusReq) (*dto.BrandRes, error) {
-	if !isValidBrandStatus(input.Status) {
+	status := brandstatus.BrandStatus(strings.ToLower(strings.TrimSpace(string(input.Status))))
+	if !isValidBrandStatus(status) {
 		return nil, branderrors.ErrInvalidBrandStatus(input.Status)
 	}
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
@@ -85,8 +86,8 @@ func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID
 		return nil, branderrors.ErrBrandNotFound()
 	}
 
-	brand.Status = input.Status
-	if input.Status == brandstatus.Active {
+	brand.Status = status
+	if status == brandstatus.Active {
 		now := time.Now().UTC()
 		brand.ApprovedByUserID = &adminID
 		brand.ApprovedAt = &now
@@ -166,8 +167,8 @@ func (uc *BrandUseCase) GetActiveBrand(ctx context.Context, brandID uuid.UUID) (
 	if brand == nil {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	if brand.Status != brandstatus.Active {
-		return nil, branderrors.ErrBrandNotActive()
+	if brand == nil || !strings.EqualFold(string(brand.Status), string(brandstatus.Active)) {
+		return nil, branderrors.ErrBrandNotFound()
 	}
 	totalCustomer, err := uc.customerRepo.CountByBrandID(ctx, brandID)
 	if err != nil {

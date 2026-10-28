@@ -3096,6 +3096,10 @@
           "type": "string"
         },
         "itemType": {
+          "enum": [
+            "product",
+            "sample"
+          ],
           "type": "string"
         },
         "name": {
@@ -3110,6 +3114,11 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
           "type": "string"
         }
       },
@@ -3153,6 +3162,9 @@
           "type": "string"
         },
         "expiresAt": {
+          "type": "string"
+        },
+        "id": {
           "type": "string"
         }
       },
@@ -3852,12 +3864,16 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
           "type": "string"
         }
       },
       "required": [
-        "name",
-        "status"
+        "name"
       ],
       "type": "object"
     },
@@ -5077,6 +5093,7 @@
     "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryReq": {
       "properties": {
         "brandId": {
+          "description": "UUID hoặc slug brand",
           "type": "string"
         },
         "compareWithPrevious": {

@@ -297,3 +297,12 @@ Xem thêm hằng số tại [constants.md](constants.md).
 | GET         | `/api/v1/brand/dashboard/operations/catalog-stats`                | Brand Member | Thống kê catalog sản phẩm                        |
 | GET         | `/api/v1/brand/dashboard/customers/spend-segmentation`            | Brand Member | Phân khúc chi tiêu khách hàng                    |
 | GET         | `/api/v1/brand/dashboard/drilldown/sample-lab-feedbacks`          | Brand Member | Drill-down feedback                               |
+
+---
+
+## Brand analytics dynamic query (slug support)
+
+- `POST /api/v1/dashboard/analytics/query` nhận `brandId` là **UUID hoặc slug** trong body JSON.
+- Response lỗi rõ ràng: slug không tồn tại → `404`; không phải thành viên brand → `403`.
+- `GET /api/v1/brand/dashboard/drilldown/sample-lab-feedbacks?brandId=...&itemId=...`: `brandId` dùng để xác thực quyền và kiểm tra item thuộc brand (cross-brand trả `404`).
+- `GET /api/v1/brand/dashboard/operations/digital-sample-lab/{itemId}?brandId=...`: trả số liệu 0 thay vì `404` khi mẫu thử chưa có feedback.

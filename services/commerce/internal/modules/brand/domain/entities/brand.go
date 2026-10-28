@@ -21,7 +21,7 @@ type Brand struct {
 	LogoPublicID       *string                 `gorm:"column:logo_public_id;type:varchar(255)"`
 	BackgroundURL      *string                 `gorm:"column:background_url;type:varchar(500)"`
 	BackgroundPublicID *string                 `gorm:"column:background_public_id;type:varchar(255)"`
-	Status             brandstatus.BrandStatus `gorm:"type:varchar(50);not null;default:PENDING_REVIEW"`
+	Status             brandstatus.BrandStatus `gorm:"type:varchar(50);not null;default:pending_review"`
 	CreatedByUserID    uuid.UUID               `gorm:"type:uuid;not null"`
 	ApprovedByUserID   *uuid.UUID              `gorm:"type:uuid"`
 	ApprovedAt         *time.Time              `gorm:"type:timestamp with time zone"`
@@ -35,7 +35,7 @@ type BrandMember struct {
 	Brand   *Brand                              `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	UserID  uuid.UUID                           `gorm:"type:uuid;not null;uniqueIndex:uq_brand_members_brand_user"`
 	Role    brandmemberrole.BrandMemberRole     `gorm:"type:varchar(50);not null"`
-	Status  brandmemberstatus.BrandMemberStatus `gorm:"type:varchar(50);not null;default:ACTIVE"`
+	Status  brandmemberstatus.BrandMemberStatus `gorm:"type:varchar(50);not null;default:active"`
 }
 
 type BrandCustomer struct {
@@ -48,7 +48,7 @@ type BrandCustomer struct {
 	PhoneHash            *string                                             `gorm:"type:varchar(255)"`
 	ExternalCustomerCode *string                                             `gorm:"type:varchar(100)"`
 	JoinedSource         brandcustomerjoinedsource.BrandCustomerJoinedSource `gorm:"type:varchar(50);not null"`
-	Status               brandcustomerstatus.BrandCustomerStatus             `gorm:"type:varchar(50);not null;default:ACTIVE"`
+	Status               brandcustomerstatus.BrandCustomerStatus             `gorm:"type:varchar(50);not null;default:active"`
 	JoinedAt             time.Time                                           `gorm:"type:timestamp with time zone;not null;default:now()"`
 	ClaimedAt            *time.Time                                          `gorm:"type:timestamp with time zone"`
 	CreatedByMemberID    *uuid.UUID                                          `gorm:"type:uuid"`

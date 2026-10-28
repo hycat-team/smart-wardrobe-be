@@ -85,6 +85,9 @@ func TestBrandHandleFashionAnalyzed_Completed(t *testing.T) {
 			if updated.Status != branditemstatus.Active {
 				t.Fatalf("expected status Active, got %v", updated.Status)
 			}
+			if updated.TaskID != nil {
+				t.Fatalf("expected TaskID cleared on terminal analysis event")
+			}
 			return nil
 		},
 	}
@@ -124,7 +127,6 @@ func TestBrandHandleFashionAnalyzed_Idempotent(t *testing.T) {
 		Name:     "Brand Shirt",
 		ItemType: branditemtype.Product,
 		Status:   branditemstatus.Active,
-		TaskID:   &taskUUID,
 	}
 	item.ID = itemID
 

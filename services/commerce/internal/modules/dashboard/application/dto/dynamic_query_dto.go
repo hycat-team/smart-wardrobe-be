@@ -18,8 +18,8 @@ type DynamicQueryTimeframeDTO struct {
 }
 
 type DynamicQueryReq struct {
-	TargetDashboard     targetdashboard.TargetDashboard `json:"targetDashboard"` // "admin" | "brand" | "user"
-	BrandID             *uuid.UUID                      `json:"brandId,omitempty"`
+	TargetDashboard     targetdashboard.TargetDashboard `json:"targetDashboard"`   // "admin" | "brand" | "user"
+	BrandID             *string                         `json:"brandId,omitempty"` // UUID hoặc slug brand
 	Metrics             []metrickey.MetricKey           `json:"metrics"`
 	Timeframe           DynamicQueryTimeframeDTO        `json:"timeframe"`
 	Granularity         granularity.Granularity         `json:"granularity"` // "day" | "week" | "month" | "year"

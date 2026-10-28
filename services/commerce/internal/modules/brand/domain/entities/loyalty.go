@@ -17,7 +17,7 @@ type LoyaltyProgram struct {
 	Name            string                                  `gorm:"type:varchar(255);not null"`
 	AmountPerPoint  float64                                 `gorm:"type:decimal(12,2);not null"`
 	PointExpiryDays *int                                    `gorm:"type:int"`
-	RoundingMode    loyaltyroundingmode.LoyaltyRoundingMode `gorm:"type:varchar(50);not null;default:FLOOR"`
+	RoundingMode    loyaltyroundingmode.LoyaltyRoundingMode `gorm:"type:varchar(50);not null;default:floor"`
 	IsActive        bool                                    `gorm:"type:boolean;not null;default:true"`
 }
 
@@ -81,7 +81,7 @@ type LoyaltyPointLot struct {
 	EarnedPoints      int                                         `gorm:"type:int;not null"`
 	RemainingPoints   int                                         `gorm:"type:int;not null"`
 	ExpiresAt         *time.Time                                  `gorm:"type:timestamp with time zone"`
-	Status            loyaltypointlotstatus.LoyaltyPointLotStatus `gorm:"type:varchar(50);not null;default:ACTIVE"`
+	Status            loyaltypointlotstatus.LoyaltyPointLotStatus `gorm:"type:varchar(50);not null;default:active"`
 }
 
 type BrandCustomerClaim struct {

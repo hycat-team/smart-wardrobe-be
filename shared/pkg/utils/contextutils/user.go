@@ -94,3 +94,24 @@ func GetBrandRole(c *gin.Context) (brandmemberrole.BrandMemberRole, error) {
 		return "", apperror.ErrUnauthorized()
 	}
 }
+
+// GetBrandId returns the brand id resolved and stored on the context by the
+// brand reference/role middleware.
+func GetBrandId(c *gin.Context) (uuid.UUID, error) {
+	val, exists := c.Get(CtxBrandId)
+	if !exists {
+		return uuid.Nil, apperror.ErrUnauthorized()
+	}
+	switch id := val.(type) {
+	case uuid.UUID:
+		return id, nil
+	case string:
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			return uuid.Nil, apperror.ErrUnauthorized()
+		}
+		return parsed, nil
+	default:
+		return uuid.Nil, apperror.ErrUnauthorized()
+	}
+}

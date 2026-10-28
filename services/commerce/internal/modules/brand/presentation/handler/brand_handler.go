@@ -17,6 +17,7 @@ const (
 	msgBrandItemGetSuccess          = "Lấy thông tin sản phẩm brand thành công"
 	msgBrandItemListSuccess         = "Lấy danh sách sản phẩm brand thành công"
 	msgBrandItemUpdateSuccess       = "Cập nhật sản phẩm brand thành công"
+	msgBrandItemConvertSuccess      = "Chuyển mẫu thử thành sản phẩm thành công"
 	msgBrandItemFeedbackSuccess     = "Lấy danh sách feedback sản phẩm thành công"
 	msgBrandFeedbackSubmitSuccess   = "Gửi feedback sản phẩm thành công"
 	msgBrandCreateClaimTokenSuccess = "Tạo mã claim liên kết tài khoản thành công"

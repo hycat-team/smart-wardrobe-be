@@ -992,6 +992,10 @@
           "type": "string"
         },
         "itemType": {
+          "enum": [
+            "product",
+            "sample"
+          ],
           "type": "string"
         },
         "name": {
@@ -1006,6 +1010,11 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
           "type": "string"
         }
       },
@@ -1049,6 +1058,9 @@
           "type": "string"
         },
         "expiresAt": {
+          "type": "string"
+        },
+        "id": {
           "type": "string"
         }
       },
@@ -1748,12 +1760,16 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
           "type": "string"
         }
       },
       "required": [
-        "name",
-        "status"
+        "name"
       ],
       "type": "object"
     },
@@ -2973,6 +2989,7 @@
     "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryReq": {
       "properties": {
         "brandId": {
+          "description": "UUID hoặc slug brand",
           "type": "string"
         },
         "compareWithPrevious": {
@@ -7558,6 +7575,56 @@
           }
         },
         "summary": "[Staff] Cập nhật sản phẩm hoặc mẫu thử của Brand",
+        "tags": [
+          "Brand Item"
+        ]
+      }
+    },
+    "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID item",
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Chuyển mẫu thử thành sản phẩm",
         "tags": [
           "Brand Item"
         ]

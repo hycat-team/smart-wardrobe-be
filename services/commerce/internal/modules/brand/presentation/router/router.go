@@ -135,6 +135,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portalMember.GET("/brands/:brandId/items/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandItemUploadSignature))
 		portalMember.GET("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForStaff))
 		portalMember.PUT("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItem))
+		portalMember.POST("/brands/:brandId/items/:itemId/convert-to-product", shared_pres.WrapHandler(r.brandHandler.ConvertSampleToProduct))
 		portalMember.PATCH("/brands/:brandId/items/:itemId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItemStatus))
 		portalMember.POST("/brands/:brandId/items/:itemId/retry-analysis", shared_pres.WrapHandler(r.brandHandler.RetryBrandItemAnalysis))
 		portalMember.GET("/brands/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.GetBrandItemFeedbacks))

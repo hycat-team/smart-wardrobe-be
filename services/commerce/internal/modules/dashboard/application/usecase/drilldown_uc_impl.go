@@ -66,11 +66,21 @@ func (uc *DrillDownUseCase) GetAIEventsDrillDown(ctx context.Context, req *dto.D
 	}, nil
 }
 
-func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, req *dto.DrillDownSampleFeedbackQueryReq) (*dto.DrillDownSampleFeedbackListRes, error) {
+func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, brandID uuid.UUID, req *dto.DrillDownSampleFeedbackQueryReq) (*dto.DrillDownSampleFeedbackListRes, error) {
 	normQuery := req.PaginationQuery.Normalize()
 	itemID, err := uuid.Parse(req.ItemID)
 	if err != nil {
 		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+	}
+
+	if uc.brandContract != nil {
+		item, err := uc.brandContract.GetBrandItemByID(ctx, itemID)
+		if err != nil {
+			return nil, err
+		}
+		if item == nil || item.BrandID != brandID {
+			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		}
 	}
 
 	rawItems, totalCount, err := uc.brandReader.GetSampleLabFeedbacksDrillDown(ctx, itemID, normQuery.Page, normQuery.Limit)

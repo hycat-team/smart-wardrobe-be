@@ -20,8 +20,8 @@ type CreateBrandItemReq struct {
 	Name          string     `json:"name" binding:"required,max=255" label:"tên sản phẩm"`
 	Description   *string    `json:"description" binding:"omitempty" label:"mô tả"`
 	Price         *float64   `json:"price" binding:"omitempty,gt=0" label:"giá sản phẩm"`
-	ItemType      string     `json:"itemType" binding:"required" label:"loại sản phẩm"`
-	Status        string     `json:"status" binding:"omitempty" label:"trạng thái"`
+	ItemType      string     `json:"itemType" binding:"required,oneof=product sample" label:"loại sản phẩm"`
+	Status        string     `json:"status" binding:"omitempty,oneof=draft active archived" label:"trạng thái"`
 }
 
 type UpdateBrandItemReq struct {
@@ -29,7 +29,7 @@ type UpdateBrandItemReq struct {
 	Name        string   `json:"name" binding:"required,max=255" label:"tên sản phẩm"`
 	Description *string  `json:"description" binding:"omitempty" label:"mô tả"`
 	Price       *float64 `json:"price" binding:"omitempty,gt=0" label:"giá sản phẩm"`
-	Status      string   `json:"status" binding:"required" label:"trạng thái"`
+	Status      string   `json:"status" binding:"omitempty,oneof=draft active archived" label:"trạng thái sản phẩm"`
 }
 
 type UpdateBrandItemStatusReq struct {
@@ -84,6 +84,8 @@ type ListEligibleBrandItemsReq struct {
 
 type GetBrandItemsQueryReq struct {
 	shared_dto.PaginationQuery
+	ItemType *string `form:"itemType" binding:"omitempty,oneof=product sample" label:"loại sản phẩm"`
+	Status   *string `form:"status" binding:"omitempty,oneof=draft active archived failed" label:"trạng thái sản phẩm"`
 }
 
 type BrandItemListRes = shared_dto.PaginationResult[*BrandItemRes]

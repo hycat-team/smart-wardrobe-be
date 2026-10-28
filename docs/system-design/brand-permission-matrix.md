@@ -45,3 +45,12 @@ Ma trận này là nguồn duy nhất cho middleware Brand RBAC và tài liệu 
 1. Middleware áp dụng nhóm quyền này (xem [brand-role-middleware.md](./brand-role-middleware.md)).
 2. Copy ma trận này thành `docs/system-design/brand-permission-matrix.md` (docs deliverable, Phase D3/D5).
 3. Các file docs khác (`brand-api.md`, `loyalty-api.md`, `constants/brand.md`) reference về ma trận để tránh mâu thuẫn.
+## Bổ sung (2026-10-28)
+
+| Nhóm nghiệp vụ | Route (prefix `/brand-portal/brands/:brandId`) | owner | staff |
+|----------------|------------------------------------------------|:-----:|:-----:|
+| **Brand items / Sample Lab** | `POST /items/:itemId/convert-to-product` (chuyển sample → product) | ✔ | ✔ |
+| **Brand profile** | `PATCH /profile` (tên + mô tả) | ✔ | ✘ |
+| **Brand items / Sample Lab** | `GET /items/:itemId` (chi tiết), `POST /items/:itemId/retry-analysis` | ✔ | ✔ |
+
+Ghi chú: sau migration chuẩn hóa status/role, middleware so sánh không phân biệt hoa/thường để tránh 403 với dữ liệu cũ.

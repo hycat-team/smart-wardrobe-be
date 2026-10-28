@@ -453,3 +453,12 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 - Sau khi khách đã có access token, frontend gọi `POST /api/v1/brands/claim` với `claimToken`.
 - Backend luôn liên kết hồ sơ offline vào current authenticated user lấy từ JWT, không nhận `userId` từ request body.
 - Claim token có thể bị thu hồi bởi staff qua API revoke; API list/status claim token không trả raw token.
+
+---
+
+## Bổ sung (brand slug + sample conversion)
+
+- `POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product`: chuyển một `sample` đã phân tích xong thành `product` tại chỗ (giữ feedback/vote). Xem chi tiết ở [brand-item-api.md](brand-item-api.md).
+- `GET /api/v1/brand-portal/brands/{brandId}/items?itemType=product|sample&status=...`: lọc theo loại/trạng thái, sắp xếp `created_at DESC`.
+- `POST /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-token`: response có thêm `id` để client thu hồi token khi đóng dialog hoặc hết hạn.
+- Status của brand/member/brand item được chuẩn hóa lowercase; migration `20261028120000_normalize_brand_status_case.sql` chuyển dữ liệu cũ (UPPERCASE) về lowercase.

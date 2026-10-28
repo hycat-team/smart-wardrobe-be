@@ -28,6 +28,8 @@ type BrandItemListResult struct {
 type IBrandItemRepository interface {
 	shared_repos.IGenericRepository[entities.BrandItem, uuid.UUID]
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error)
+	GetByBrandIDFiltered(ctx context.Context, filter BrandItemFilter) ([]*entities.BrandItem, error)
+	GetByTaskID(ctx context.Context, taskID uuid.UUID) (*entities.BrandItem, error)
 	GetByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) ([]*entities.BrandItem, error)
 	GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error)
 	GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error)

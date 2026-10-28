@@ -56,9 +56,12 @@ func (uc *BrandFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context, p
 		targetStatus = branditemstatus.Draft
 	}
 
-	// Idempotency: only update DB if item status changed
-	if item.Status != targetStatus {
+	// Idempotency: only update DB if the terminal result changes persisted state.
+	// Clearing TaskID marks the analysis session as finished so the client stops
+	// subscribing to a stream that will never emit again.
+	if item.Status != targetStatus || item.TaskID != nil {
 		item.Status = targetStatus
+		item.TaskID = nil
 		if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 			uc.logger.Error("Failed to update brand item status",
 				zap.String("itemId", item.ID.String()),
@@ -127,8 +130,9 @@ func (uc *BrandFashionEventUseCase) HandleFashionFailed(ctx context.Context, pay
 		return nil
 	}
 
-	if item.Status != branditemstatus.Failed {
+	if item.Status != branditemstatus.Failed || item.TaskID != nil {
 		item.Status = branditemstatus.Failed
+		item.TaskID = nil
 		if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 			uc.logger.Error("Failed to update brand item status to Failed",
 				zap.String("itemId", item.ID.String()),
