@@ -4102,14 +4102,16 @@
         "pending_review",
         "active",
         "suspended",
-        "archived"
+        "archived",
+        "rejected"
       ],
       "type": "string",
       "x-enum-varnames": [
         "PendingReview",
         "Active",
         "Suspended",
-        "Archived"
+        "Archived",
+        "Rejected"
       ]
     },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode": {

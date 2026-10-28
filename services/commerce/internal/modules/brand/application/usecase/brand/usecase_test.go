@@ -28,6 +28,19 @@ func (m *mockBrandRepo) GetAll(ctx context.Context) ([]*entities.Brand, error)  
 func (m *mockBrandRepo) Create(ctx context.Context, brand *entities.Brand) error { return nil }
 func (m *mockBrandRepo) Update(ctx context.Context, brand *entities.Brand) error { return nil }
 func (m *mockBrandRepo) Delete(ctx context.Context, id uuid.UUID) error          { return nil }
+func (m *mockBrandRepo) DeleteRequest(ctx context.Context, brandID uuid.UUID, statuses ...brandstatus.BrandStatus) (bool, error) {
+	brand, ok := m.brands[brandID]
+	if !ok || brand == nil {
+		return false, nil
+	}
+	for _, status := range statuses {
+		if brand.Status == status {
+			delete(m.brands, brandID)
+			return true, nil
+		}
+	}
+	return false, nil
+}
 func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
 	for _, b := range m.brands {
 		if b.Slug == slug {

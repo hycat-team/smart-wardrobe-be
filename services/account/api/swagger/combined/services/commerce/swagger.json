@@ -1998,14 +1998,16 @@
         "pending_review",
         "active",
         "suspended",
-        "archived"
+        "archived",
+        "rejected"
       ],
       "type": "string",
       "x-enum-varnames": [
         "PendingReview",
         "Active",
         "Suspended",
-        "Archived"
+        "Archived",
+        "Rejected"
       ]
     },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode": {
@@ -4481,7 +4483,8 @@
               "pending_review",
               "active",
               "suspended",
-              "archived"
+              "archived",
+              "rejected"
             ],
             "in": "query",
             "name": "status",
@@ -4490,7 +4493,8 @@
               "PendingReview",
               "Active",
               "Suspended",
-              "Archived"
+              "Archived",
+              "Rejected"
             ]
           }
         ],
@@ -8616,6 +8620,34 @@
           }
         },
         "summary": "Cập nhật logo/ảnh nền brand",
+        "tags": [
+          "Brand Portal"
+        ]
+      }
+    },
+    "/api/v1/brand-portal/brands/{brandId}/request": {
+      "delete": {
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Hủy yêu cầu đăng ký thương hiệu",
         "tags": [
           "Brand Portal"
         ]

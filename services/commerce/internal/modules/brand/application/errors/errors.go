@@ -26,6 +26,9 @@ func ErrBrandSlugReserved(slug string) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Slug \"%s\" là đường dẫn hệ thống, vui lòng chọn slug khác.", slug))
 }
 
+func ErrBrandRequestNotCancellable() *apperror.Error {
+	return apperror.NewConflict("Chỉ có thể hủy yêu cầu đăng ký thương hiệu đang chờ duyệt hoặc đã bị từ chối.")
+}
 func ErrBrandPortalForbidden() *apperror.Error {
 	return apperror.NewForbidden("Bạn không có quyền quản trị brand này.")
 }

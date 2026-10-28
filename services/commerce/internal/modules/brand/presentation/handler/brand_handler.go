@@ -2,6 +2,7 @@ package handler
 
 const (
 	msgBrandCreateRequestSuccess    = "Gửi yêu cầu tạo brand thành công"
+	msgBrandCancelRequestSuccess    = "Hủy yêu cầu đăng ký thương hiệu thành công"
 	msgBrandCreateAdminSuccess      = "Tạo brand thành công"
 	msgBrandUpdateStatusSuccess     = "Cập nhật trạng thái brand thành công"
 	msgBrandListSuccess             = "Lấy danh sách brand thành công"

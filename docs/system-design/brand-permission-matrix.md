@@ -57,3 +57,5 @@ Ghi chú: sau migration chuẩn hóa status/role, middleware so sánh không ph�
 
 | **Members** | `PATCH /members/:memberId` (status active/disabled) | ✔ | ✘ |
 | **Members** | `DELETE /members/:memberId` (không áp dụng cho owner) | ✔ | ✘ |
+
+| **Brand registration** | `DELETE /brand-portal/brands/:brandId/request` (hủy request pending/rejected) | ✔ (người tạo request) | ✘ |

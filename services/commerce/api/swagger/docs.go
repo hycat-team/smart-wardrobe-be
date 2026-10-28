@@ -49,14 +49,16 @@ const docTemplate = `{
                             "pending_review",
                             "active",
                             "suspended",
-                            "archived"
+                            "archived",
+                            "rejected"
                         ],
                         "type": "string",
                         "x-enum-varnames": [
                             "PendingReview",
                             "Active",
                             "Suspended",
-                            "Archived"
+                            "Archived",
+                            "Rejected"
                         ],
                         "name": "status",
                         "in": "query"
@@ -4177,6 +4179,34 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/request": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Hủy yêu cầu đăng ký thương hiệu",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID hoặc slug brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
                         }
                     }
                 }
@@ -9350,13 +9380,15 @@ const docTemplate = `{
                 "pending_review",
                 "active",
                 "suspended",
-                "archived"
+                "archived",
+                "rejected"
             ],
             "x-enum-varnames": [
                 "PendingReview",
                 "Active",
                 "Suspended",
-                "Archived"
+                "Archived",
+                "Rejected"
             ]
         },
         "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode": {

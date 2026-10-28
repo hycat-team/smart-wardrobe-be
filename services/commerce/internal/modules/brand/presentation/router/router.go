@@ -98,6 +98,14 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portal.GET("/brands/profile-images/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandLogoUploadSignature))
 	}
 
+	// Owners can cancel their own pending/rejected brand request. This does not
+	// use brand RBAC because the brand is not ACTIVE yet.
+	portalBrandRequest := group.Group("/brand-portal")
+	portalBrandRequest.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
+	{
+		portalBrandRequest.DELETE("/brands/:brandId/request", shared_pres.WrapHandler(r.brandHandler.CancelBrandRequest))
+	}
+
 	// Brand RBAC is centralized here via BrandRoleMiddleware: routes requiring a
 	// real brand membership (owner/staff) go under memberGroup; owner-only
 	// configuration routes (loyalty program/tiers) go under ownerGroup.

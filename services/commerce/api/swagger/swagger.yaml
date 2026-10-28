@@ -1338,12 +1338,14 @@ definitions:
     - active
     - suspended
     - archived
+    - rejected
     type: string
     x-enum-varnames:
     - PendingReview
     - Active
     - Suspended
     - Archived
+    - Rejected
   smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode:
     enum:
     - floor
@@ -3031,6 +3033,7 @@ paths:
         - active
         - suspended
         - archived
+        - rejected
         in: query
         name: status
         type: string
@@ -3039,6 +3042,7 @@ paths:
         - Active
         - Suspended
         - Archived
+        - Rejected
       produces:
       - application/json
       responses:
@@ -5595,6 +5599,24 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandRes'
               type: object
       summary: Cập nhật logo/ảnh nền brand
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/request:
+    delete:
+      parameters:
+      - description: ID hoặc slug brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/presentation.APIResponse'
+      summary: Hủy yêu cầu đăng ký thương hiệu
       tags:
       - Brand Portal
   /api/v1/brand-portal/brands/profile-images/upload-signature:

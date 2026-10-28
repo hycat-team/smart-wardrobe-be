@@ -273,3 +273,26 @@ func (h *BrandPortalHandler) GetBrandForPortal(c *gin.Context) error {
 	shared_pres.Success(c, msgBrandDetailSuccess, res)
 	return nil
 }
+
+// CancelBrandRequest cancels the caller's own pending or rejected brand request.
+// @Summary Hủy yêu cầu đăng ký thương hiệu
+// @Tags Brand Portal
+// @Produce json
+// @Param brandId path string true "ID hoặc slug brand"
+// @Success 200 {object} shared_pres.APIResponse
+// @Router /api/v1/brand-portal/brands/{brandId}/request [delete]
+func (h *BrandPortalHandler) CancelBrandRequest(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	if err := h.brandUC.CancelBrandRequest(c.Request.Context(), userID, brandID); err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandCancelRequestSuccess, nil)
+	return nil
+}

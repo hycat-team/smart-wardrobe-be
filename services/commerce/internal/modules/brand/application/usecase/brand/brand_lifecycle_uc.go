@@ -270,3 +270,46 @@ func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID,
 	}
 	return mapper.MapPortalBrand(member, int(totalCustomer)), nil
 }
+
+func (uc *BrandUseCase) CancelBrandRequest(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) error {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return err
+	}
+	if brand == nil {
+		return branderrors.ErrBrandNotFound()
+	}
+	if brand.CreatedByUserID != userID {
+		return branderrors.ErrBrandPortalForbidden()
+	}
+	if brand.Status != brandstatus.PendingReview && brand.Status != brandstatus.Rejected {
+		return branderrors.ErrBrandRequestNotCancellable()
+	}
+
+	members, err := uc.memberRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return err
+	}
+
+	deleted, err := uc.brandRepo.DeleteRequest(ctx, brandID, brandstatus.PendingReview, brandstatus.Rejected)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return branderrors.ErrBrandRequestNotCancellable()
+	}
+
+	affectedUserIDs := make(map[uuid.UUID]struct{}, len(members)+1)
+	affectedUserIDs[userID] = struct{}{}
+	for _, member := range members {
+		if member != nil {
+			affectedUserIDs[member.UserID] = struct{}{}
+		}
+	}
+	for affectedUserID := range affectedUserIDs {
+		if err := uc.InvalidateUserMembershipCache(ctx, affectedUserID); err != nil {
+			return err
+		}
+	}
+	return nil
+}

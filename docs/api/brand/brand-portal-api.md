@@ -474,3 +474,13 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
     - Trả `dto.BrandMemberRes`.
 - `DELETE /api/v1/brand-portal/brands/{brandId}/members/{memberId}` — chỉ owner; **không thể xóa owner**.
 - Staff vẫn xem/thêm thành viên theo matrix, nhưng không có quyền sửa/xóa.
+
+---
+
+## Hủy yêu cầu đăng ký thương hiệu (owner)
+
+- **Endpoint:** `DELETE /api/v1/brand-portal/brands/{brandId}/request`
+- **Actor:** người tạo yêu cầu (owner). Brand phải đang `pending_review` hoặc `rejected`.
+- **Hành vi:** xóa vĩnh viễn brand + membership (FK cascade), giải phóng slug để đăng ký lại; invalidate membership cache.
+- **Errors:** `403` không phải người tạo; `409` brand đã active/suspended hoặc vừa được duyệt; `404` không tìm thấy.
+- **Admin:** trạng thái `rejected` đã được hỗ trợ qua `PATCH /api/v1/admin/brands/{brandId}/status`.

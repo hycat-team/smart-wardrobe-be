@@ -43,6 +43,9 @@ func (m *mockBrandUseCase) ResolveActiveBrandRef(ctx context.Context, ref string
 func (m *mockBrandUseCase) CreateBrandRequest(ctx context.Context, userID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error) {
 	return nil, nil
 }
+func (m *mockBrandUseCase) CancelBrandRequest(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) error {
+	return nil
+}
 func (m *mockBrandUseCase) CreateBrandByAdmin(ctx context.Context, adminID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error) {
 	return nil, nil
 }

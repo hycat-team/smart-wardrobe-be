@@ -27,6 +27,15 @@ func (m *memberTestMemberRepo) GetByID(ctx context.Context, id uuid.UUID) (*enti
 	return m.members[id], nil
 }
 
+func (m *memberTestMemberRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error) {
+	var list []*entities.BrandMember
+	for _, member := range m.members {
+		if member.BrandID == brandID {
+			list = append(list, member)
+		}
+	}
+	return list, nil
+}
 func (m *memberTestMemberRepo) Update(ctx context.Context, member *entities.BrandMember) error {
 	m.members[member.ID] = member
 	return nil

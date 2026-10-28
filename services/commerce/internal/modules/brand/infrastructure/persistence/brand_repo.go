@@ -247,3 +247,20 @@ func (r *BrandRepository) GetSampleLabFeedbacksDrillDown(ctx context.Context, it
 
 	return items, total, nil
 }
+
+func (r *BrandRepository) DeleteRequest(ctx context.Context, brandID uuid.UUID, statuses ...brandstatus.BrandStatus) (bool, error) {
+	if len(statuses) == 0 {
+		return false, nil
+	}
+	normalized := make([]string, len(statuses))
+	for i, status := range statuses {
+		normalized[i] = strings.ToLower(string(status))
+	}
+	result := r.GetDB(ctx).
+		Where("id = ? AND LOWER(status) IN ?", brandID, normalized).
+		Delete(&entities.Brand{})
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}

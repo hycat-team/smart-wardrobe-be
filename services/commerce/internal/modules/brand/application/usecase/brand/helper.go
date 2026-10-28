@@ -15,7 +15,7 @@ func (uc *BrandUseCase) RequireBrandRole(ctx context.Context, userID uuid.UUID, 
 
 func isValidBrandStatus(status brandstatus.BrandStatus) bool {
 	switch status {
-	case brandstatus.PendingReview, brandstatus.Active, brandstatus.Suspended, brandstatus.Archived:
+	case brandstatus.PendingReview, brandstatus.Active, brandstatus.Suspended, brandstatus.Archived, brandstatus.Rejected:
 		return true
 	default:
 		return false
