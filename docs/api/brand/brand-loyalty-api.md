@@ -489,3 +489,14 @@ Ví dụ dùng mã khách hàng ngoài và điểm đã tính sẵn:
 - Request phải có `purchaseAmount` hoặc `pointsDelta`.
 - Nếu truyền cả `purchaseAmount` và `pointsDelta`, backend ưu tiên `pointsDelta`; frontend/POS nên chỉ truyền một trong hai để tránh hiểu nhầm.
 - Nếu truyền nhiều customer identifier, backend ưu tiên theo thứ tự: `userId` > `phone` > `externalCustomerCode`.
+
+---
+
+## Bổ sung (loyalty hub)
+
+- `GET /api/v1/brand-portal/brands/{brandId}/benefits` (staff) trả **mọi trạng thái** mặc định và hỗ trợ thêm filter:
+    - `requiredTierId` (uuid): chỉ lấy benefit gắn với một hạng.
+    - `status` (`active` | `inactive` | `archived`).
+    - vẫn giữ `page`, `limit`, `unlockType`, `benefitType`; sắp xếp `created_at DESC`.
+- `GET /api/v1/brand-portal/brands/{brandId}/loyalty/tiers` trả thêm `benefitsCount` (số benefit đang active gắn với hạng) để hiển thị badge trên card hạng.
+- Endpoint public/user vẫn chỉ trả benefit `active`.

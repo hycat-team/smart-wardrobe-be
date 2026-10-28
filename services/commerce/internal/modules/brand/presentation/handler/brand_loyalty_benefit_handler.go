@@ -52,6 +52,8 @@ func (h *BrandLoyaltyHandler) CreateBrandBenefit(c *gin.Context) error {
 // @Param limit query int false "Số lượng mỗi trang"
 // @Param unlockType query string false "Loại mở khóa (tier_privilege, point_redemption, manual_grant)"
 // @Param benefitType query string false "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)"
+// @Param requiredTierId query string false "ID hạng yêu cầu"
+// @Param status query string false "Trạng thái (active, inactive, archived)"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitListRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/benefits [get]
 func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {

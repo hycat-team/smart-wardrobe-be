@@ -252,20 +252,42 @@ func (m *mockBenefitRepo) GetActiveByBrandIDAndTierID(ctx context.Context, brand
 	}
 	return list, nil
 }
-func (m *mockBenefitRepo) GetActiveByBrandIDPaginated(ctx context.Context, filter repositories.BrandBenefitFilter) (*repositories.BrandBenefitListResult, error) {
+func (m *mockBenefitRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandBenefitFilter) (*repositories.BrandBenefitListResult, error) {
 	var list []*entities.BrandBenefit
 	for _, b := range m.benefits {
-		if b.BrandID == filter.BrandID && b.Status == benefitstatus.Active {
-			if filter.UnlockType != nil && b.UnlockType != *filter.UnlockType {
-				continue
-			}
-			if filter.BenefitType != nil && b.BenefitType != *filter.BenefitType {
-				continue
-			}
-			list = append(list, b)
+		if b.BrandID != filter.BrandID {
+			continue
 		}
+		if filter.Status != nil && *filter.Status != "" && b.Status != *filter.Status {
+			continue
+		}
+		if filter.UnlockType != nil && b.UnlockType != *filter.UnlockType {
+			continue
+		}
+		if filter.BenefitType != nil && b.BenefitType != *filter.BenefitType {
+			continue
+		}
+		if filter.RequiredTierID != nil && (b.RequiredTierID == nil || *b.RequiredTierID != *filter.RequiredTierID) {
+			continue
+		}
+		list = append(list, b)
 	}
 	return &repositories.BrandBenefitListResult{Benefits: list, TotalCount: int64(len(list))}, nil
+}
+
+func (m *mockBenefitRepo) CountActiveByTierIDs(ctx context.Context, brandID uuid.UUID, tierIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	counts := make(map[uuid.UUID]int64, len(tierIDs))
+	for _, b := range m.benefits {
+		if b.BrandID != brandID || b.Status != benefitstatus.Active || b.RequiredTierID == nil {
+			continue
+		}
+		for _, tierID := range tierIDs {
+			if *b.RequiredTierID == tierID {
+				counts[tierID]++
+			}
+		}
+	}
+	return counts, nil
 }
 func (m *mockBenefitRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandBenefit) error {
 	return nil

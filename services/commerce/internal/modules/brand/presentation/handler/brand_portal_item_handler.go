@@ -212,6 +212,7 @@ func (h *BrandPortalHandler) UpdateBrandItem(c *gin.Context) error {
 // @Produce json
 // @Param brandId path string true "ID hoặc slug brand"
 // @Param itemId path string true "ID item"
+// @Param body body dto.ConvertSampleToProductReq true "Mã sản phẩm cho sản phẩm mới"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product [post]
 func (h *BrandPortalHandler) ConvertSampleToProduct(c *gin.Context) error {
@@ -227,7 +228,11 @@ func (h *BrandPortalHandler) ConvertSampleToProduct(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.itemUC.ConvertSampleToProduct(c.Request.Context(), userID, brandID, itemID)
+	var input dto.ConvertSampleToProductReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.itemUC.ConvertSampleToProduct(c.Request.Context(), userID, brandID, itemID, input)
 	if err != nil {
 		return err
 	}

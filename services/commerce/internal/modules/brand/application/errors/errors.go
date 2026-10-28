@@ -154,6 +154,9 @@ func ErrClaimRateLimitUnavailable() *apperror.Error {
 	return apperror.NewServiceUnavailable("Chưa thể kiểm tra giới hạn thử claim. Vui lòng thử lại sau.")
 }
 
+func ErrProductCodeRequired() *apperror.Error {
+	return apperror.NewBadRequest("Vui lòng nhập mã sản phẩm.")
+}
 func ErrProductCodeExists() *apperror.Error {
 	return apperror.NewConflict("Mã sản phẩm đã tồn tại trong thương hiệu này.")
 }

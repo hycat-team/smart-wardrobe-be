@@ -66,7 +66,24 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staf
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapLoyaltyTiers(tiers), nil
+
+	res := mapper.MapLoyaltyTiers(tiers)
+	if len(res) == 0 {
+		return res, nil
+	}
+
+	tierIDs := make([]uuid.UUID, len(res))
+	for i, tier := range res {
+		tierIDs[i] = tier.ID
+	}
+	counts, err := uc.benefitRepo.CountActiveByTierIDs(ctx, brandID, tierIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, tier := range res {
+		tier.BenefitsCount = int(counts[tier.ID])
+	}
+	return res, nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyTierDetailForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, tierID uuid.UUID) (*dto.LoyaltyTierDetailRes, error) {

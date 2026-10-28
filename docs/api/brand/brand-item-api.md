@@ -223,3 +223,14 @@ Người dùng duyệt xem các mẫu thiết kế mới của nhãn hàng, có 
 - `PUT /api/v1/brand-portal/brands/{brandId}/items/{itemId}` chỉ cập nhật `name`, `productCode`, `description`, `price`, `status`.
 - Ảnh sản phẩm chưa hỗ trợ cập nhật qua endpoint này (gửi `imageUrl`/`imagePublicId` sẽ bị bỏ qua).
 - Item `failed` chỉ bị khóa thay đổi `status`; các trường nội dung khác vẫn sửa được.
+
+### 2b. Bắt buộc product code khi chuyển sample → product
+
+`POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product` yêu cầu body:
+
+```json
+{ "productCode": "SP-2026-001" }
+```
+
+- `productCode` bắt buộc, tối đa 100 ký tự, không được trùng product code khác trong brand (409).
+- Mã được trim trước khi lưu; response trả `BrandItemRes` đã có `productCode`.

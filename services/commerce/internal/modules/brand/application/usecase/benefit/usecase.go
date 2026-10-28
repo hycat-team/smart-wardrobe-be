@@ -20,6 +20,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 
@@ -170,15 +171,32 @@ func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, st
 		limit = 20
 	}
 
-	filter := repositories.BrandBenefitFilter{
-		BrandID:     brandID,
-		UnlockType:  unlockType,
-		BenefitType: benefitType,
-		Page:        page,
-		Limit:       limit,
+	var requiredTierID *uuid.UUID
+	if query.RequiredTierID != nil && strings.TrimSpace(*query.RequiredTierID) != "" {
+		parsed, err := uuid.Parse(*query.RequiredTierID)
+		if err != nil {
+			return nil, apperror.NewBadRequest("requiredTierId không hợp lệ.")
+		}
+		requiredTierID = &parsed
 	}
 
-	result, err := uc.benefitRepo.GetActiveByBrandIDPaginated(ctx, filter)
+	var status *benefitstatus.BenefitStatus
+	if query.Status != nil && strings.TrimSpace(*query.Status) != "" {
+		value := benefitstatus.BenefitStatus(strings.ToLower(strings.TrimSpace(*query.Status)))
+		status = &value
+	}
+
+	filter := repositories.BrandBenefitFilter{
+		BrandID:        brandID,
+		UnlockType:     unlockType,
+		BenefitType:    benefitType,
+		Status:         status,
+		RequiredTierID: requiredTierID,
+		Page:           page,
+		Limit:          limit,
+	}
+
+	result, err := uc.benefitRepo.GetByBrandIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -219,15 +237,17 @@ func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, br
 		limit = 20
 	}
 
+	activeStatus := benefitstatus.Active
 	filter := repositories.BrandBenefitFilter{
 		BrandID:     brandID,
 		UnlockType:  unlockType,
 		BenefitType: benefitType,
+		Status:      &activeStatus,
 		Page:        page,
 		Limit:       limit,
 	}
 
-	result, err := uc.benefitRepo.GetActiveByBrandIDPaginated(ctx, filter)
+	result, err := uc.benefitRepo.GetByBrandIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -342,10 +362,12 @@ func (uc *BrandBenefitUseCase) ListMyBenefits(ctx context.Context, userID uuid.U
 		limit = 20
 	}
 
-	result, err := uc.benefitRepo.GetActiveByBrandIDPaginated(ctx, repositories.BrandBenefitFilter{
+	activeStatus := benefitstatus.Active
+	result, err := uc.benefitRepo.GetByBrandIDPaginated(ctx, repositories.BrandBenefitFilter{
 		BrandID:     brandID,
 		UnlockType:  unlockType,
 		BenefitType: benefitType,
+		Status:      &activeStatus,
 		Page:        page,
 		Limit:       limit,
 	})

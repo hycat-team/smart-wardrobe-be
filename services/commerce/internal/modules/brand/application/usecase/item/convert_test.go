@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/branditem/branditemtype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
@@ -48,7 +49,7 @@ func TestConvertSampleToProduct(t *testing.T) {
 	}
 	uc, _ := newConvertTestUseCase(item, &fashion_dto.CategoryBriefRes{ID: uuid.New(), Name: "Dress"})
 
-	res, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID)
+	res, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID, dto.ConvertSampleToProductReq{ProductCode: "NEW-CODE"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,7 +69,7 @@ func TestConvertSampleToProduct_RejectsWrongBrand(t *testing.T) {
 	}
 	uc, _ := newConvertTestUseCase(item, &fashion_dto.CategoryBriefRes{ID: uuid.New(), Name: "Dress"})
 
-	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), uuid.New(), item.ID)
+	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), uuid.New(), item.ID, dto.ConvertSampleToProductReq{ProductCode: "NEW-CODE"})
 	assertStatus(t, err, http.StatusNotFound)
 }
 
@@ -84,7 +85,7 @@ func TestConvertSampleToProduct_RejectsAlreadyProduct(t *testing.T) {
 	}
 	uc, _ := newConvertTestUseCase(item, &fashion_dto.CategoryBriefRes{ID: uuid.New(), Name: "Dress"})
 
-	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID)
+	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID, dto.ConvertSampleToProductReq{ProductCode: "NEW-CODE"})
 	assertStatus(t, err, http.StatusConflict)
 }
 
@@ -100,7 +101,7 @@ func TestConvertSampleToProduct_RequiresAnalysisCategory(t *testing.T) {
 	}
 	uc, _ := newConvertTestUseCase(item, nil)
 
-	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID)
+	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID, dto.ConvertSampleToProductReq{ProductCode: "NEW-CODE"})
 	assertStatus(t, err, http.StatusBadRequest)
 }
 
@@ -129,4 +130,46 @@ func assertStatus(t *testing.T, err error, status int) {
 	if appErr.Status != status {
 		t.Fatalf("expected status %d, got %d", status, appErr.Status)
 	}
+}
+
+func TestConvertSampleToProduct_RequiresProductCode(t *testing.T) {
+	brandID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.BrandItem{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BrandID:         brandID,
+		FashionItemID:   &fashionItemID,
+		ItemType:        branditemtype.Sample,
+		Status:          branditemstatus.Active,
+	}
+	uc, _ := newConvertTestUseCase(item, &fashion_dto.CategoryBriefRes{ID: uuid.New(), Name: "Dress"})
+
+	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID, dto.ConvertSampleToProductReq{ProductCode: "   "})
+	assertStatus(t, err, http.StatusBadRequest)
+}
+
+func TestConvertSampleToProduct_RejectsDuplicateProductCode(t *testing.T) {
+	brandID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.BrandItem{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BrandID:         brandID,
+		FashionItemID:   &fashionItemID,
+		ItemType:        branditemtype.Sample,
+		Status:          branditemstatus.Active,
+	}
+	uc, repo := newConvertTestUseCase(item, &fashion_dto.CategoryBriefRes{ID: uuid.New(), Name: "Dress"})
+
+	existingCode := "EXISTING-CODE"
+	other := &entities.BrandItem{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BrandID:         brandID,
+		ProductCode:     &existingCode,
+		ItemType:        branditemtype.Product,
+		Status:          branditemstatus.Active,
+	}
+	repo.items[other.ID] = other
+
+	_, err := uc.ConvertSampleToProduct(context.Background(), uuid.New(), brandID, item.ID, dto.ConvertSampleToProductReq{ProductCode: existingCode})
+	assertStatus(t, err, http.StatusConflict)
 }

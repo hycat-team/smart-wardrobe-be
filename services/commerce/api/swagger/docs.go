@@ -2131,6 +2131,18 @@ const docTemplate = `{
                         "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
                         "name": "benefitType",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hạng yêu cầu",
+                        "name": "requiredTierId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trạng thái (active, inactive, archived)",
+                        "name": "status",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3204,6 +3216,15 @@ const docTemplate = `{
                         "name": "itemId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Mã sản phẩm cho sản phẩm mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -8180,6 +8201,18 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq": {
+            "type": "object",
+            "required": [
+                "productCode"
+            ],
+            "properties": {
+                "productCode": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
             "type": "object",
             "required": [
@@ -8645,6 +8678,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitRes"
                     }
                 },
+                "benefitsCount": {
+                    "type": "integer"
+                },
                 "brandId": {
                     "type": "string"
                 },
@@ -8674,6 +8710,9 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes": {
             "type": "object",
             "properties": {
+                "benefitsCount": {
+                    "type": "integer"
+                },
                 "brandId": {
                     "type": "string"
                 },

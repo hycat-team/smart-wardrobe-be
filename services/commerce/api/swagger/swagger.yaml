@@ -619,6 +619,14 @@ definitions:
       status:
         type: string
     type: object
+  smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq:
+    properties:
+      productCode:
+        maxLength: 100
+        type: string
+    required:
+    - productCode
+    type: object
   smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandBenefitReq:
     properties:
       benefitType:
@@ -934,6 +942,8 @@ definitions:
         items:
           $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitRes'
         type: array
+      benefitsCount:
+        type: integer
       brandId:
         type: string
       createdAt:
@@ -953,6 +963,8 @@ definitions:
     type: object
   smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes:
     properties:
+      benefitsCount:
+        type: integer
       brandId:
         type: string
       createdAt:
@@ -4326,6 +4338,14 @@ paths:
         in: query
         name: benefitType
         type: string
+      - description: ID hạng yêu cầu
+        in: query
+        name: requiredTierId
+        type: string
+      - description: Trạng thái (active, inactive, archived)
+        in: query
+        name: status
+        type: string
       produces:
       - application/json
       responses:
@@ -4930,6 +4950,12 @@ paths:
         name: itemId
         required: true
         type: string
+      - description: Mã sản phẩm cho sản phẩm mới
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq'
       produces:
       - application/json
       responses:

@@ -3046,6 +3046,18 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq": {
+      "properties": {
+        "productCode": {
+          "maxLength": 100,
+          "type": "string"
+        }
+      },
+      "required": [
+        "productCode"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
       "properties": {
         "benefitType": {
@@ -3510,6 +3522,9 @@
           },
           "type": "array"
         },
+        "benefitsCount": {
+          "type": "integer"
+        },
         "brandId": {
           "type": "string"
         },
@@ -3539,6 +3554,9 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes": {
       "properties": {
+        "benefitsCount": {
+          "type": "integer"
+        },
         "brandId": {
           "type": "string"
         },
@@ -7253,6 +7271,18 @@
             "in": "query",
             "name": "benefitType",
             "type": "string"
+          },
+          {
+            "description": "ID hạng yêu cầu",
+            "in": "query",
+            "name": "requiredTierId",
+            "type": "string"
+          },
+          {
+            "description": "Trạng thái (active, inactive, archived)",
+            "in": "query",
+            "name": "status",
+            "type": "string"
           }
         ],
         "produces": [
@@ -8326,6 +8356,15 @@
             "name": "itemId",
             "required": true,
             "type": "string"
+          },
+          {
+            "description": "Mã sản phẩm cho sản phẩm mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq"
+            }
           }
         ],
         "produces": [

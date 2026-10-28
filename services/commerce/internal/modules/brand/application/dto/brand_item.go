@@ -32,6 +32,10 @@ type UpdateBrandItemReq struct {
 	Status      string   `json:"status" binding:"omitempty,oneof=draft active archived" label:"trạng thái sản phẩm"`
 }
 
+type ConvertSampleToProductReq struct {
+	ProductCode string `json:"productCode" binding:"required,max=100" label:"mã sản phẩm"`
+}
+
 type UpdateBrandItemStatusReq struct {
 	Status branditemstatus.BrandItemStatus `json:"status" binding:"required" label:"trạng thái sản phẩm"`
 }

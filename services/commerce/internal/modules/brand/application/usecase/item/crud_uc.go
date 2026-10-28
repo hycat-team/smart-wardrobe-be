@@ -130,7 +130,7 @@ func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUser
 	return uc.mapSliceToRes(ctx, items), nil
 }
 
-func (uc *BrandItemUseCase) ConvertSampleToProduct(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
+func (uc *BrandItemUseCase) ConvertSampleToProduct(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.ConvertSampleToProductReq) (*dto.BrandItemRes, error) {
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,20 @@ func (uc *BrandItemUseCase) ConvertSampleToProduct(ctx context.Context, staffUse
 		return nil, branderrors.ErrBrandItemNotReadyForProduct()
 	}
 
+	productCode := strings.TrimSpace(input.ProductCode)
+	if productCode == "" {
+		return nil, branderrors.ErrProductCodeRequired()
+	}
+	existing, err := uc.brandItemRepo.GetByProductCode(ctx, brandID, productCode)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil && existing.ID != itemID {
+		return nil, branderrors.ErrProductCodeExists()
+	}
+
 	item.ItemType = branditemtype.Product
+	item.ProductCode = &productCode
 	item.UpdatedAt = time.Now().UTC()
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		return nil, err

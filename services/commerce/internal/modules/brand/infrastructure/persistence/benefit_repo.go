@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"strings"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
@@ -53,14 +54,21 @@ func (r *BrandBenefitRepository) GetActiveByBrandIDAndTierID(ctx context.Context
 	return benefits, nil
 }
 
-func (r *BrandBenefitRepository) GetActiveByBrandIDPaginated(ctx context.Context, filter repositories.BrandBenefitFilter) (*repositories.BrandBenefitListResult, error) {
-	db := r.GetQueryWithPreload(ctx).Where("brand_id = ? AND status = ?", filter.BrandID, string(benefitstatus.Active))
+func (r *BrandBenefitRepository) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandBenefitFilter) (*repositories.BrandBenefitListResult, error) {
+	db := r.GetQueryWithPreload(ctx).Where("brand_id = ?", filter.BrandID)
+
+	if filter.Status != nil && *filter.Status != "" {
+		db = db.Where("LOWER(status) = ?", strings.ToLower(string(*filter.Status)))
+	}
 
 	if filter.UnlockType != nil {
 		db = db.Where("unlock_type = ?", *filter.UnlockType)
 	}
 	if filter.BenefitType != nil {
 		db = db.Where("benefit_type = ?", *filter.BenefitType)
+	}
+	if filter.RequiredTierID != nil {
+		db = db.Where("required_tier_id = ?", *filter.RequiredTierID)
 	}
 
 	var totalCount int64
@@ -82,4 +90,32 @@ func (r *BrandBenefitRepository) GetActiveByBrandIDPaginated(ctx context.Context
 		Benefits:   benefits,
 		TotalCount: totalCount,
 	}, nil
+}
+
+func (r *BrandBenefitRepository) CountActiveByTierIDs(ctx context.Context, brandID uuid.UUID, tierIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	counts := make(map[uuid.UUID]int64, len(tierIDs))
+	if len(tierIDs) == 0 {
+		return counts, nil
+	}
+
+	type tierCountRow struct {
+		RequiredTierID uuid.UUID `gorm:"column:required_tier_id"`
+		Count          int64     `gorm:"column:count"`
+	}
+
+	var rows []tierCountRow
+	err := r.GetDB(ctx).
+		Model(&entities.BrandBenefit{}).
+		Select("required_tier_id, COUNT(*) AS count").
+		Where("brand_id = ? AND LOWER(status) = ? AND required_tier_id IN ?", brandID, strings.ToLower(string(benefitstatus.Active)), tierIDs).
+		Group("required_tier_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		counts[row.RequiredTierID] = row.Count
+	}
+	return counts, nil
 }
