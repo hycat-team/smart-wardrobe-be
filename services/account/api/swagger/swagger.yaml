@@ -1162,12 +1162,24 @@ definitions:
           DTO — deliberately keeps the numeric type (R4), which is why the type
           itself carries no MarshalJSON.
         type: string
+      targetPlan:
+        $ref: '#/definitions/smart-wardrobe-be_services_account_dto_subscription.SubscriptionPlanBriefRes'
       targetPlanId:
         type: string
       transactionType:
         type: string
       updatedAt:
         type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_services_account_dto_subscription.TransactionUserBriefRes'
+        description: |-
+          User and TargetPlan are POPULATED BY THE DETAIL ENDPOINT ONLY; the list
+          answers them as null (029 FR-007 and the list's "no cross-module call"
+          budget). They deliberately carry NO `omitempty`: the two endpoints must
+          expose the SAME key set, and a null key that disappears would make the
+          detail a different shape from a list item — which is exactly what
+          `TestAdminBillingDetailReturnsTheSameCamelCaseShapeAsTheList` pins.
       userId:
         type: string
     type: object
@@ -1332,6 +1344,21 @@ definitions:
         type: string
       tierRank:
         type: integer
+    type: object
+  smart-wardrobe-be_services_account_dto_subscription.TransactionUserBriefRes:
+    properties:
+      avatarUrl:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+      username:
+        type: string
     type: object
   smart-wardrobe-be_services_account_dto_subscription.UpdateSubscriptionPlanReq:
     properties:
@@ -2307,7 +2334,9 @@ paths:
   /api/v1/admin/subscriptions/transactions/{id}:
     get:
       description: Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường
-        camelCase như item trong danh sách, `status` là chuỗi.
+        camelCase như item trong danh sách, `status` là chuỗi. Riêng endpoint này
+        còn điền `user` (người mua) và `targetPlan` (gói mục tiêu, null với giao dịch
+        nạp ví); danh sách trả hai trường này là null để không gọi chéo module.
       parameters:
       - description: ID giao dịch
         in: path

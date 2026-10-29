@@ -148,6 +148,26 @@ type SetPlanActiveReq struct {
 
 type AdminDepositTransactionListRes = shared_dto.PaginationResult[*DepositTransactionRes]
 
+// TransactionUserBriefRes is the display-only projection of the account behind a
+// deposit transaction.
+//
+// WHY A LOCAL TYPE AND NOT `identity_dto.UserBriefRes`. The subscription module
+// must not consume another module's presentation shape: the identity contract
+// hands over `UserBriefContractDTO`, which carries facts this screen has no
+// business publishing (`roleSlug`, `isDeleted`, `createdByAdmin`, `gender`,
+// `status`, `createdAt`). Declaring the six fields that the reconciliation screen
+// actually renders keeps the wire format decided HERE, by the module that owns
+// the response, and it is the same choice `CampaignClaimRes.Username` makes: the
+// consumer names the field it needs instead of importing a mapper chain.
+type TransactionUserBriefRes struct {
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	Email     *string   `json:"email"`
+	FirstName *string   `json:"firstName"`
+	LastName  *string   `json:"lastName"`
+	AvatarUrl *string   `json:"avatarUrl"`
+}
+
 type DepositTransactionRes struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"userId"`
@@ -172,6 +192,14 @@ type DepositTransactionRes struct {
 	NextReconciliationAt *time.Time `json:"nextReconciliationAt,omitempty"`
 	CreatedAt            time.Time  `json:"createdAt"`
 	UpdatedAt            time.Time  `json:"updatedAt"`
+	// User and TargetPlan are POPULATED BY THE DETAIL ENDPOINT ONLY; the list
+	// answers them as null (029 FR-007 and the list's "no cross-module call"
+	// budget). They deliberately carry NO `omitempty`: the two endpoints must
+	// expose the SAME key set, and a null key that disappears would make the
+	// detail a different shape from a list item — which is exactly what
+	// `TestAdminBillingDetailReturnsTheSameCamelCaseShapeAsTheList` pins.
+	User       *TransactionUserBriefRes  `json:"user"`
+	TargetPlan *SubscriptionPlanBriefRes `json:"targetPlan"`
 }
 
 // PurchaseWithWalletReq dùng cho endpoint mua gói bằng ví nội bộ

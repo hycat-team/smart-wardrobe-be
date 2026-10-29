@@ -66,6 +66,22 @@ Response `data` (`PaginationResult[*ActivityEventRes]`):
 `pending`, `success`, `failed_legacy`, `creating`, `reconciliation_required`, `reconciling`,
 `creation_failed`, `cancelled`, `expired`, `investigation_required`, `refunded`.
 
+### 2.4 BỔ SUNG (additive) — nhãn hiển thị ở chi tiết giao dịch
+
+| | Trước | Sau |
+|---|---|---|
+| `DepositTransactionRes` | 16 trường | + `user`, + `targetPlan` |
+| `GET /transactions` (list) | — | hai trường mới là `null`, **không** phát sinh truy vấn sang module khác |
+| `GET /transactions/{id}` | — | hai trường mới được điền từ `IUserBriefContract.GetByID` và `ISubscriptionPlanRepository.GetByIDs` |
+
+- `user` là projection 6 trường do module subscription tự quyết định (`id`, `username`, `email`,
+  `firstName`, `lastName`, `avatarUrl`); các trường nội bộ identity không được publish.
+- `targetPlan` dùng lại `SubscriptionPlanBriefRes` của module subscription.
+- Không `omitempty` trên hai trường mới → **bộ key của list và detail vẫn bằng nhau**, FR-007 giữ
+  nguyên; chỉ giá trị khác nhau.
+- Lookup nhãn là best-effort: lỗi được log, nhãn trả `null`, phản hồi vẫn 200. `null` cũng là kết
+  quả bình thường khi tài khoản đã xoá, gói đã bị xoá, hoặc giao dịch `wallet_topup`.
+
 ## 3. THAY ĐỔI — dashboard admin (commerce service)
 
 ### 3.1 Nhóm endpoint nhận kỳ (mới thêm tham số)

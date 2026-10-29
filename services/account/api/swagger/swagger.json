@@ -1200,7 +1200,7 @@
         },
         "/api/v1/admin/subscriptions/transactions/{id}": {
             "get": {
-                "description": "Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường camelCase như item trong danh sách, `status` là chuỗi.",
+                "description": "Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường camelCase như item trong danh sách, `status` là chuỗi. Riêng endpoint này còn điền `user` (người mua) và `targetPlan` (gói mục tiêu, null với giao dịch nạp ví); danh sách trả hai trường này là null để không gọi chéo module.",
                 "produces": [
                     "application/json"
                 ],
@@ -4282,6 +4282,9 @@
                     "description": "Status is the admin API's string form (11 values, FR-008, data-model §2):\n`pending`, `success`, `failed_legacy`, ... A value outside that set is\nreported as `unknown` (see mapper.DepositStatusToString).\n\nIt is a string ONLY here. `PaymentLinkDTO.PaymentStatus` — the user-facing\nDTO — deliberately keeps the numeric type (R4), which is why the type\nitself carries no MarshalJSON.",
                     "type": "string"
                 },
+                "targetPlan": {
+                    "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.SubscriptionPlanBriefRes"
+                },
                 "targetPlanId": {
                     "type": "string"
                 },
@@ -4290,6 +4293,14 @@
                 },
                 "updatedAt": {
                     "type": "string"
+                },
+                "user": {
+                    "description": "User and TargetPlan are POPULATED BY THE DETAIL ENDPOINT ONLY; the list\nanswers them as null (029 FR-007 and the list's \"no cross-module call\"\nbudget). They deliberately carry NO `omitempty`: the two endpoints must\nexpose the SAME key set, and a null key that disappears would make the\ndetail a different shape from a list item — which is exactly what\n`TestAdminBillingDetailReturnsTheSameCamelCaseShapeAsTheList` pins.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.TransactionUserBriefRes"
+                        }
+                    ]
                 },
                 "userId": {
                     "type": "string"
@@ -4542,6 +4553,29 @@
                 },
                 "tierRank": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.TransactionUserBriefRes": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },

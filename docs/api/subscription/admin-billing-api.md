@@ -11,6 +11,13 @@ Hợp đồng chi tiết của các thay đổi 029: `specs/029-admin-observabil
 > *   Bộ lọc `status` nhận thêm `failed_legacy` (khứ hồi đủ 11 giá trị vào/ra).
 > *   Phân trang, các filter còn lại và 4 endpoint resolve/retry: **không đổi**.
 
+> **Bổ sung sau 029 — nhãn hiển thị ở chi tiết giao dịch:** `DepositTransactionRes` có thêm `user` và
+> `targetPlan`. Cả hai là **`null` ở danh sách** (danh sách không gọi sang module khác) và chỉ được
+> điền ở `GET /transactions/{id}`. Hai key vẫn xuất hiện ở **cả hai** phản hồi, nên FR-007 (detail
+> cùng bộ key như item trong danh sách) không đổi. Lookup nhãn là best-effort: lỗi truy vấn hoặc
+> không tìm thấy (tài khoản đã xoá, gói đã bị xoá khỏi danh mục, giao dịch nạp ví) đều trả `null`
+> chứ không làm hỏng phản hồi chi tiết.
+
 ---
 
 ## Trạng thái giao dịch nạp tiền trong API admin (11 giá trị)
@@ -73,7 +80,9 @@ Bất biến: mọi giá trị xuất ra dùng lại được làm đầu vào f
         "cancelledAt": "2026-10-15T10:30:00Z",
         "nextReconciliationAt": "2026-10-15T11:00:00Z",
         "createdAt": "2026-10-15T08:00:00Z",
-        "updatedAt": "2026-10-15T09:00:00Z"
+        "updatedAt": "2026-10-15T09:00:00Z",
+        "user": null,
+        "targetPlan": null
       }
     ],
     "metadata": { "page": 1, "limit": 20, "totalItems": 1, "totalPages": 1 }
@@ -86,13 +95,58 @@ Bất biến: mọi giá trị xuất ra dùng lại được làm đầu vào f
 ### 2. Lấy chi tiết giao dịch thanh toán
 *   **Endpoint:** `GET /api/v1/admin/subscriptions/transactions/{id}`
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
-*   **Đối tượng ảnh hưởng:** Đọc bản ghi giao dịch nạp tiền `deposit_transactions`.
-*   **Mô tả:** Trả về chi tiết một giao dịch thanh toán theo ID. **Thay đổi 029:** thay vì trả entity thô, phản hồi là `DepositTransactionRes` camelCase — đúng bộ trường như một item trong danh sách (kể cả `status` dạng chuỗi).
+*   **Đối tượng ảnh hưởng:** Đọc bản ghi giao dịch nạp tiền `deposit_transactions`; đọc nhãn hiển thị qua contract identity (`user`) và danh mục gói của module subscription (`targetPlan`).
+*   **Mô tả:** Trả về chi tiết một giao dịch thanh toán theo ID. **Thay đổi 029:** thay vì trả entity thô, phản hồi là `DepositTransactionRes` camelCase — đúng bộ trường như một item trong danh sách (kể cả `status` dạng chuỗi). **Bổ sung sau 029:** điền thêm `user` và `targetPlan`; danh sách trả hai trường này là `null`.
 *   **Path Parameters:**
     *   `id` (string, required): ID giao dịch (UUID).
+*   **Quy tắc nhãn hiển thị:**
+    *   `user`: `id`, `username`, `email`, `firstName`, `lastName`, `avatarUrl`. Bỏ các trường nội bộ của identity (`roleSlug`, `isDeleted`, `createdByAdmin`, `gender`, `status`, `createdAt`).
+    *   `targetPlan`: `id`, `slug`, `name`, `price`, `durationDays`, `planKind`, `tierRank` và các hạn mức của gói (`SubscriptionPlanBriefRes`).
+    *   `null` khi: tài khoản đã bị xoá (contract identity không trả tài khoản soft-deleted), gói không còn trong danh mục, giao dịch `wallet_topup` (không có `targetPlanId`), hoặc lookup lỗi — trường hợp lỗi được ghi log, phản hồi vẫn `200`.
+    *   `targetPlanId` **luôn** còn trên phản hồi, kể cả khi `targetPlan` là `null`.
 *   **Response:**
-    *   `200 OK`: Trả về thông tin chi tiết giao dịch, cùng shape với item trong danh sách.
+    *   `200 OK`: Trả về thông tin chi tiết giao dịch, cùng shape với item trong danh sách, riêng `user`/`targetPlan` được điền.
     *   `404 Not Found`: Không tìm thấy giao dịch theo `id`.
+
+```json
+{
+  "message": "Lấy chi tiết giao dịch thành công",
+  "data": {
+    "id": "9f0b6a3e-...",
+    "userId": "1c2d3e4f-...",
+    "orderCode": 1234567890,
+    "amount": 250000,
+    "currency": "VND",
+    "status": "reconciliation_required",
+    "transactionType": "direct_purchase",
+    "targetPlanId": "7a1b...",
+    "reference": "REF-20261015-0001",
+    "createdAt": "2026-10-15T08:00:00Z",
+    "updatedAt": "2026-10-15T09:00:00Z",
+    "user": {
+      "id": "1c2d3e4f-...",
+      "username": "khachhang",
+      "email": "khachhang@example.com",
+      "firstName": "Nguyễn",
+      "lastName": "An",
+      "avatarUrl": null
+    },
+    "targetPlan": {
+      "id": "7a1b...",
+      "slug": "premium-monthly",
+      "name": "Premium tháng",
+      "price": 250000,
+      "maxWardrobeItems": 500,
+      "maxOutfits": 100,
+      "aiOutfitDailyQuota": 30,
+      "aiChatDailyQuota": 10,
+      "durationDays": 30,
+      "planKind": 1,
+      "tierRank": 2
+    }
+  }
+}
+```
 
 ---
 

@@ -139,7 +139,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWebhookInboxRepository := persistence2.NewWebhookInboxRepository(gormDB)
 	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, iPaymentEventRepository, iWebhookInboxRepository, iUserSubscriptionEventRepository, iNotificationContract, userBriefContract, l, iSubscriptionOverviewCache, planChangePublisher)
 	billingHandler := handler2.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
-	iAdminBillingUseCase := admin.NewAdminBillingUseCase(iDepositTransactionRepository)
+	iAdminBillingUseCase := admin.NewAdminBillingUseCase(iDepositTransactionRepository, userBriefContract, iSubscriptionPlanRepository, l)
 	iPaymentResolutionUseCase := resolution.NewPaymentResolutionUseCase(iDepositTransactionRepository, iPaymentWebhookUseCase, iUnitOfWork)
 	adminBillingHandler := handler2.NewAdminBillingHandler(l, iAdminBillingUseCase, iPaymentResolutionUseCase, iAuditLogContract)
 	adminSubscriptionHandler := handler2.NewAdminSubscriptionHandler(l, iSubscriptionPlanUseCase, iSubscriptionUseCase, iAuditLogContract)
