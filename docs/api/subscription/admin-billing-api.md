@@ -152,6 +152,27 @@ Bất biến: mọi giá trị xuất ra dùng lại được làm đầu vào f
 
 ## Đối soát và xử lý giao dịch
 
+Ma trận trạng thái được phép bắt đầu mỗi thao tác (BE là nguồn chân lý — gọi vượt ma trận trả **400** `"Không thể áp dụng quyết định xử lý thủ công vì trạng thái hoặc bằng chứng thanh toán không hợp lệ."`):
+
+| `status` hiện tại | resolve-paid | resolve-cancelled | retry-investigation | resolve-creation-failed |
+|---|:--:|:--:|:--:|:--:|
+| `pending` | ✓ | ✓ | ✓ | ✗ |
+| `creating` | ✓ | ✓ | ✓ | ✓ |
+| `reconciling` | ✓ | ✓ | ✓ | ✗ |
+| `reconciliation_required` | ✓ | ✓ | ✓ | ✓ |
+| `investigation_required` | ✓ | ✓ | ✓ | ✓ |
+| `cancelled` | ✓ | ✗ | ✗ | ✗ |
+| `expired` | ✓ | ✗ | ✗ | ✗ |
+| `failed_legacy` | ✓ | ✗ | ✗ | ✗ |
+| `creation_failed` | ✗ | ✗ | ✗ | ✗ |
+| `refunded` | ✗ | ✗ | ✗ | ✗ |
+| `success` | ✗ | ✗ | ✗ | ✗ |
+| `unknown` | ✗ | ✗ | ✗ | ✗ |
+
+- `cancelled`/`expired`/`failed_legacy` vẫn cho `resolve-paid`: khách huỷ link nhưng vẫn chuyển khoản là trường hợp đối soát tay tồn tại để xử lý.
+- `refunded` bị khoá vì tiền đã được hoàn vào ví; xác nhận thanh toán lần nữa sẽ cấp quyền thêm một lần.
+- Trạng thái còn lại được kiểm tra lại **dưới row lock** khi thực thi; lệch so với lúc đọc → 400.
+
 ### 3. Xác nhận giao dịch đã thanh toán
 *   **Endpoint:** `POST /api/v1/admin/subscriptions/transactions/{orderCode}/resolve-paid`
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
