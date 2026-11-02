@@ -2,11 +2,11 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>[Closy] Gói dịch vụ sắp hết hạn</title>
+    <title>{{.ProductName}} Gói dịch vụ sắp hết hạn</title>
 </head>
 <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
     <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        <h2 style="color: #ffc107; text-align: center;">[Closy] Gói Dịch Vụ Sắp Hết Hạn</h2>
+        <h2 style="color: #ffc107; text-align: center;">{{.ProductName}} Gói Dịch Vụ Sắp Hết Hạn</h2>
         <p>Chào bạn,</p>
         <p>Gói dịch vụ của bạn sẽ hết hạn vào ngày <strong>{{.ExpiresAt}}</strong>.</p>
         <div style="margin: 20px 0; padding: 15px; background-color: #fffbe6; border-radius: 5px;">
@@ -17,7 +17,7 @@
         <p style="color: #666;">Bạn đang tắt tự động gia hạn. Khi gói hết hạn, tài khoản của bạn sẽ trở về <strong>{{.RestoredPlanName}}</strong> và toàn bộ dữ liệu vẫn được giữ nguyên. Nếu muốn tiếp tục sử dụng gói này, vui lòng bật tự động gia hạn trước ngày hết hạn.</p>
         <div style="margin-top: 24px; color: #555555; line-height: 1.5;">
             <p style="margin: 0;">Xin cảm ơn,</p>
-            <p style="margin: 0; font-weight: bold; color: #222222;">HYCAT</p>
+            <p style="margin: 0; font-weight: bold; color: #222222;">{{.BrandName}}</p>
         </div>
         <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;" />
         <p style="font-size: 12px; color: #999999; text-align: center;">Đây là email tự động, vui lòng không phản hồi email này.</p>

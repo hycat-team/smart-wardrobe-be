@@ -56,6 +56,14 @@ func NewOutboxEmailUseCase(
 	}
 }
 
+// ProductName and BrandName are what the customer sees on every email. They live
+// here rather than inside thirteen templates so a rename is one edit, and so two
+// templates cannot end up disagreeing about what the product is called.
+const (
+	ProductName = "Closy"
+	BrandName   = "HYCAT"
+)
+
 func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel, tmplEnum ntemplate.Template, params map[string]any, to string) error {
 	if channel != nchannel.Email {
 		return fmt.Errorf("unsupported channel: %s", channel)
@@ -71,8 +79,18 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel
 		return err
 	}
 
+	// Copy rather than mutate: the caller's map belongs to the use case that
+	// built it, and injecting identity into it would make a retry render with
+	// keys it never set.
+	renderParams := make(map[string]any, len(params)+2)
+	for key, value := range params {
+		renderParams[key] = value
+	}
+	renderParams["ProductName"] = ProductName
+	renderParams["BrandName"] = BrandName
+
 	var bodyBuf bytes.Buffer
-	if err := tmpl.Execute(&bodyBuf, params); err != nil {
+	if err := tmpl.Execute(&bodyBuf, renderParams); err != nil {
 		return fmt.Errorf("render template %s: %w", tmplEnum, err)
 	}
 
@@ -108,8 +126,8 @@ func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel nchannel
 }
 
 // subjectPrefix is what every customer-facing subject carries. The product name
-// lives here, not inside each template, so a rename is one edit.
-const subjectPrefix = "[Closy] "
+// lives in one constant, not inside each template, so a rename is one edit.
+var subjectPrefix = "[" + ProductName + "] "
 
 // subjectByTemplate is the whole subject vocabulary, WITHOUT the prefix.
 //
