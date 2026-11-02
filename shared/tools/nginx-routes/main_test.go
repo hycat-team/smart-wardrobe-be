@@ -163,15 +163,13 @@ func TestLongTimeoutPrefixesByProfile(t *testing.T) {
 		}
 		return false
 	}
-	for _, profile := range []string{timeoutProfileLocal, timeoutProfileAWS} {
-		if !has(profile, "/api/v1/ai/outfit-recommendations") {
-			t.Errorf("profile %s must widen the AI outfit route", profile)
-		}
+	if !has(timeoutProfileLocal, "/api/v1/ai/outfit-recommendations") {
+		t.Errorf("profile %s must widen the AI outfit route", timeoutProfileLocal)
 	}
 	if has(timeoutProfileVPS, "/api/v1/ai/outfit-recommendations") {
 		t.Error("vps profile must not widen the AI outfit route")
 	}
-	for _, profile := range []string{timeoutProfileVPS, timeoutProfileLocal, timeoutProfileAWS} {
+	for _, profile := range []string{timeoutProfileVPS, timeoutProfileLocal} {
 		if !has(profile, "/api/v1/admin/subscription-grants") {
 			t.Errorf("profile %s lost the admin batch grant override", profile)
 		}
@@ -200,7 +198,6 @@ func TestMarkerFilesUseExpectedTimeoutProfiles(t *testing.T) {
 	want := map[string]string{
 		"deployments/nginx/templates/services/vps-3service.conf.template":          timeoutProfileVPS,
 		"deployments/nginx/templates/services-redirect/vps-3service.conf.template": timeoutProfileVPS,
-		"deployments/nginx/templates/aws/api-v2.conf.template":                     timeoutProfileAWS,
 		"deployments/nginx/local.conf":                                             timeoutProfileLocal,
 	}
 	for _, mf := range markerFiles {

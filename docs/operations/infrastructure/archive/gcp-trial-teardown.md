@@ -1,8 +1,8 @@
 # GCP trial teardown (một bước trong repatriation — FR-031/US6)
 
 > **ĐÃ LỖI THỜI (GĐ2).** Không có GCP trial nào để teardown (Cloud Run chưa từng tồn tại).
-> Giữ lại tham khảo thứ tự dọn dẹp. Tắt box ngoài AWS + managed theo
-> `../../aws-runbook.md` (Bước 9 chu kỳ / Bước 10 teardown cuối).
+> Giữ lại tham khảo thứ tự dọn dẹp. Trục box AWS đã lưu trữ (ADR 017): tài liệu tương ứng
+> nằm ở `../../../archive/aws-box/runbooks/aws-runbook.md` (Bước 9 chu kỳ / Bước 10 teardown cuối).
 
 **Không tách rời sau demo.** Teardown chạy như một bước của repatriation khi hệ thống
 đã về VPS ổn định.

@@ -16,13 +16,14 @@ Mỗi file ghi một quyết định kiến trúc/vận hành đã chốt, kèm 
 | [007](007-funded-platforms-and-repatriation.md) | 2026-09-15 | Nền tảng được tài trợ + lộ trình repatriation | Accepted | bị thay một phần bởi 009, 010 |
 | [008](008-email-provider-brevo.md) | 2026-09-15 | Email Provider: Brevo thay Resend | Accepted | thay 006 §2.3 |
 | [009](009-vps-nginx-ingress-cloud-run-iam.md) | 2026-09-15 | Ingress VPS Nginx + Cloud Run IAM | Accepted | thay 007 §2.1/2.2/2.6/2.7/2.8; bị 010 thay phần compute |
-| [010](010-drop-cloud-run-decouple-axes.md) | 2026-09-19 | Drop Cloud Run, decouple VPS serving | Accepted | thay 009 phần compute; bị 012 thay phần rollback monolith |
+| [010](010-drop-cloud-run-decouple-axes.md) | 2026-09-19 | Drop Cloud Run, decouple VPS serving | Accepted | thay 009 phần compute; bị 012 thay phần rollback monolith; bị 017 thay phần trục box ngoài |
 | [011](011-production-env-semantics.md) | 2026-09-20 | Ngữ nghĩa `SERVER_ENV`: `vps` cũng là production | Accepted | đính chính 006 §2.5 |
 | [012](012-retire-monolith-rollback.md) | 2026-10-05 | Retire the automated monolith rollback workflow | Accepted | thay 010 phần rollback monolith |
 | [013](013-deferred-lazy-grant-self-heal.md) | 2026-10-07 | Deferred: lazy grant self-heal when an account has no policy grant | Accepted | nợ kỹ thuật; điều kiện mở lại ở §2 |
 | [014](014-relax-grant-ordering-invariant.md) | 2026-10-07 | Nới lỏng bất biến thứ tự của bản ghi mức quyền | Accepted | thay ADR 013 §2 |
 | [015](015-drop-user-style-profiles.md) | 2026-10-11 | Xoá bảng `user_style_profiles` | Accepted | kèm migration `20261011090000_drop_user_style_profiles.sql` |
 | [016](016-ddl-ownership-handover.md) | 2026-10-16 | Bàn giao quyền sở hữu DDL theo schema (Account → AI/Commerce) | Accepted | giải quyết 027/D-06; gate `migration-check` |
+| [017](017-retire-aws-box.md) | 2026-11-02 | Retire the AWS box deployment axis | Accepted | box Lightsail đã xoá; thay 010 phần trục box ngoài |
 
 ## Quy ước
 

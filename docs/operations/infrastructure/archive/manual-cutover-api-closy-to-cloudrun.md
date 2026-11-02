@@ -1,8 +1,8 @@
 # Runbook cutover thủ công `api.closy` → Cloud Run (FR-041)
 
 > **ĐÃ LỖI THỜI (GĐ2).** Cloud Run chưa từng tồn tại nên runbook này không còn khả thi.
-> Giữ lại tham khảo spec FR-041 (gate đo được). Cắt box ngoài AWS theo
-> `../../aws-runbook.md` (Bước 9 chu kỳ / Bước 10 teardown cuối), `../../shared-reference.md` §1.
+> Giữ lại tham khảo spec FR-041 (gate đo được). Trục box AWS đã lưu trữ (ADR 017): runbook
+> cũ ở `../../../archive/aws-box/runbooks/aws-runbook.md`, tham chiếu chung ở `../../shared-reference.md` §1.
 
 **Chỉ thực thi khi owner quyết định** `api-v2` đủ ổn định. Không tự động hoá.
 
@@ -22,7 +22,7 @@
 
 - [ ] `api-v2` ổn định đủ 7 ngày (bằng chứng từ dashboard `../../shared-reference.md` §4).
 - [ ] Dữ liệu đã đồng bộ (dump VPS → Supabase tại thời điểm cutover + checksum) —
-  `../../aws-runbook.md` Bước 6.
+  `../../../archive/aws-box/runbooks/aws-runbook.md` Bước 6.
 - [ ] Rollback 2 mức sẵn sàng (§4).
 
 ## 3. Thứ tự bước

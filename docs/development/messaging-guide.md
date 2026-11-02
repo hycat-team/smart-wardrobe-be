@@ -28,7 +28,7 @@ account service: ... rabbitmq initialization failed after 3 attempts`). Cách du
 drain → xoá → khai báo lại (ADR-005 chấp nhận downtime cho việc này).
 
 Vì vậy CI chạy check trước mỗi deploy: `Check RabbitMQ queue topology` trong
-`deploy-vps-services.yml` và `deploy-aws.yml`. Đỏ ở bước đó là tín hiệu sớm, trước khi có
+`deploy-vps-services.yml`. Đỏ ở bước đó là tín hiệu sớm, trước khi có
 container nào crash-loop. Check là read-only; **migrate không bao giờ tự động**.
 
 Thao tác cụ thể (script, lệnh, xử lý message) — xem
@@ -65,4 +65,4 @@ không làm đỏ CI (service tự tạo lúc khởi động).
 - [ ] `go vet` + `make wire` pass, `grep -r "time.Sleep" internal/modules/*/infrastructure/messaging/` == 0?
 - [ ] `correlationId` propagate: helper inject vào ctx, worker log event.CorrelationIdFromContext(ctx)`?
 - [ ] Test poison → DLQ và burst 100 không mất?
-- [ ] Nếu **đổi `x-queue-type`** của queue đang tồn tại: đã chạy migrate trên từng môi trường bị ảnh hưởng (VPS + AWS), không chỉ sửa `topology.go`?
+- [ ] Nếu **đổi `x-queue-type`** của queue đang tồn tại: đã chạy migrate trên mọi broker bị ảnh hưởng, không chỉ sửa `topology.go`?

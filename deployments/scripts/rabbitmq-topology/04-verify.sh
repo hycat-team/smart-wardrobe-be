@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # 04-verify.sh — confirm every queue matches the registry, and show DLQ depth.
 #
-# Run after 02/03 to close the loop, or on its own as a health look. Unlike
+# Run after 02 to close the loop, or on its own as a health look. Unlike
 # 01-check-drift.sh this also surfaces dead-letter backlog, which is the other
 # thing worth knowing after a topology change: a queue can have the right type
 # and still be silently failing into its DLQ.
 #
-# Usage (on the box):
-#   bash deployments/scripts/rabbitmq-topology/04-verify.sh [vps|aws]
+# Usage (on the VPS):
+#   bash deployments/scripts/rabbitmq-topology/04-verify.sh [vps]
 set -uo pipefail
 
 cd "$(dirname "$0")"
@@ -21,16 +21,12 @@ case "$TARGET" in
     RABBITMQ_NETWORK="$VPS_NETWORK"
     cd "$VPS_DIR"
     ;;
-  aws)
-    require_box_env "$AWS_DIR" .env.aws
-    cd "$AWS_DIR"
-    ;;
-  -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  *) die "unknown target '$TARGET' (want vps or aws)" ;;
+  -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  *) die "unknown target '$TARGET' (want vps)" ;;
 esac
 
-ENV_FILE="$(ls .env.production .env.aws 2>/dev/null | head -1)"
-[ -n "$ENV_FILE" ] || die "no .env file found in $(pwd)"
+ENV_FILE=.env.production
+[ -f "$ENV_FILE" ] || die "no $ENV_FILE found in $(pwd)"
 
 docker pull "$TOOL_IMAGE"
 
@@ -40,13 +36,10 @@ status=$?
 
 echo
 echo "==> DLQ depth"
-# Read through the management API rather than rabbitmqctl: on the AWS box there
-# is no broker container to exec into, and one code path serves both.
+# Read through the management API rather than rabbitmqctl: the broker is a
+# container on the compose network, and the HTTP API works the same from here.
 mgmt_port=15672
 mgmt_scheme="http"
-if [ "$TARGET" = "aws" ]; then
-  mgmt_scheme="https"
-fi
 host="$(grep -E '^RABBITMQ_HOST=' "$ENV_FILE" | cut -d= -f2-)"
 user="$(grep -E '^RABBITMQ_USER=' "$ENV_FILE" | cut -d= -f2-)"
 pass="$(grep -E '^RABBITMQ_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"

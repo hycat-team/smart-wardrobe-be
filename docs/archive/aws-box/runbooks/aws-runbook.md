@@ -1,4 +1,8 @@
-# Runbook box ngoài AWS — GĐ2 start-to-finish
+﻿# Runbook box ngoài AWS — GĐ2 start-to-finish
+
+> **ĐÃ LƯU TRỮ (2026-11-02, ADR 017).** Instance AWS Lightsail đã bị xoá; workflow + tooling
+> của trục này nằm trong `docs/archive/aws-box/`. Tài liệu chỉ còn giá trị lịch sử — link
+> tương đối đã chỉnh theo vị trí mới, nội dung không cập nhật thêm.
 
 Box chạy 6 container (`APP_MODE=http`×3 + `worker`×3) + Nginx phục vụ
 `api-v2.closy.hycat.online`, chỉ nói chuyện với managed (Supabase/Redis Cloud/
@@ -216,7 +220,7 @@ Pipeline 3 chặng (Approve nếu có reviewer): build+push GHCR → scp compose
 > Khác VPS: chỉ dừng `account-worker commerce-worker ai-worker` (container `-http` không
 > consume queue), và tool tới CloudAMQP qua internet (`amqps` + management TLS từ
 > `.env.aws`) chứ không cần `--network`. Chi tiết:
-> [`deployments/scripts/rabbitmq-topology/README.md`](../../deployments/scripts/rabbitmq-topology/README.md).
+> [`deployments/scripts/rabbitmq-topology/README.md`](../../../../deployments/scripts/rabbitmq-topology/README.md).
 3. Smoke tay từng service (SNI override, chưa cần DNS ổn định; body đúng tên service):
 ```bash
 for svc in account commerce ai; do

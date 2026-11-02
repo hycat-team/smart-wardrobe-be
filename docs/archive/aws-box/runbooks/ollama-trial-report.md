@@ -1,5 +1,8 @@
 # Báo cáo go/no-go — Thử nghiệm Ollama trên EC2 (feature 032)
 
+> **ĐÃ LƯU TRỮ (2026-11-02, ADR 017).** Box Lightsail đã bị xoá; báo cáo giữ nguyên kết quả
+> demo 2026-10-27 làm hồ sơ lịch sử. Link tương đối đã chỉnh theo vị trí mới.
+
 **Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Cập nhật**: 2026-10-27
 | **Trạng thái**: **CLOSED — DEMO-ONLY / INCOMPLETE — DECISION: ADJUST**
 

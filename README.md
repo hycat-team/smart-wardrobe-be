@@ -153,7 +153,7 @@ http://localhost:8103/swagger   # AI only
 ├── database/init/                 # infra init SQL (not migrations)
 ├── configs/                       # shared YAML (parameterised, no hardcoded hosts)
 ├── docs/                          # development / system-design / operations / project
-└── .github/workflows/             # ci.yml, deploy-vps-services.yml, deploy-aws.yml (monolith rollback workflow archived — ADR 012)
+└── .github/workflows/             # ci.yml, deploy-vps-services.yml (monolith rollback — ADR 012; AWS box — ADR 017 đã lưu trữ)
 ```
 
 Each module follows Clean Architecture (`domain/` ← `application/` ←

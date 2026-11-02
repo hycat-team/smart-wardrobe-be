@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Shared settings for the rabbitmq-topology scripts.
 #
-# Source this, do not run it. It resolves where the box keeps its env files and
-# which image the tool runs as. Both VPS and AWS are covered here because the
-# tool itself is identical — only the box layout and the broker location differ.
+# Source this, do not run it. It resolves where the VPS keeps its env files and
+# which image the tool runs as.
 #
 # Override any of these from the environment before sourcing.
 
@@ -30,17 +29,8 @@ VPS_SERVICES="account commerce ai"
 # The broker is a container on this network; the tool joins it to reach
 # rabbitmq:15672 and rabbitmq:5672 by service name.
 VPS_NETWORK="closy-prod_data"
-# Set by 01/02 (VPS scripts) to join the broker network; left empty on AWS.
+# Set by 01/02 to join the broker network.
 RABBITMQ_NETWORK=""
-
-# ---------------------------------------------------------------------------
-# AWS box — CloudAMQP, no broker container
-# ---------------------------------------------------------------------------
-AWS_DIR="${AWS_DIR:-/opt/closy-aws}"
-AWS_COMPOSE="docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml"
-# On AWS only the -worker containers consume queues; the -http ones do not.
-AWS_SERVICES="account-worker commerce-worker ai-worker"
-# No network flag: CloudAMQP is reached over the public internet via amqps.
 
 die() {
   printf '\033[31mERROR\033[0m %s\n' "$*" >&2
@@ -52,7 +42,7 @@ die() {
 require_box_env() {
   local dir="$1" env_file="$2"
   [ -d "$dir" ] || die "box directory not found: $dir (override with DEPLOY_DIR)"
-  [ -f "$dir/$env_file" ] || die "env file not found: $dir/$env_file (check VPS_DIR / AWS_DIR)"
+  [ -f "$dir/$env_file" ] || die "env file not found: $dir/$env_file (check VPS_DIR)"
 }
 
 # run_tool invokes the reconcile tool. The spill directory is only mounted for

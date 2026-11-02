@@ -729,7 +729,9 @@ backend/global.json
 .gocache/
 docs/temp
 
-# AWS env helper: local sensitive settings + generated secrets/outcomes (never commit)
+# AWS env helper (archived with the AWS box, ADR 017): the scripts moved to
+# docs/archive/aws-box/, but leftover local secrets stay at the paths below and
+# must never be committed.
 deployments/scripts/aws-env/aws-local.env
 deployments/scripts/aws-env/outcome/
 
@@ -737,8 +739,8 @@ deployments/scripts/aws-env/outcome/
 .env.*
 !.env.example
 !.env.production.example
+# Archived AWS box env templates (ADR 017): placeholders only, no secret.
 !.env.aws.example
-# Feature 032: EC2-side template for the Ollama trial. Placeholders only, no secret.
 !.env.ollama.example
 bin/
 backups/
@@ -748,7 +750,8 @@ backups/
 *.drawio.bkp
 .zcode/
 
-# Feature 032 - Terraform for the Ollama trial EC2 (local state, never commit state/vars)
+# Archived AWS box - Terraform for the Ollama trial EC2 (ADR 017; local state,
+# never commit state/vars)
 .terraform/
 *.tfstate*
 *.tfvars

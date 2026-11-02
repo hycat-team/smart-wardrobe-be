@@ -1,4 +1,8 @@
-# Runbook — Thử nghiệm Ollama trên EC2 (feature 032)
+﻿# Runbook — Thử nghiệm Ollama trên EC2 (feature 032)
+
+> **ĐÃ LƯU TRỮ (2026-11-02, ADR 017).** Box Lightsail đã bị xoá nên trial không còn đường
+> chạy; Terraform + script của trial nằm cùng thư mục archive. Tài liệu chỉ còn giá trị lịch
+> sử — link tương đối đã chỉnh theo vị trí mới, nội dung không cập nhật thêm.
 
 **Feature**: `specs/032-ollama-lightsail-trial/` | **Ngày tạo**: 2026-10-26 | **Cập nhật**: 2026-10-27
 (Phase 6 / US4: CloudWatch agent + metric filter/dashboard + quy trình ngày thứ 7 ở mục 6; T043–T049
@@ -8,9 +12,9 @@ trình — **chưa chạy trial 7 ngày**, chưa có quyết định go/no-go. X
 
 Runbook này là quy trình vận hành duy nhất cho tuần thử nghiệm Ollama: đo baseline, chạy local,
 dựng EC2, bật/tắt bằng env trên Lightsail, rollback và chốt quyết định ngày thứ 7. Hợp đồng chi
-tiết nằm ở [contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md),
-[contracts/trial-telemetry.md](../../specs/032-ollama-lightsail-trial/contracts/trial-telemetry.md)
-và [quickstart.md](../../specs/032-ollama-lightsail-trial/quickstart.md).
+tiết nằm ở [contracts/env-ai-trial.md](../../../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md),
+[contracts/trial-telemetry.md](../../../../specs/032-ollama-lightsail-trial/contracts/trial-telemetry.md)
+và [quickstart.md](../../../../specs/032-ollama-lightsail-trial/quickstart.md).
 
 **Bất biến của thử nghiệm**
 
@@ -90,7 +94,7 @@ go test ./shared/infrastructure/ai/openai/... -count=1
 ```
 
 **Đạt khi**: toàn bộ contract test của
-[contracts/ollama-openai-subset.md](../../specs/032-ollama-lightsail-trial/contracts/ollama-openai-subset.md)
+[contracts/ollama-openai-subset.md](../../../../specs/032-ollama-lightsail-trial/contracts/ollama-openai-subset.md)
 §5 pass (không reasoning, structured output, SSE, usage thiếu/0, lỗi 4xx/429/5xx, cancellation).
 
 ### A3. Probe thủ công
@@ -313,7 +317,7 @@ Kiểm chứng:
 ### B3. Bật trial trên Lightsail
 
 Cập nhật `/opt/closy-aws/.env.aws` theo
-[contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md) §1,
+[contracts/env-ai-trial.md](../../../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md) §1,
 thêm các key mới vào allowlist copy của `deployments/scripts/aws-env/aws-env-bootstrap.ps1` nếu
 script này sinh file, rồi chạy quy trình deploy AWS hiện hữu. **Không** sửa file deployment.
 
@@ -419,7 +423,7 @@ xác nhận; không thao tác VPS. Ghi bằng chứng cho SC-006.
 
 #### 4.1.1 Sáu nhóm biến môi trường
 
-Nguồn: [contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md)
+Nguồn: [contracts/env-ai-trial.md](../../../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md)
 §1.1–§1.4 và `plan.md` §4 ("Env Lightsail"). Tổng cộng 47 key AI liên quan: 24 key trong ba nhóm
 text (8 key/nhóm), 16 key `VISION_*`/`EMBEDDING_*`, và 7 key điều khiển trial.
 
@@ -598,7 +602,7 @@ fallback nếu có), với cost theo pricing hiện hữu. Không có hai event 
 
 ### 4.2 Rollback về Gemini-only (mục tiêu ≤15 phút, SC-006)
 
-Hợp đồng: [contracts/env-ai-trial.md](../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md)
+Hợp đồng: [contracts/env-ai-trial.md](../../../../specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md)
 §1.5. Không cần đổi Compose/Nginx/Dockerfile; chỉ env + recreate container AI.
 
 1. **T0**: ghi giờ bắt đầu (UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`).
@@ -835,7 +839,7 @@ thứ ba vào mục 6 của báo cáo.
 
 **Log nguồn EC2 (CloudWatch)** — CloudWatch agent trên EC2 gửi mọi log nguồn vào **cùng một log
 group** `/ollama-trial/ec2` (Terraform T043), retention **14 ngày**; bảng nguồn chuẩn ở
-[contracts/trial-telemetry.md](../../specs/032-ollama-lightsail-trial/contracts/trial-telemetry.md) §3:
+[contracts/trial-telemetry.md](../../../../specs/032-ollama-lightsail-trial/contracts/trial-telemetry.md) §3:
 
 | Nguồn | Đường dẫn trên EC2 | Log stream | Nội dung |
 |-------|--------------------|------------|----------|
@@ -985,7 +989,7 @@ rollback, báo cáo go/no-go có người quyết định.
 script env. Các mục **T025/T026/T027/T039/T040/T041/T048** vẫn là operator step — chưa có bằng chứng
 live. T042 đã chạy phần regression local (mục 9.4). T050–T057 là gate/kiểm tra cuối, không tạo bằng
 chứng thay cho live run. Các phát hiện ngoài phạm vi nằm ở
-[deferred.md](../../specs/032-ollama-lightsail-trial/deferred.md).
+[deferred.md](../../../../specs/032-ollama-lightsail-trial/deferred.md).
 
 ### 8.1 T025 — kiểm tra chức năng + latency local (thủ công, chưa chạy)
 

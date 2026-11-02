@@ -1,5 +1,10 @@
 # AWS env helper scripts
 
+> **ĐÃ LƯU TRỮ (2026-11-02, ADR 017).** Box AWS đã bị xoá; script giữ làm tham chiếu. Các
+> đường dẫn `deployments/scripts/aws-env/...` bên dưới là vị trí **gốc** trước khi archive —
+> muốn chạy lại phải move file về đó (xem `../../../README.md`). Hai file chứa secret thật
+> (`aws-local.env`, `outcome/`) vẫn nằm ở vị trí gốc và vẫn bị gitignore.
+
 Bộ 2 script PowerShell giúp dựng `AWS EXTERNAL BOX` env từ VPS `.env.production` và sinh
 khối lệnh copy-paste để nạp secret/env lên box. Đã được "hợp thức hóa" từ `docs/temp/`.
 

@@ -11,7 +11,7 @@ GO_BUILD_FLAGS := -trimpath -ldflags="-s -w"
 BIN_DIR := bin
 
 # Registry conventions (FR-042/FR-051, T007a):
-# - VPS + AWS images → GHCR with existing CI token, tag <svc>:<git-sha> (immutable).
+# - Service images → GHCR with existing CI token, tag <svc>:<git-sha> (immutable).
 # - AR_* below is kept for manual registry builds (image-build/image-push).
 AR_HOST ?= asia-southeast1-docker.pkg.dev
 AR_PROJECT ?= closy-hycat
@@ -57,7 +57,7 @@ CONFIG_FILE ?= $(abspath configs/config.yaml)
 
 # RabbitMQ topology reconcile (see the rabbitmq-* targets near nginx-routes).
 # RABBITMQ_ENV_FILE points at the env holding the RABBITMQ_* settings: .env for
-# the local stack, .env.production on the VPS, .env.aws on the AWS box. QUEUE and
+# the local stack, .env.production on the VPS. QUEUE and
 # SPILL_DIR are optional overrides, e.g.
 #   make rabbitmq-topology-check RABBITMQ_ENV_FILE=.env.production
 #   make rabbitmq-topology-migrate RABBITMQ_ENV_FILE=.env.production QUEUE=subscription_plan_changed_queue
@@ -197,7 +197,7 @@ tools-help:
 	@echo "  make rabbitmq-topology-check env=  : Compare broker queue types against the registry (read-only)"
 	@echo "  make rabbitmq-topology-migrate env=: Drain, delete, recreate and replay drifted queues"
 	@echo "  make image-build-tool              : Build the rabbitmq-topology ops image"
-	@echo "  (env= is shorthand: pass RABBITMQ_ENV_FILE=.env.production for VPS, .env.aws for AWS)"
+	@echo "  (env= is shorthand: pass RABBITMQ_ENV_FILE=.env.production for VPS)"
 
 platform-help:
 	@echo "REGISTRY / INGRESS COMMANDS (020):"

@@ -11,7 +11,6 @@
 //
 //	deployments/nginx/templates/services/vps-3service.conf.template (VPS api.closy upstreams)
 //	deployments/nginx/templates/services-redirect/vps-3service.conf.template (VPS + api-v2 redirect grace)
-//	deployments/nginx/templates/aws/api-v2.conf.template (AWS box api-v2, same "vps" target set)
 //	deployments/nginx/local.conf (local compose)
 //
 // Run `make nginx-routes`; `make nginx-check` verifies coverage and CI fails on
@@ -43,7 +42,6 @@ const (
 const (
 	timeoutProfileVPS   = "vps"
 	timeoutProfileLocal = "local"
-	timeoutProfileAWS   = "aws"
 )
 
 // longTimeoutPrefixesByProfile lists the API prefixes whose request budget
@@ -57,19 +55,15 @@ const (
 // the operator sees an infrastructure error for a grant that succeeded. The
 // proxy must outlast the app write deadline, not merely the app budget.
 //
-// The AI outfit route joins the list for local and AWS only: an Ollama cold
-// start or a primary-attempt-plus-fallback can outlive 60s (primary 90s plus
-// fallback 30s), so the trial ingresses must not cut a request the AI service is
-// still working on. VPS deliberately keeps its existing budget.
+// The AI outfit route joins the list for local only: an Ollama-backed local
+// drill can outlive 60s (primary 90s plus fallback 30s), so the local ingress
+// must not cut a request the AI service is still working on. VPS deliberately
+// keeps its existing budget.
 var longTimeoutPrefixesByProfile = map[string][]string{
 	timeoutProfileVPS: {
 		"/api/v1/admin/subscription-grants",
 	},
 	timeoutProfileLocal: {
-		"/api/v1/admin/subscription-grants",
-		"/api/v1/ai/outfit-recommendations",
-	},
-	timeoutProfileAWS: {
 		"/api/v1/admin/subscription-grants",
 		"/api/v1/ai/outfit-recommendations",
 	},
@@ -115,13 +109,12 @@ type location struct {
 type markerFile struct {
 	path           string // relative to root
 	mode           string // vps | local
-	timeoutProfile string // vps | local | aws
+	timeoutProfile string // vps | local
 }
 
 var markerFiles = []markerFile{
 	{path: "deployments/nginx/templates/services/vps-3service.conf.template", mode: "vps", timeoutProfile: timeoutProfileVPS},
 	{path: "deployments/nginx/templates/services-redirect/vps-3service.conf.template", mode: "vps", timeoutProfile: timeoutProfileVPS},
-	{path: "deployments/nginx/templates/aws/api-v2.conf.template", mode: "vps", timeoutProfile: timeoutProfileAWS},
 	{path: "deployments/nginx/local.conf", mode: "local", timeoutProfile: timeoutProfileLocal},
 }
 

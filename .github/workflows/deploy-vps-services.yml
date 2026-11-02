@@ -106,7 +106,6 @@ jobs:
     # `outputs.ref` MUST point at steps.digest, not steps.image: the image step
     # resolves the NAME only, and a name without a digest is mutable, so the
     # deploy-time `docker pull` would silently drift from what this job tested.
-    # Kept in step with deploy-aws.yml build-tool.
     build-tool:
         runs-on: ubuntu-latest
         outputs:

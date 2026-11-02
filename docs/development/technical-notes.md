@@ -321,14 +321,14 @@ không còn dữ liệu seed.
   khởi động được**. Đây không phải tình huống riêng của
   `subscription_plan_changed_queue` — nó áp dụng cho **mọi** queue khi đổi
   `isQuorum` trong `topology.go`.
-  - CI chạy check trước mỗi deploy (bước `Check RabbitMQ queue topology` ở
-    `deploy-vps-services.yml` + `deploy-aws.yml`) nên lệch bị bắt trước khi có
+  - CI chạy check trước mỗi deploy (bước `Check RabbitMQ queue topology` trong
+    `deploy-vps-services.yml`) nên lệch bị bắt trước khi có
     service nào crash-loop trên box.
   - Cách migrate (drain → xoá → khai báo lại, kèm script):
     [`deployments/scripts/rabbitmq-topology/README.md`](../../deployments/scripts/rabbitmq-topology/README.md).
   - Kinh nghiệm thực tế (2026-10-01): `subscription_plan_changed_queue` đã là quorum
-    trên VPS nhưng AWS box chưa đồng bộ — quên sync broker là nguyên nhân gốc, và đọc
-    log crash-loop từ xa tốn nhiều thời gian hơn hẳn một bước CI đỏ.
+    trên VPS nhưng broker của môi trường còn lại chưa đồng bộ — quên sync broker là
+    nguyên nhân gốc, và đọc log crash-loop từ xa tốn nhiều thời gian hơn hẳn một bước CI đỏ.
 - **Sau khi dựng lại container `account` hoặc `commerce`**, nginx giữ DNS cũ và
   mọi route sẽ trả `404` cho tới khi `make nginx-reload-local` hoặc restart
   nginx. Đây là triệu chứng quen thuộc, không phải lỗi route.

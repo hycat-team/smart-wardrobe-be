@@ -1,5 +1,10 @@
 name: Deploy AWS Box
 
+# ARCHIVED 2026-11-02 (ADR 017). The Lightsail box was deleted, so this workflow no
+# longer has a target. GitHub only runs files under .github/workflows/, so keeping it
+# here disables it while preserving the content. To restore, move it back and see
+# docs/archive/aws-box/README.md.
+#
 # Deploys the 6-container topology to the AWS external box (GĐ2): matrix per
 # service so one service failing does not block the others, images pushed to
 # GHCR and pinned by digest, then `docker compose up -d` on the box. The box
