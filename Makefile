@@ -17,10 +17,23 @@ AR_HOST ?= asia-southeast1-docker.pkg.dev
 AR_PROJECT ?= closy-hycat
 AR_REPO ?= closy
 GHCR_OWNER ?= hycat
-# Redirect to both: `2>/dev/null` for POSIX shells, `2>NUL` for Windows cmd.exe.
-# Without the second form, every make run on Windows prints
-# "The system cannot find the path specified." and GIT_SHA silently falls back to `dev`.
-GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null 2>NUL || echo dev)
+# No stderr redirect here, on purpose.
+#
+# The previous form was `2>/dev/null 2>NUL`, trying to satisfy both shells. It
+# does the opposite of what it looks like: GNU make on Windows uses sh.exe when
+# Git is installed (the normal case), and under a POSIX shell `NUL` is not a
+# device — it is a filename. So every make run, including `make -n`, created a
+# real zero-byte file called NUL in the repository root, which then showed up as
+# an untracked file that git clean could not even delete (Windows resolves the
+# path to the null device). Under cmd.exe the other half, `2>/dev/null`, tried to
+# create \dev\null.
+#
+# An empty value is handled by the fallback below, which is portable and leaves
+# nothing behind.
+GIT_SHA := $(shell git rev-parse --short HEAD)
+ifeq ($(strip $(GIT_SHA)),)
+GIT_SHA := dev
+endif
 
 # Migration (Goose) connection variables (shared by all services)
 DB_HOST ?= localhost
