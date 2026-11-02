@@ -160,6 +160,10 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 		return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
 	}
 
+	// Loaded at most once per run: the free plan's name is the same for every
+	// customer that has no lifetime fallback.
+	defaultFreePlanName := ""
+
 	for _, sub := range expiringSubs {
 		if sub == nil || sub.SubscriptionPlan == nil || sub.ExpiresAt == nil {
 			continue
@@ -173,10 +177,29 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 			daysRemaining = 0
 		}
 
+		// The plan the account returns to is the lifetime plan when one sits
+		// underneath, not Free. Saying "gói Free" to a lifetime customer is a
+		// statement about their entitlements that is simply false.
+		restoredPlanName := ""
+		if sub.FallbackPlanID != nil {
+			if fallbackPlan, planErr := uc.planRepo.GetByID(ctx, *sub.FallbackPlanID); planErr == nil && fallbackPlan != nil {
+				restoredPlanName = fallbackPlan.Name
+			}
+		}
+		if restoredPlanName == "" {
+			if defaultFreePlanName == "" {
+				if freePlan, planErr := uc.planRepo.GetDefaultPlan(ctx); planErr == nil && freePlan != nil {
+					defaultFreePlanName = freePlan.Name
+				}
+			}
+			restoredPlanName = defaultFreePlanName
+		}
+
 		expiryNotice := map[string]any{
-			"PlanName":      sub.SubscriptionPlan.Name,
-			"ExpiresAt":     timeutils.FormatDateVN(*sub.ExpiresAt),
-			"DaysRemaining": daysRemaining,
+			"PlanName":         sub.SubscriptionPlan.Name,
+			"ExpiresAt":        timeutils.FormatDateVN(*sub.ExpiresAt),
+			"DaysRemaining":    daysRemaining,
+			"RestoredPlanName": restoredPlanName,
 		}
 
 		if !sub.IsAutoRenewEnabled {

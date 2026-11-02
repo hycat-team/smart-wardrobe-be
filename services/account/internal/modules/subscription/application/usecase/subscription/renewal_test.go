@@ -300,6 +300,7 @@ type renewalHarness struct {
 	// would still pass a counter-only assertion.
 	publisher  *fakeRenewalPublisher
 	notif      *fakeRenewalNotif
+	plans      *fakeRenewalPlanRepo
 	freePlanID uuid.UUID
 	plan       *entities.SubscriptionPlan
 	now        time.Time
@@ -340,6 +341,15 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 	publisher := &fakeRenewalPublisher{}
 	h.publisher = publisher
 	publisherHelper := NewPlanChangePublisher(h.events, publisher, noopPlanPeriodRecorder{})
+	plans := &fakeRenewalPlanRepo{planByID: map[uuid.UUID]*entities.SubscriptionPlan{
+		freePlanID: {
+			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: freePlanID}},
+			Slug:            "free",
+			Name:            "Free Plan",
+			IsActive:        true,
+		},
+	}}
+	h.plans = plans
 	h.uc = &SubscriptionUseCase{
 		uow:           &fakeRenewalUow{},
 		userSubRepo:   h.subRepo,
@@ -349,13 +359,7 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 		// Without it the payload's toPlanId is the nil UUID and the AI receiver
 		// refuses the message - which is what used to happen here, silently, on every
 		// renewal test.
-		planRepo: &fakeRenewalPlanRepo{planByID: map[uuid.UUID]*entities.SubscriptionPlan{
-			freePlanID: {
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: freePlanID}},
-				Slug:            "free",
-				IsActive:        true,
-			},
-		}},
+		planRepo:            plans,
 		eventRepo:           h.events,
 		renewalAttemptRepo:  h.attempt,
 		notifContract:       h.notif,
@@ -413,6 +417,12 @@ func TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff(t *testing.T) {
 	if got := params["NeedsTopup"]; got != false {
 		t.Fatalf("auto-renew switched off is not a wallet shortfall, got NeedsTopup=%#v", got)
 	}
+	// The plan the account lands on is the free plan, but the EMAIL must name it
+	// from the database rather than from a hardcoded string: a lifetime account
+	// lands somewhere else entirely (see the fallback test below).
+	if got := params["RestoredPlanName"]; got != "Free Plan" {
+		t.Fatalf("expected the free plan's own name, got %#v", got)
+	}
 	for key, value := range params {
 		if text, ok := value.(string); ok && strings.Contains(text, renewalReasonDowngradedAutoRenewOff) {
 			t.Fatalf("parameter %q leaks the internal reason code: %q", key, text)
@@ -449,6 +459,44 @@ func TestExecuteScheduledRenewalDowngradesOnInsufficientWallet(t *testing.T) {
 	}
 	if got, _ := params["Balance"].(string); got == "" || strings.ContainsAny(got, "eE") {
 		t.Fatalf("Balance must be a readable amount, got %#v", params["Balance"])
+	}
+}
+
+// TestExecuteScheduledRenewalNamesTheLifetimeFallbackPlan covers the case the
+// expiry email got wrong in production: an account can hold a lifetime plan
+// UNDERNEATH a finite one, and expiry restores the lifetime plan rather than
+// dropping to Free. Telling that customer their account "trở về gói Free" is a
+// false statement about what they still own.
+func TestExecuteScheduledRenewalNamesTheLifetimeFallbackPlan(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+
+	fallbackID := uuid.New()
+	h.plans.planByID[fallbackID] = &entities.SubscriptionPlan{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: fallbackID}},
+		Slug:            "lifetime",
+		Name:            "Lifetime Plan",
+		IsActive:        true,
+	}
+	lifetimeKind := plankind.Lifetime
+	lifetimeCode := "lifetime"
+	lifetimeTier := 10
+	h.subRepo.lockedSub.FallbackPlanID = &fallbackID
+	h.subRepo.lockedSub.FallbackPlanCode = &lifetimeCode
+	h.subRepo.lockedSub.FallbackPlanKind = &lifetimeKind
+	h.subRepo.lockedSub.FallbackTierRank = &lifetimeTier
+
+	result := RenewalExecutionResult{}
+	if err := h.uc.executeScheduledRenewal(context.Background(), h.subRepo.lockedSub.UserID, h.freePlanID, h.now, &result); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.params) != 1 {
+		t.Fatalf("expected one expiry notification, got %d", len(h.notif.params))
+	}
+	if got := h.notif.params[0]["RestoredPlanName"]; got != "Lifetime Plan" {
+		t.Fatalf("expected the lifetime fallback plan by name, got %#v", got)
+	}
+	if got := h.notif.params[0]["PlanName"]; got != h.plan.Name {
+		t.Fatalf("PlanName must still name the plan that ended (%q), got %#v", h.plan.Name, got)
 	}
 }
 

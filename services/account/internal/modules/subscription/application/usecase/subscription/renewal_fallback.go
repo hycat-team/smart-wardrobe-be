@@ -48,7 +48,8 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 		expiredAt = timeutils.FormatDateVN(*lockedSub.ExpiresAt)
 	}
 
-	if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
+	restoredPlanName, err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now)
+	if err != nil {
 		return err
 	}
 
@@ -64,9 +65,10 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 	)
 
 	params := map[string]any{
-		"PlanName":   planName,
-		"ExpiredAt":  expiredAt,
-		"NeedsTopup": walletNotice != nil,
+		"PlanName":         planName,
+		"ExpiredAt":        expiredAt,
+		"RestoredPlanName": restoredPlanName,
+		"NeedsTopup":       walletNotice != nil,
 	}
 	if walletNotice != nil {
 		params["RequiredAmount"] = walletNotice.RequiredAmount
@@ -79,48 +81,59 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 	return nil
 }
 
-// downgradeToFree updates the subscription record to the default free plan.
+// downgradeToFree updates the subscription record to the plan the account falls
+// back to, and returns THAT plan's name.
+//
+// The name is returned rather than looked up by the caller because the answer is
+// only known here: an account holding a lifetime plan keeps it underneath a
+// finite one, so expiry restores the lifetime plan instead of dropping to Free.
+// The expiry email told every customer "trở về gói Free", which was false for
+// exactly those accounts.
 //
 // 024 T051: both branches now publish. Expiry is the single most important
 // transition in the whole feature — it is what removes a customer's paid
 // entitlements — and it was writing a history row with no event, so the AI
 // service kept honouring a plan that had already ended.
-func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub *entities.UserSubscription, freePlanID uuid.UUID, now time.Time) error {
+func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub *entities.UserSubscription, freePlanID uuid.UUID, now time.Time) (string, error) {
 	if lockedSub.FallbackPlanID != nil {
 		// The lifetime fallback plan is the one the account is returning to, so
 		// the payload has to name THAT plan, not the free plan.
 		fallbackPlan, err := uc.planRepo.GetByID(txCtx, *lockedSub.FallbackPlanID)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if fallbackPlan == nil {
-			return subscriptionerrors.ErrSubscriptionPlanNotFound()
+			return "", subscriptionerrors.ErrSubscriptionPlanNotFound()
 		}
 		subEvent, err := lockedSub.RestoreFallback("", now)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
-			return err
+			return "", err
 		}
-		_, err = uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, fallbackPlan)
-		return err
+		if _, err := uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, fallbackPlan); err != nil {
+			return "", err
+		}
+		return fallbackPlan.Name, nil
 	}
 
 	freePlan, err := uc.planRepo.GetByID(txCtx, freePlanID)
 	if err != nil || freePlan == nil {
-		return subscriptionerrors.ErrDefaultPlanLoadFailed()
+		return "", subscriptionerrors.ErrDefaultPlanLoadFailed()
 	}
 
 	subEvent, err := lockedSub.DowngradeToFree(freePlan, "", now)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, freePlan)
-	return err
+	if _, err := uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, freePlan); err != nil {
+		return "", err
+	}
+	return freePlan.Name, nil
 }

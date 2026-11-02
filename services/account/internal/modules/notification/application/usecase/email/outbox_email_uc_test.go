@@ -433,19 +433,78 @@ func TestPurchaseEmailsSayThePlanDoesNotAutoRenew(t *testing.T) {
 func TestSubscriptionExpiringEmailTellsTheCustomerWhatWillHappen(t *testing.T) {
 	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
 	subject, body := emailBody(t, uc, outbox, ntemplate.SubscriptionExpiring, map[string]any{
-		"PlanName":      "Premium Plan",
-		"ExpiresAt":     "01/11/2026",
-		"DaysRemaining": 3,
+		"PlanName":         "Premium Plan",
+		"ExpiresAt":        "01/11/2026",
+		"DaysRemaining":    3,
+		"RestoredPlanName": "Free Plan",
 	}, uuid.New())
 
 	visible := visibleText(body)
-	for _, want := range []string{"Premium Plan", "01/11/2026", "gói Free", "tắt tự động gia hạn"} {
+	for _, want := range []string{"Premium Plan", "01/11/2026", "Free Plan", "tắt tự động gia hạn"} {
 		if !strings.Contains(visible, want) {
 			t.Fatalf("expected %q in the pre-expiry email, got:\n%s", want, visible)
 		}
 	}
 	if strings.Contains(strings.ToLower(subject), "thất bại") {
 		t.Fatalf("a pre-expiry reminder is not a failure, subject = %q", subject)
+	}
+}
+
+// TestExpiringEmailsNameThePlanTheAccountReturnsTo is the copy defect behind
+// "trở về gói Free": a lifetime plan can sit underneath the finite one, so the
+// account falls back to it, not to Free. The email must say so.
+func TestExpiringEmailsNameThePlanTheAccountReturnsTo(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+
+	for _, tc := range []struct {
+		name string
+		tmpl ntemplate.Template
+	}{
+		{"expired", ntemplate.SubscriptionExpired},
+		{"expiring", ntemplate.SubscriptionExpiring},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, body := emailBody(t, uc, outbox, tc.tmpl, map[string]any{
+				"PlanName":         "Premium Plan",
+				"ExpiredAt":        "01/11/2026",
+				"ExpiresAt":        "01/11/2026",
+				"DaysRemaining":    3,
+				"NeedsTopup":       false,
+				"RestoredPlanName": "Lifetime Plan",
+			}, uuid.New())
+			visible := visibleText(body)
+			if !strings.Contains(visible, "Lifetime Plan") {
+				t.Fatalf("%s must name the plan the account returns to, got:\n%s", tc.name, visible)
+			}
+			if strings.Contains(visible, "gói Free") {
+				t.Fatalf("%s must not hardcode the Free plan, got:\n%s", tc.name, visible)
+			}
+		})
+	}
+}
+
+// TestCampaignGrantEmailNamesTheLifetimeFallback covers the same claim on the
+// campaign path, whose note is forward-looking rather than about an expiry that
+// already happened.
+func TestCampaignGrantEmailNamesTheLifetimeFallback(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+
+	_, withFallback := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
+		"PlanName": "Premium Plan", "DurationText": "30 ngày",
+		"GrantedOn": "01/10/2026", "ExpiresAt": "01/11/2026",
+		"HasLifetimeFallback": true,
+	}, uuid.New())
+	if !strings.Contains(visibleText(withFallback), "gói trọn đời") {
+		t.Fatalf("a lifetime account must be told it returns to its lifetime plan, got:\n%s", visibleText(withFallback))
+	}
+
+	_, withoutFallback := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
+		"PlanName": "Premium Plan", "DurationText": "30 ngày",
+		"GrantedOn": "01/10/2026", "ExpiresAt": "01/11/2026",
+		"HasLifetimeFallback": false,
+	}, uuid.New())
+	if !strings.Contains(visibleText(withoutFallback), "gói miễn phí") {
+		t.Fatalf("an account without a fallback returns to the free plan, got:\n%s", visibleText(withoutFallback))
 	}
 }
 
@@ -487,13 +546,16 @@ func TestEveryTemplateRendersItsCallSiteParameters(t *testing.T) {
 		}},
 		{"subscription expired without topup", ntemplate.SubscriptionExpired, map[string]any{
 			"PlanName": "Premium Plan", "ExpiredAt": "01/11/2026", "NeedsTopup": false,
+			"RestoredPlanName": "Free Plan",
 		}},
 		{"subscription expired with topup", ntemplate.SubscriptionExpired, map[string]any{
 			"PlanName": "Premium Plan", "ExpiredAt": "01/11/2026", "NeedsTopup": true,
 			"RequiredAmount": "1.000.000đ", "Balance": "5.000đ",
+			"RestoredPlanName": "Free Plan",
 		}},
 		{"subscription expiring", ntemplate.SubscriptionExpiring, map[string]any{
 			"PlanName": "Premium Plan", "ExpiresAt": "01/11/2026", "DaysRemaining": 3,
+			"RestoredPlanName": "Free Plan",
 		}},
 		{"wallet warning", ntemplate.WalletWarning, map[string]any{
 			"PlanName": "Premium Plan", "ExpiresAt": "01/11/2026", "DaysRemaining": 3,
@@ -505,6 +567,7 @@ func TestEveryTemplateRendersItsCallSiteParameters(t *testing.T) {
 		{"campaign grant", ntemplate.CampaignGrant, map[string]any{
 			"PlanName": "Premium Plan", "DurationText": "30 ngày",
 			"GrantedOn": "01/10/2026", "ExpiresAt": "01/11/2026",
+			"HasLifetimeFallback": false,
 		}},
 	}
 

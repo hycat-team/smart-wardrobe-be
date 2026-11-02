@@ -250,6 +250,10 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 			"DurationText": grantedTermPhrase(plan),
 			"GrantedOn":    grantedOn,
 			"ExpiresAt":    expiresText,
+			// A lifetime plan can sit underneath the granted one; when it does,
+			// expiry returns the account to THAT plan, not to Free. The template
+			// used to promise "gói miễn phí" to everyone.
+			"HasLifetimeFallback": sub.FallbackPlanID != nil,
 		},
 		userID,
 	); err != nil {
