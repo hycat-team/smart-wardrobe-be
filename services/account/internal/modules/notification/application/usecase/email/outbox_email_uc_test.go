@@ -221,8 +221,14 @@ func TestCampaignGrantEmailIsNotSentWithoutAnAddress(t *testing.T) {
 // for an administrator, and any later edit to the manual wording would silently
 // change what a campaign customer is told.
 func TestCampaignGrantEmailSubjectIsDistinctFromAdminGrant(t *testing.T) {
-	campaignSubject := resolveSubject(ntemplate.CampaignGrant)
-	adminSubject := resolveSubject(ntemplate.AdminGrant)
+	campaignSubject, err := resolveSubject(ntemplate.CampaignGrant)
+	if err != nil {
+		t.Fatalf("resolve campaign subject: %v", err)
+	}
+	adminSubject, err := resolveSubject(ntemplate.AdminGrant)
+	if err != nil {
+		t.Fatalf("resolve admin subject: %v", err)
+	}
 	if campaignSubject == adminSubject {
 		t.Fatalf("campaign and administrator grant emails must not share a subject (R12)")
 	}
@@ -505,6 +511,41 @@ func TestCampaignGrantEmailNamesTheLifetimeFallback(t *testing.T) {
 	}, uuid.New())
 	if !strings.Contains(visibleText(withoutFallback), "gói miễn phí") {
 		t.Fatalf("an account without a fallback returns to the free plan, got:\n%s", visibleText(withoutFallback))
+	}
+}
+
+// TestEveryTemplateHasASubject walks the template set rather than a list of
+// names, so adding a template without a subject fails here instead of reaching a
+// customer as "[Closy] Thông báo".
+func TestEveryTemplateHasASubject(t *testing.T) {
+	seen := map[ntemplate.Template]bool{}
+	for _, tmpl := range ntemplate.All() {
+		if seen[tmpl] {
+			t.Errorf("template %q appears twice in All()", tmpl)
+		}
+		seen[tmpl] = true
+
+		subject, err := resolveSubject(tmpl)
+		if err != nil {
+			t.Fatalf("template %q has no subject: %v", tmpl, err)
+		}
+		if !strings.HasPrefix(subject, "[Closy] ") {
+			t.Errorf("subject for %q must carry the product prefix, got %q", tmpl, subject)
+		}
+		if strings.TrimSpace(strings.TrimPrefix(subject, "[Closy] ")) == "" {
+			t.Errorf("subject for %q is empty after the prefix", tmpl)
+		}
+	}
+	if got, want := len(seen), 11; got != want {
+		t.Fatalf("expected %d templates in All(), got %d — update All() when adding one", want, got)
+	}
+}
+
+// TestUnknownTemplateHasNoSubject proves the lookup fails loudly instead of
+// falling back to a generic subject.
+func TestUnknownTemplateHasNoSubject(t *testing.T) {
+	if _, err := resolveSubject(ntemplate.Template("does_not_exist")); err == nil {
+		t.Fatalf("expected an error for an unknown template")
 	}
 }
 

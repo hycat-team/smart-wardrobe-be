@@ -66,7 +66,10 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel
 		return fmt.Errorf("unknown template: %s", tmplEnum)
 	}
 
-	subject := resolveSubject(tmplEnum)
+	subject, err := resolveSubject(tmplEnum)
+	if err != nil {
+		return err
+	}
 
 	var bodyBuf bytes.Buffer
 	if err := tmpl.Execute(&bodyBuf, params); err != nil {
@@ -104,46 +107,44 @@ func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel nchannel
 	return uc.Send(ctx, channel, tmplEnum, params, user.Email)
 }
 
-func resolveSubject(tmplEnum ntemplate.Template) string {
-	const prefix = "[Closy] "
-	var subject string
-	switch tmplEnum {
-	case ntemplate.Otp:
-		subject = "Mã xác thực OTP"
-	case ntemplate.ForgotPasswordOtp:
-		subject = "Đặt lại mật khẩu"
-	case ntemplate.PaymentSuccess:
-		subject = "Xác nhận thanh toán thành công"
-	case ntemplate.TopupSuccess:
-		subject = "Nạp tiền vào ví thành công"
-	case ntemplate.RenewalSuccess:
-		subject = "Gia hạn gói thành công"
-	case ntemplate.SubscriptionExpired:
-		// The subject used to be "Gia hạn gói thất bại", which described the
-		// outcome the customer did not choose. Nothing failed: the term ended and
-		// the account was downgraded, exactly as designed. The subject says what
-		// happened to THEM, not what the job did.
-		subject = "Gói dịch vụ của bạn đã hết hạn"
-	case ntemplate.SubscriptionExpiring:
-		subject = "Gói dịch vụ của bạn sắp hết hạn"
-	case ntemplate.WalletWarning:
-		subject = "Cảnh báo số dư ví không đủ"
-	case ntemplate.WalletPurchaseSuccess:
-		subject = "Mua gói thành công qua ví nội bộ"
-	case ntemplate.AdminGrant:
-		// 024 FR-083: the wording must not reveal whether other accounts were
-		// part of the same administrator batch, and must not imply payment,
-		// because an administrative grant is not a purchase.
-		subject = "Gói của bạn đã được cấp thành công"
-	case ntemplate.CampaignGrant:
-		// 025 FR-044/FR-045: says a gift was granted and nothing else. In
-		// particular it does not say "promotion", "offer" or "discount" - a subject
-		// line promising a benefit the customer did nothing to qualify for is
-		// what turns a grant into an expectation. The "[Closy] " prefix is added by
-		// resolveSubject, so it is not repeated here.
-		subject = "Chúc Mừng Bạn Nhận Được Quà Tặng!"
-	default:
-		subject = "Thông báo"
+// subjectPrefix is what every customer-facing subject carries. The product name
+// lives here, not inside each template, so a rename is one edit.
+const subjectPrefix = "[Closy] "
+
+// subjectByTemplate is the whole subject vocabulary, WITHOUT the prefix.
+//
+// It is a map rather than a switch with a default: the default used to be
+// "Thông báo", so a new template that nobody wired a subject for reached
+// customers as "[Closy] Thông báo" and nothing failed. A missing entry is now an
+// error at enqueue time, and TestEveryTemplateHasASubject walks template.All()
+// so the gap fails in CI instead of in an inbox.
+var subjectByTemplate = map[ntemplate.Template]string{
+	ntemplate.Otp:                   "Mã xác thực OTP",
+	ntemplate.ForgotPasswordOtp:     "Đặt lại mật khẩu",
+	ntemplate.PaymentSuccess:        "Xác nhận thanh toán thành công",
+	ntemplate.TopupSuccess:          "Nạp tiền vào ví thành công",
+	ntemplate.RenewalSuccess:        "Gia hạn gói thành công",
+	ntemplate.SubscriptionExpired:   "Gói dịch vụ của bạn đã hết hạn",
+	ntemplate.SubscriptionExpiring:  "Gói dịch vụ của bạn sắp hết hạn",
+	ntemplate.WalletWarning:         "Cảnh báo số dư ví không đủ",
+	ntemplate.WalletPurchaseSuccess: "Mua gói thành công qua ví nội bộ",
+	// 024 FR-083: the wording must not reveal whether other accounts were part of
+	// the same administrator batch, and must not imply payment, because an
+	// administrative grant is not a purchase.
+	ntemplate.AdminGrant: "Gói của bạn đã được cấp thành công",
+	// 025 FR-044/FR-045: says a gift was granted and nothing else. In particular
+	// it does not say "promotion", "offer" or "discount" - a subject line
+	// promising a benefit the customer did nothing to qualify for is what turns a
+	// grant into an expectation. The prefix is added by resolveSubject, so it is
+	// not repeated here.
+	ntemplate.CampaignGrant: "Chúc Mừng Bạn Nhận Được Quà Tặng!",
+}
+
+// resolveSubject returns the full subject for a template, prefix included.
+func resolveSubject(tmplEnum ntemplate.Template) (string, error) {
+	subject, ok := subjectByTemplate[tmplEnum]
+	if !ok {
+		return "", fmt.Errorf("no subject configured for template %q", tmplEnum)
 	}
-	return prefix + subject
+	return subjectPrefix + subject, nil
 }

@@ -48,3 +48,25 @@ const (
 	// and read as a lie — for every campaign after it.
 	CampaignGrant Template = "campaign_grant"
 )
+
+// All lists every template the notification module can send.
+//
+// It exists so a test can walk the set instead of trusting a hand-maintained
+// list: a template added without a subject, or without a renderer, has to fail
+// somewhere before a customer receives "[Closy] Thông báo". Keep this in step
+// with the const block above - the All-count test catches the omission.
+func All() []Template {
+	return []Template{
+		Otp,
+		ForgotPasswordOtp,
+		PaymentSuccess,
+		TopupSuccess,
+		RenewalSuccess,
+		SubscriptionExpired,
+		SubscriptionExpiring,
+		WalletWarning,
+		WalletPurchaseSuccess,
+		AdminGrant,
+		CampaignGrant,
+	}
+}

@@ -40,6 +40,12 @@ func NewEmailWorker(
 
 func (w *EmailWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
+	if !w.emailEnabled {
+		// Loud on purpose. `email.enabled=false` makes this handler acknowledge
+		// and DROP every message, and the alternative to this line is an operator
+		// who believes transactional email is flowing while it is being discarded.
+		w.logger.Warn("Outbound email is DISABLED: every notification will be acknowledged and discarded (email.enabled=false)")
+	}
 	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueNotificationEmail, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register email consumer", zap.Error(err))
 	}
