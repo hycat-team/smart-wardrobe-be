@@ -65,7 +65,10 @@ ifeq ($(OS),Windows_NT)
 GO_BIN_EXT := .exe
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
-FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write-Error ($$files -join [Environment]::NewLine); exit 1 }"
+# Keep the check in a script rather than inline: an inline `$$`-escaped PowerShell
+# variable was consumed before PowerShell saw it, so the recipe arrived as
+# `if () { ... }` and `make lint` / `make check` could not run on Windows at all.
+FMT_CHECK_CMD := powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fmt-check.ps1
 # NOTE: do NOT pipe go test through a filter — the pipeline exit code becomes
 # the filter's (findstr/grep return 1 when every line is filtered, e.g. a module
 # with no test files) which both false-fails and masks real test failures.
