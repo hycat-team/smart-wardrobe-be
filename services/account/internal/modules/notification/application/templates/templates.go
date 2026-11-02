@@ -17,8 +17,11 @@ var TopupSuccessTemplate string
 //go:embed RenewalSuccess.html
 var RenewalSuccessTemplate string
 
-//go:embed RenewalFailed.html
-var RenewalFailedTemplate string
+//go:embed SubscriptionExpired.html
+var SubscriptionExpiredTemplate string
+
+//go:embed SubscriptionExpiring.html
+var SubscriptionExpiringTemplate string
 
 //go:embed WalletWarning.html
 var WalletWarningTemplate string

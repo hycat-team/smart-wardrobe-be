@@ -35,10 +35,12 @@ func NewOutboxEmailUseCase(
 ) usecase_interfaces.IOutboxEmailUseCase {
 	tmplCache := map[ntemplate.Template]*template.Template{
 		ntemplate.Otp:                   template.Must(template.New("otp").Parse(templates.OtpTemplate)),
+		ntemplate.ForgotPasswordOtp:     template.Must(template.New("forgot_password_otp").Parse(templates.ForgotPasswordTemplate)),
 		ntemplate.PaymentSuccess:        template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
 		ntemplate.TopupSuccess:          template.Must(template.New("topup_success").Parse(templates.TopupSuccessTemplate)),
 		ntemplate.RenewalSuccess:        template.Must(template.New("renewal_success").Parse(templates.RenewalSuccessTemplate)),
-		ntemplate.RenewalFailed:         template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
+		ntemplate.SubscriptionExpired:   template.Must(template.New("subscription_expired").Parse(templates.SubscriptionExpiredTemplate)),
+		ntemplate.SubscriptionExpiring:  template.Must(template.New("subscription_expiring").Parse(templates.SubscriptionExpiringTemplate)),
 		ntemplate.WalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
 		ntemplate.WalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
 		ntemplate.AdminGrant:            template.Must(template.New("admin_grant").Parse(templates.AdminGrantTemplate)),
@@ -108,14 +110,22 @@ func resolveSubject(tmplEnum ntemplate.Template) string {
 	switch tmplEnum {
 	case ntemplate.Otp:
 		subject = "Mã xác thực OTP"
+	case ntemplate.ForgotPasswordOtp:
+		subject = "Đặt lại mật khẩu"
 	case ntemplate.PaymentSuccess:
 		subject = "Xác nhận thanh toán thành công"
 	case ntemplate.TopupSuccess:
 		subject = "Nạp tiền vào ví thành công"
 	case ntemplate.RenewalSuccess:
 		subject = "Gia hạn gói thành công"
-	case ntemplate.RenewalFailed:
-		subject = "Gia hạn gói thất bại"
+	case ntemplate.SubscriptionExpired:
+		// The subject used to be "Gia hạn gói thất bại", which described the
+		// outcome the customer did not choose. Nothing failed: the term ended and
+		// the account was downgraded, exactly as designed. The subject says what
+		// happened to THEM, not what the job did.
+		subject = "Gói dịch vụ của bạn đã hết hạn"
+	case ntemplate.SubscriptionExpiring:
+		subject = "Gói dịch vụ của bạn sắp hết hạn"
 	case ntemplate.WalletWarning:
 		subject = "Cảnh báo số dư ví không đủ"
 	case ntemplate.WalletPurchaseSuccess:

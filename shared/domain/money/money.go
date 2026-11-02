@@ -26,6 +26,39 @@ func ToFloat(amount decimal.Decimal) float64 {
 	return amount.InexactFloat64()
 }
 
+// FormatVND renders an amount for customer-facing text such as a transactional
+// email: grouped thousands with the đồng suffix, never an exponent.
+//
+// It exists because `ToFloat` used to be handed straight to an html/template,
+// and Go renders a float64 with %v semantics: 1000000 becomes "1e+06". An email
+// telling a customer their wallet holds "1.5e+06" is worse than no email.
+//
+// VND only on purpose: `ValidateSupportedCurrency` rejects every other
+// currency, so a grouping rule for a decimal currency would be untested code.
+// When a second currency is supported this MUST take the currency instead of
+// assuming đồng.
+func FormatVND(amount decimal.Decimal) string {
+	digits := amount.StringFixed(0)
+
+	sign := ""
+	if strings.HasPrefix(digits, "-") {
+		sign = "-"
+		digits = digits[1:]
+	}
+
+	var b strings.Builder
+	b.Grow(len(digits) + len(digits)/3 + 2)
+	b.WriteString(sign)
+	for i, r := range digits {
+		if i > 0 && (len(digits)-i)%3 == 0 {
+			b.WriteByte('.')
+		}
+		b.WriteRune(r)
+	}
+	b.WriteString("đ")
+	return b.String()
+}
+
 func CurrencyExponent(code currency.Currency) (int32, error) {
 	switch code {
 	case currency.VND:

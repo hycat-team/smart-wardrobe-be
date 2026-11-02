@@ -55,6 +55,21 @@ func TodayStartVN() time.Time {
 	return StartOfDayInVN(NowVN())
 }
 
+// FormatDateVN renders a customer-facing date ("02/01/2006") in the Vietnam
+// calendar, which is the only calendar the product's users read.
+//
+// A fixed zone rather than time.LoadLocation, for the same reason as vnLoc: the
+// image may not carry tzdata, and a container that silently falls back to UTC
+// must not tell a customer their plan ends on a different day than it does.
+//
+// Callers used to format the raw stored time with `.Format("02/01/2006")`, which
+// inherits whatever location the driver returned, and `AdminGrant` used
+// `.Local()`, which inherits the container's. The expiry date in an email is a
+// statement about the customer's calendar, so it gets one rule.
+func FormatDateVN(t time.Time) string {
+	return t.In(vnLoc).Format("02/01/2006")
+}
+
 // CalendarDateAtNoonUTC maps t to 12:00 UTC of the Vietnam calendar day that
 // contains t.
 //

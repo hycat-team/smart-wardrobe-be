@@ -3,6 +3,7 @@ package subscription
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -247,15 +248,18 @@ func (f *fakeRenewalPlanRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUI
 }
 
 type fakeRenewalNotif struct {
-	sent []string
+	sent   []string
+	params []map[string]any
 }
 
 func (f *fakeRenewalNotif) Send(ctx context.Context, channel notificationContract.ChannelEnum, template notificationContract.TemplateEnum, params map[string]any, to string) error {
 	f.sent = append(f.sent, string(template))
+	f.params = append(f.params, params)
 	return nil
 }
 func (f *fakeRenewalNotif) SendByUserID(ctx context.Context, channel notificationContract.ChannelEnum, template notificationContract.TemplateEnum, params map[string]any, userID uuid.UUID) error {
 	f.sent = append(f.sent, string(template))
+	f.params = append(f.params, params)
 	return nil
 }
 
@@ -373,6 +377,15 @@ func (f *fakeRenewalPublisher) Publish(_ context.Context, _ string, payload any)
 
 // ---- Tests ----
 
+// TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff is the defect a customer
+// reported: the expiry email told them "Gói dịch vụ: Free Plan" and "Lý do:
+// downgraded_auto_renew_disabled" for a Premium plan that had simply ended.
+//
+// Three separate claims are pinned here:
+//   - the template is the expiry notice, not "renewal failed" - nothing failed;
+//   - PlanName is the plan the customer LOST, captured before the downgrade
+//     rewrites the subscription in place;
+//   - the raw reason code never reaches the template parameters.
 func TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff(t *testing.T) {
 	h := newRenewalHarness(t, false, 500000)
 
@@ -388,10 +401,28 @@ func TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff(t *testing.T) {
 		t.Fatalf("expected subscription downgraded in repo, got %d updates", h.subRepo.updates)
 	}
 	if len(h.notif.sent) != 1 {
-		t.Fatalf("expected renewal failure notification, got %d", len(h.notif.sent))
+		t.Fatalf("expected exactly one expiry notification, got %d", len(h.notif.sent))
+	}
+	if got := h.notif.sent[0]; got != string(notificationContract.TemplateSubscriptionExpired) {
+		t.Fatalf("expected the expiry template, got %q", got)
+	}
+	params := h.notif.params[0]
+	if got := params["PlanName"]; got != h.plan.Name {
+		t.Fatalf("PlanName must name the plan the customer lost (%q), got %#v", h.plan.Name, got)
+	}
+	if got := params["NeedsTopup"]; got != false {
+		t.Fatalf("auto-renew switched off is not a wallet shortfall, got NeedsTopup=%#v", got)
+	}
+	for key, value := range params {
+		if text, ok := value.(string); ok && strings.Contains(text, renewalReasonDowngradedAutoRenewOff) {
+			t.Fatalf("parameter %q leaks the internal reason code: %q", key, text)
+		}
 	}
 }
 
+// TestExecuteScheduledRenewalDowngradesOnInsufficientWallet keeps the wallet
+// shortfall distinguishable from a deliberate non-renewal: the customer needs to
+// know the amount, because topping up is the action that fixes it.
 func TestExecuteScheduledRenewalDowngradesOnInsufficientWallet(t *testing.T) {
 	h := newRenewalHarness(t, true, 1000) // wallet far below plan price
 
@@ -405,6 +436,19 @@ func TestExecuteScheduledRenewalDowngradesOnInsufficientWallet(t *testing.T) {
 	}
 	if h.subRepo.updates != 1 {
 		t.Fatalf("expected subscription downgraded in repo, got %d updates", h.subRepo.updates)
+	}
+	if len(h.notif.sent) != 1 {
+		t.Fatalf("expected exactly one expiry notification, got %d", len(h.notif.sent))
+	}
+	params := h.notif.params[0]
+	if got := params["NeedsTopup"]; got != true {
+		t.Fatalf("expected NeedsTopup=true for a shortfall, got %#v", got)
+	}
+	if got, _ := params["RequiredAmount"].(string); got == "" || strings.ContainsAny(got, "eE") {
+		t.Fatalf("RequiredAmount must be a readable amount, got %#v", params["RequiredAmount"])
+	}
+	if got, _ := params["Balance"].(string); got == "" || strings.ContainsAny(got, "eE") {
+		t.Fatalf("Balance must be a readable amount, got %#v", params["Balance"])
 	}
 }
 

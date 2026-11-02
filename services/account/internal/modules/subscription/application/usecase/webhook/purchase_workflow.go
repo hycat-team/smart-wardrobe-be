@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/shared/domain/constants/benefitresolution"
 	sharedmoney "smart-wardrobe-be/shared/domain/money"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 )
 
 func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
@@ -132,11 +133,11 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 	if user, userErr := uc.userBriefContract.GetByID(txCtx, tx.UserID); userErr == nil && user != nil && user.Email != "" {
 		expiresAt := ""
 		if sub.ExpiresAt != nil {
-			expiresAt = sub.ExpiresAt.Format("02/01/2006")
+			expiresAt = timeutils.FormatDateVN(*sub.ExpiresAt)
 		}
 		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplatePaymentSuccess, map[string]any{
 			"PlanName":  plan.Name,
-			"Amount":    sharedmoney.ToFloat(tx.Amount),
+			"Amount":    sharedmoney.FormatVND(tx.Amount),
 			"ExpiresAt": expiresAt,
 		}, user.Email)
 	}

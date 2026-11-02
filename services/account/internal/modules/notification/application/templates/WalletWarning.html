@@ -10,6 +10,8 @@
         <p>Chào bạn,</p>
         <p>Gói dịch vụ của bạn sắp hết hạn và số dư ví hiện tại không đủ để gia hạn tự động.</p>
         <div style="margin: 20px 0; padding: 15px; background-color: #fffbe6; border-radius: 5px;">
+            <p style="font-size: 16px; color: #333; margin: 8px 0;">Gói dịch vụ: <strong>{{.PlanName}}</strong></p>
+            <p style="font-size: 14px; color: #666; margin: 8px 0;">Ngày hết hạn: <strong>{{.ExpiresAt}}</strong></p>
             <p style="font-size: 16px; color: #333; margin: 8px 0;">Số dư hiện tại: <strong>{{.Balance}}</strong></p>
             <p style="font-size: 16px; color: #333; margin: 8px 0;">Số tiền cần: <strong>{{.RequiredAmount}}</strong></p>
             <p style="font-size: 14px; color: #dc3545; margin: 8px 0;">Còn <strong>{{.DaysRemaining}}</strong> ngày trước khi hết hạn</p>

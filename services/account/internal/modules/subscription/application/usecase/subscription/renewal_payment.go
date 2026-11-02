@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	sharedmoney "smart-wardrobe-be/shared/domain/money"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"go.uber.org/zap"
 )
@@ -135,8 +136,8 @@ func (uc *SubscriptionUseCase) completeRenewalExtension(
 
 	_ = uc.notifContract.SendByUserID(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalSuccess, map[string]any{
 		"PlanName":     plan.Name,
-		"Amount":       sharedmoney.ToFloat(plan.Price),
-		"NewExpiresAt": lockedSub.ExpiresAt.Format("02/01/2006"),
+		"Amount":       sharedmoney.FormatVND(plan.Price),
+		"NewExpiresAt": timeutils.FormatDateVN(*lockedSub.ExpiresAt),
 	}, lockedSub.UserID)
 
 	result.Status = renewalStatusRenewed

@@ -42,6 +42,31 @@ func TestTodayStartVNIsTodayMidnight(t *testing.T) {
 	}
 }
 
+// TestFormatDateVNKeepsTheCustomersCalendar is the defect behind the expiry
+// dates in emails: the stored instant is the same one the database session
+// hands back, and formatting it directly inherits that location. A plan ending
+// at 2026-11-01 17:30Z ends on 02/11 in Vietnam.
+func TestFormatDateVNKeepsTheCustomersCalendar(t *testing.T) {
+	cases := []struct {
+		name string
+		in   time.Time
+		want string
+	}{
+		{"vn midnight", time.Date(2026, 11, 2, 0, 0, 0, 0, timeutils.VnLoc()), "02/11/2026"},
+		{"late UTC belongs to next VN day", time.Date(2026, 11, 1, 17, 30, 0, 0, time.UTC), "02/11/2026"},
+		{"early UTC is same VN day", time.Date(2026, 11, 2, 3, 0, 0, 0, time.UTC), "02/11/2026"},
+		{"utc evening is next VN day", time.Date(2026, 11, 1, 23, 0, 0, 0, time.UTC), "02/11/2026"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := timeutils.FormatDateVN(tc.in); got != tc.want {
+				t.Fatalf("FormatDateVN(%v) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestCalendarDateAtNoonUTC pins the fix for the DATE-column write on
 // Supabase: a UTC session casts '2026-10-20 00:00+07' (= 2026-10-19 17:00Z) to
 // DATE 2026-10-19, one day earlier. The noon-UTC value must stay on 10-20 in

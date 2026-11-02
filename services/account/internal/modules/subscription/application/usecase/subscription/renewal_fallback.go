@@ -7,10 +7,19 @@ import (
 	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+// downgradeWalletNotice carries the already-formatted wallet figures for the
+// insufficient-balance notice. nil means the downgrade happened for another
+// reason (auto-renew switched off), where quoting a shortfall would invent one.
+type downgradeWalletNotice struct {
+	RequiredAmount string
+	Balance        string
+}
 
 // executeRenewalDowngrade downgrades an expired subscription to the free plan for a specific reason.
 func (uc *SubscriptionUseCase) executeRenewalDowngrade(
@@ -20,12 +29,33 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 	now time.Time,
 	result *RenewalExecutionResult,
 	reason string,
+	walletNotice *downgradeWalletNotice,
 ) error {
 	result.Reason = reason
+
+	// Capture what the customer is LOSING before downgradeToFree rewrites the
+	// subscription in place. DowngradeToFree reassigns SubscriptionPlan to the
+	// free plan, so reading the name afterwards reported the plan they were moved
+	// TO - which is how a customer whose Premium had just ended was told
+	// "Gói dịch vụ: Free Plan". The lifetime-fallback branch does not reassign
+	// the field, so the two paths disagreed with each other as well.
+	planName := ""
+	if lockedSub.SubscriptionPlan != nil {
+		planName = lockedSub.SubscriptionPlan.Name
+	}
+	expiredAt := ""
+	if lockedSub.ExpiresAt != nil {
+		expiredAt = timeutils.FormatDateVN(*lockedSub.ExpiresAt)
+	}
+
 	if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
 		return err
 	}
 
+	// The log keeps the raw reason code: it is a technical field, and the
+	// operator-facing line is where `downgraded_auto_renew_disabled` belongs.
+	// The EMAIL must never show it - the template renders a Vietnamese sentence
+	// chosen from NeedsTopup instead.
 	uc.log.Info("Downgraded subscription during scheduled renewal",
 		zap.String("user_id", lockedSub.UserID.String()),
 		zap.String("plan_id", lockedSub.SubscriptionPlanID.String()),
@@ -33,14 +63,17 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 		zap.String("reason", reason),
 	)
 
-	planName := ""
-	if lockedSub.SubscriptionPlan != nil {
-		planName = lockedSub.SubscriptionPlan.Name
+	params := map[string]any{
+		"PlanName":   planName,
+		"ExpiredAt":  expiredAt,
+		"NeedsTopup": walletNotice != nil,
 	}
-	_ = uc.notifContract.SendByUserID(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalFailed, map[string]any{
-		"PlanName": planName,
-		"Reason":   reason,
-	}, lockedSub.UserID)
+	if walletNotice != nil {
+		params["RequiredAmount"] = walletNotice.RequiredAmount
+		params["Balance"] = walletNotice.Balance
+	}
+
+	_ = uc.notifContract.SendByUserID(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateSubscriptionExpired, params, lockedSub.UserID)
 
 	result.Status = renewalStatusDowngraded
 	return nil

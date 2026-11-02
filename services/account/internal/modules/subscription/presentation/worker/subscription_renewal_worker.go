@@ -62,8 +62,14 @@ func (w *SubscriptionRenewalWorker) executeRenewalJob(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	if err := w.subUseCase.ProcessUpcomingExpiryNotifications(ctx); err != nil {
-		w.log.Warn("Failed to process upcoming expiry notifications", zap.Error(err))
+	// The reminder runs on the daily tick only. It used to run on startup as
+	// well, so every container restart re-sent the same warning to every customer
+	// inside the window - three restarts in a day meant three identical emails.
+	// Missing a restart-day reminder costs nothing: the next midnight covers it.
+	if triggerType == workerlog.TriggerCron {
+		if err := w.subUseCase.ProcessUpcomingExpiryNotifications(ctx); err != nil {
+			w.log.Warn("Failed to process upcoming expiry notifications", zap.Error(err))
+		}
 	}
 
 	run := workerlog.New("subscription_renewal", triggerType)

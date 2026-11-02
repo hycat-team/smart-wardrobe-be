@@ -21,10 +21,12 @@ const (
 
 const (
 	TemplateOtp                   = template.Otp
+	TemplateForgotPasswordOtp     = template.ForgotPasswordOtp
 	TemplatePaymentSuccess        = template.PaymentSuccess
 	TemplateTopupSuccess          = template.TopupSuccess
 	TemplateRenewalSuccess        = template.RenewalSuccess
-	TemplateRenewalFailed         = template.RenewalFailed
+	TemplateSubscriptionExpired   = template.SubscriptionExpired
+	TemplateSubscriptionExpiring  = template.SubscriptionExpiring
 	TemplateWalletWarning         = template.WalletWarning
 	TemplateWalletPurchaseSuccess = template.WalletPurchaseSuccess
 	// TemplateAdminGrant is the administrator-grant notification (024 FR-083).

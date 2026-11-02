@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/shared/domain/constants/adminaudit"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"go.uber.org/zap"
 
@@ -515,7 +516,7 @@ func (uc *SubscriptionUseCase) notifyGrant(ctx context.Context, resolved *Resolv
 	}
 	expiresText := "Không thời hạn"
 	if expiresAt != nil {
-		expiresText = expiresAt.Local().Format("02/01/2006")
+		expiresText = timeutils.FormatDateVN(*expiresAt)
 	}
 	// The send error is dropped on purpose: reporting a failed email as a failed
 	// grant would make the administrator re-grant a plan that was already

@@ -149,7 +149,7 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 		if user, userErr := uc.userBriefContract.GetByID(txCtx, userID); userErr == nil && user != nil && user.Email != "" {
 			expiresAt := ""
 			if sub.ExpiresAt != nil {
-				expiresAt = sub.ExpiresAt.Format("02/01/2006")
+				expiresAt = timeutils.FormatDateVN(*sub.ExpiresAt)
 			}
 			walletEntity, _ := uc.walletRepo.GetByUserID(txCtx, userID)
 			newBalance := sharedmoney.Zero
@@ -158,8 +158,8 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 			}
 			_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateWalletPurchaseSuccess, map[string]any{
 				"PlanName":   plan.Name,
-				"Amount":     sharedmoney.ToFloat(plan.Price),
-				"NewBalance": sharedmoney.ToFloat(newBalance),
+				"Amount":     sharedmoney.FormatVND(plan.Price),
+				"NewBalance": sharedmoney.FormatVND(newBalance),
 				"ExpiresAt":  expiresAt,
 			}, user.Email)
 		}
