@@ -16,6 +16,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
+	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
 	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 
@@ -35,6 +36,11 @@ func (f *fakeRenewalUow) Execute(ctx context.Context, fn func(ctx context.Contex
 type fakeRenewalSubRepo struct {
 	lockedSub *entities.UserSubscription
 	updates   int
+	// expiring feeds the pre-expiry reminder. The batch method pages through it
+	// the way the real repository does, so a test can prove the loop advances.
+	expiring     []*entities.UserSubscription
+	expiryCalls  int
+	expiryLastID uuid.UUID
 }
 
 func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, error) {
@@ -69,8 +75,27 @@ func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptions(ctx context.Context, 
 func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptionsBatch(ctx context.Context, now time.Time, lastUserID uuid.UUID, lastExpiresAt time.Time, limit int) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
-	return nil, nil
+func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error) {
+	f.expiryCalls++
+	f.expiryLastID = lastUserID
+
+	start := 0
+	if !lastExpiresAt.IsZero() {
+		for i, sub := range f.expiring {
+			if sub.ExpiresAt != nil && !sub.ExpiresAt.Before(lastExpiresAt) && sub.UserID == lastUserID {
+				start = i + 1
+				break
+			}
+		}
+	}
+	if start >= len(f.expiring) {
+		return nil, nil
+	}
+	end := start + limit
+	if end > len(f.expiring) {
+		end = len(f.expiring)
+	}
+	return f.expiring[start:end], nil
 }
 func (f *fakeRenewalSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
@@ -105,6 +130,12 @@ func (f *fakeRenewalWalletRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent
 }
 func (f *fakeRenewalWalletRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.UserWallet, error) {
 	return nil, nil
+}
+func (f *fakeRenewalWalletRepo) GetByUserIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.UserWallet, error) {
+	if f.wallet == nil {
+		return nil, nil
+	}
+	return []*entities.UserWallet{f.wallet}, nil
 }
 func (f *fakeRenewalWalletRepo) GetAll(ctx context.Context) ([]*entities.UserWallet, error) {
 	return nil, nil
@@ -203,14 +234,15 @@ func (f *fakeRenewalEventRepo) CreateIfAbsent(ctx context.Context, event *entiti
 }
 
 type fakeRenewalPlanRepo struct {
-	planByID map[uuid.UUID]*entities.SubscriptionPlan
+	planByID    map[uuid.UUID]*entities.SubscriptionPlan
+	defaultPlan *entities.SubscriptionPlan
 }
 
 func (f *fakeRenewalPlanRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.SubscriptionPlan, error) {
 	return f.planByID[id], nil
 }
 func (f *fakeRenewalPlanRepo) GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error) {
-	return nil, nil
+	return f.defaultPlan, nil
 }
 func (f *fakeRenewalPlanRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.SubscriptionPlan, error) {
 	return nil, nil
@@ -349,6 +381,7 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 			IsActive:        true,
 		},
 	}}
+	plans.defaultPlan = plans.planByID[freePlanID]
 	h.plans = plans
 	h.uc = &SubscriptionUseCase{
 		uow:           &fakeRenewalUow{},
@@ -380,6 +413,89 @@ func (f *fakeRenewalPublisher) Publish(_ context.Context, _ string, payload any)
 }
 
 // ---- Tests ----
+
+func TestProcessUpcomingExpiryNotificationsPagesAndBatchesLookups(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	// 250 rows is 2.5 pages at the production page size of 100. The loop must
+	// advance its cursor, not restart, or the first 100 customers would be
+	// notified forever and the rest never.
+	expires := h.now.Add(24 * time.Hour)
+	for i := 0; i < 250; i++ {
+		h.subRepo.expiring = append(h.subRepo.expiring, &entities.UserSubscription{
+			UserID:             uuid.New(),
+			SubscriptionPlan:   h.plan,
+			CurrentPlanKind:    plankind.Finite,
+			ExpiresAt:          &expires,
+			IsAutoRenewEnabled: false,
+		})
+	}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, want := h.subRepo.expiryCalls, 3; got != want {
+		t.Fatalf("expected %d pages (100+100+50), got %d", want, got)
+	}
+	if got, want := len(h.notif.sent), 250; got != want {
+		t.Fatalf("expected one reminder per customer (%d), got %d", want, got)
+	}
+	for _, tmpl := range h.notif.sent {
+		if tmpl != "subscription_expiring" {
+			t.Fatalf("expected every reminder to use subscription_expiring, got %q", tmpl)
+		}
+	}
+}
+
+// TestProcessUpcomingExpiryNotificationsWarnsOnShortfall covers the other half
+// of the same loop: auto-renew on and the wallet cannot cover the price.
+func TestProcessUpcomingExpiryNotificationsWarnsOnShortfall(t *testing.T) {
+	h := newRenewalHarness(t, true, 1000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	expires := h.now.Add(24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{{
+		UserID:             h.walletRepo.wallet.UserID,
+		SubscriptionPlan:   h.plan,
+		CurrentPlanKind:    plankind.Finite,
+		ExpiresAt:          &expires,
+		IsAutoRenewEnabled: true,
+	}}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 1 || h.notif.sent[0] != "wallet_warning" {
+		t.Fatalf("expected a wallet warning, got %v", h.notif.sent)
+	}
+	if got := h.notif.params[0]["RestoredPlanName"]; got != "Free Plan" {
+		t.Fatalf("expected the free plan name, got %#v", got)
+	}
+}
+
+// TestProcessUpcomingExpiryNotificationsSkipsWhenNothingExpires guards the empty
+// page, which is the ordinary state most nights.
+func TestProcessUpcomingExpiryNotificationsSkipsWhenNothingExpires(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 0 {
+		t.Fatalf("expected no email, got %v", h.notif.sent)
+	}
+}
 
 // TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff is the defect a customer
 // reported: the expiry email told them "Gói dịch vụ: Free Plan" and "Lý do:

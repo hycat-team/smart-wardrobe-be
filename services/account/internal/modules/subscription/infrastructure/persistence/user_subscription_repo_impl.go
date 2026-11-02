@@ -120,10 +120,19 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionByUserIDWithLoc
 	return &sub, nil
 }
 
-func (r *UserSubscriptionRepository) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
+func (r *UserSubscriptionRepository) GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error) {
+	if limit <= 0 {
+		limit = 100
+	}
 	var subs []*entities.UserSubscription
-	query := r.GetQueryWithPreload(ctx)
-	err := query.Where("current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at > ? AND expires_at <= ?", plankind.Finite, from, to).Find(&subs).Error
+	query := r.GetQueryWithPreload(ctx).
+		Where("current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at > ? AND expires_at <= ?", plankind.Finite, from, to)
+
+	if !lastExpiresAt.IsZero() {
+		query = query.Where("expires_at > ? OR (expires_at = ? AND user_id > ?)", lastExpiresAt, lastExpiresAt, lastUserID)
+	}
+
+	err := query.Order("expires_at ASC, user_id ASC").Limit(limit).Find(&subs).Error
 	if err != nil {
 		return nil, err
 	}

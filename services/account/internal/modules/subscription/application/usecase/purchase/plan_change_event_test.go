@@ -58,6 +58,9 @@ func (f *purchaseWalletRepo) GetByID(ctx context.Context, id uuid.UUID) (*entiti
 func (f *purchaseWalletRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.UserWallet, error) {
 	return nil, nil
 }
+func (f *purchaseWalletRepo) GetByUserIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.UserWallet, error) {
+	return nil, nil
+}
 func (f *purchaseWalletRepo) GetAll(ctx context.Context) ([]*entities.UserWallet, error) {
 	return nil, nil
 }

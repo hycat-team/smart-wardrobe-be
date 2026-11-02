@@ -369,7 +369,7 @@ func (f *fakeSubRepo) GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.C
 	return f.GetByUserID(ctx, userID)
 }
 
-func (f *fakeSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
+func (f *fakeSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
 

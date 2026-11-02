@@ -3,10 +3,8 @@ package subscription
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
-	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/subscriptionrenewalstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
@@ -155,70 +153,34 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 	deadline := now.AddDate(0, 0, warningDays)
 
-	expiringSubs, err := uc.userSubRepo.GetSubscriptionsExpiringWithin(ctx, now, deadline)
-	if err != nil {
-		return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
-	}
-
-	// Loaded at most once per run: the free plan's name is the same for every
-	// customer that has no lifetime fallback.
+	// Loaded at most once per run: every customer without a lifetime fallback
+	// returns to the same free plan.
 	defaultFreePlanName := ""
 
-	for _, sub := range expiringSubs {
-		if sub == nil || sub.SubscriptionPlan == nil || sub.ExpiresAt == nil {
-			continue
+	var lastExpiresAt time.Time
+	var lastUserID uuid.UUID
+
+	for {
+		batch, err := uc.userSubRepo.GetSubscriptionsExpiringWithinBatch(
+			ctx, now, deadline, lastExpiresAt, lastUserID, upcomingExpiryBatchSize)
+		if err != nil {
+			return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
+		}
+		if len(batch) == 0 {
+			break
 		}
 
-		// Round UP: a plan ending in 2 days and 3 hours still has three days of
-		// service in front of the customer, and truncating it to "2 ngày" made
-		// the warning look later than the account's actual deadline.
-		daysRemaining := int(math.Ceil(sub.ExpiresAt.Sub(now).Hours() / 24))
-		if daysRemaining < 0 {
-			daysRemaining = 0
-		}
+		uc.notifyUpcomingExpiryBatch(ctx, batch, now, &defaultFreePlanName)
 
-		// The plan the account returns to is the lifetime plan when one sits
-		// underneath, not Free. Saying "gói Free" to a lifetime customer is a
-		// statement about their entitlements that is simply false.
-		restoredPlanName := ""
-		if sub.FallbackPlanID != nil {
-			if fallbackPlan, planErr := uc.planRepo.GetByID(ctx, *sub.FallbackPlanID); planErr == nil && fallbackPlan != nil {
-				restoredPlanName = fallbackPlan.Name
-			}
+		if len(batch) < upcomingExpiryBatchSize {
+			break
 		}
-		if restoredPlanName == "" {
-			if defaultFreePlanName == "" {
-				if freePlan, planErr := uc.planRepo.GetDefaultPlan(ctx); planErr == nil && freePlan != nil {
-					defaultFreePlanName = freePlan.Name
-				}
-			}
-			restoredPlanName = defaultFreePlanName
+		last := batch[len(batch)-1]
+		if last.ExpiresAt == nil {
+			break
 		}
-
-		expiryNotice := map[string]any{
-			"PlanName":         sub.SubscriptionPlan.Name,
-			"ExpiresAt":        timeutils.FormatDateVN(*sub.ExpiresAt),
-			"DaysRemaining":    daysRemaining,
-			"RestoredPlanName": restoredPlanName,
-		}
-
-		if !sub.IsAutoRenewEnabled {
-			_ = uc.notifContract.SendByUserID(ctx, notificationContract.ChannelEmail, notificationContract.TemplateSubscriptionExpiring, expiryNotice, sub.UserID)
-			continue
-		}
-
-		wallet, err := uc.walletRepo.GetByUserID(ctx, sub.UserID)
-		if err != nil || wallet == nil {
-			continue
-		}
-
-		if wallet.Balance.GreaterThanOrEqual(sub.SubscriptionPlan.Price) {
-			continue
-		}
-
-		expiryNotice["Balance"] = sharedmoney.FormatVND(wallet.Balance)
-		expiryNotice["RequiredAmount"] = sharedmoney.FormatVND(sub.SubscriptionPlan.Price)
-		_ = uc.notifContract.SendByUserID(ctx, notificationContract.ChannelEmail, notificationContract.TemplateWalletWarning, expiryNotice, sub.UserID)
+		lastExpiresAt = *last.ExpiresAt
+		lastUserID = last.UserID
 	}
 	return nil
 }

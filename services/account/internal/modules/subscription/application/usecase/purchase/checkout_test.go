@@ -202,7 +202,7 @@ func (f *fakeSubRepo) GetActiveExpiredSubscriptionsBatch(ctx context.Context, no
 func (f *fakeSubRepo) GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
+func (f *fakeSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
 func (f *fakeSubRepo) BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error {
