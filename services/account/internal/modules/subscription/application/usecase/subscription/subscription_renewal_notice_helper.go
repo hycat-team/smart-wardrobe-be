@@ -26,6 +26,11 @@ const upcomingExpiryBatchSize = 100
 // customer: the previous loop issued one wallet query per row, so a window with
 // 20k customers meant 20k round trips in a single nightly run.
 //
+// firstNoticeDays is the only day of the window a customer hears from us, plus a
+// final notice on the last day. The job runs nightly, so without that restriction
+// a seven-day window meant seven emails per customer - the same message every
+// morning, which reads as spam rather than as a reminder.
+//
 // Failures to load the batch's wallets or plans are logged and the page is
 // skipped. A reminder is best-effort - it must never abort the renewal scan that
 // follows it, and the next midnight retries.
@@ -33,6 +38,7 @@ func (uc *SubscriptionUseCase) notifyUpcomingExpiryBatch(
 	ctx context.Context,
 	batch []*entities.UserSubscription,
 	now time.Time,
+	firstNoticeDays int,
 	defaultFreePlanName *string,
 ) {
 	renewUserIDs := make([]uuid.UUID, 0, len(batch))
@@ -87,6 +93,13 @@ func (uc *SubscriptionUseCase) notifyUpcomingExpiryBatch(
 			daysRemaining = 0
 		}
 
+		// Only the two milestones produce an email. The job runs every night, so
+		// without this every customer inside the window was mailed every morning;
+		// a seven-day window meant seven identical reminders.
+		if !isReminderMilestone(daysRemaining, firstNoticeDays) {
+			continue
+		}
+
 		expiryNotice := map[string]any{
 			"PlanName":         sub.SubscriptionPlan.Name,
 			"ExpiresAt":        timeutils.FormatDateVN(*sub.ExpiresAt),
@@ -108,6 +121,24 @@ func (uc *SubscriptionUseCase) notifyUpcomingExpiryBatch(
 		expiryNotice["RequiredAmount"] = sharedmoney.FormatVND(sub.SubscriptionPlan.Price)
 		_ = uc.notifContract.SendByUserID(ctx, notificationContract.ChannelEmail, notificationContract.TemplateWalletWarning, expiryNotice, sub.UserID)
 	}
+}
+
+// isReminderMilestone reports whether this is a day on which the customer should
+// hear from us.
+//
+// Two milestones, not a daily drip: the first notice (the configured number of
+// days before expiry) and the last one. The final notice is also the safety net —
+// a nightly run lost to a restart would otherwise mean a customer never hears
+// about their expiring plan at all.
+//
+// Equality rather than "at or below": with one run per day, daysRemaining steps
+// down by exactly one, so each milestone fires once. Comparing with <= would send
+// the first-notice email every day of the window again.
+func isReminderMilestone(daysRemaining, firstNoticeDays int) bool {
+	if firstNoticeDays < 1 {
+		firstNoticeDays = 1
+	}
+	return daysRemaining == firstNoticeDays || daysRemaining == 1
 }
 
 // restoredPlanName reports the plan an account falls back to when its finite

@@ -245,7 +245,13 @@ func (f *fakeRenewalPlanRepo) GetDefaultPlan(ctx context.Context) (*entities.Sub
 	return f.defaultPlan, nil
 }
 func (f *fakeRenewalPlanRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.SubscriptionPlan, error) {
-	return nil, nil
+	plans := make([]*entities.SubscriptionPlan, 0, len(ids))
+	for _, id := range ids {
+		if plan := f.planByID[id]; plan != nil {
+			plans = append(plans, plan)
+		}
+	}
+	return plans, nil
 }
 func (f *fakeRenewalPlanRepo) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return nil, nil
@@ -494,6 +500,119 @@ func TestProcessUpcomingExpiryNotificationsSkipsWhenNothingExpires(t *testing.T)
 	}
 	if len(h.notif.sent) != 0 {
 		t.Fatalf("expected no email, got %v", h.notif.sent)
+	}
+}
+
+// TestUpcomingExpiryRemindersFireOnlyOnMilestones is the fix for the daily
+// grind: the job runs every night, so before this the same customer received the
+// same reminder every morning for the whole window (seven emails on a seven-day
+// window). Only the configured first notice and the final day are milestones now.
+func TestUpcomingExpiryRemindersFireOnlyOnMilestones(t *testing.T) {
+	cases := []struct {
+		name          string
+		firstNotice   int
+		daysRemaining int
+		want          int
+	}{
+		{"configured notice day", 3, 3, 1},
+		{"day before the final notice", 3, 2, 0},
+		{"final notice", 3, 1, 1},
+		{"seven-day window, first notice", 7, 7, 1},
+		{"seven-day window, mid-window", 7, 5, 0},
+		{"seven-day window, near the end", 7, 2, 0},
+		{"seven-day window, final notice", 7, 1, 1},
+		{"one-day window collapses to a single email", 1, 1, 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newRenewalHarness(t, false, 500000)
+			h.uc.cfg = &config.Config{
+				Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+				Subscription: config.Subscription{WalletBalanceWarningDays: tc.firstNotice},
+			}
+
+			expires := h.now.Add(time.Duration(tc.daysRemaining) * 24 * time.Hour)
+			h.subRepo.expiring = []*entities.UserSubscription{{
+				UserID:             uuid.New(),
+				SubscriptionPlan:   h.plan,
+				CurrentPlanKind:    plankind.Finite,
+				ExpiresAt:          &expires,
+				IsAutoRenewEnabled: false,
+			}}
+
+			if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(h.notif.sent) != tc.want {
+				t.Fatalf("daysRemaining=%d firstNotice=%d: expected %d email(s), got %d (%v)",
+					tc.daysRemaining, tc.firstNotice, tc.want, len(h.notif.sent), h.notif.sent)
+			}
+		})
+	}
+}
+
+// TestUpcomingExpiryShortfallWarningAlsoRespectsMilestones keeps the two branches
+// on the same cadence: the wallet warning is not a second daily email.
+func TestUpcomingExpiryShortfallWarningAlsoRespectsMilestones(t *testing.T) {
+	h := newRenewalHarness(t, true, 1000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	expires := h.now.Add(2 * 24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{{
+		UserID:             h.walletRepo.wallet.UserID,
+		SubscriptionPlan:   h.plan,
+		CurrentPlanKind:    plankind.Finite,
+		ExpiresAt:          &expires,
+		IsAutoRenewEnabled: true,
+	}}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 0 {
+		t.Fatalf("a shortfall two days out is not a milestone, got %v", h.notif.sent)
+	}
+}
+
+// TestUpcomingExpiryRemindersFireOnMilestonesForLifetimeAccounts keeps the copy
+// fix and the cadence fix working together on the same run.
+func TestUpcomingExpiryRemindersFireOnMilestonesForLifetimeAccounts(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	fallbackID := uuid.New()
+	h.plans.planByID[fallbackID] = &entities.SubscriptionPlan{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: fallbackID}},
+		Slug:            "lifetime",
+		Name:            "Lifetime Plan",
+		IsActive:        true,
+	}
+
+	expires := h.now.Add(3 * 24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{{
+		UserID:             uuid.New(),
+		SubscriptionPlan:   h.plan,
+		CurrentPlanKind:    plankind.Finite,
+		ExpiresAt:          &expires,
+		IsAutoRenewEnabled: false,
+		FallbackPlanID:     &fallbackID,
+	}}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 1 {
+		t.Fatalf("expected one reminder on the milestone, got %d", len(h.notif.sent))
+	}
+	if got := h.notif.params[0]["RestoredPlanName"]; got != "Lifetime Plan" {
+		t.Fatalf("the reminder must name the restored plan, got %#v", got)
 	}
 }
 

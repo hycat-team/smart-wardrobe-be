@@ -24,7 +24,24 @@ Code: `services/account/internal/modules/notification/`.
 | `admin_grant` | `[Closy] Gói của bạn đã được cấp thành công` | `POST /admin/subscription-grants` (mỗi item một email) | Từng user được cấp |
 | `campaign_grant` | `[Closy] Chúc Mừng Bạn Nhận Được Quà Tặng!` | Campaign claim khi user-created, hoặc catch-up sweep | User đủ điều kiện |
 
-`N` = `subscription.wallet_balance_warning_days` (mặc định 3).
+`N` = `subscription.wallet_balance_warning_days` (cấu hình hiện tại: **3**; override
+bằng env `SUBSCRIPTION_WALLET_BALANCE_WARNING_DAYS`). Đây là **mốc nhắc đầu tiên**,
+không phải "gửi mỗi ngày trong N ngày".
+
+## Nhịp gửi nhắc trước hạn
+
+Job chạy **00:00 mỗi ngày** dưới advisory lock, nhưng mỗi khách chỉ nhận **2 email**
+cho một lần hết hạn:
+
+| Còn lại | Email |
+|---|---|
+| `N` ngày (mặc định 3) | `subscription_expiring` hoặc `wallet_warning` |
+| 1 ngày | như trên (nhắc cuối) |
+| 2 ngày, 4–7 ngày… | không gửi |
+
+Lý do có mốc "1 ngày": nó là lưới an toàn nếu một lần chạy 00:00 bị lỡ (container
+restart đúng lúc). Trước đây job gửi **mỗi ngày** trong cửa sổ, nên cửa sổ 7 ngày
+thành 7 email trùng nội dung.
 
 ## Quy tắc
 

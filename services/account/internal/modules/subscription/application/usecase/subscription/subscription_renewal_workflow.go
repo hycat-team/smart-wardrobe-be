@@ -170,7 +170,7 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 			break
 		}
 
-		uc.notifyUpcomingExpiryBatch(ctx, batch, now, &defaultFreePlanName)
+		uc.notifyUpcomingExpiryBatch(ctx, batch, now, warningDays, &defaultFreePlanName)
 
 		if len(batch) < upcomingExpiryBatchSize {
 			break

@@ -244,6 +244,15 @@ func applyEnvOverrides(cfg *Config) {
 	if v := strings.TrimSpace(os.Getenv("RABBITMQ_VHOST")); v != "" {
 		cfg.RabbitMQ.Vhost = v
 	}
+	// SUBSCRIPTION_WALLET_BALANCE_WARNING_DAYS is the day the first expiry
+	// reminder goes out (the last one is always the final day). It is readable
+	// from the environment because the value lives inside the image otherwise:
+	// tuning the reminder cadence would need a rebuild and a redeploy.
+	if v := strings.TrimSpace(os.Getenv("SUBSCRIPTION_WALLET_BALANCE_WARNING_DAYS")); v != "" {
+		if days, err := strconv.Atoi(v); err == nil && days > 0 {
+			cfg.Subscription.WalletBalanceWarningDays = days
+		}
+	}
 	if v := strings.TrimSpace(os.Getenv("DATABASE_DRILL_SCHEMA")); v != "" {
 		cfg.Database.DrillSchema = v
 	}

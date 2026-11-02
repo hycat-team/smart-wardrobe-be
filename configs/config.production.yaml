@@ -229,7 +229,7 @@ wardrobe:
     category_cache_ttl_seconds: 300
 subscription:
     max_retry_attempts: 3
-    wallet_balance_warning_days: 7
+    wallet_balance_warning_days: 3
 admin:
     audit_retention_months: 12
 
