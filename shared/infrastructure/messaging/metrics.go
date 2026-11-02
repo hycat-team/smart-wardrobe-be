@@ -13,6 +13,9 @@ var (
 	outboxPending atomic.Int64
 	queueDepth    atomic.Int64
 	dlqDepth      atomic.Int64
+	// emailDlqDepth is reported separately: the outbox marks a row published
+	// before SMTP is attempted, so this is the only place a dead email is visible.
+	emailDlqDepth atomic.Int64
 )
 
 func incPublishTotal()  { publishTotal.Add(1) }
@@ -22,10 +25,11 @@ func incNack()          { consumeNackTotal.Add(1) }
 func incReconnect()     { reconnectTotal.Add(1) }
 
 // SetGauges cập nhật các gauge vận hành (được /metrics và health check đọc).
-func SetGauges(outboxPendingCount, queueDepthCount, dlqDepthCount int64) {
+func SetGauges(outboxPendingCount, queueDepthCount, dlqDepthCount, emailDlqDepthCount int64) {
 	outboxPending.Store(outboxPendingCount)
 	queueDepth.Store(queueDepthCount)
 	dlqDepth.Store(dlqDepthCount)
+	emailDlqDepth.Store(emailDlqDepthCount)
 }
 
 // GetMetrics returns current counters and gauges for /metrics or structured log.
@@ -39,5 +43,6 @@ func GetMetrics() map[string]int64 {
 		"outbox_pending":     outboxPending.Load(),
 		"queue_depth":        queueDepth.Load(),
 		"dlq_depth":          dlqDepth.Load(),
+		"email_dlq_depth":    emailDlqDepth.Load(),
 	}
 }

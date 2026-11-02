@@ -25,6 +25,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/presentation/handler"
 	"smart-wardrobe-be/services/account/internal/modules/identity/presentation/router"
 	"smart-wardrobe-be/services/account/internal/modules/notification/application/usecase/email"
+	caching4 "smart-wardrobe-be/services/account/internal/modules/notification/infrastructure/caching"
 	"smart-wardrobe-be/services/account/internal/modules/notification/infrastructure/communication"
 	contract2 "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	worker2 "smart-wardrobe-be/services/account/internal/modules/notification/presentation/worker"
@@ -186,7 +187,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	campaignSweepWorker := worker.NewCampaignSweepWorker(iCampaignSweepUseCase, cfg, l)
 	smtpSender := communication.NewSmtpSender(cfg)
 	iEmailUseCase := email.NewEmailUseCase(smtpSender)
-	emailWorker := worker2.NewEmailWorker(rabbitMQClient, iEmailUseCase, cfg, l)
+	redisDeliveryDeduplicator := caching4.NewRedisDeliveryDeduplicator(iCacheService)
+	emailWorker := worker2.NewEmailWorker(rabbitMQClient, iEmailUseCase, rabbitMQClient, redisDeliveryDeduplicator, cfg, l)
 	auditLogConsumerWorker := worker3.NewAuditLogConsumerWorker(rabbitMQClient, iAuditLogUseCase, l)
 	auditCleanupWorker := worker3.NewAuditCleanupWorker(iAuditLogUseCase, cfg, l)
 	outboxGaugeProbe := messaging.NewOutboxGaugeProbe(cfg, l)

@@ -111,6 +111,21 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel
 		Headers: []byte(`{}`),
 		Status:  shared_repos.OutboxStatusPending,
 	}
+	// Assign the id here rather than letting the insert generate it: the same id
+	// goes into the payload as the delivery's dedupe key, so the worker can
+	// recognise a redelivery of THIS message. A generated-on-insert id would be
+	// unknown at render time.
+	record.ID = uuid.New()
+	payload["outboxId"] = record.ID.String()
+
+	// Re-marshal now that the id is part of the payload. Keeping this next to the
+	// assignment makes it obvious that the field cannot be forgotten.
+	raw, err = json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal outbox payload: %w", err)
+	}
+	record.Payload = raw
+
 	return uc.outboxRepo.Create(ctx, record)
 }
 

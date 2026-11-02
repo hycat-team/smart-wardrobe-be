@@ -63,7 +63,7 @@ func (s *SmtpSender) buildMessage(to, subject, htmlBody string) []byte {
 	return b.Bytes()
 }
 
-func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) error {
+func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) (err error) {
 	// 025 T113: while `email.enabled` is false nothing is transmitted, so the
 	// function returns before a socket is opened. It returns nil, not an error:
 	// the message was handled on purpose, so reporting a failure would make the
@@ -73,6 +73,11 @@ func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) err
 	if !s.cfg.Email.Enabled {
 		return nil
 	}
+
+	// One classification point for every failure below. The worker decides
+	// retry-vs-DLQ from this, and a transport error that reaches it unclassified
+	// would be retried blindly.
+	defer func() { err = classifyDeliveryError(err) }()
 
 	from := s.cfg.Email.SenderEmail
 	// SMTP username: not the sender address — fall back to the sender email for Gmail-style servers.

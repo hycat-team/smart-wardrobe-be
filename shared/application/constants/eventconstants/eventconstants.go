@@ -24,6 +24,12 @@ const (
 	TopicFashionItemCreatedBrand    = "fashion.item.created.brand"
 	TopicFashionProcessingExhausted = "fashion.event.processing-exhausted"
 	TopicNotificationEmail          = "notification.email"
+	// TopicNotificationEmailRetry is where a message goes when SMTP failed for a
+	// reason a retry could fix. It is deliberately NOT "notification.email.retry":
+	// the main queue binds "notification.email.#", and `#` matches multiple words,
+	// so that key would deliver the retry copy to the main queue immediately as
+	// well as to the retry queue that is supposed to hold it.
+	TopicNotificationEmailRetry = "notification.retry.email"
 
 	TopicAuditLog = "admin.audit.log"
 

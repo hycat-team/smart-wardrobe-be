@@ -4,11 +4,15 @@ package eventconstants
 // (application layer) và broker topology (infrastructure layer).
 // Giữ package này thuần constants: không behavior, không import.
 const (
-	QueueElasticsearchSync                = "elasticsearch_sync_queue"
-	QueueFashionInit                      = "fashion_init_queue"
-	QueueFashionAnalyze                   = "fashion_analyze_queue"
-	QueueSubscriptionPlanChanged          = "subscription_plan_changed_queue"
-	QueueNotificationEmail                = "notification_email_queue"
+	QueueElasticsearchSync       = "elasticsearch_sync_queue"
+	QueueFashionInit             = "fashion_init_queue"
+	QueueFashionAnalyze          = "fashion_analyze_queue"
+	QueueSubscriptionPlanChanged = "subscription_plan_changed_queue"
+	QueueNotificationEmail       = "notification_email_queue"
+	// QueueNotificationEmailRetry holds a failed delivery for a fixed delay, then
+	// dead-letters it back to the main exchange. One queue, no consumer: the
+	// message returns to notification_email_queue by itself after the TTL.
+	QueueNotificationEmailRetry           = "notification_email_retry_queue"
 	QueueAuditLog                         = "audit_log_queue"
 	QueueWardrobeFashionAnalyzed          = "wardrobe_fashion_analyzed_queue"
 	QueueBrandFashionAnalyzed             = "brand_fashion_analyzed_queue"
