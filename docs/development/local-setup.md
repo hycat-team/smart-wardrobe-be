@@ -383,6 +383,11 @@ with a timestamp format and the name you just entered.
   ```bash
   make migrate-up svc=<account|commerce|ai>
   ```
+  The target passes `-allow-missing` to Goose, matching the runtime setting
+  `database.migration_allow_out_of_order: true` (FR-035). Without it, a migration
+  merged with a timestamp older than the version already applied (a feature branch
+  that lived through a long rebase) makes Goose abort with
+  `found 1 missing (out-of-order) migration` instead of applying it.
 - Rollback the most recent migration:
   ```bash
   make migrate-down svc=<account|commerce|ai>

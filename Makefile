@@ -409,9 +409,12 @@ migrate-status:
 	$(SVC_REQ)
 	@goose -table $(GOOSE_TABLE) -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) status
 
+# FR-035: -allow-missing matches the runtime `migration_allow_out_of_order: true`.
+# Without it, goose aborts with "found 1 missing (out-of-order) migration" when a
+# feature branch merges a migration stamped before the version already applied.
 migrate-up:
 	$(SVC_REQ)
-	@goose -table $(GOOSE_TABLE) -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) up
+	@goose -table $(GOOSE_TABLE) -allow-missing -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) up
 
 migrate-down:
 	$(SVC_REQ)
