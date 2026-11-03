@@ -22,7 +22,11 @@ exit condition into being falsified.
 
 ## Entries
 
-### D-01 — `make lint` cần shell `cmd.exe` trên Windows
+### D-01 — `make lint` cần shell `cmd.exe` trên Windows — **ĐÃ ĐÓNG bởi `main`**
+
+> **Trạng thái (2026-11-03)**: `main` đã sửa bằng commit `efb58941` ("chore(build): make make lint run on
+> Windows"); `make lint` trần chạy được, không cần `SHELL=cmd.exe`. Mục này giữ lại để tra cứu lịch sử,
+> không còn là việc mở.
 
 - **Vấn đề**: `make lint` (`fmt-check` + `vet`) chỉ fail khi recipe được shell ngoài là PowerShell: biến
   `$files` trong `FMT_CHECK_CMD` bị PowerShell của outer shell expand trước khi vào `powershell -Command`,
@@ -36,7 +40,10 @@ exit condition into being falsified.
 - **Ảnh hưởng tới task đã tick**: T087 dùng `SHELL=cmd.exe`; các task đã tick dùng `gofmt -l` + `make vet`
   hoặc `make SHELL=cmd.exe lint`; không có kết luận nào bị mất hiệu lực.
 
-### D-02 — `make` / `make vet` tạo file rác tên `NUL` trên Windows
+### D-02 — `make` / `make vet` tạo file rác tên `NUL` trên Windows — **ĐÃ ĐÓNG bởi `main`**
+
+> **Trạng thái (2026-11-03)**: `main` đã sửa bằng commit `5767aee8` ("fix(build): stop make from creating
+> a file named `NUL`"). Mục này giữ lại để tra cứu lịch sử, không còn là việc mở.
 
 - **Vấn đề**: Makefile dòng 20–23 dùng redirect `2>NUL` cho Windows trong biến `GIT_SHA` (`$(shell git rev-parse --short HEAD 2>/dev/null 2>NUL || echo dev)`). Khi recipe chạy qua shell POSIX (Git Bash/sh) trên Windows, `NUL` bị hiểu là tên file thường thay vì thiết bị null, nên mỗi lần chạy `make`/`make vet` sinh một file 0 byte tên `NUL` ở thư mục repo. File này lẫn vào `git status` nếu không dọn.
 - **Vì sao ngoài phạm vi**: Cùng nguyên nhân harness/OS với D-01; không liên quan tới feature 033. Đây là lỗi portability của Makefile dùng chung.

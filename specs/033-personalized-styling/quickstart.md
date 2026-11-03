@@ -316,6 +316,30 @@ E2E/p95 (đã chạy ngày 2026-10-27):
 # 5. Dọn: stop 3 process; drop verify_033/verify_it_033.
 ```
 
+### 7.7 Gate sau khi đồng bộ `main` (2026-11-03)
+
+Bối cảnh: nhánh 033 tụt hậu 51 commit so với `main`. Đã merge `origin/main` (5 xung đột: `.gitignore`,
+`deployments/nginx/local.conf`, `docs/archive/aws-box/nginx/aws/api-v2.conf.template`,
+`docs/decisions/README.md`, `.specify/feature.json`, cộng 2 xung đột nội dung trong
+`recommendation/synthesis/{prompt,generation}.go`), rồi chạy lại toàn bộ gate. Chỉ ghi việc **đã chạy**.
+
+| Lệnh | Kết quả |
+|---|---|
+| `make generate` | **PASS**; wire 3 service, swagger 3 service, combine 3 services/9 modules, nginx 43 locations. `git diff` của artifact sinh tự động **rỗng** sau khi generate → nhánh đã ở trạng thái tái sinh được. |
+| `make lint` | **PASS** không cần `SHELL=cmd.exe`; D-01 đã được `main` sửa (`efb58941`). |
+| `make SHELL=C:/Windows/System32/cmd.exe check` | **PASS** cả 7 bước: `fmt-check`, `tidy-check`, `generate-check`, `nginx-check`, `vet`, `migration-check`, `test-race`, `build-all`. |
+| `make test-db-integration` trên DB `verify_it_033_main` (init + migrate đủ account/commerce/ai) | **PASS**, exit 0. Commerce apply `20261103000000_add_personalization.sql` **sau** `20261029020000_allow_rejected_brand_status.sql`. `TestIntegrationPersonalizationMigrationUpDownUp`, `…SchemaShape`, `…CascadesOnUserDelete` PASS. |
+| Kiểm chứng out-of-order trên DB `verify_it_033_ooo2` | Goose **không** có `-allow-missing` → `error: found 1 missing migrations before current version 20261029020000`; **có** cờ → apply thành công (17.5 ms). Đây là bằng chứng cho thay đổi ở `Makefile` target `migrate-up`. |
+
+Ghi chú môi trường Windows: `make check` chỉ xanh khi chỉ định `SHELL=C:/Windows/System32/cmd.exe`
+(`MKDIR_BIN_CMD`/`CLEAN_BIN_CMD` dùng cú pháp `if not exist` của cmd). Khi shell ngoài là bash,
+`build-all` fail ở dòng `mkdir` — cùng nhóm với D-01/D-02, không phải lỗi của 033.
+
+Ghi chú migration: migration commerce của 033 đã được đổi số `20261027092936` → `20261103000000` sau khi
+merge, vì mốc cũ nằm **trước** `20261029020000` của `main`. DDL idempotent (`CREATE TABLE IF NOT EXISTS`,
+`ADD COLUMN IF NOT EXISTS`) nên DB local đã apply mốc cũ chỉ ghi thêm một row vào
+`goose_db_version_commerce`, schema không đổi. DB của môi trường khác chưa có 033 thì không bị ảnh hưởng.
+
 ## 8. Rà soát bảo mật (T089)
 
 Phạm vi: các đường mới/đổi của 033. Kết luận dựa trên đọc mã nguồn + unit test hiện có; **không**
