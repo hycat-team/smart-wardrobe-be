@@ -668,7 +668,7 @@ Client không thấy giá trị này.
 | `src/features/outfits/types/index.ts` | `SaveOutfitItemReq` **thiếu `itemContext`**; `SaveOutfitReq` có `status?` (backend không nhận); `OutfitItemRes` có `wardrobeItem?` (backend không trả) và thiếu `isAvailable` |
 | `src/features/outfits/api/outfits.api.ts` + `queries/outfits.queries.ts` | Đã đủ `createOutfit` / `updateOutfit` / `deleteOutfit` + mutation TanStack Query |
 | `src/app/(user)/outfits/create/components/CreateOutfitClient.tsx` | Producer #2 — gửi `status: 0`, không gửi `itemContext` |
-| `src/app/(user)/outfits/[id]/components/OutfitDetailClient.tsx` | Producer #3 — gửi `status: outfit?.status ?? 0`, không gửi `itemContext` |
+| `src/app/(user)/outfits/[id]/components/OutfitDetailClient.tsx` | Producer #3 — **không gửi `status`** (chỉ `CreateOutfitClient` và `AIStylistClient` gửi), không gửi `itemContext` |
 | `src/app/(guest)/auth/register/preferences/components/PreferencesClient.tsx` | **Local-only**: `useState` + `router.push("/wardrobe/upload")`. Không gọi API. Nhãn hiển thị viết hoa (`Minimalist`, `Y2K`, ...), chọn thêm **bảng màu** mà backend không có |
 | `src/app/(user)/wardrobe/explore/components/SystemCatalogClient.tsx` | Chỉ gọi `useInitClosetFromCatalog` (`POST /wardrobe-items/catalog-init`). Không liên quan clone-on-save |
 | `src/features/subscription/types/index.ts` | `UserSubscription`/`SubscriptionPlan` **thiếu `personalizationEnabled`** |
@@ -678,6 +678,11 @@ Client không thấy giá trị này.
 Canvas item `[WEB]` (`src/features/outfits/hooks/useOutfitCanvas.ts`, `CanvasItem`) **đã có** `itemContext?`
 và nó được điền bởi `getBrandItemCanvasMetadata` trong `resolveCanvasOutfitItems` /
 `swapCanvasItemByRole`. Nghĩa là dữ liệu đã có sẵn trên canvas, chỉ chưa được gửi lên server.
+
+`GET /api/v1/outfits` **chỉ** nhận `page` + `limit` (`dto.GetOutfitsQueryReq` = `PaginationQuery`), repository
+luôn `ORDER BY created_at DESC`. Không có search, không có sort, không có filter phía server — client muốn
+lọc/sắp xếp thì phải tự làm trên **toàn bộ** dữ liệu (phân trang thủ công) hoặc mở feature mới. Trang
+`/outfits` hiện tại **không** còn sort/filter/search (đã bỏ ở đợt dọn 2026-11-03).
 
 ### 12.2 Các file cần sửa / thêm
 
@@ -690,7 +695,7 @@ và nó được điền bởi `getBrandItemCanvasMetadata` trong `resolveCanvas
 | 5 | `src/features/outfits/types/index.ts` | Thêm `itemContext?: 'user_wardrobe' \| 'brand_item' \| 'system_catalog'` vào `SaveOutfitItemReq`; thêm `isAvailable?: boolean` vào `OutfitItemRes`; cân nhắc bỏ `status?` khỏi `SaveOutfitReq` (backend bỏ qua) và sửa `wardrobeItem?` → `fashionItem?` |
 | 6 | `src/app/(user)/outfits/create/components/CreateOutfitClient.tsx` | Producer #2: truyền `itemContext` nếu canvas item có (món lấy từ tủ → `user_wardrobe` hoặc bỏ trống) |
 | 7 | `src/app/(user)/outfits/[id]/components/OutfitDetailClient.tsx` | Producer #3: như #6. Lưu ý PUT chỉ phát signal cho món **mới thêm** |
-| 8 | `src/app/(guest)/auth/register/preferences/components/PreferencesClient.tsx` | Gọi `PUT /me/style-profile` thay vì chỉ local state. Map nhãn hiển thị → value chữ thường (`Minimalist` → `minimalist`, `Y2K` → `y2k`, `Streetwear` → `streetwear`, ...). Bỏ qua lỗi 403 một cách im lặng (user free vẫn đi tiếp được) |
+| 8 | `src/app/(guest)/auth/register/preferences/components/PreferencesClient.tsx` | **Bỏ phần thu gu khỏi onboarding** (gồm cả bảng màu): gu chỉ khai ở màn "Gu của tôi". Bước này chỉ còn lời chào/hoàn tất, không gọi API |
 | 9 | `src/features/subscription/types/index.ts` | Thêm `personalizationEnabled?: boolean` vào `UserSubscription` và `SubscriptionPlan` |
 
 ### 12.3 Ghi chú triển khai cho WEB
@@ -739,10 +744,11 @@ và nó được điền bởi `getBrandItemCanvasMetadata` trong `resolveCanvas
 | Mô hình | File | Có được API điền? | Kết luận |
 |---|---|---|---|
 | Studio | `lib/features/outfit_studio/models/outfit_models.dart` (`RecommendedOutfitRes`, `RecommendedItemGroup`, `RecommendedItemRes`, `RecommendedFashionItemBrief`) | **Có** — `OutfitRepository.getAIRecommendation` map trực tiếp từ `data` của `POST /ai/outfit-recommendations` | **Chuẩn hoá trên mô hình này** |
-| Stylist (chat) | `lib/features/stylist/models/stylist_models.dart` (`OutfitRecommendationModel`, `OutfitRecommendationItem`) | **Không** — `ChatMessageModel.fromJson` đọc `json['outfitRecommendation']` và `json['suggestedItems']`, nhưng `ChatMessageRes` của backend chỉ có `id, sender, content, createdAt` | **Không mở rộng**. Model này chỉ là dữ liệu chết cho tới khi chat trả outfit |
+| Stylist (chat) | `lib/features/stylist/models/stylist_models.dart` (`OutfitRecommendationModel`, `OutfitRecommendationItem`) | **Có, gián tiếp** — `StylistRepository.getOutfitRecommendation` cũng gọi `POST /ai/outfit-recommendations`, parse `RecommendedOutfitRes` rồi **flatten** sang `OutfitRecommendationModel`; `StylistNotifier` gắn kết quả vào tin nhắn chat (`stylist_provider.dart:253`) và `stylist_screen.dart:626` render `suggestedItems` | **Đang dùng thật**. Cần hợp nhất: bỏ lớp model trung gian, dùng thẳng `RecommendedOutfitRes` + `flattenRecommendationGroups` để có `recommendationId`/`suggestions` |
 
-→ Mọi field mới của 033 (`recommendationId`, `suggestions`, `itemContext`) chỉ thêm vào bộ Studio. Nếu sau
-này chat cần hiển thị suggestion, tái sử dụng `OutfitSuggestion` của Studio thay vì tạo bản sao thứ ba.
+→ Mọi field mới của 033 (`recommendationId`, `suggestions`, `itemContext`) phải đi tới **cả hai** luồng
+(Studio và stylist chat). Cách gọn nhất là bỏ `OutfitRecommendationModel`, cho stylist dùng
+`RecommendedOutfitRes` — xem §16.5.
 
 ### 13.3 Các file cần sửa / thêm
 
@@ -754,7 +760,7 @@ này chat cần hiển thị suggestion, tái sử dụng `OutfitSuggestion` c�
 | 4 | `lib/features/outfit_studio/providers/ai_outfit_provider.dart` | `swapAlternative` phải copy `recommendationId` và `suggestions` khi dựng lại `RecommendedOutfitRes` (nếu không, feedback sau khi đổi món sẽ mất id); thêm method gửi feedback |
 | 5 | `lib/features/outfit_studio/providers/outfit_studio_provider.dart` | Truyền `itemContext` vào `SaveOutfitItemReq` (lấy từ canvas/nguồn món); thêm `updateOutfit` (chế độ sửa) dùng repository mới |
 | 6 | `lib/features/outfit_studio/presentation/outfit_studio_screen.dart` | Render `suggestions` (bottom sheet/dải ngang) + gọi feedback `saved` sau `saveOutfit` thành công |
-| 7 | `lib/features/auth/presentation/preferences_screen.dart` | Gọi style-profile API thay vì (hoặc bên cạnh) lưu local. Map nhãn → value chữ thường. Xử lý 403 |
+| 7 | `lib/features/auth/presentation/preferences_screen.dart` | **Bỏ phần thu gu khỏi onboarding** (styles + palette): gu khai ở màn "Gu của tôi". Không gọi `savePreferences`; giữ key storage cũ nhưng ngừng đọc |
 | 8 | `lib/features/auth/data/auth_repository.dart` | Giữ `saveStylePreferences` như cache offline nếu muốn, nhưng **nguồn sự thật** phải là API. Không xoá hàm nếu màn khác còn dùng |
 | 9 | `lib/features/profile/models/user_profile_models.dart` | Thêm `personalizationEnabled` (mặc định `false`) vào `UserSubscriptionModel` và `SubscriptionPlanModel` |
 
@@ -763,9 +769,12 @@ này chat cần hiển thị suggestion, tái sử dụng `OutfitSuggestion` c�
 - **Luôn dùng `ApiClient.dio`** cho mọi method mới. `ApiClient` giữ interceptor refresh single-flight và
   gọi `onGlobalForcedLogout`; tạo `Dio()` trực tiếp sẽ mất cả hai và user sẽ bị "đăng nhập ma" khi token
   hết hạn.
-- **`includeBrandItems`** hiện là bug: key sai (`include_brand_items`) → backend không nhận, và
-  `AIOutfitNotifier.generateOutfit` cũng không set `includeBrandItems` (luôn `null` → bị bỏ). Sửa key là
-  đủ, nhưng phải thêm UI toggle nếu muốn tính năng brand hoạt động (xem §16.4).
+- **`includeBrandItems`** hiện là bug: key sai (`include_brand_items`) → backend không nhận. Sửa key thành
+  `includeBrandItems` và **không** thêm UI toggle: brand toggle được ẩn ở cả web lẫn mobile, mặc định
+  `false` (web đã gate bằng `NEXT_PUBLIC_ENABLE_BRAND_FEATURES`).
+- **`prompt`/`temperature` đang bị nuốt**: `StylistRepository.getOutfitRecommendation` gửi `prompt` và
+  `temperature` nhưng `RecommendOutfitReq` của backend **không có** hai field này, nên gợi ý sinh ra từ chat
+  không phản ánh câu hỏi. Map `prompt` → `details` (≤ 1000 ký tự NFC) và bỏ `temperature`.
 - **`recommendationId` phải sống qua `swapAlternative`** — đây là chỗ dễ mất nhất vì
   `RecommendedOutfitRes` được dựng lại thủ công.
 - **Không có PUT nào cho outfit hiện tại**: `OutfitStudioNotifier.saveOutfit` luôn tạo mới. Trước khi thêm
@@ -967,37 +976,68 @@ endpoint recommendation.
 
 ---
 
-## 16. Điểm cần quyết định
+## 16. Quyết định tích hợp client (chốt 2026-11-03)
 
-### 16.1 Bảng màu trong màn Preferences
+Các mục dưới đây đã được chốt; giữ lại để tra cứu lý do, không còn là câu hỏi mở.
 
-Backend không có field lưu bảng màu/`colorTone` trong hồ sơ gu. Ba lựa chọn:
+### 16.1 Bảng màu trong màn Preferences — **BỎ**
 
-1. Bỏ khối chọn bảng màu khỏi màn onboarding (đơn giản nhất, khớp backend).
-2. Giữ UI nhưng chỉ lưu local (như hiện tại), ghi rõ là "chưa áp dụng vào gợi ý".
-3. Mở rộng hồ sơ gu (thêm field mới) — **ngoài phạm vi 033**, cần feature riêng.
+Backend không có field lưu bảng màu/`colorTone` trong hồ sơ gu, và dữ liệu chọn màu hiện không tới server
+(web chỉ `useState`, mobile chỉ ghi `SecureStorageService`). Quyết định: bỏ khối chọn bảng màu khỏi
+onboarding cả hai client; bỏ luôn điều kiện chặn nút hoàn tất theo bảng màu. Muốn dùng `colorTone` thật thì
+phải mở feature mới (thêm field + migration + prompt).
 
-### 16.2 `excludedStyles` chưa có UI
+### 16.2 `excludedStyles` — **THÊM UI**
 
-Backend đã hỗ trợ "phong cách muốn tránh". Cần quyết định: thêm màn cài đặt gu (web: settings; mobile:
-profile) hay để trống trong v1.
+Backend đã hỗ trợ đầy đủ (FR-006/FR-017). Quyết định: màn "Gu của tôi" có hai danh sách (thích/tránh), truy
+cập từ sidebar (web) và tab Profile (mobile).
 
-### 16.3 Nơi đặt màn "Hồ sơ gu" sau onboarding
+### 16.3 Entry point sau onboarding — **THÊM**
 
-`PreferencesClient` là bước 2/2 của luồng đăng ký. Sau đó user không còn chỗ nào sửa gu (web) và chỉ có
-`preferences_screen` một lần (mobile). Cần quyết định có thêm entry point trong Settings/Profile hay không.
+"Gu của tôi" nằm trong sidebar (web) và Profile (mobile), **luôn hiển thị** bất kể quyền lợi. Lý do: người
+dùng phải sửa được gu sau khi đăng ký; quyền lợi chỉ quyết định ghi được hay không, không quyết định thấy
+màn hình.
 
-### 16.4 Brand toggle trên mobile
+### 16.4 Brand toggle — **ẨN Ở CẢ HAI, MẶC ĐỊNH `false`**
 
-`[MOBILE]` không có UI bật `includeBrandItems` (khác `[WEB]` đã có switch ghost-closet). Sửa key JSON là
-chưa đủ để tính năng hoạt động — cần quyết định có làm UI không.
+Web đã gate bằng `NEXT_PUBLIC_ENABLE_BRAND_FEATURES` (mặc định tắt) và gửi
+`includeBrandItems: brandEnabled && ghostClosetEnabled`. Mobile: chỉ **sửa key** `include_brand_items` →
+`includeBrandItems`, giữ nullable để luôn omit/false; **không** thêm UI toggle. Ngoài ra `/profile` phải ẩn
+"Liên kết tài khoản nhãn hàng" (`ClaimAccountTab`) khi cờ brand tắt.
 
-### 16.5 Chuẩn hoá model recommendation trên mobile
+### 16.5 Hai model recommendation trên mobile — **HỢP NHẤT**
 
-Đề xuất (đã nêu ở §13.2): chuẩn hoá trên `outfit_studio/models/outfit_models.dart`, để nguyên
-`stylist/models/stylist_models.dart`. Nếu team muốn hợp nhất, đó là refactor riêng, không thuộc T084.
+`stylist_models.dart` không phải dữ liệu chết: `stylist_provider.dart:253` dùng nó để gắn thẻ gợi ý vào câu
+trả lời chat, và `stylist_repository.dart:269` gọi **cùng** endpoint rồi flatten. Quyết định: bỏ lớp model
+trung gian, stylist dùng thẳng `RecommendedOutfitRes` + `flattenRecommendationGroups`; map `prompt` chat sang
+`details`, bỏ `temperature` (backend không bind hai field này).
 
-### 16.6 `status` trong `SaveOutfitReq` của web
+### 16.6 `status` trong `SaveOutfitReq` của web — **BỎ**
 
-Backend không nhận `status`. Hai lựa chọn: bỏ khỏi type (khuyến nghị), hoặc yêu cầu backend thêm field để
-phân biệt outfit do AI tạo và do user tự tạo (thay đổi hợp đồng, cần feature mới).
+Backend không có field này; outfit luôn được lưu `Active`. Xoá `status` khỏi type + payload (2 call site:
+`CreateOutfitClient`, `AIStylistClient`). Nếu cần phân biệt "AI tạo" về sau thì làm feature riêng có cột DB.
+
+### 16.7 Sort / filter / tìm kiếm trên `/outfits` — **XOÁ**
+
+`GET /outfits` chỉ có `page`/`limit`, server luôn `created_at DESC`. Sort client chỉ đảo 20 item của một
+trang; tab "Tất cả" là tab duy nhất còn lại (hai tab kia đã comment); ô tìm kiếm cũng chỉ lọc trong trang.
+Quyết định: xoá sort, tab/filter, ô tìm kiếm; xoá luôn heart + `favorites` (state local, không persist,
+toast "Đã lưu vào bộ sưu tập" gây hiểu nhầm).
+
+### 16.8 "Gu cá nhân" — **đặc quyền hội viên, không phải onboarding**
+
+Không thu gu trong luồng đăng ký. Người dùng thiếu quyền thấy paywall **ngay trong trang** (không redirect
+sang `/pricing`); hiển thị `personalizationEnabled` ở mọi nơi bán gói (pricing cards, current plan, sidebar,
+profile, subscription detail trên mobile).
+
+### 16.9 Bảng giá khó tìm — **đưa ra public + CTA tại điểm chặn**
+
+`/pricing` hiện nằm trong `(user)` nên guest không xem được; không có link từ landing. Quyết định: thêm
+route public cho bảng giá, link ở header/footer landing, biến các lỗi hạn mức/quota thành CTA có link, và
+thêm mục "Gói hội viên" cố định trong nav.
+
+### 16.10 Form đăng ký — **bỏ địa chỉ, giữ giới tính + ngày sinh**
+
+`RegisterReq` yêu cầu `firstName` và `dateOfBirth`; `address`, `gender`, `lastName` là `omitempty`. Quyết
+định: bỏ `address` khỏi form (web + mobile); giữ `gender` (bắt buộc ở UI dù backend optional) và giữ
+`dateOfBirth`. Không đổi backend.
