@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"strings"
 
 	identity_contract "smart-wardrobe-be/services/account/contract/identity"
 	identity_dto "smart-wardrobe-be/services/account/dto/identity"
@@ -143,10 +144,18 @@ func (uc *BrandAdminUseCase) UpdateMember(ctx context.Context, brandID uuid.UUID
 	}
 
 	if req.Role != nil {
-		member.Role = *req.Role
+		role := brandmemberrole.BrandMemberRole(strings.ToLower(strings.TrimSpace(string(*req.Role))))
+		if role != brandmemberrole.Owner && role != brandmemberrole.Staff {
+			return nil, branderrors.ErrInvalidBrandMemberRole(*req.Role)
+		}
+		member.Role = role
 	}
 	if req.Status != nil {
-		member.Status = *req.Status
+		status := brandmemberstatus.BrandMemberStatus(strings.ToLower(strings.TrimSpace(string(*req.Status))))
+		if status != brandmemberstatus.Active && status != brandmemberstatus.Invited && status != brandmemberstatus.Disabled {
+			return nil, branderrors.ErrInvalidBrandMemberStatus(*req.Status)
+		}
+		member.Status = status
 	}
 
 	if err := uc.brandMemberRepo.Update(ctx, member); err != nil {

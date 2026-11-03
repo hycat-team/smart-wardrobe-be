@@ -7,4 +7,5 @@ const (
 	Active        BrandStatus = "active"
 	Suspended     BrandStatus = "suspended"
 	Archived      BrandStatus = "archived"
+	Rejected      BrandStatus = "rejected"
 )

@@ -392,10 +392,26 @@ Path param `{orderCode}` là `orderCode` (số) của giao dịch. **Luôn gửi
 
 - Phản hồi **không chứa trạng thái giao dịch** — đừng đọc `data.status`. Sau khi hành động thành công: **gọi lại `GET /transactions/{id}`** (hoặc list) để lấy trạng thái mới (xem 3.7).
 - Lỗi nghiệp vụ (sai trạng thái, thiếu bằng chứng) → **400** với `"Không thể áp dụng quyết định xử lý thủ công vì trạng thái hoặc bằng chứng thanh toán không hợp lệ."`
-- Gợi ý bật/tắt nút theo `status` hiện tại (đọc từ detail/list):
-  - `resolve-paid`, `resolve-cancelled`, `retry-investigation`: hiện khi `status !== "success"` (đã `success` → BE từ chối).
-  - `resolve-creation-failed`: chỉ khi `status ∈ { creating, reconciliation_required, investigation_required }`.
-  - Vẫn luôn xử lý 400 từ BE (dữ liệu có thể đổi giữa lúc mở trang và lúc bấm nút).
+- Gợi ý bật/tắt nút theo `status` hiện tại (đọc từ detail/list). BE chặn đúng ma trận này, nên client chỉ cần phản ánh lại:
+
+| `status` | resolve-paid | resolve-cancelled | retry-investigation | resolve-creation-failed |
+|---|:--:|:--:|:--:|:--:|
+| `pending` | ✓ | ✓ | ✓ | ✗ |
+| `creating` | ✓ | ✓ | ✓ | ✓ |
+| `reconciling` | ✓ | ✓ | ✓ | ✗ |
+| `reconciliation_required` | ✓ | ✓ | ✓ | ✓ |
+| `investigation_required` | ✓ | ✓ | ✓ | ✓ |
+| `cancelled` | ✓ (cứu tiền về muộn) | ✗ | ✗ | ✗ |
+| `expired` | ✓ (cứu tiền về muộn) | ✗ | ✗ | ✗ |
+| `failed_legacy` | ✓ | ✗ | ✗ | ✗ |
+| `creation_failed` | ✗ | ✗ | ✗ | ✗ |
+| `refunded` | ✗ | ✗ | ✗ | ✗ |
+| `success` | ✗ | ✗ | ✗ | ✗ |
+| `unknown` | ✗ | ✗ | ✗ | ✗ |
+
+  - `refunded` bị khoá vì tiền đã hoàn vào ví; xác nhận thanh toán lại sẽ cấp quyền lần hai.
+  - `cancelled`/`expired`/`failed_legacy` chỉ còn "đã thanh toán": khách huỷ link nhưng vẫn chuyển khoản là case đối soát tay tồn tại để xử lý.
+  - Nút bị khoá nên kèm tooltip nêu lý do; vẫn luôn xử lý 400 từ BE (dữ liệu có thể đổi giữa lúc mở trang và lúc bấm nút).
 
 ### 3.6 Mã HTTP
 

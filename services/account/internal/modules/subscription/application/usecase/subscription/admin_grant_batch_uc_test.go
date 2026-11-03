@@ -237,7 +237,7 @@ func (f *fakeGrantSubRepo) GetActiveExpiredSubscriptions(ctx context.Context, no
 func (f *fakeGrantSubRepo) GetActiveExpiredSubscriptionsBatch(ctx context.Context, now time.Time, lastUserID uuid.UUID, lastExpiresAt time.Time, limit int) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeGrantSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
+func (f *fakeGrantSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
 func (f *fakeGrantSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {

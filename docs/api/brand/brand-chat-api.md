@@ -1,5 +1,7 @@
 # Brand Chat API Specs
 
+> **Tham chiếu brand (`{brandId}`):** path `brandId` chấp nhận **UUID hoặc slug** của brand. URL công khai dùng slug (`/brands/{slug}`); UUID vẫn hợp lệ để tương thích ngược.
+
 Tài liệu thiết kế các API liên quan đến kênh chat trực tuyến hỗ trợ khách hàng giữa Người dùng (Khách hàng) và Đội ngũ hỗ trợ của Nhãn hàng (Brand Staff) trong mô hình B2B2C.
 
 ---

@@ -386,7 +386,13 @@ func TestEveryGrantReadsTheRegistryThroughTheRepository(t *testing.T) {
 func TestNoEnvironmentVariableCarriesCampaignData(t *testing.T) {
 	root := campaignRepoRoot(t)
 
-	examples := []string{".env.example", ".env.production.example", ".env.aws.example"}
+	examples := []string{
+		".env.example",
+		".env.production.example",
+		// Archived with the AWS box (ADR 017). It is still an env template that a
+		// restore would bring back, so the guard keeps covering it.
+		filepath.Join("docs", "archive", "aws-box", "env", ".env.aws.example"),
+	}
 	var inspected int
 	var offenders []string
 	var documented []string

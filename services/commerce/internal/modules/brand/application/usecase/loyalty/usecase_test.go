@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandstatus"
@@ -327,6 +328,20 @@ func (r tierTestBenefitRepo) GetActiveByBrandID(ctx context.Context, brandID uui
 	return r.benefits, nil
 }
 
+func (r tierTestBenefitRepo) CountActiveByTierIDs(ctx context.Context, brandID uuid.UUID, tierIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	counts := make(map[uuid.UUID]int64, len(tierIDs))
+	for _, benefit := range r.benefits {
+		if benefit.BrandID != brandID || benefit.Status != benefitstatus.Active || benefit.RequiredTierID == nil {
+			continue
+		}
+		for _, tierID := range tierIDs {
+			if *benefit.RequiredTierID == tierID {
+				counts[tierID]++
+			}
+		}
+	}
+	return counts, nil
+}
 func newTierTestBenefit(name string, requiredTier *entities.LoyaltyTier) *entities.BrandBenefit {
 	return &entities.BrandBenefit{
 		Name:           name,
@@ -418,5 +433,26 @@ func TestGetLoyaltyTierDetailForUserReturnsCumulativeBenefits(t *testing.T) {
 	}
 	if len(res.Benefits) != 2 {
 		t.Fatalf("expected 2 cumulative benefits for silver, got %d", len(res.Benefits))
+	}
+}
+
+func TestGetLoyaltyTiersForStaff_CountsActiveBenefits(t *testing.T) {
+	brandID := uuid.New()
+	tier := &entities.LoyaltyTier{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: brandID, Name: "Gold", Rank: 1}
+	perk := newTierTestBenefit("gold perk", tier)
+	perk.BrandID = brandID
+	perk.Status = benefitstatus.Active
+
+	uc := &BrandLoyaltyUseCase{
+		tierRepo:    tierTestTierRepo{tiers: []*entities.LoyaltyTier{tier}},
+		benefitRepo: tierTestBenefitRepo{benefits: []*entities.BrandBenefit{perk}},
+	}
+
+	res, err := uc.GetLoyaltyTiersForStaff(context.Background(), uuid.New(), brandID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res) != 1 || res[0].BenefitsCount != 1 {
+		t.Fatalf("expected benefitsCount 1, got %+v", res)
 	}
 }

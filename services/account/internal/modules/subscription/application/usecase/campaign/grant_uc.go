@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/shared/domain/constants/adminaudit"
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -229,17 +230,16 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 	if uc.notifContract == nil {
 		return
 	}
-	loc := planTimeZone(uc)
 	expiresText := "Không thời hạn"
 	if sub.ExpiresAt != nil {
-		expiresText = sub.ExpiresAt.In(loc).Format("02/01/2006")
+		expiresText = timeutils.FormatDateVN(*sub.ExpiresAt)
 	}
 	// StartedAt is the instant the apply workflow wrote, i.e. when the account was
 	// actually upgraded, and the usage period begins then. For an account granted
 	// from the signup message that is the registration moment to the second; for
 	// one rescued by the catch-up sweep it is later, and quoting the registration
 	// date there would tell a customer their term started days before it did.
-	grantedOn := sub.StartedAt.In(loc).Format("02/01/2006")
+	grantedOn := timeutils.FormatDateVN(sub.StartedAt)
 
 	if err := uc.notifContract.SendByUserID(
 		txCtx,
@@ -250,6 +250,10 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 			"DurationText": grantedTermPhrase(plan),
 			"GrantedOn":    grantedOn,
 			"ExpiresAt":    expiresText,
+			// A lifetime plan can sit underneath the granted one; when it does,
+			// expiry returns the account to THAT plan, not to Free. The template
+			// used to promise "gói miễn phí" to everyone.
+			"HasLifetimeFallback": sub.FallbackPlanID != nil,
 		},
 		userID,
 	); err != nil {
@@ -305,18 +309,9 @@ func (uc *CampaignUseCase) invalidateOverviewAfterCommit(ctx context.Context, us
 	subscription.InvalidateOverviewCache(ctx, uc.log, uc.overviewCache, userID)
 }
 
-// planTimeZone is the configured zone, used only to FORMAT the expiry date for
-// the customer. Reading the clock is `timeutils.GetNow`'s job; this is a label.
-func planTimeZone(uc *CampaignUseCase) *time.Location {
-	loc, err := time.LoadLocation(uc.cfg.Database.TimeZone)
-	if err != nil {
-		return time.UTC
-	}
-	return loc
-}
-
-// planTimeZoneDoc keeps the time-zone note attached to the only place it applies.
-// Formatting a date for a customer is the one thing in this package that is not a
-// "current time" question, so it reads the configured zone directly instead of
-// going through `timeutils.GetNow` — that function answers "what time is it",
-// and there is no clock involved here.
+// Customer-facing dates are formatted by timeutils.FormatDateVN. This package
+// used to carry its own `planTimeZone` for that job, reading cfg.Database.TimeZone
+// with time.LoadLocation and falling back to UTC when tzdata was missing - a
+// second rule for the same question, and one that could disagree with the
+// subscription module's copy of the same email. The shared helper uses the fixed
+// +07:00 zone, so email dates no longer depend on what the image happens to ship.

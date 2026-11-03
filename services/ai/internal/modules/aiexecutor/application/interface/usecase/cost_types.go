@@ -51,3 +51,23 @@ type AITokenEstimationMeta struct {
 	TokenEstimationMethod tokenestimationmethod.Method
 	TokenCountLatencyMs   *int64
 }
+
+// UnbilledAttemptAdmission carries the facts needed to admit a provider attempt
+// that has no provider cost (provider=openai in the Ollama trial). The plan
+// keeps the logical route so the daily attempt cap is still consumed.
+type UnbilledAttemptAdmission struct {
+	Plan         *ExecutionPlan
+	AttemptIndex int
+	Provider     string
+	Model        string
+}
+
+// BillableAttemptAdmission carries the facts needed to prepare a billable
+// fallback attempt: the usage event must be upgraded and priced/reserved before
+// the fallback provider is called.
+type BillableAttemptAdmission struct {
+	Plan         *ExecutionPlan
+	AttemptIndex int
+	Provider     string
+	Model        string
+}

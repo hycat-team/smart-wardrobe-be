@@ -2,9 +2,11 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"math"
 	"net/http"
 	"strings"
+	"time"
 
 	app_ai "smart-wardrobe-be/shared/application/ai"
 	"smart-wardrobe-be/shared/application/constants/apperror"
@@ -25,10 +27,10 @@ func (s *AIService) GenerateRecommendationText(ctx context.Context, systemPrompt
 	return s.generateText(ctx, systemPrompt, userPrompt, options, app_ai.AIOperationOutfit, "GenerateRecommendationText")
 }
 
-// generateText runs one non-streaming text call following the resolved tier:
-// paid primary -> paid fallback -> free failover, or free primary -> free
-// fallback. The tiers never swap implicitly in the free direction, because a
-// free key is a separate quota, not a cheaper copy of the paid one.
+// generateText runs one non-streaming text call following the resolved plan:
+// exactly one primary attempt and, only for a fallback-eligible failure, one
+// Gemini fallback. There is no third free failover any more (feature 032 R5), and
+// the tiers never swap implicitly in the free direction.
 func (s *AIService) generateText(
 	ctx context.Context,
 	systemPrompt string,
@@ -40,42 +42,29 @@ func (s *AIService) generateText(
 	s.logTextGeneration(label, systemPrompt, userPrompt, options)
 
 	plan := s.resolveTextCallPlan(options, operation)
+	attempts := plan.textAttempts()
+	if len(attempts) == 0 {
+		err := apperror.NewInternalError("AI provider is not configured")
+		s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, err)
+		return "", err
+	}
 
-	var text string
-	var err error
-	if plan.primary.provider.Provider != "" {
-		if waitErr := plan.primary.limiter.Wait(ctx); waitErr != nil {
-			return "", waitErr
-		}
-		text, err = s.tryTextProvider(ctx, plan.primary.client, plan.primary.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.primary))
+	var lastErr error
+	for index, call := range attempts {
+		text, err := s.runTextAttempt(ctx, call, systemPrompt, userPrompt, operation, index+1, options)
 		if err == nil {
 			return text, nil
 		}
-	}
+		lastErr = err
 
-	if plan.fallback.provider.Provider != "" {
+		if index == len(attempts)-1 || !s.textFallbackEligible(err) {
+			break
+		}
 		s.logger.Warn("Primary text provider failed, attempting fallback", zap.Error(err))
-		text, err = s.tryTextProvider(ctx, plan.fallback.client, plan.fallback.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.fallback))
-		if err == nil {
-			return text, nil
-		}
 	}
 
-	if plan.freeFailover != nil && plan.freeFailover.provider.Provider != "" {
-		if waitErr := plan.freeFailover.limiter.Wait(ctx); waitErr == nil {
-			s.logger.Warn("Text providers failed, attempting free provider", zap.Error(err))
-			text, err = s.tryTextProvider(ctx, plan.freeFailover.client, plan.freeFailover.provider, systemPrompt, userPrompt, s.withUsageStamp(options, *plan.freeFailover))
-			if err == nil {
-				return text, nil
-			}
-		}
-	}
-
-	if err == nil {
-		err = apperror.NewInternalError("AI provider is not configured")
-	}
-	s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, err)
-	return "", err
+	s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, lastErr)
+	return "", lastErr
 }
 
 func (s *AIService) GenerateChatTextStream(
@@ -88,62 +77,44 @@ func (s *AIService) GenerateChatTextStream(
 	outErrChan := make(chan error, 1)
 
 	plan := s.resolveTextCallPlan(options, app_ai.AIOperationChat)
-	if plan.primary.provider.Provider == "" && plan.fallback.provider.Provider == "" && plan.freeFailover == nil {
+	attempts := plan.textAttempts()
+	if len(attempts) == 0 {
 		outErrChan <- apperror.NewInternalError("AI provider is not configured")
 		close(outTextChan)
 		close(outErrChan)
 		return outTextChan, outErrChan
 	}
 	s.logTextGeneration("GenerateChatTextStream", systemPrompt, userPrompt, options)
-	if plan.primary.provider.Provider != "" {
-		if err := plan.primary.limiter.Wait(ctx); err != nil {
-			outErrChan <- err
-			close(outTextChan)
-			close(outErrChan)
-			return outTextChan, outErrChan
-		}
-	}
 
 	go func() {
 		defer close(outTextChan)
 		defer close(outErrChan)
 
+		var lastErr error
 		produced := false
-		var err error
-		if plan.primary.provider.Provider != "" {
-			produced, err = s.streamTextSingle(ctx, plan.primary.client, plan.primary.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.primary), outTextChan)
+		for index, call := range attempts {
+			streamed, err := s.runStreamAttempt(ctx, call, systemPrompt, userPrompt, app_ai.AIOperationChat, index+1, options, outTextChan)
+			produced = produced || streamed
 			if err == nil {
 				return
 			}
-		}
+			lastErr = err
 
-		if !produced && plan.fallback.provider.Provider != "" {
+			// Falling back after the first chunk would splice two answers
+			// together, so a produced stream is always terminal.
+			if produced || index == len(attempts)-1 || !s.textFallbackEligible(err) {
+				break
+			}
 			s.logger.Warn("Chat primary stream failed before producing content, attempting fallback", zap.Error(err))
-			produced, err = s.streamTextSingle(ctx, plan.fallback.client, plan.fallback.provider, systemPrompt, userPrompt, s.withUsageStamp(options, plan.fallback), outTextChan)
-			if err == nil {
-				return
-			}
 		}
 
-		if !produced && plan.freeFailover != nil && plan.freeFailover.provider.Provider != "" {
-			if waitErr := plan.freeFailover.limiter.Wait(ctx); waitErr == nil {
-				_, fallbackErr := s.streamTextSingle(ctx, plan.freeFailover.client, plan.freeFailover.provider, systemPrompt, userPrompt, s.withUsageStamp(options, *plan.freeFailover), outTextChan)
-				if fallbackErr == nil {
-					return
-				}
-				err = fallbackErr
-			}
-		}
-
-		if err == nil {
-			err = apperror.NewInternalError("AI provider is not configured")
-		}
-		s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, err)
-		if !produced && ctx.Err() == nil {
+		s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, lastErr)
+		var blocked *attemptBlockedError
+		if !produced && ctx.Err() == nil && !errors.As(lastErr, &blocked) {
 			outTextChan <- "Xin lỗi, stylist AI đang tạm thời bận. Bạn hãy thử lại sau ít phút nhé."
 			return
 		}
-		outErrChanSend(outErrChan, err)
+		outErrChanSend(outErrChan, lastErr)
 	}()
 
 	return outTextChan, outErrChan
@@ -186,53 +157,65 @@ func outErrChanSend(outErr chan<- error, err error) {
 	}
 }
 
-func (s *AIService) streamTextSingle(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, outText chan<- string) (bool, error) {
-	text, errs := s.tryTextProviderStream(ctx, client, provider, systemPrompt, userPrompt, options)
-	return s.forwardProviderStream(ctx, text, errs, outText)
+// textFallbackEligible reports whether a failed attempt may be retried on the
+// next provider. Classification lives in text_attempt.go so the streaming and
+// non-streaming paths cannot disagree.
+func (s *AIService) textFallbackEligible(err error) bool {
+	_, _, eligible := classifyTextAttempt(err)
+	return eligible
 }
 
-// forwardProviderStream forwards provider chunks to the caller and reports whether any content was produced.
+// forwardProviderStream forwards provider chunks to the caller, reports whether
+// any content was produced and measures time-to-first-token from started.
 func (s *AIService) forwardProviderStream(
 	ctx context.Context,
+	started time.Time,
 	inText <-chan string,
 	inErr <-chan error,
 	outText chan<- string,
-) (bool, error) {
+) (bool, time.Duration, error) {
 	produced := false
+	var ttft time.Duration
 
 	for {
 		select {
 		case <-ctx.Done():
-			return produced, ctx.Err()
+			return produced, ttft, ctx.Err()
 		case text, ok := <-inText:
 			if ok {
+				if !produced {
+					ttft = time.Since(started)
+				}
 				produced = true
 				select {
 				case <-ctx.Done():
-					return produced, ctx.Err()
+					return produced, ttft, ctx.Err()
 				case outText <- text:
 				}
 				continue
 			}
 
 			if err, ok := <-inErr; ok && err != nil {
-				return produced, err
+				return produced, ttft, err
 			}
-			return produced, nil
+			return produced, ttft, nil
 		case err, ok := <-inErr:
 			if ok && err != nil {
-				return produced, err
+				return produced, ttft, err
 			}
 			if !ok {
 				for text := range inText {
+					if !produced {
+						ttft = time.Since(started)
+					}
 					produced = true
 					select {
 					case <-ctx.Done():
-						return produced, ctx.Err()
+						return produced, ttft, ctx.Err()
 					case outText <- text:
 					}
 				}
-				return produced, nil
+				return produced, ttft, nil
 			}
 		}
 	}

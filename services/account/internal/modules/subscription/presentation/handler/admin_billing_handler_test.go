@@ -12,6 +12,7 @@ import (
 
 	admin_contract "smart-wardrobe-be/services/account/contract/admin"
 	admin_dto "smart-wardrobe-be/services/account/dto/admin"
+	identity_dto "smart-wardrobe-be/services/account/dto/identity"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/deposittransactiontype"
@@ -54,7 +55,7 @@ type stubAdminBillingUC struct {
 	lastLimit  int
 	listRows   []*entities.DepositTransaction
 	listTotal  int64
-	detail     *entities.DepositTransaction
+	detail     *uc_interfaces.AdminTransactionDetail
 	detailErr  error
 	detailID   uuid.UUID
 }
@@ -68,7 +69,7 @@ func (s *stubAdminBillingUC) ListTransactions(
 	return s.listRows, s.listTotal, nil
 }
 
-func (s *stubAdminBillingUC) GetTransaction(_ context.Context, id uuid.UUID) (*entities.DepositTransaction, error) {
+func (s *stubAdminBillingUC) GetTransactionDetail(_ context.Context, id uuid.UUID) (*uc_interfaces.AdminTransactionDetail, error) {
 	s.calls++
 	s.detailID = id
 	return s.detail, s.detailErr
@@ -190,10 +191,24 @@ func TestAdminBillingDetailReturnsTheSameCamelCaseShapeAsTheList(t *testing.T) {
 	id := uuid.New()
 	tx := billingDepositTransaction(id, depositstatus.ReconciliationRequired,
 		time.Date(2026, 10, 15, 23, 30, 0, 0, timeutils.VnLoc()))
+	user := &identity_dto.UserBriefContractDTO{
+		ID:        tx.UserID,
+		Username:  "khachhang",
+		Email:     "khachhang@example.com",
+		FirstName: "Nguyễn",
+		LastName:  "An",
+	}
+	plan := &entities.SubscriptionPlan{Slug: "premium-monthly", Name: "Premium tháng"}
+	plan.ID = *tx.SubscriptionPlanID
+
 	stub := &stubAdminBillingUC{
 		listRows:  []*entities.DepositTransaction{tx},
 		listTotal: 1,
-		detail:    tx,
+		detail: &uc_interfaces.AdminTransactionDetail{
+			Transaction: tx,
+			User:        user,
+			Plan:        plan,
+		},
 	}
 	engine := newAdminBillingEngine(t, stub)
 
@@ -266,6 +281,53 @@ func TestAdminBillingDetailReturnsTheSameCamelCaseShapeAsTheList(t *testing.T) {
 	}
 	if listStatus != "reconciliation_required" {
 		t.Errorf("list status = %q, want %q", listStatus, "reconciliation_required")
+	}
+
+	// The two label keys exist on BOTH responses, and the list must NOT resolve
+	// them: naming the buyer in the list would mean one cross-module lookup per
+	// row, which is the cost the list deliberately refuses to pay.
+	if raw := string(listEnvelope.Data.Items[0]["user"]); raw != "null" {
+		t.Errorf("the list must not resolve the buyer label, got %s", raw)
+	}
+	if raw := string(listEnvelope.Data.Items[0]["targetPlan"]); raw != "null" {
+		t.Errorf("the list must not resolve the target plan label, got %s", raw)
+	}
+
+	var detailUser struct {
+		Username  string `json:"username"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+	}
+	if err := json.Unmarshal(detailParsed.Data["user"], &detailUser); err != nil {
+		t.Fatalf("parse the detail user %s: %v", detailParsed.Data["user"], err)
+	}
+	if detailUser.Username != "khachhang" || detailUser.Email != "khachhang@example.com" || detailUser.FirstName != "Nguyễn" {
+		t.Errorf("the detail must resolve the buyer label, got %+v", detailUser)
+	}
+
+	var detailPlan struct {
+		ID   string `json:"id"`
+		Slug string `json:"slug"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(detailParsed.Data["targetPlan"], &detailPlan); err != nil {
+		t.Fatalf("parse the detail targetPlan %s: %v", detailParsed.Data["targetPlan"], err)
+	}
+	if detailPlan.Name != "Premium tháng" || detailPlan.Slug != "premium-monthly" {
+		t.Errorf("the detail must resolve the target plan label, got %+v", detailPlan)
+	}
+	if detailPlan.ID != plan.ID.String() {
+		t.Errorf("targetPlan.id = %q, want %s", detailPlan.ID, plan.ID)
+	}
+
+	// The raw id stays alongside the label: it is what an operator copies into a
+	// PayOS ticket, and the label can disappear (removed plan) while the id stays.
+	var targetPlanID string
+	if err := json.Unmarshal(detailParsed.Data["targetPlanId"], &targetPlanID); err != nil {
+		t.Fatalf("detail targetPlanId must stay a string, got %s", detailParsed.Data["targetPlanId"])
+	}
+	if targetPlanID != plan.ID.String() {
+		t.Errorf("targetPlanId = %q, want %s", targetPlanID, plan.ID)
 	}
 }
 

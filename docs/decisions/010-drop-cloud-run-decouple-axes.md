@@ -3,7 +3,7 @@
 *   **Status**: Accepted
 *   **Decision Date**: 2026-09-19
 *   **Decision Maker**: repo owner
-*   **Superseded by**: ADR 012 (phần rollback monolith)
+*   **Superseded by**: ADR 012 (phần rollback monolith); ADR 017 (phần trục box ngoài AWS)
 
 ## 1. Context
 

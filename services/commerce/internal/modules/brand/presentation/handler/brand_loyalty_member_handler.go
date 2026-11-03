@@ -12,7 +12,7 @@ import (
 // @Tags Brand Member
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.AddBrandMembersReq true "Danh sách thành viên cần thêm"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.AddBrandMembersRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/members [post]
@@ -42,7 +42,7 @@ func (h *BrandLoyaltyHandler) AddBrandMember(c *gin.Context) error {
 // @Description Lấy danh sách tất cả các thành viên trực thuộc brand này
 // @Tags Brand Member
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandMemberRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/members [get]
 func (h *BrandLoyaltyHandler) GetBrandMembers(c *gin.Context) error {
@@ -67,7 +67,7 @@ func (h *BrandLoyaltyHandler) GetBrandMembers(c *gin.Context) error {
 // @Description Lấy danh sách các khách hàng đã liên kết với brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Trang hiện tại (mặc định: 1)"
 // @Param limit query int false "Số lượng bản ghi trên mỗi trang (mặc định: 20)"
 // @Param q query string false "Từ khóa tìm kiếm (tên, SĐT, mã KH)"
@@ -101,7 +101,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomers(c *gin.Context) error {
 // @Summary Lấy chi tiết khách hàng brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param customerId path string true "ID customer"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/customers/{customerId} [get]
@@ -131,7 +131,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomer(c *gin.Context) error {
 // @Description Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandCustomerBriefRes}
 // @Router /api/v1/brands/{brandId}/join-loyalty [post]
 func (h *BrandLoyaltyHandler) JoinLoyalty(c *gin.Context) error {
@@ -161,7 +161,7 @@ func (h *BrandLoyaltyHandler) JoinLoyalty(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.CreateOfflineBrandCustomerReq true "Thông tin khách hàng mua offline"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/customers/offline-purchase [post]
@@ -183,5 +183,68 @@ func (h *BrandLoyaltyHandler) CreateOfflineCustomer(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Created(c, msgBrandOfflineCustomerSuccess, res)
+	return nil
+}
+
+// UpdateBrandMemberStatus updates a staff member's status (owner only).
+// @Summary Cập nhật trạng thái thành viên thương hiệu
+// @Tags Brand Member
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID hoặc slug brand"
+// @Param memberId path string true "ID thành viên"
+// @Param body body dto.UpdateBrandMemberStatusReq true "Trạng thái mới"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandMemberRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/members/{memberId} [patch]
+func (h *BrandLoyaltyHandler) UpdateBrandMemberStatus(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	memberID, err := validation.GetUUIDParam(c, "memberId")
+	if err != nil {
+		return err
+	}
+	var input dto.UpdateBrandMemberStatusReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.UpdateBrandMemberStatus(c.Request.Context(), userID, brandID, memberID, input.Status)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandMemberUpdateSuccess, res)
+	return nil
+}
+
+// RemoveBrandMember removes a staff member from the brand (owner only).
+// @Summary Xóa thành viên thương hiệu
+// @Tags Brand Member
+// @Produce json
+// @Param brandId path string true "ID hoặc slug brand"
+// @Param memberId path string true "ID thành viên"
+// @Success 200 {object} shared_pres.APIResponse
+// @Router /api/v1/brand-portal/brands/{brandId}/members/{memberId} [delete]
+func (h *BrandLoyaltyHandler) RemoveBrandMember(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	memberID, err := validation.GetUUIDParam(c, "memberId")
+	if err != nil {
+		return err
+	}
+	if err := h.brandUC.RemoveBrandMember(c.Request.Context(), userID, brandID, memberID); err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandMemberRemoveSuccess, nil)
 	return nil
 }

@@ -32,6 +32,7 @@ type IBrandRepository interface {
 	GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*BrandAdminStatsDTO, error)
 	GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*BrandAnalyticsStatsDTO, error)
 	GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]SampleFeedbackDrillDownDTO, int64, error)
+	DeleteRequest(ctx context.Context, brandID uuid.UUID, statuses ...brandstatus.BrandStatus) (bool, error)
 }
 
 type IBrandMemberRepository interface {

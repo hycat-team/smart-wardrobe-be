@@ -61,7 +61,7 @@ func (r *BrandMemberRepository) GetByBrandID(ctx context.Context, brandID uuid.U
 func (r *BrandMemberRepository) GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error) {
 	var members []*entities.BrandMember
 	err := r.GetQueryWithPreload(ctx).
-		Where("user_id = ? AND status = ?", userID, brandmemberstatus.Active).
+		Where("user_id = ? AND LOWER(status) = ?", userID, string(brandmemberstatus.Active)).
 		Order("created_at ASC").
 		Find(&members).Error
 	return members, err

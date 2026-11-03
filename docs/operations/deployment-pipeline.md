@@ -4,8 +4,8 @@ Tài liệu dành cho dev mới: vừa hiểu kiến trúc Docker/CI/CD, vừa v
 môi trường production trên VPS. Đọc xuôi từ trên xuống.
 
 **Phạm vi:** chỉ VPS (`/opt/closy`, `deployments/docker-compose.prod.yml`,
-`deploy-vps-services.yml`). Không bao gồm AWS/box ngoài — xem `aws-runbook.md`
-khi cần.
+`deploy-vps-services.yml`). Trục AWS box đã lưu trữ theo ADR 017
+(`docs/archive/aws-box/`), không thuộc phạm vi tài liệu này.
 
 **Tài liệu liên quan:**
 
@@ -287,8 +287,8 @@ docker compose --env-file .env.production --env-file .env.deploy \
 ```
 
 - Renew sau này qua webroot (`certbot_www` đã mount sẵn).
-- `NGINX_MODE`: `services` (ổn định) · `services-redirect` (grace sau khi tắt
-  box ngoài) · `rollback` (thủ công về monolith, xem §10). Đổi mode trong
+- `NGINX_MODE`: `services` (ổn định) · `services-redirect` (grace sau khi bỏ
+  box) · `rollback` (thủ công về monolith, xem §10). Đổi mode trong
   `.env.production` rồi recreate nginx (luôn kèm cả 2 env-file).
 
 ## 8. Env và secrets

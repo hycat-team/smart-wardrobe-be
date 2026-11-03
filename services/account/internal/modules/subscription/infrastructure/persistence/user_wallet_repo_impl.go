@@ -51,3 +51,14 @@ func (r *UserWalletRepository) GetByUserIDWithLock(ctx context.Context, userID u
 	}
 	return &wallet, nil
 }
+
+func (r *UserWalletRepository) GetByUserIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.UserWallet, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	var wallets []*entities.UserWallet
+	if err := r.GetDB(ctx).Where("user_id IN ?", userIDs).Find(&wallets).Error; err != nil {
+		return nil, err
+	}
+	return wallets, nil
+}

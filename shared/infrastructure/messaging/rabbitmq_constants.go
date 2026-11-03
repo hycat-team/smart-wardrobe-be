@@ -28,7 +28,12 @@ const (
 	RoutingKeyWardrobeDeleted            = eventconstants.TopicWardrobeDeleted
 	RoutingKeySubscriptionPlanChanged    = eventconstants.TopicSubscriptionPlanChanged
 	RoutingKeyNotificationEmail          = eventconstants.TopicNotificationEmail + ".#"
-	RoutingKeyAuditLog                   = eventconstants.TopicAuditLog
+	// RoutingKeyNotificationEmailRetry is a distinct word sequence on purpose: the
+	// main queue's "notification.email.#" matches any multi-word suffix including
+	// "notification.email.retry", so a retry published under that name would also
+	// land on the main queue and be consumed immediately.
+	RoutingKeyNotificationEmailRetry = eventconstants.TopicNotificationEmailRetry
+	RoutingKeyAuditLog               = eventconstants.TopicAuditLog
 
 	RoutingKeyOutfitDeleted     = eventconstants.TopicOutfitDeleted
 	RoutingKeyUserStatusChanged = eventconstants.TopicUserStatusChanged

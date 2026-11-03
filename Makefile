@@ -11,16 +11,29 @@ GO_BUILD_FLAGS := -trimpath -ldflags="-s -w"
 BIN_DIR := bin
 
 # Registry conventions (FR-042/FR-051, T007a):
-# - VPS + AWS images → GHCR with existing CI token, tag <svc>:<git-sha> (immutable).
+# - Service images → GHCR with existing CI token, tag <svc>:<git-sha> (immutable).
 # - AR_* below is kept for manual registry builds (image-build/image-push).
 AR_HOST ?= asia-southeast1-docker.pkg.dev
 AR_PROJECT ?= closy-hycat
 AR_REPO ?= closy
 GHCR_OWNER ?= hycat
-# Redirect to both: `2>/dev/null` for POSIX shells, `2>NUL` for Windows cmd.exe.
-# Without the second form, every make run on Windows prints
-# "The system cannot find the path specified." and GIT_SHA silently falls back to `dev`.
-GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null 2>NUL || echo dev)
+# No stderr redirect here, on purpose.
+#
+# The previous form was `2>/dev/null 2>NUL`, trying to satisfy both shells. It
+# does the opposite of what it looks like: GNU make on Windows uses sh.exe when
+# Git is installed (the normal case), and under a POSIX shell `NUL` is not a
+# device — it is a filename. So every make run, including `make -n`, created a
+# real zero-byte file called NUL in the repository root, which then showed up as
+# an untracked file that git clean could not even delete (Windows resolves the
+# path to the null device). Under cmd.exe the other half, `2>/dev/null`, tried to
+# create \dev\null.
+#
+# An empty value is handled by the fallback below, which is portable and leaves
+# nothing behind.
+GIT_SHA := $(shell git rev-parse --short HEAD)
+ifeq ($(strip $(GIT_SHA)),)
+GIT_SHA := dev
+endif
 
 # Migration (Goose) connection variables (shared by all services)
 DB_HOST ?= localhost
@@ -44,7 +57,7 @@ CONFIG_FILE ?= $(abspath configs/config.yaml)
 
 # RabbitMQ topology reconcile (see the rabbitmq-* targets near nginx-routes).
 # RABBITMQ_ENV_FILE points at the env holding the RABBITMQ_* settings: .env for
-# the local stack, .env.production on the VPS, .env.aws on the AWS box. QUEUE and
+# the local stack, .env.production on the VPS. QUEUE and
 # SPILL_DIR are optional overrides, e.g.
 #   make rabbitmq-topology-check RABBITMQ_ENV_FILE=.env.production
 #   make rabbitmq-topology-migrate RABBITMQ_ENV_FILE=.env.production QUEUE=subscription_plan_changed_queue
@@ -65,7 +78,10 @@ ifeq ($(OS),Windows_NT)
 GO_BIN_EXT := .exe
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
-FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write-Error ($$files -join [Environment]::NewLine); exit 1 }"
+# Keep the check in a script rather than inline: an inline `$$`-escaped PowerShell
+# variable was consumed before PowerShell saw it, so the recipe arrived as
+# `if () { ... }` and `make lint` / `make check` could not run on Windows at all.
+FMT_CHECK_CMD := powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fmt-check.ps1
 # NOTE: do NOT pipe go test through a filter — the pipeline exit code becomes
 # the filter's (findstr/grep return 1 when every line is filtered, e.g. a module
 # with no test files) which both false-fails and masks real test failures.
@@ -181,7 +197,7 @@ tools-help:
 	@echo "  make rabbitmq-topology-check env=  : Compare broker queue types against the registry (read-only)"
 	@echo "  make rabbitmq-topology-migrate env=: Drain, delete, recreate and replay drifted queues"
 	@echo "  make image-build-tool              : Build the rabbitmq-topology ops image"
-	@echo "  (env= is shorthand: pass RABBITMQ_ENV_FILE=.env.production for VPS, .env.aws for AWS)"
+	@echo "  (env= is shorthand: pass RABBITMQ_ENV_FILE=.env.production for VPS)"
 
 platform-help:
 	@echo "REGISTRY / INGRESS COMMANDS (020):"

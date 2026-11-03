@@ -1,0 +1,155 @@
+# Feature 032 - Nginx TLS/Bearer proxy in front of the local Ollama runtime.
+#
+# Template contract: specs/032-ollama-lightsail-trial/contracts/env-ai-trial.md section 2
+# Rendered by deployments/ollama/bootstrap.sh into /etc/nginx/conf.d/ollama.conf.
+#
+# Placeholders (substituted at bootstrap time, never committed filled in):
+#   __PROXY_HOSTNAME__        dedicated A record, NOT the API domain
+#   __PROXY_HTTPS_PORT__      public TLS port (443)
+#   __PROXY_ACME_PORT__       port 80, ACME challenge and redirect only
+#   __PROXY_ALLOWED_CIDR__    Lightsail static IP as /32
+#   __PROXY_TLS_CERT_PATH__   certbot fullchain path
+#   __PROXY_TLS_KEY_PATH__    certbot private key path
+#   __PROXY_BEARER_TOKEN__    proxy Bearer token read from Secrets Manager
+#
+# Invariants:
+#   - proxy_pass always targets 127.0.0.1:11434; the inference port is never public.
+#   - Port 80 serves only the ACME challenge and a redirect; it never proxies.
+#   - The Authorization header and the request body are never logged. The access
+#     log format below records only time, client IP, status, request time, bytes,
+#     method and the path without query values (never headers or bodies).
+#   - A missing or wrong Bearer token is rejected here and never reaches Ollama.
+
+# Bounded access log consumed by the CloudWatch agent and by the proxy_5xx_total
+# / proxy_401_total metric filters (field order is part of that contract).
+log_format ollama_trial '$time_iso8601 $remote_addr $status $request_time $body_bytes_sent $request_method $uri';
+error_log /var/log/nginx/ollama-error.log warn;
+
+# Exact-match Bearer check. `map` compares the whole header value, so a token that
+# merely contains the expected string does not pass. The value lives in this file
+# with 0640 root:root permissions and the token is never echoed to a log.
+# A 64-character hex token plus "Bearer " exceeds the default 64-byte map
+# bucket, so raise the bucket size before declaring the map.
+map_hash_bucket_size 128;
+
+map $http_authorization $ollama_authorized {
+    default                             0;
+    "Bearer __PROXY_BEARER_TOKEN__"      1;
+}
+
+upstream ollama_loopback {
+    # Loopback only. Ollama must bind 127.0.0.1:11434; never use a public interface.
+    server 127.0.0.1:11434;
+    keepalive 4;
+}
+
+# Port 80: ACME challenge + redirect only. No inference path exists in this block.
+server {
+    listen __PROXY_ACME_PORT__ default_server;
+    listen [::]:__PROXY_ACME_PORT__ default_server;
+    server_name __PROXY_HOSTNAME__;
+
+    server_tokens off;
+    access_log off;
+
+    # Let's Encrypt HTTP-01. The webroot must match certbot's -w argument.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+
+    # Nothing else is served over plain HTTP: no prompt, no token, no inference.
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Port 443: the only inference entry point. Guarded by allowlist AND Bearer.
+server {
+    # http2 is enabled on the listen directive because Ubuntu 24.04 ships nginx
+    # 1.24, where the standalone `http2 on;` directive does not exist yet.
+    listen __PROXY_HTTPS_PORT__ ssl http2 default_server;
+    listen [::]:__PROXY_HTTPS_PORT__ ssl http2 default_server;
+    server_name __PROXY_HOSTNAME__;
+
+    server_tokens off;
+
+    ssl_certificate     __PROXY_TLS_CERT_PATH__;
+    ssl_certificate_key __PROXY_TLS_KEY_PATH__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:ollama_tls:10m;
+    ssl_session_timeout 10m;
+    ssl_session_tickets off;
+
+    access_log /var/log/nginx/ollama-access.log ollama_trial;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Cache-Control "no-store" always;
+
+    # Allowlist: only the Lightsail static IP /32. The security group is the outer
+    # guard; this is defence in depth and must stay in sync when the static IP
+    # changes (runbook section 4.3).
+    allow __PROXY_ALLOWED_CIDR__;
+    deny all;
+
+    # Prompts are bounded; the adapter must never send arbitrary uploads here.
+    client_max_body_size 16m;
+    client_body_timeout 30s;
+
+    # Minimal unauthenticated health probe for the runbook (no model call, no token).
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    # The single supported inference route. The Go adapter posts the full
+    # /v1/chat/completions URL, so the proxy must preserve the path (no URI on
+    # proxy_pass).
+    location = /v1/chat/completions {
+        # Bearer auth: exact string match, constant response, no detail leaked.
+        if ($ollama_authorized = 0) {
+            return 401;
+        }
+
+        proxy_pass http://ollama_loopback;
+        proxy_http_version 1.1;
+        # Ollama 0.40 rejects a non-local Host header on the OpenAI-compatible
+        # route with 403, so keep the upstream Host local even though the public
+        # virtual host is ollama.<domain>.
+        proxy_set_header Host 127.0.0.1:11434;
+        proxy_set_header Connection "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Do not forward the proxy credential to the Ollama runtime.
+        proxy_set_header Authorization "";
+
+        # Streaming: disable buffering so SSE chunks reach the Go service immediately.
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_cache off;
+        # add_header is not inherited once a location defines its own, so the
+        # security headers are repeated here on purpose.
+        add_header X-Accel-Buffering no;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Cache-Control "no-store" always;
+
+        # Attempt budget: Ollama 90s + Gemini fallback 30s stays inside the 120s
+        # write timeout. Do not raise these without changing the env contract.
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 125s;
+        proxy_read_timeout 125s;
+        proxy_next_upstream off;
+    }
+
+    # Everything else is closed: Ollama's native /api surface stays loopback-only.
+    location / {
+        return 404;
+    }
+}

@@ -15,8 +15,7 @@ import (
 )
 
 // Settings is the broker connection config, read from the RABBITMQ_* environment
-// variables that .env.production (VPS) and .env.aws (CloudAMQP) already define,
-// so one code path serves both environments.
+// variables that .env.production (VPS) already defines.
 type Settings struct {
 	Host          string
 	Port          int

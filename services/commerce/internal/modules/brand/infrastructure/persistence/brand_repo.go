@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -20,7 +21,19 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+const postgresUniqueViolation = "23505"
+
+type sqlStateCarrier interface {
+	SQLState() string
+}
+
+func isUniqueViolation(err error) bool {
+	var carrier sqlStateCarrier
+	return errors.As(err, &carrier) && carrier.SQLState() == postgresUniqueViolation
+}
 
 type BrandRepository struct {
 	shared_persist.GenericRepository[entities.Brand, uuid.UUID]
@@ -31,6 +44,16 @@ func NewBrandRepository(db *gorm.DB) repositories.IBrandRepository {
 	return &BrandRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Brand, uuid.UUID](db, relations),
 	}
+}
+
+func (r *BrandRepository) Create(ctx context.Context, brand *entities.Brand) error {
+	if err := r.GetDB(ctx).Omit(clause.Associations).Create(brand).Error; err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("%w: %s", repositories.ErrBrandSlugConflict, brand.Slug)
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *BrandRepository) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
@@ -48,7 +71,7 @@ func (r *BrandRepository) GetBySlug(ctx context.Context, slug string) (*entities
 func (r *BrandRepository) GetActive(ctx context.Context) ([]*entities.Brand, error) {
 	var brands []*entities.Brand
 	err := r.GetDB(ctx).
-		Where("status = ?", brandstatus.Active).
+		Where("LOWER(status) = ?", string(brandstatus.Active)).
 		Order("created_at DESC").
 		Find(&brands).Error
 	return brands, err
@@ -68,7 +91,7 @@ func (r *BrandRepository) getBrands(ctx context.Context, filter repositories.Bra
 	db := r.GetDB(ctx).Model(&entities.Brand{})
 
 	if filter.Status != nil && *filter.Status != "" {
-		db = db.Where("status = ?", *filter.Status)
+		db = db.Where("LOWER(status) = ?", strings.ToLower(string(*filter.Status)))
 	}
 
 	if filter.Query != nil && *filter.Query != "" {
@@ -108,7 +131,7 @@ func (r *BrandRepository) GetAdminBrandStats(ctx context.Context, snapshotDate t
 	}
 
 	var pendingBrands int64
-	if err := db.Model(&entities.Brand{}).Where("status = ?", string(brandstatus.PendingReview)).Count(&pendingBrands).Error; err != nil {
+	if err := db.Model(&entities.Brand{}).Where("LOWER(status) = ?", string(brandstatus.PendingReview)).Count(&pendingBrands).Error; err != nil {
 		return nil, err
 	}
 
@@ -200,7 +223,7 @@ func (r *BrandRepository) GetSampleLabFeedbacksDrillDown(ctx context.Context, it
 		BrandItemID uuid.UUID `gorm:"column:brand_item_id"`
 		UserID      uuid.UUID `gorm:"column:user_id"`
 		Rating      float64   `gorm:"column:rating"`
-		Comment     string    `gorm:"column:comment"`
+		Comment     string    `gorm:"column:feedback_text"`
 		CreatedAt   time.Time `gorm:"column:created_at"`
 	}
 
@@ -223,4 +246,21 @@ func (r *BrandRepository) GetSampleLabFeedbacksDrillDown(ctx context.Context, it
 	}
 
 	return items, total, nil
+}
+
+func (r *BrandRepository) DeleteRequest(ctx context.Context, brandID uuid.UUID, statuses ...brandstatus.BrandStatus) (bool, error) {
+	if len(statuses) == 0 {
+		return false, nil
+	}
+	normalized := make([]string, len(statuses))
+	for i, status := range statuses {
+		normalized[i] = strings.ToLower(string(status))
+	}
+	result := r.GetDB(ctx).
+		Where("id = ? AND LOWER(status) IN ?", brandID, normalized).
+		Delete(&entities.Brand{})
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }

@@ -18,6 +18,17 @@ func ErrBrandSlugExists() *apperror.Error {
 	return apperror.NewConflict("Slug brand đã tồn tại.")
 }
 
+func ErrBrandSlugInvalid() *apperror.Error {
+	return apperror.NewBadRequest("Slug brand phải dài 2-100 ký tự, chỉ gồm chữ thường, số và dấu gạch ngang.")
+}
+
+func ErrBrandSlugReserved(slug string) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Slug \"%s\" là đường dẫn hệ thống, vui lòng chọn slug khác.", slug))
+}
+
+func ErrBrandRequestNotCancellable() *apperror.Error {
+	return apperror.NewConflict("Chỉ có thể hủy yêu cầu đăng ký thương hiệu đang chờ duyệt hoặc đã bị từ chối.")
+}
 func ErrBrandPortalForbidden() *apperror.Error {
 	return apperror.NewForbidden("Bạn không có quyền quản trị brand này.")
 }
@@ -32,6 +43,10 @@ func ErrInvalidBrandStatus(status any) *apperror.Error {
 
 func ErrInvalidBrandMemberRole(role any) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Vai trò brand member không hợp lệ: %v.", role))
+}
+
+func ErrInvalidBrandMemberStatus(status any) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Trạng thái brand member không hợp lệ: %v.", status))
 }
 
 func ErrPhoneRequired() *apperror.Error {
@@ -142,6 +157,9 @@ func ErrClaimRateLimitUnavailable() *apperror.Error {
 	return apperror.NewServiceUnavailable("Chưa thể kiểm tra giới hạn thử claim. Vui lòng thử lại sau.")
 }
 
+func ErrProductCodeRequired() *apperror.Error {
+	return apperror.NewBadRequest("Vui lòng nhập mã sản phẩm.")
+}
 func ErrProductCodeExists() *apperror.Error {
 	return apperror.NewConflict("Mã sản phẩm đã tồn tại trong thương hiệu này.")
 }
@@ -166,6 +184,13 @@ func ErrBrandMemberNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy thành viên nhãn hàng này.")
 }
 
+func ErrCannotModifyBrandOwner() *apperror.Error {
+	return apperror.NewForbidden("Không thể thay đổi trạng thái chủ sở hữu thương hiệu. Vui lòng dùng luồng chuyển quyền sở hữu.")
+}
+
+func ErrCannotRemoveBrandOwner() *apperror.Error {
+	return apperror.NewForbidden("Không thể xóa chủ sở hữu thương hiệu. Vui lòng dùng luồng chuyển quyền sở hữu.")
+}
 func ErrMemberAlreadyExists() *apperror.Error {
 	return apperror.NewConflict("Người dùng này đã là thành viên của nhãn hàng.")
 }

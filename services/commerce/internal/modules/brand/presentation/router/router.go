@@ -17,6 +17,7 @@ type Router struct {
 	brandHandler      *brand_handler.BrandHandler
 	adminBrandHandler *brand_handler.AdminBrandHandler
 	brandRole         brand_contract.IBrandRoleMiddleware
+	brandRef          brand_contract.IBrandRefMiddleware
 	auth              identity_contract.IAuthMiddleware
 }
 
@@ -24,18 +25,21 @@ func NewRouter(
 	brandHandler *brand_handler.BrandHandler,
 	adminBrandHandler *brand_handler.AdminBrandHandler,
 	brandRole brand_contract.IBrandRoleMiddleware,
+	brandRef brand_contract.IBrandRefMiddleware,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
 		brandHandler:      brandHandler,
 		adminBrandHandler: adminBrandHandler,
 		brandRole:         brandRole,
+		brandRef:          brandRef,
 		auth:              auth,
 	}
 }
 
 func (r *Router) Init(group *gin.RouterGroup) {
 	publicBrands := group.Group("/brands")
+	publicBrands.Use(r.brandRef.PublicPath("brandId"))
 	{
 		publicBrands.GET("", shared_pres.WrapHandler(r.brandHandler.GetActiveBrands))
 		publicBrands.GET("/:brandId", shared_pres.WrapHandler(r.brandHandler.GetActiveBrand))
@@ -46,7 +50,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	userBrands := group.Group("/brands")
-	userBrands.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
+	userBrands.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		userBrands.POST("/claim", shared_pres.WrapHandler(r.brandHandler.ClaimOfflineAccount))
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
@@ -76,7 +80,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	meBrands := group.Group("/me")
-	meBrands.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
+	meBrands.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		meBrands.GET("/brand-loyalties", shared_pres.WrapHandler(r.brandHandler.ListUserBrandLoyalties))
 		meBrands.GET("/brand-loyalties/:brandId", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyalty))
@@ -94,11 +98,19 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portal.GET("/brands/profile-images/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandLogoUploadSignature))
 	}
 
+	// Owners can cancel their own pending/rejected brand request. This does not
+	// use brand RBAC because the brand is not ACTIVE yet.
+	portalBrandRequest := group.Group("/brand-portal")
+	portalBrandRequest.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
+	{
+		portalBrandRequest.DELETE("/brands/:brandId/request", shared_pres.WrapHandler(r.brandHandler.CancelBrandRequest))
+	}
+
 	// Brand RBAC is centralized here via BrandRoleMiddleware: routes requiring a
 	// real brand membership (owner/staff) go under memberGroup; owner-only
 	// configuration routes (loyalty program/tiers) go under ownerGroup.
 	portalMember := group.Group("/brand-portal")
-	portalMember.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
+	portalMember.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
 	{
 		portalMember.GET("/brands/:brandId", shared_pres.WrapHandler(r.brandHandler.GetBrandForPortal))
 		portalMember.PATCH("/brands/:brandId/profile-images", shared_pres.WrapHandler(r.brandHandler.UpdateBrandImages))
@@ -131,18 +143,21 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portalMember.GET("/brands/:brandId/items/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandItemUploadSignature))
 		portalMember.GET("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForStaff))
 		portalMember.PUT("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItem))
+		portalMember.POST("/brands/:brandId/items/:itemId/convert-to-product", shared_pres.WrapHandler(r.brandHandler.ConvertSampleToProduct))
 		portalMember.PATCH("/brands/:brandId/items/:itemId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItemStatus))
 		portalMember.POST("/brands/:brandId/items/:itemId/retry-analysis", shared_pres.WrapHandler(r.brandHandler.RetryBrandItemAnalysis))
 		portalMember.GET("/brands/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.GetBrandItemFeedbacks))
 	}
 
 	portalOwner := group.Group("/brand-portal")
-	portalOwner.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner))
+	portalOwner.Use(r.brandRef.Path("brandId"), r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner))
 	{
 		portalOwner.PATCH("/brands/:brandId/profile", shared_pres.WrapHandler(r.brandHandler.UpdateBrandProfile))
 		portalOwner.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))
 		portalOwner.POST("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.CreateLoyaltyTier))
 		portalOwner.PUT("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.UpdateLoyaltyTier))
+		portalOwner.PATCH("/brands/:brandId/members/:memberId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandMemberStatus))
+		portalOwner.DELETE("/brands/:brandId/members/:memberId", shared_pres.WrapHandler(r.brandHandler.RemoveBrandMember))
 	}
 
 	admin := group.Group("/admin/brands")

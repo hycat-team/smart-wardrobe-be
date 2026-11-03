@@ -1,5 +1,7 @@
 ﻿# Brand Item API Specs
 
+> **Tham chiếu brand (`{brandId}`):** path/query `brandId` chấp nhận **UUID hoặc slug** của brand. URL công khai dùng slug (`/brands/{slug}`); UUID vẫn hợp lệ để tương thích ngược. Response item có thêm `brandSlug` (khi brand được preload).
+
 Tài liệu thiết kế các API liên quan đến sản phẩm/mẫu thử của nhãn hàng (Brand Items): bao gồm sản phẩm thương mại thực tế, các mẫu thử thiết kế kỹ thuật số (3D/phác thảo), luồng thu nhận ý kiến khảo sát/bình chọn (feedback/vote) của khách hàng và quy trình quản trị sản phẩm trên cổng Brand Portal.
 
 ---
@@ -190,3 +192,45 @@ Người dùng duyệt xem các mẫu thiết kế mới của nhãn hàng, có 
 - Mỗi bản ghi sản phẩm của nhãn hàng (`brand_items`) đều liên kết chặt chẽ đến một bản ghi metadata thời trang dùng chung `fashion_items` qua khóa ngoại `fashionItemId` để hệ thống AI hoặc tủ đồ có thể dùng chung dữ liệu thuộc tính thời trang.
 - Các sản phẩm thương mại (`product`) của nhãn hàng đang active và có đủ điều kiện có thể được hệ thống AI ưu tiên lựa chọn đưa vào danh sách ứng viên đề xuất phối đồ (AI outfit recommendations) cho người dùng.
 - Các mẫu thử kỹ thuật số (`sample`) có thể thiết lập các chính sách đặc quyền bảo mật như `sample_mix_access` (chỉ cho phép khách hàng đạt hạng thẻ thành viên quy định được thử đồ). Các mã đặc quyền hệ thống `featureCode` tham chiếu chi tiết tại [constants.md:BenefitFeatureCode](constants.md#8-ma-dac-quyen-he-thong-benefitfeaturecode).
+
+---
+
+## Brand item list, filter and sample conversion (Brand Portal)
+
+### 1. List brand items (owner + staff)
+
+- **Endpoint:** `GET /api/v1/brand-portal/brands/{brandId}/items`
+- **Query params:**
+    - `itemType` (optional): `product` | `sample` — tách danh sách sản phẩm khỏi mẫu thử.
+    - `status` (optional): `draft` | `active` | `archived` | `failed`.
+- **Ordering:** luôn sắp xếp `created_at DESC, id DESC` (mới nhất trước).
+- **Response item:** `taskId` khác null nghĩa là AI còn đang phân tích; `fashionItem.reviewReason` nghĩa là cần chọn danh mục; `fashionItem.processingErrorReason` nghĩa là phân tích thất bại.
+
+### 2. Convert a digital sample into a product
+
+- **Endpoint:** `POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product`
+- **Actor:** owner hoặc staff.
+- **Rules:**
+    - Item phải thuộc brand và đang là `sample`.
+    - AI phải phân tích xong (có `fashionItem` + `category`).
+    - Item ở trạng thái `failed` phải được phân tích lại trước.
+    - Chuyển tại chỗ: giữ nguyên id, feedback/vote và trạng thái hiện tại.
+- **Errors:** `404` sai brand/không thấy item; `400` chưa phân tích xong; `409` item đã là product.
+- **Response:** `dto.BrandItemRes` với `itemType = product`.
+
+### 3. Update item fields
+
+- `PUT /api/v1/brand-portal/brands/{brandId}/items/{itemId}` chỉ cập nhật `name`, `productCode`, `description`, `price`, `status`.
+- Ảnh sản phẩm chưa hỗ trợ cập nhật qua endpoint này (gửi `imageUrl`/`imagePublicId` sẽ bị bỏ qua).
+- Item `failed` chỉ bị khóa thay đổi `status`; các trường nội dung khác vẫn sửa được.
+
+### 2b. Bắt buộc product code khi chuyển sample → product
+
+`POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product` yêu cầu body:
+
+```json
+{ "productCode": "SP-2026-001" }
+```
+
+- `productCode` bắt buộc, tối đa 100 ký tự, không được trùng product code khác trong brand (409).
+- Mã được trim trước khi lưu; response trả `BrandItemRes` đã có `productCode`.

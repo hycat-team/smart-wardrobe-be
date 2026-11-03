@@ -77,6 +77,7 @@ type LoyaltyTierRes struct {
 	Rank          int       `json:"rank"`
 	MinTotalSpend float64   `json:"minTotalSpend"`
 	Description   *string   `json:"description"`
+	BenefitsCount int       `json:"benefitsCount"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
@@ -87,10 +88,12 @@ type LoyaltyTierDetailRes struct {
 }
 
 type GetBrandBenefitsQueryReq struct {
-	Page        int     `form:"page" binding:"omitempty,min=1" label:"trang"`
-	Limit       int     `form:"limit" binding:"omitempty,min=1,max=100" label:"số lượng"`
-	UnlockType  *string `form:"unlockType" binding:"omitempty" label:"loại mở khóa"`
-	BenefitType *string `form:"benefitType" binding:"omitempty" label:"loại quyền lợi"`
+	Page           int     `form:"page" binding:"omitempty,min=1" label:"trang"`
+	Limit          int     `form:"limit" binding:"omitempty,min=1,max=100" label:"số lượng"`
+	UnlockType     *string `form:"unlockType" binding:"omitempty" label:"loại mở khóa"`
+	BenefitType    *string `form:"benefitType" binding:"omitempty" label:"loại quyền lợi"`
+	RequiredTierID *string `form:"requiredTierId" binding:"omitempty,uuid" label:"mã hạng yêu cầu"`
+	Status         *string `form:"status" binding:"omitempty,oneof=active inactive archived" label:"trạng thái"`
 }
 
 type LoyaltyPointLotRes struct {

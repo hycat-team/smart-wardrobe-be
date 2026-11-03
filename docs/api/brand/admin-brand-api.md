@@ -155,3 +155,7 @@ Tài liệu thiết kế API quản trị (Admin) liên quan đến quản lý t
     - `oldOwnerHandling`: bắt buộc, chỉ nhận `staff` (hạ xuống staff) hoặc `remove` (gỡ khỏi brand).
 - **Response:**
     - `200 OK`: Thành công.
+
+---
+
+- `rejected` là trạng thái hợp lệ khi admin từ chối yêu cầu đăng ký brand. Brand ở trạng thái này không hiển thị công khai và owner có thể hủy/xóa yêu cầu qua brand portal.

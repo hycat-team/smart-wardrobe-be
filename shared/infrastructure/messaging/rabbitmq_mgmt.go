@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/shared/pkg/logger"
 
 	"go.uber.org/zap"
@@ -20,32 +21,42 @@ type mgmtQueue struct {
 }
 
 // FetchQueueDepths gọi RabbitMQ Management HTTP API, trả về tổng message
-// trong các queue chính (không phải DLQ) và tổng message trong các DLQ.
+// trong các queue chính (không phải DLQ), tổng message trong các DLQ, và riêng
+// depth của DLQ email.
+//
+// The email DLQ gets its own number because a silent email loss is otherwise
+// invisible: outbox rows are marked published before SMTP is attempted, so a
+// stack of dead emails shows up nowhere except this queue.
+//
 // Lỗi trả về không fatal — caller chỉ log warn và giữ gauge cũ.
-func FetchQueueDepths(ctx context.Context, host string, mgmtPort int, user, password string, useTLS bool, l logger.Interface) (queueDepth, dlqDepth int64, err error) {
+func FetchQueueDepths(ctx context.Context, host string, mgmtPort int, user, password string, useTLS bool, l logger.Interface) (queueDepth, dlqDepth, emailDLQDepth int64, err error) {
 	url := mgmtURL(host, mgmtPort, useTLS)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	req.SetBasicAuth(user, password)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return 0, 0, fmt.Errorf("management api returned %d", resp.StatusCode)
+		return 0, 0, 0, fmt.Errorf("management api returned %d", resp.StatusCode)
 	}
 
 	var queues []mgmtQueue
 	if err := json.NewDecoder(resp.Body).Decode(&queues); err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
+	emailDLQName := eventconstants.QueueNotificationEmail + ".dlq"
 	for _, q := range queues {
+		if q.Name == emailDLQName {
+			emailDLQDepth = int64(q.Messages)
+		}
 		if len(q.Name) > 4 && q.Name[len(q.Name)-4:] == ".dlq" {
 			dlqDepth += int64(q.Messages)
 		} else {
@@ -55,6 +66,7 @@ func FetchQueueDepths(ctx context.Context, host string, mgmtPort int, user, pass
 	l.Debug("[MgmtAPI] Fetched queue depths",
 		zap.Int64("queue_depth", queueDepth),
 		zap.Int64("dlq_depth", dlqDepth),
+		zap.Int64("email_dlq_depth", emailDLQDepth),
 	)
-	return queueDepth, dlqDepth, nil
+	return queueDepth, dlqDepth, emailDLQDepth, nil
 }

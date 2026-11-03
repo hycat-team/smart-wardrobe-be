@@ -49,14 +49,16 @@ const docTemplate = `{
                             "pending_review",
                             "active",
                             "suspended",
-                            "archived"
+                            "archived",
+                            "rejected"
                         ],
                         "type": "string",
                         "x-enum-varnames": [
                             "PendingReview",
                             "Active",
                             "Suspended",
-                            "Archived"
+                            "Archived",
+                            "Rejected"
                         ],
                         "name": "status",
                         "in": "query"
@@ -331,7 +333,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2176,7 +2178,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2219,7 +2221,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2246,6 +2248,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
                         "name": "benefitType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hạng yêu cầu",
+                        "name": "requiredTierId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trạng thái (active, inactive, archived)",
+                        "name": "status",
                         "in": "query"
                     }
                 ],
@@ -2284,7 +2298,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2336,7 +2350,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2395,7 +2409,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2438,7 +2452,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2488,7 +2502,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2548,7 +2562,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2604,7 +2618,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2651,7 +2665,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2699,7 +2713,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2767,7 +2781,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -2816,7 +2830,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3033,7 +3047,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3077,7 +3091,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3127,7 +3141,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3162,7 +3176,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3202,7 +3216,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3250,7 +3264,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3294,6 +3308,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Item"
+                ],
+                "summary": "Chuyển mẫu thử thành sản phẩm",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID hoặc slug brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID item",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mã sản phẩm cho sản phẩm mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks": {
             "get": {
                 "consumes": [
@@ -3309,7 +3382,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3421,7 +3494,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3477,7 +3550,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3563,7 +3636,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3614,7 +3687,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3663,7 +3736,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3704,7 +3777,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3753,7 +3826,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3797,7 +3870,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3846,7 +3919,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3894,7 +3967,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3951,7 +4024,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -3994,7 +4067,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4031,6 +4104,98 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/members/{memberId}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Member"
+                ],
+                "summary": "Xóa thành viên thương hiệu",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID hoặc slug brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID thành viên",
+                        "name": "memberId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Member"
+                ],
+                "summary": "Cập nhật trạng thái thành viên thương hiệu",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID hoặc slug brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID thành viên",
+                        "name": "memberId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Trạng thái mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandMemberRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/profile": {
             "patch": {
                 "consumes": [
@@ -4046,7 +4211,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4098,7 +4263,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4130,6 +4295,34 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/request": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Hủy yêu cầu đăng ký thương hiệu",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID hoặc slug brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
                         }
                     }
                 }
@@ -4707,7 +4900,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4750,7 +4943,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4817,7 +5010,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4872,7 +5065,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4921,7 +5114,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -4961,7 +5154,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5013,7 +5206,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5066,7 +5259,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5106,7 +5299,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5149,7 +5342,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5383,7 +5576,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5424,7 +5617,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5488,7 +5681,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -5555,7 +5748,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID brand",
+                        "description": "ID hoặc slug brand",
                         "name": "brandId",
                         "in": "path",
                         "required": true
@@ -8186,6 +8379,9 @@ const docTemplate = `{
                 "brandName": {
                     "type": "string"
                 },
+                "brandSlug": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -8378,6 +8574,18 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq": {
+            "type": "object",
+            "required": [
+                "productCode"
+            ],
+            "properties": {
+                "productCode": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
             "type": "object",
             "required": [
@@ -8435,7 +8643,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "itemType": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "product",
+                        "sample"
+                    ]
                 },
                 "name": {
                     "type": "string",
@@ -8449,7 +8661,12 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "active",
+                        "archived"
+                    ]
                 }
             }
         },
@@ -8475,8 +8692,7 @@ const docTemplate = `{
                     "maxLength": 255
                 },
                 "slug": {
-                    "type": "string",
-                    "maxLength": 100
+                    "type": "string"
                 }
             }
         },
@@ -8487,6 +8703,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 }
             }
@@ -8832,6 +9051,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitRes"
                     }
                 },
+                "benefitsCount": {
+                    "type": "integer"
+                },
                 "brandId": {
                     "type": "string"
                 },
@@ -8861,6 +9083,9 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes": {
             "type": "object",
             "properties": {
+                "benefitsCount": {
+                    "type": "integer"
+                },
                 "brandId": {
                     "type": "string"
                 },
@@ -9172,8 +9397,7 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandItemReq": {
             "type": "object",
             "required": [
-                "name",
-                "status"
+                "name"
             ],
             "properties": {
                 "description": {
@@ -9190,7 +9414,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "active",
+                        "archived"
+                    ]
                 }
             }
         },
@@ -9202,6 +9431,25 @@ const docTemplate = `{
             "properties": {
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "enum": [
+                        "active",
+                        "disabled"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -9383,13 +9631,15 @@ const docTemplate = `{
                 "pending_review",
                 "active",
                 "suspended",
-                "archived"
+                "archived",
+                "rejected"
             ],
             "x-enum-varnames": [
                 "PendingReview",
                 "Active",
                 "Suspended",
-                "Archived"
+                "Archived",
+                "Rejected"
             ]
         },
         "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode": {
@@ -10411,6 +10661,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "brandId": {
+                    "description": "UUID hoặc slug brand",
                     "type": "string"
                 },
                 "compareWithPrevious": {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/subscriptionrenewalstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
@@ -134,7 +133,18 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context, run
 	return nil
 }
 
-// ProcessUpcomingExpiryNotifications sends wallet balance warnings for subscriptions expiring within N days.
+// ProcessUpcomingExpiryNotifications warns the customers whose plan ends within
+// N days, in the two shapes that actually need one:
+//
+//   - auto-renew is ON but the wallet cannot cover the price, so the renewal
+//     will fail and the message asks them to top up (WalletWarning);
+//   - auto-renew is OFF, so nothing will renew and the account will be
+//     downgraded to Free, and the message tells them that in advance
+//     (SubscriptionExpiring).
+//
+// The second group used to be skipped entirely, which left a customer whose
+// renewal switch was off with no warning at all: the first they heard about the
+// end of their plan was the expiry email itself, after the downgrade.
 func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Context) error {
 	warningDays := uc.cfg.Subscription.WalletBalanceWarningDays
 	if warningDays <= 0 {
@@ -143,35 +153,34 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 	deadline := now.AddDate(0, 0, warningDays)
 
-	expiringSubs, err := uc.userSubRepo.GetSubscriptionsExpiringWithin(ctx, now, deadline)
-	if err != nil {
-		return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
-	}
+	// Loaded at most once per run: every customer without a lifetime fallback
+	// returns to the same free plan.
+	defaultFreePlanName := ""
 
-	for _, sub := range expiringSubs {
-		if sub == nil || !sub.IsAutoRenewEnabled || sub.SubscriptionPlan == nil {
-			continue
+	var lastExpiresAt time.Time
+	var lastUserID uuid.UUID
+
+	for {
+		batch, err := uc.userSubRepo.GetSubscriptionsExpiringWithinBatch(
+			ctx, now, deadline, lastExpiresAt, lastUserID, upcomingExpiryBatchSize)
+		if err != nil {
+			return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
+		}
+		if len(batch) == 0 {
+			break
 		}
 
-		wallet, err := uc.walletRepo.GetByUserID(ctx, sub.UserID)
-		if err != nil || wallet == nil {
-			continue
-		}
+		uc.notifyUpcomingExpiryBatch(ctx, batch, now, warningDays, &defaultFreePlanName)
 
-		if wallet.Balance.GreaterThanOrEqual(sub.SubscriptionPlan.Price) {
-			continue
+		if len(batch) < upcomingExpiryBatchSize {
+			break
 		}
-
-		daysRemaining := int(sub.ExpiresAt.Sub(now).Hours() / 24)
-		if daysRemaining < 0 {
-			daysRemaining = 0
+		last := batch[len(batch)-1]
+		if last.ExpiresAt == nil {
+			break
 		}
-
-		_ = uc.notifContract.SendByUserID(ctx, notificationContract.ChannelEmail, notificationContract.TemplateWalletWarning, map[string]any{
-			"DaysRemaining":  daysRemaining,
-			"Balance":        sharedmoney.ToFloat(wallet.Balance),
-			"RequiredAmount": sharedmoney.ToFloat(sub.SubscriptionPlan.Price),
-		}, sub.UserID)
+		lastExpiresAt = *last.ExpiresAt
+		lastUserID = last.UserID
 	}
 	return nil
 }
@@ -261,7 +270,7 @@ func (uc *SubscriptionUseCase) executeScheduledRenewal(
 	}
 
 	if !lockedSub.IsAutoRenewEnabled {
-		return uc.executeRenewalDowngrade(txCtx, lockedSub, freePlanID, now, result, renewalReasonDowngradedAutoRenewOff)
+		return uc.executeRenewalDowngrade(txCtx, lockedSub, freePlanID, now, result, renewalReasonDowngradedAutoRenewOff, nil)
 	}
 
 	result.Reason = renewalReasonFailedLockWallet
@@ -281,7 +290,11 @@ func (uc *SubscriptionUseCase) executeScheduledRenewal(
 	}
 
 	if wallet.Balance.LessThan(plan.Price) {
-		return uc.executeRenewalDowngrade(txCtx, lockedSub, freePlanID, now, result, renewalReasonDowngradedInsufficient)
+		return uc.executeRenewalDowngrade(txCtx, lockedSub, freePlanID, now, result, renewalReasonDowngradedInsufficient,
+			&downgradeWalletNotice{
+				RequiredAmount: sharedmoney.FormatVND(plan.Price),
+				Balance:        sharedmoney.FormatVND(wallet.Balance),
+			})
 	}
 	key := fmt.Sprintf("SUB_RENEWAL:%s:%s:%s", lockedSub.UserID, plan.ID, lockedSub.ExpiresAt.UTC().Truncate(time.Second).Format(time.RFC3339))
 	existing, err := uc.renewalAttemptRepo.GetByKey(txCtx, key)

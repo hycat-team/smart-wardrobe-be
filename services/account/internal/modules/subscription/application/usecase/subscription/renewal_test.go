@@ -3,6 +3,7 @@ package subscription
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
+	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
 	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 
@@ -34,6 +36,11 @@ func (f *fakeRenewalUow) Execute(ctx context.Context, fn func(ctx context.Contex
 type fakeRenewalSubRepo struct {
 	lockedSub *entities.UserSubscription
 	updates   int
+	// expiring feeds the pre-expiry reminder. The batch method pages through it
+	// the way the real repository does, so a test can prove the loop advances.
+	expiring     []*entities.UserSubscription
+	expiryCalls  int
+	expiryLastID uuid.UUID
 }
 
 func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, error) {
@@ -68,8 +75,27 @@ func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptions(ctx context.Context, 
 func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptionsBatch(ctx context.Context, now time.Time, lastUserID uuid.UUID, lastExpiresAt time.Time, limit int) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
-	return nil, nil
+func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error) {
+	f.expiryCalls++
+	f.expiryLastID = lastUserID
+
+	start := 0
+	if !lastExpiresAt.IsZero() {
+		for i, sub := range f.expiring {
+			if sub.ExpiresAt != nil && !sub.ExpiresAt.Before(lastExpiresAt) && sub.UserID == lastUserID {
+				start = i + 1
+				break
+			}
+		}
+	}
+	if start >= len(f.expiring) {
+		return nil, nil
+	}
+	end := start + limit
+	if end > len(f.expiring) {
+		end = len(f.expiring)
+	}
+	return f.expiring[start:end], nil
 }
 func (f *fakeRenewalSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
@@ -104,6 +130,12 @@ func (f *fakeRenewalWalletRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent
 }
 func (f *fakeRenewalWalletRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.UserWallet, error) {
 	return nil, nil
+}
+func (f *fakeRenewalWalletRepo) GetByUserIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.UserWallet, error) {
+	if f.wallet == nil {
+		return nil, nil
+	}
+	return []*entities.UserWallet{f.wallet}, nil
 }
 func (f *fakeRenewalWalletRepo) GetAll(ctx context.Context) ([]*entities.UserWallet, error) {
 	return nil, nil
@@ -202,17 +234,24 @@ func (f *fakeRenewalEventRepo) CreateIfAbsent(ctx context.Context, event *entiti
 }
 
 type fakeRenewalPlanRepo struct {
-	planByID map[uuid.UUID]*entities.SubscriptionPlan
+	planByID    map[uuid.UUID]*entities.SubscriptionPlan
+	defaultPlan *entities.SubscriptionPlan
 }
 
 func (f *fakeRenewalPlanRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.SubscriptionPlan, error) {
 	return f.planByID[id], nil
 }
 func (f *fakeRenewalPlanRepo) GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error) {
-	return nil, nil
+	return f.defaultPlan, nil
 }
 func (f *fakeRenewalPlanRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.SubscriptionPlan, error) {
-	return nil, nil
+	plans := make([]*entities.SubscriptionPlan, 0, len(ids))
+	for _, id := range ids {
+		if plan := f.planByID[id]; plan != nil {
+			plans = append(plans, plan)
+		}
+	}
+	return plans, nil
 }
 func (f *fakeRenewalPlanRepo) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return nil, nil
@@ -247,15 +286,18 @@ func (f *fakeRenewalPlanRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUI
 }
 
 type fakeRenewalNotif struct {
-	sent []string
+	sent   []string
+	params []map[string]any
 }
 
 func (f *fakeRenewalNotif) Send(ctx context.Context, channel notificationContract.ChannelEnum, template notificationContract.TemplateEnum, params map[string]any, to string) error {
 	f.sent = append(f.sent, string(template))
+	f.params = append(f.params, params)
 	return nil
 }
 func (f *fakeRenewalNotif) SendByUserID(ctx context.Context, channel notificationContract.ChannelEnum, template notificationContract.TemplateEnum, params map[string]any, userID uuid.UUID) error {
 	f.sent = append(f.sent, string(template))
+	f.params = append(f.params, params)
 	return nil
 }
 
@@ -296,6 +338,7 @@ type renewalHarness struct {
 	// would still pass a counter-only assertion.
 	publisher  *fakeRenewalPublisher
 	notif      *fakeRenewalNotif
+	plans      *fakeRenewalPlanRepo
 	freePlanID uuid.UUID
 	plan       *entities.SubscriptionPlan
 	now        time.Time
@@ -336,6 +379,16 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 	publisher := &fakeRenewalPublisher{}
 	h.publisher = publisher
 	publisherHelper := NewPlanChangePublisher(h.events, publisher, noopPlanPeriodRecorder{})
+	plans := &fakeRenewalPlanRepo{planByID: map[uuid.UUID]*entities.SubscriptionPlan{
+		freePlanID: {
+			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: freePlanID}},
+			Slug:            "free",
+			Name:            "Free Plan",
+			IsActive:        true,
+		},
+	}}
+	plans.defaultPlan = plans.planByID[freePlanID]
+	h.plans = plans
 	h.uc = &SubscriptionUseCase{
 		uow:           &fakeRenewalUow{},
 		userSubRepo:   h.subRepo,
@@ -345,13 +398,7 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 		// Without it the payload's toPlanId is the nil UUID and the AI receiver
 		// refuses the message - which is what used to happen here, silently, on every
 		// renewal test.
-		planRepo: &fakeRenewalPlanRepo{planByID: map[uuid.UUID]*entities.SubscriptionPlan{
-			freePlanID: {
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: freePlanID}},
-				Slug:            "free",
-				IsActive:        true,
-			},
-		}},
+		planRepo:            plans,
 		eventRepo:           h.events,
 		renewalAttemptRepo:  h.attempt,
 		notifContract:       h.notif,
@@ -373,6 +420,211 @@ func (f *fakeRenewalPublisher) Publish(_ context.Context, _ string, payload any)
 
 // ---- Tests ----
 
+func TestProcessUpcomingExpiryNotificationsPagesAndBatchesLookups(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	// 250 rows is 2.5 pages at the production page size of 100. The loop must
+	// advance its cursor, not restart, or the first 100 customers would be
+	// notified forever and the rest never.
+	expires := h.now.Add(24 * time.Hour)
+	for i := 0; i < 250; i++ {
+		h.subRepo.expiring = append(h.subRepo.expiring, &entities.UserSubscription{
+			UserID:             uuid.New(),
+			SubscriptionPlan:   h.plan,
+			CurrentPlanKind:    plankind.Finite,
+			ExpiresAt:          &expires,
+			IsAutoRenewEnabled: false,
+		})
+	}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, want := h.subRepo.expiryCalls, 3; got != want {
+		t.Fatalf("expected %d pages (100+100+50), got %d", want, got)
+	}
+	if got, want := len(h.notif.sent), 250; got != want {
+		t.Fatalf("expected one reminder per customer (%d), got %d", want, got)
+	}
+	for _, tmpl := range h.notif.sent {
+		if tmpl != "subscription_expiring" {
+			t.Fatalf("expected every reminder to use subscription_expiring, got %q", tmpl)
+		}
+	}
+}
+
+// TestProcessUpcomingExpiryNotificationsWarnsOnShortfall covers the other half
+// of the same loop: auto-renew on and the wallet cannot cover the price.
+func TestProcessUpcomingExpiryNotificationsWarnsOnShortfall(t *testing.T) {
+	h := newRenewalHarness(t, true, 1000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	expires := h.now.Add(24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{{
+		UserID:             h.walletRepo.wallet.UserID,
+		SubscriptionPlan:   h.plan,
+		CurrentPlanKind:    plankind.Finite,
+		ExpiresAt:          &expires,
+		IsAutoRenewEnabled: true,
+	}}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 1 || h.notif.sent[0] != "wallet_warning" {
+		t.Fatalf("expected a wallet warning, got %v", h.notif.sent)
+	}
+	if got := h.notif.params[0]["RestoredPlanName"]; got != "Free Plan" {
+		t.Fatalf("expected the free plan name, got %#v", got)
+	}
+}
+
+// TestProcessUpcomingExpiryNotificationsSkipsWhenNothingExpires guards the empty
+// page, which is the ordinary state most nights.
+func TestProcessUpcomingExpiryNotificationsSkipsWhenNothingExpires(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 0 {
+		t.Fatalf("expected no email, got %v", h.notif.sent)
+	}
+}
+
+// TestUpcomingExpiryRemindersFireOnlyOnMilestones is the fix for the daily
+// grind: the job runs every night, so before this the same customer received the
+// same reminder every morning for the whole window (seven emails on a seven-day
+// window). Only the configured first notice and the final day are milestones now.
+func TestUpcomingExpiryRemindersFireOnlyOnMilestones(t *testing.T) {
+	cases := []struct {
+		name          string
+		firstNotice   int
+		daysRemaining int
+		want          int
+	}{
+		{"configured notice day", 3, 3, 1},
+		{"day before the final notice", 3, 2, 0},
+		{"final notice", 3, 1, 1},
+		{"seven-day window, first notice", 7, 7, 1},
+		{"seven-day window, mid-window", 7, 5, 0},
+		{"seven-day window, near the end", 7, 2, 0},
+		{"seven-day window, final notice", 7, 1, 1},
+		{"one-day window collapses to a single email", 1, 1, 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newRenewalHarness(t, false, 500000)
+			h.uc.cfg = &config.Config{
+				Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+				Subscription: config.Subscription{WalletBalanceWarningDays: tc.firstNotice},
+			}
+
+			expires := h.now.Add(time.Duration(tc.daysRemaining) * 24 * time.Hour)
+			h.subRepo.expiring = []*entities.UserSubscription{{
+				UserID:             uuid.New(),
+				SubscriptionPlan:   h.plan,
+				CurrentPlanKind:    plankind.Finite,
+				ExpiresAt:          &expires,
+				IsAutoRenewEnabled: false,
+			}}
+
+			if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(h.notif.sent) != tc.want {
+				t.Fatalf("daysRemaining=%d firstNotice=%d: expected %d email(s), got %d (%v)",
+					tc.daysRemaining, tc.firstNotice, tc.want, len(h.notif.sent), h.notif.sent)
+			}
+		})
+	}
+}
+
+// TestUpcomingExpiryShortfallWarningAlsoRespectsMilestones keeps the two branches
+// on the same cadence: the wallet warning is not a second daily email.
+func TestUpcomingExpiryShortfallWarningAlsoRespectsMilestones(t *testing.T) {
+	h := newRenewalHarness(t, true, 1000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	expires := h.now.Add(2 * 24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{{
+		UserID:             h.walletRepo.wallet.UserID,
+		SubscriptionPlan:   h.plan,
+		CurrentPlanKind:    plankind.Finite,
+		ExpiresAt:          &expires,
+		IsAutoRenewEnabled: true,
+	}}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 0 {
+		t.Fatalf("a shortfall two days out is not a milestone, got %v", h.notif.sent)
+	}
+}
+
+// TestUpcomingExpiryRemindersFireOnMilestonesForLifetimeAccounts keeps the copy
+// fix and the cadence fix working together on the same run.
+func TestUpcomingExpiryRemindersFireOnMilestonesForLifetimeAccounts(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+	h.uc.cfg = &config.Config{
+		Database:     config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{WalletBalanceWarningDays: 3},
+	}
+
+	fallbackID := uuid.New()
+	h.plans.planByID[fallbackID] = &entities.SubscriptionPlan{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: fallbackID}},
+		Slug:            "lifetime",
+		Name:            "Lifetime Plan",
+		IsActive:        true,
+	}
+
+	expires := h.now.Add(3 * 24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{{
+		UserID:             uuid.New(),
+		SubscriptionPlan:   h.plan,
+		CurrentPlanKind:    plankind.Finite,
+		ExpiresAt:          &expires,
+		IsAutoRenewEnabled: false,
+		FallbackPlanID:     &fallbackID,
+	}}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.sent) != 1 {
+		t.Fatalf("expected one reminder on the milestone, got %d", len(h.notif.sent))
+	}
+	if got := h.notif.params[0]["RestoredPlanName"]; got != "Lifetime Plan" {
+		t.Fatalf("the reminder must name the restored plan, got %#v", got)
+	}
+}
+
+// TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff is the defect a customer
+// reported: the expiry email told them "Gói dịch vụ: Free Plan" and "Lý do:
+// downgraded_auto_renew_disabled" for a Premium plan that had simply ended.
+//
+// Three separate claims are pinned here:
+//   - the template is the expiry notice, not "renewal failed" - nothing failed;
+//   - PlanName is the plan the customer LOST, captured before the downgrade
+//     rewrites the subscription in place;
+//   - the raw reason code never reaches the template parameters.
 func TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff(t *testing.T) {
 	h := newRenewalHarness(t, false, 500000)
 
@@ -388,10 +640,34 @@ func TestExecuteScheduledRenewalDowngradesWhenAutoRenewOff(t *testing.T) {
 		t.Fatalf("expected subscription downgraded in repo, got %d updates", h.subRepo.updates)
 	}
 	if len(h.notif.sent) != 1 {
-		t.Fatalf("expected renewal failure notification, got %d", len(h.notif.sent))
+		t.Fatalf("expected exactly one expiry notification, got %d", len(h.notif.sent))
+	}
+	if got := h.notif.sent[0]; got != string(notificationContract.TemplateSubscriptionExpired) {
+		t.Fatalf("expected the expiry template, got %q", got)
+	}
+	params := h.notif.params[0]
+	if got := params["PlanName"]; got != h.plan.Name {
+		t.Fatalf("PlanName must name the plan the customer lost (%q), got %#v", h.plan.Name, got)
+	}
+	if got := params["NeedsTopup"]; got != false {
+		t.Fatalf("auto-renew switched off is not a wallet shortfall, got NeedsTopup=%#v", got)
+	}
+	// The plan the account lands on is the free plan, but the EMAIL must name it
+	// from the database rather than from a hardcoded string: a lifetime account
+	// lands somewhere else entirely (see the fallback test below).
+	if got := params["RestoredPlanName"]; got != "Free Plan" {
+		t.Fatalf("expected the free plan's own name, got %#v", got)
+	}
+	for key, value := range params {
+		if text, ok := value.(string); ok && strings.Contains(text, renewalReasonDowngradedAutoRenewOff) {
+			t.Fatalf("parameter %q leaks the internal reason code: %q", key, text)
+		}
 	}
 }
 
+// TestExecuteScheduledRenewalDowngradesOnInsufficientWallet keeps the wallet
+// shortfall distinguishable from a deliberate non-renewal: the customer needs to
+// know the amount, because topping up is the action that fixes it.
 func TestExecuteScheduledRenewalDowngradesOnInsufficientWallet(t *testing.T) {
 	h := newRenewalHarness(t, true, 1000) // wallet far below plan price
 
@@ -405,6 +681,57 @@ func TestExecuteScheduledRenewalDowngradesOnInsufficientWallet(t *testing.T) {
 	}
 	if h.subRepo.updates != 1 {
 		t.Fatalf("expected subscription downgraded in repo, got %d updates", h.subRepo.updates)
+	}
+	if len(h.notif.sent) != 1 {
+		t.Fatalf("expected exactly one expiry notification, got %d", len(h.notif.sent))
+	}
+	params := h.notif.params[0]
+	if got := params["NeedsTopup"]; got != true {
+		t.Fatalf("expected NeedsTopup=true for a shortfall, got %#v", got)
+	}
+	if got, _ := params["RequiredAmount"].(string); got == "" || strings.ContainsAny(got, "eE") {
+		t.Fatalf("RequiredAmount must be a readable amount, got %#v", params["RequiredAmount"])
+	}
+	if got, _ := params["Balance"].(string); got == "" || strings.ContainsAny(got, "eE") {
+		t.Fatalf("Balance must be a readable amount, got %#v", params["Balance"])
+	}
+}
+
+// TestExecuteScheduledRenewalNamesTheLifetimeFallbackPlan covers the case the
+// expiry email got wrong in production: an account can hold a lifetime plan
+// UNDERNEATH a finite one, and expiry restores the lifetime plan rather than
+// dropping to Free. Telling that customer their account "trở về gói Free" is a
+// false statement about what they still own.
+func TestExecuteScheduledRenewalNamesTheLifetimeFallbackPlan(t *testing.T) {
+	h := newRenewalHarness(t, false, 500000)
+
+	fallbackID := uuid.New()
+	h.plans.planByID[fallbackID] = &entities.SubscriptionPlan{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: fallbackID}},
+		Slug:            "lifetime",
+		Name:            "Lifetime Plan",
+		IsActive:        true,
+	}
+	lifetimeKind := plankind.Lifetime
+	lifetimeCode := "lifetime"
+	lifetimeTier := 10
+	h.subRepo.lockedSub.FallbackPlanID = &fallbackID
+	h.subRepo.lockedSub.FallbackPlanCode = &lifetimeCode
+	h.subRepo.lockedSub.FallbackPlanKind = &lifetimeKind
+	h.subRepo.lockedSub.FallbackTierRank = &lifetimeTier
+
+	result := RenewalExecutionResult{}
+	if err := h.uc.executeScheduledRenewal(context.Background(), h.subRepo.lockedSub.UserID, h.freePlanID, h.now, &result); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(h.notif.params) != 1 {
+		t.Fatalf("expected one expiry notification, got %d", len(h.notif.params))
+	}
+	if got := h.notif.params[0]["RestoredPlanName"]; got != "Lifetime Plan" {
+		t.Fatalf("expected the lifetime fallback plan by name, got %#v", got)
+	}
+	if got := h.notif.params[0]["PlanName"]; got != h.plan.Name {
+		t.Fatalf("PlanName must still name the plan that ended (%q), got %#v", h.plan.Name, got)
 	}
 }
 

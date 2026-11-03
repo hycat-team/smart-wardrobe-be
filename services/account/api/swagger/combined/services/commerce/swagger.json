@@ -746,6 +746,9 @@
         "brandName": {
           "type": "string"
         },
+        "brandSlug": {
+          "type": "string"
+        },
         "createdAt": {
           "type": "string"
         },
@@ -939,6 +942,18 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq": {
+      "properties": {
+        "productCode": {
+          "maxLength": 100,
+          "type": "string"
+        }
+      },
+      "required": [
+        "productCode"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
       "properties": {
         "benefitType": {
@@ -989,6 +1004,10 @@
           "type": "string"
         },
         "itemType": {
+          "enum": [
+            "product",
+            "sample"
+          ],
           "type": "string"
         },
         "name": {
@@ -1003,6 +1022,11 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
           "type": "string"
         }
       },
@@ -1031,7 +1055,6 @@
           "type": "string"
         },
         "slug": {
-          "maxLength": 100,
           "type": "string"
         }
       },
@@ -1047,6 +1070,9 @@
           "type": "string"
         },
         "expiresAt": {
+          "type": "string"
+        },
+        "id": {
           "type": "string"
         }
       },
@@ -1392,6 +1418,9 @@
           },
           "type": "array"
         },
+        "benefitsCount": {
+          "type": "integer"
+        },
         "brandId": {
           "type": "string"
         },
@@ -1421,6 +1450,9 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes": {
       "properties": {
+        "benefitsCount": {
+          "type": "integer"
+        },
         "brandId": {
           "type": "string"
         },
@@ -1746,12 +1778,16 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ],
           "type": "string"
         }
       },
       "required": [
-        "name",
-        "status"
+        "name"
       ],
       "type": "object"
     },
@@ -1759,6 +1795,25 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq": {
+      "properties": {
+        "status": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+            }
+          ],
+          "enum": [
+            "active",
+            "disabled"
+          ]
         }
       },
       "required": [
@@ -1943,14 +1998,16 @@
         "pending_review",
         "active",
         "suspended",
-        "archived"
+        "archived",
+        "rejected"
       ],
       "type": "string",
       "x-enum-varnames": [
         "PendingReview",
         "Active",
         "Suspended",
-        "Archived"
+        "Archived",
+        "Rejected"
       ]
     },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode": {
@@ -2971,6 +3028,7 @@
     "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryReq": {
       "properties": {
         "brandId": {
+          "description": "UUID hoặc slug brand",
           "type": "string"
         },
         "compareWithPrevious": {
@@ -4657,7 +4715,8 @@
               "pending_review",
               "active",
               "suspended",
-              "archived"
+              "archived",
+              "rejected"
             ],
             "in": "query",
             "name": "status",
@@ -4666,7 +4725,8 @@
               "PendingReview",
               "Active",
               "Suspended",
-              "Archived"
+              "Archived",
+              "Rejected"
             ]
           }
         ],
@@ -4938,7 +4998,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6783,7 +6843,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6826,7 +6886,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6854,6 +6914,18 @@
             "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
             "in": "query",
             "name": "benefitType",
+            "type": "string"
+          },
+          {
+            "description": "ID hạng yêu cầu",
+            "in": "query",
+            "name": "requiredTierId",
+            "type": "string"
+          },
+          {
+            "description": "Trạng thái (active, inactive, archived)",
+            "in": "query",
+            "name": "status",
             "type": "string"
           }
         ],
@@ -6891,7 +6963,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -6943,7 +7015,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7002,7 +7074,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7045,7 +7117,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7095,7 +7167,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7155,7 +7227,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7211,7 +7283,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7258,7 +7330,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7306,7 +7378,7 @@
         "description": "Lấy danh sách các khách hàng đã liên kết với brand",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7374,7 +7446,7 @@
         "description": "Cho phép nhân viên/chủ brand ghi nhận thông tin khách hàng mua hàng offline",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7423,7 +7495,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7640,7 +7712,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7684,7 +7756,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7734,7 +7806,7 @@
         "description": "Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Brand Item Task ID",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7769,7 +7841,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7809,7 +7881,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7857,7 +7929,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -7909,6 +7981,65 @@
         ]
       }
     },
+    "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID item",
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Mã sản phẩm cho sản phẩm mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ConvertSampleToProductReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Chuyển mẫu thử thành sản phẩm",
+        "tags": [
+          "Brand Item"
+        ]
+      }
+    },
     "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks": {
       "get": {
         "consumes": [
@@ -7916,7 +8047,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8028,7 +8159,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8084,7 +8215,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8170,7 +8301,7 @@
             "type": "integer"
           },
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8221,7 +8352,7 @@
         "description": "API thống nhất để brand staff ghi nhận điểm bằng userId, phone hoặc externalCustomerCode",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8270,7 +8401,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8311,7 +8442,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8360,7 +8491,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8404,7 +8535,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8453,7 +8584,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8501,7 +8632,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8558,7 +8689,7 @@
         "description": "Lấy danh sách tất cả các thành viên trực thuộc brand này",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8602,7 +8733,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8646,6 +8777,98 @@
         ]
       }
     },
+    "/api/v1/brand-portal/brands/{brandId}/members/{memberId}": {
+      "delete": {
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID thành viên",
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Xóa thành viên thương hiệu",
+        "tags": [
+          "Brand Member"
+        ]
+      },
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID thành viên",
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Trạng thái mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandMemberStatusReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandMemberRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Cập nhật trạng thái thành viên thương hiệu",
+        "tags": [
+          "Brand Member"
+        ]
+      }
+    },
     "/api/v1/brand-portal/brands/{brandId}/profile": {
       "patch": {
         "consumes": [
@@ -8653,7 +8876,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8705,7 +8928,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -8745,6 +8968,34 @@
           }
         },
         "summary": "Cập nhật logo/ảnh nền brand",
+        "tags": [
+          "Brand Portal"
+        ]
+      }
+    },
+    "/api/v1/brand-portal/brands/{brandId}/request": {
+      "delete": {
+        "parameters": [
+          {
+            "description": "ID hoặc slug brand",
+            "in": "path",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Hủy yêu cầu đăng ký thương hiệu",
         "tags": [
           "Brand Portal"
         ]
@@ -9314,7 +9565,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9357,7 +9608,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9424,7 +9675,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9479,7 +9730,7 @@
         ],
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9528,7 +9779,7 @@
       "post": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9568,7 +9819,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9620,7 +9871,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9673,7 +9924,7 @@
         "description": "Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9713,7 +9964,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9756,7 +10007,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -9990,7 +10241,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -10031,7 +10282,7 @@
         "description": "Trả về các quyền lợi đang active của brand kèm trạng thái mở khoá theo hạng thành viên, điểm hiện có và lượt đổi gần nhất của người dùng hiện tại.",
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -10095,7 +10346,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,
@@ -10162,7 +10413,7 @@
       "get": {
         "parameters": [
           {
-            "description": "ID brand",
+            "description": "ID hoặc slug brand",
             "in": "path",
             "name": "brandId",
             "required": true,

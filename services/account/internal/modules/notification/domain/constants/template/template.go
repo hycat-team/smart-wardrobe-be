@@ -4,11 +4,26 @@ package template
 type Template string
 
 const (
-	Otp                   Template = "otp"
-	PaymentSuccess        Template = "payment_success"
-	TopupSuccess          Template = "topup_success"
-	RenewalSuccess        Template = "renewal_success"
-	RenewalFailed         Template = "renewal_failed"
+	Otp Template = "otp"
+	// ForgotPasswordOtp is a SEPARATE template from Otp even though both carry a
+	// six-digit code. The registration copy opens with "Bạn đang thực hiện thao
+	// tác đăng ký tài khoản", which is false for someone resetting a password -
+	// and the recovery path used to render exactly that, because
+	// ForgotPasswordOtp.html was embedded but never registered.
+	ForgotPasswordOtp Template = "forgot_password_otp"
+	PaymentSuccess    Template = "payment_success"
+	TopupSuccess      Template = "topup_success"
+	RenewalSuccess    Template = "renewal_success"
+	// SubscriptionExpired replaces the old `renewal_failed`. That name described
+	// an outcome the customer did not choose: when a finite plan runs out and
+	// auto-renew is off, nothing failed - the term ended and the account was
+	// downgraded, which is the designed behaviour. The template is reused for a
+	// wallet shortfall as well and switches copy on `NeedsTopup`, so no internal
+	// reason code ("downgraded_auto_renew_disabled") can reach a customer.
+	SubscriptionExpired Template = "subscription_expired"
+	// SubscriptionExpiring is the advance warning for an account whose auto-renew
+	// is OFF. That group used to be skipped by the pre-expiry job entirely.
+	SubscriptionExpiring  Template = "subscription_expiring"
 	WalletWarning         Template = "wallet_warning"
 	WalletPurchaseSuccess Template = "wallet_purchase_success"
 	// AdminGrant is sent when an administrator grants a plan (024 FR-083). ONE
@@ -33,3 +48,25 @@ const (
 	// and read as a lie — for every campaign after it.
 	CampaignGrant Template = "campaign_grant"
 )
+
+// All lists every template the notification module can send.
+//
+// It exists so a test can walk the set instead of trusting a hand-maintained
+// list: a template added without a subject, or without a renderer, has to fail
+// somewhere before a customer receives "[Closy] Thông báo". Keep this in step
+// with the const block above - the All-count test catches the omission.
+func All() []Template {
+	return []Template{
+		Otp,
+		ForgotPasswordOtp,
+		PaymentSuccess,
+		TopupSuccess,
+		RenewalSuccess,
+		SubscriptionExpired,
+		SubscriptionExpiring,
+		WalletWarning,
+		WalletPurchaseSuccess,
+		AdminGrant,
+		CampaignGrant,
+	}
+}

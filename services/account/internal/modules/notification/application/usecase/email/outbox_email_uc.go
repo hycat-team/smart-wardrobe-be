@@ -35,10 +35,12 @@ func NewOutboxEmailUseCase(
 ) usecase_interfaces.IOutboxEmailUseCase {
 	tmplCache := map[ntemplate.Template]*template.Template{
 		ntemplate.Otp:                   template.Must(template.New("otp").Parse(templates.OtpTemplate)),
+		ntemplate.ForgotPasswordOtp:     template.Must(template.New("forgot_password_otp").Parse(templates.ForgotPasswordTemplate)),
 		ntemplate.PaymentSuccess:        template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
 		ntemplate.TopupSuccess:          template.Must(template.New("topup_success").Parse(templates.TopupSuccessTemplate)),
 		ntemplate.RenewalSuccess:        template.Must(template.New("renewal_success").Parse(templates.RenewalSuccessTemplate)),
-		ntemplate.RenewalFailed:         template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
+		ntemplate.SubscriptionExpired:   template.Must(template.New("subscription_expired").Parse(templates.SubscriptionExpiredTemplate)),
+		ntemplate.SubscriptionExpiring:  template.Must(template.New("subscription_expiring").Parse(templates.SubscriptionExpiringTemplate)),
 		ntemplate.WalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
 		ntemplate.WalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
 		ntemplate.AdminGrant:            template.Must(template.New("admin_grant").Parse(templates.AdminGrantTemplate)),
@@ -54,6 +56,14 @@ func NewOutboxEmailUseCase(
 	}
 }
 
+// ProductName and BrandName are what the customer sees on every email. They live
+// here rather than inside thirteen templates so a rename is one edit, and so two
+// templates cannot end up disagreeing about what the product is called.
+const (
+	ProductName = "Closy"
+	BrandName   = "HYCAT"
+)
+
 func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel, tmplEnum ntemplate.Template, params map[string]any, to string) error {
 	if channel != nchannel.Email {
 		return fmt.Errorf("unsupported channel: %s", channel)
@@ -64,10 +74,23 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel
 		return fmt.Errorf("unknown template: %s", tmplEnum)
 	}
 
-	subject := resolveSubject(tmplEnum)
+	subject, err := resolveSubject(tmplEnum)
+	if err != nil {
+		return err
+	}
+
+	// Copy rather than mutate: the caller's map belongs to the use case that
+	// built it, and injecting identity into it would make a retry render with
+	// keys it never set.
+	renderParams := make(map[string]any, len(params)+2)
+	for key, value := range params {
+		renderParams[key] = value
+	}
+	renderParams["ProductName"] = ProductName
+	renderParams["BrandName"] = BrandName
 
 	var bodyBuf bytes.Buffer
-	if err := tmpl.Execute(&bodyBuf, params); err != nil {
+	if err := tmpl.Execute(&bodyBuf, renderParams); err != nil {
 		return fmt.Errorf("render template %s: %w", tmplEnum, err)
 	}
 
@@ -88,6 +111,21 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel
 		Headers: []byte(`{}`),
 		Status:  shared_repos.OutboxStatusPending,
 	}
+	// Assign the id here rather than letting the insert generate it: the same id
+	// goes into the payload as the delivery's dedupe key, so the worker can
+	// recognise a redelivery of THIS message. A generated-on-insert id would be
+	// unknown at render time.
+	record.ID = uuid.New()
+	payload["outboxId"] = record.ID.String()
+
+	// Re-marshal now that the id is part of the payload. Keeping this next to the
+	// assignment makes it obvious that the field cannot be forgotten.
+	raw, err = json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal outbox payload: %w", err)
+	}
+	record.Payload = raw
+
 	return uc.outboxRepo.Create(ctx, record)
 }
 
@@ -102,38 +140,44 @@ func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel nchannel
 	return uc.Send(ctx, channel, tmplEnum, params, user.Email)
 }
 
-func resolveSubject(tmplEnum ntemplate.Template) string {
-	const prefix = "[Closy] "
-	var subject string
-	switch tmplEnum {
-	case ntemplate.Otp:
-		subject = "Mã xác thực OTP"
-	case ntemplate.PaymentSuccess:
-		subject = "Xác nhận thanh toán thành công"
-	case ntemplate.TopupSuccess:
-		subject = "Nạp tiền vào ví thành công"
-	case ntemplate.RenewalSuccess:
-		subject = "Gia hạn gói thành công"
-	case ntemplate.RenewalFailed:
-		subject = "Gia hạn gói thất bại"
-	case ntemplate.WalletWarning:
-		subject = "Cảnh báo số dư ví không đủ"
-	case ntemplate.WalletPurchaseSuccess:
-		subject = "Mua gói thành công qua ví nội bộ"
-	case ntemplate.AdminGrant:
-		// 024 FR-083: the wording must not reveal whether other accounts were
-		// part of the same administrator batch, and must not imply payment,
-		// because an administrative grant is not a purchase.
-		subject = "Gói của bạn đã được cấp thành công"
-	case ntemplate.CampaignGrant:
-		// 025 FR-044/FR-045: says a gift was granted and nothing else. In
-		// particular it does not say "promotion", "offer" or "discount" - a subject
-		// line promising a benefit the customer did nothing to qualify for is
-		// what turns a grant into an expectation. The "[Closy] " prefix is added by
-		// resolveSubject, so it is not repeated here.
-		subject = "Chúc Mừng Bạn Nhận Được Quà Tặng!"
-	default:
-		subject = "Thông báo"
+// subjectPrefix is what every customer-facing subject carries. The product name
+// lives in one constant, not inside each template, so a rename is one edit.
+var subjectPrefix = "[" + ProductName + "] "
+
+// subjectByTemplate is the whole subject vocabulary, WITHOUT the prefix.
+//
+// It is a map rather than a switch with a default: the default used to be
+// "Thông báo", so a new template that nobody wired a subject for reached
+// customers as "[Closy] Thông báo" and nothing failed. A missing entry is now an
+// error at enqueue time, and TestEveryTemplateHasASubject walks template.All()
+// so the gap fails in CI instead of in an inbox.
+var subjectByTemplate = map[ntemplate.Template]string{
+	ntemplate.Otp:                   "Mã xác thực OTP",
+	ntemplate.ForgotPasswordOtp:     "Đặt lại mật khẩu",
+	ntemplate.PaymentSuccess:        "Xác nhận thanh toán thành công",
+	ntemplate.TopupSuccess:          "Nạp tiền vào ví thành công",
+	ntemplate.RenewalSuccess:        "Gia hạn gói thành công",
+	ntemplate.SubscriptionExpired:   "Gói dịch vụ của bạn đã hết hạn",
+	ntemplate.SubscriptionExpiring:  "Gói dịch vụ của bạn sắp hết hạn",
+	ntemplate.WalletWarning:         "Cảnh báo số dư ví không đủ",
+	ntemplate.WalletPurchaseSuccess: "Mua gói thành công qua ví nội bộ",
+	// 024 FR-083: the wording must not reveal whether other accounts were part of
+	// the same administrator batch, and must not imply payment, because an
+	// administrative grant is not a purchase.
+	ntemplate.AdminGrant: "Gói của bạn đã được cấp thành công",
+	// 025 FR-044/FR-045: says a gift was granted and nothing else. In particular
+	// it does not say "promotion", "offer" or "discount" - a subject line
+	// promising a benefit the customer did nothing to qualify for is what turns a
+	// grant into an expectation. The prefix is added by resolveSubject, so it is
+	// not repeated here.
+	ntemplate.CampaignGrant: "Chúc Mừng Bạn Nhận Được Quà Tặng!",
+}
+
+// resolveSubject returns the full subject for a template, prefix included.
+func resolveSubject(tmplEnum ntemplate.Template) (string, error) {
+	subject, ok := subjectByTemplate[tmplEnum]
+	if !ok {
+		return "", fmt.Errorf("no subject configured for template %q", tmplEnum)
 	}
-	return prefix + subject
+	return subjectPrefix + subject, nil
 }

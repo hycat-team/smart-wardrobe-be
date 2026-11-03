@@ -24,7 +24,7 @@ func NewBrandChatHandler(chatUC usecase_interfaces.IBrandChatUseCase) *BrandChat
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Trang hiện tại (mặc định: 1)"
 // @Param limit query int false "Số lượng tin nhắn mỗi trang (mặc định: 20)"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationUserDetailRes}
@@ -55,7 +55,7 @@ func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.SendBrandChatMessageReq true "Nội dung tin nhắn"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandConversationMessageRes}
 // @Router /api/v1/brands/{brandId}/conversation/messages [post]
@@ -85,7 +85,7 @@ func (h *BrandChatHandler) SendUserMessage(c *gin.Context) error {
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandConversationRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/conversations [get]
 func (h *BrandChatHandler) ListBrandConversations(c *gin.Context) error {
@@ -110,7 +110,7 @@ func (h *BrandChatHandler) ListBrandConversations(c *gin.Context) error {
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param conversationId path string true "ID cuộc hội thoại"
 // @Param page query int false "Trang hiện tại (mặc định: 1)"
 // @Param limit query int false "Số lượng tin nhắn mỗi trang (mặc định: 20)"
@@ -146,7 +146,7 @@ func (h *BrandChatHandler) ListConversationMessages(c *gin.Context) error {
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param conversationId path string true "ID cuộc hội thoại"
 // @Param body body dto.SendBrandChatMessageReq true "Nội dung phản hồi"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandConversationMessageRes}
@@ -180,7 +180,7 @@ func (h *BrandChatHandler) SendStaffMessage(c *gin.Context) error {
 // @Summary Đánh dấu đã đọc hội thoại brand (User)
 // @Tags Brand Chat
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
 // @Router /api/v1/brands/{brandId}/conversation/read [post]
 func (h *BrandChatHandler) MarkUserConversationRead(c *gin.Context) error {
@@ -204,7 +204,7 @@ func (h *BrandChatHandler) MarkUserConversationRead(c *gin.Context) error {
 // @Summary Đánh dấu đã đọc hội thoại brand (Staff)
 // @Tags Brand Chat
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param conversationId path string true "ID hội thoại"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/read [post]
@@ -225,7 +225,7 @@ func (h *BrandChatHandler) MarkStaffConversationRead(c *gin.Context) error {
 // @Summary Đóng hội thoại brand (Staff)
 // @Tags Brand Chat
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param conversationId path string true "ID hội thoại"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/close [post]
@@ -246,7 +246,7 @@ func (h *BrandChatHandler) CloseConversation(c *gin.Context) error {
 // @Summary Mở lại hội thoại brand (Staff)
 // @Tags Brand Chat
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param conversationId path string true "ID hội thoại"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/reopen [post]

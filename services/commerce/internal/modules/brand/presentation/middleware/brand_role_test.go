@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/middleware"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	"smart-wardrobe-be/shared/domain/constants/brandmemberrole"
@@ -29,8 +30,21 @@ func (m *mockBrandUseCase) GetUserBrandRole(ctx context.Context, userID, brandID
 	return args.Get(0).(brandmemberrole.BrandMemberRole), args.Error(1)
 }
 
+func (m *mockBrandUseCase) ResolveBrandRef(ctx context.Context, ref string) (uuid.UUID, error) {
+	args := m.Called(ctx, ref)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockBrandUseCase) ResolveActiveBrandRef(ctx context.Context, ref string) (uuid.UUID, error) {
+	args := m.Called(ctx, ref)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
 func (m *mockBrandUseCase) CreateBrandRequest(ctx context.Context, userID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error) {
 	return nil, nil
+}
+func (m *mockBrandUseCase) CancelBrandRequest(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) error {
+	return nil
 }
 func (m *mockBrandUseCase) CreateBrandByAdmin(ctx context.Context, adminID uuid.UUID, input dto.CreateBrandReq) (*dto.BrandRes, error) {
 	return nil, nil
@@ -67,6 +81,12 @@ func (m *mockBrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID
 }
 func (m *mockBrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandMemberRes, error) {
 	return nil, nil
+}
+func (m *mockBrandUseCase) UpdateBrandMemberStatus(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID, status brandmemberstatus.BrandMemberStatus) (*dto.BrandMemberRes, error) {
+	return nil, nil
+}
+func (m *mockBrandUseCase) RemoveBrandMember(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID) error {
+	return nil
 }
 func (m *mockBrandUseCase) RequireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {
 	return nil

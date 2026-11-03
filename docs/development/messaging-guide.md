@@ -28,7 +28,7 @@ account service: ... rabbitmq initialization failed after 3 attempts`). Cách du
 drain → xoá → khai báo lại (ADR-005 chấp nhận downtime cho việc này).
 
 Vì vậy CI chạy check trước mỗi deploy: `Check RabbitMQ queue topology` trong
-`deploy-vps-services.yml` và `deploy-aws.yml`. Đỏ ở bước đó là tín hiệu sớm, trước khi có
+`deploy-vps-services.yml`. Đỏ ở bước đó là tín hiệu sớm, trước khi có
 container nào crash-loop. Check là read-only; **migrate không bao giờ tự động**.
 
 Thao tác cụ thể (script, lệnh, xử lý message) — xem
@@ -40,7 +40,8 @@ không làm đỏ CI (service tự tạo lúc khởi động).
 ## Phân loại lỗi Permanent vs Retryable
 
 - **Permanent** (`event.PermanentError{Err: err}`): poison JSON, schema mismatch → `Nack(false,false)` → DLX `*.dlq` quorum, không requeue. Unmarshal JSON fail được helper tự trả Permanent — handler không cần bọc.
-- **Retryable** (`event.RetryableError{Err: err}`): `elasticsearch is offline`, DB timeout, transient 5xx → `Nack(false,true)` requeue/TTL; vượt `x-delivery-limit=5` tự vào DLQ. Handler error KHÔNG bọc là mặc định requeue (taxonomy trong `startConsumerLoop`).
+- **Retryable** (`event.RetryableError{Err: err}`): `elasticsearch is offline`, DB timeout, transient 5xx → `Nack(false,true)` requeue/TTL; vượt `x-delivery-limit=5` tự vào DLQ. Chỉ đúng với queue khai `queueArgs(..., true)` (quorum + delivery-limit); queue classic không có delivery-limit nên requeue sẽ lặp vô hạn.
+- **Không bọc gì** (lỗi trần) = **dead-letter NGAY**, không requeue (`consumer_framework.go` `startConsumerLoop`). Đây là hành vi đã được sửa ở 024 T152; bản ghi cũ "mặc định requeue" là sai.
 - Detection offline thật nằm ở usecase: `search_sync_uc.go` `IsOfflineError` (dùng cho log `willRequeue`), không phải string check ở consumer.
 - **Không** `time.Sleep` trong handler; retry do broker.
 
@@ -64,4 +65,4 @@ không làm đỏ CI (service tự tạo lúc khởi động).
 - [ ] `go vet` + `make wire` pass, `grep -r "time.Sleep" internal/modules/*/infrastructure/messaging/` == 0?
 - [ ] `correlationId` propagate: helper inject vào ctx, worker log event.CorrelationIdFromContext(ctx)`?
 - [ ] Test poison → DLQ và burst 100 không mất?
-- [ ] Nếu **đổi `x-queue-type`** của queue đang tồn tại: đã chạy migrate trên từng môi trường bị ảnh hưởng (VPS + AWS), không chỉ sửa `topology.go`?
+- [ ] Nếu **đổi `x-queue-type`** của queue đang tồn tại: đã chạy migrate trên mọi broker bị ảnh hưởng, không chỉ sửa `topology.go`?

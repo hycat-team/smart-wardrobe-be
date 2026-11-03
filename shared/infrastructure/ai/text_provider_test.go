@@ -43,23 +43,39 @@ func TestResolveTextCallPlanFreeUsesFreeConfigAndBucket(t *testing.T) {
 	if plan.fallback.provider.ApiKey != "free-fallback-key" {
 		t.Errorf("free fallback = %+v, want the FREE_TEXT fallback", plan.fallback)
 	}
-	if plan.freeFailover != nil {
-		t.Error("a free plan must not fall back to a paid key")
+	// Exactly two attempts: no third free failover exists any more (feature 032
+	// R5), and a free plan never borrows a paid key.
+	attempts := plan.textAttempts()
+	if len(attempts) != 2 {
+		t.Fatalf("free plan attempts = %d, want 2 (primary + fallback)", len(attempts))
+	}
+	for _, attempt := range attempts {
+		if attempt.provider.ApiKey == "paid-chat-key" || attempt.provider.ApiKey == "paid-chat-fallback-key" {
+			t.Errorf("free plan must not use a paid key, got %+v", attempt.provider)
+		}
 	}
 }
 
-func TestResolveTextCallPlanPaidKeepsOperationConfigPlusFreeFailover(t *testing.T) {
+func TestResolveTextCallPlanPaidKeepsOperationConfig(t *testing.T) {
 	s := billingTestService()
 
 	chat := s.resolveTextCallPlan(app_ai.TextGenerationOptions{Tier: app_ai.TextTierPaid}, app_ai.AIOperationChat)
 	if chat.primary.provider.ApiKey != "paid-chat-key" || chat.primary.client != s.chatTextClient {
 		t.Errorf("chat paid primary = %+v, want the CHAT_TEXT config and client", chat.primary)
 	}
-	if chat.freeFailover == nil || chat.freeFailover.provider.ApiKey != "free-key" {
-		t.Errorf("chat paid plan must keep the free failover, got %+v", chat.freeFailover)
+	if chat.fallback.provider.ApiKey != "paid-chat-fallback-key" {
+		t.Errorf("chat paid fallback = %+v, want the CHAT_TEXT fallback", chat.fallback)
 	}
-	if chat.freeFailover.client != s.freeTextClient {
-		t.Error("free failover must run on the free client")
+	// The paid plan keeps exactly two attempts even though a FREE_TEXT primary is
+	// configured: the synthetic third free attempt was removed.
+	attempts := chat.textAttempts()
+	if len(attempts) != 2 {
+		t.Fatalf("paid plan attempts = %d, want 2 (primary + fallback)", len(attempts))
+	}
+	for _, attempt := range attempts {
+		if attempt.provider.ApiKey == "free-key" || attempt.provider.ApiKey == "free-fallback-key" {
+			t.Errorf("paid plan must not fall through to the free key, got %+v", attempt.provider)
+		}
 	}
 
 	outfit := s.resolveTextCallPlan(app_ai.TextGenerationOptions{Tier: app_ai.TextTierPaid}, app_ai.AIOperationOutfit)
@@ -83,6 +99,97 @@ func TestResolveTextCallPlanHonoursExplicitOverrides(t *testing.T) {
 	}
 	if plan.fallback.provider.ApiKey != "override-fallback-key" {
 		t.Errorf("fallback = %+v, want the override fallback", plan.fallback.provider)
+	}
+}
+
+func TestWithUsageStampClassifiesOpenAIAsUnbilledBeforeCapabilityList(t *testing.T) {
+	s := billingTestService()
+
+	// chat_text is not in AI_UNBILLED_CAPABILITIES, so only the provider rule can
+	// make this unbilled.
+	var usage app_ai.TokenUsage
+	options := app_ai.TextGenerationOptions{OnUsage: func(u app_ai.TokenUsage) { usage = u }}
+	stamped := s.withUsageStamp(options, textCall{
+		provider:   config.APIProviderConfig{Provider: "openai", Model: "qwen3:4b"},
+		capability: config.CapabilityChatText,
+	})
+	stamped.OnUsage(app_ai.TokenUsage{PromptTokens: 5})
+
+	if !usage.Unbilled {
+		t.Errorf("usage = %+v, want Unbilled=true for provider=openai", usage)
+	}
+	if usage.Provider != "openai" || usage.Model != "qwen3:4b" {
+		t.Errorf("usage = %+v, want provider/model openai/qwen3:4b", usage)
+	}
+}
+
+func TestWithUsageStampKeepsCapabilityListForGoogle(t *testing.T) {
+	s := billingTestService()
+
+	var freeUsage app_ai.TokenUsage
+	freeOptions := app_ai.TextGenerationOptions{OnUsage: func(u app_ai.TokenUsage) { freeUsage = u }}
+	stamped := s.withUsageStamp(freeOptions, textCall{provider: s.cfg.AI.FreeTextPrimary, capability: config.CapabilityFreeText})
+	stamped.OnUsage(app_ai.TokenUsage{})
+	if !freeUsage.Unbilled {
+		t.Error("google free_text must stay unbilled through AI_UNBILLED_CAPABILITIES")
+	}
+
+	var paidUsage app_ai.TokenUsage
+	paidOptions := app_ai.TextGenerationOptions{OnUsage: func(u app_ai.TokenUsage) { paidUsage = u }}
+	stamped = s.withUsageStamp(paidOptions, textCall{provider: s.cfg.AI.ChatTextPrimary, capability: config.CapabilityChatText})
+	stamped.OnUsage(app_ai.TokenUsage{})
+	if paidUsage.Unbilled {
+		t.Error("google chat_text must stay billed; only provider=openai is unbilled by rule")
+	}
+}
+
+func TestStampUsageClassifiesOpenAIAsUnbilled(t *testing.T) {
+	s := billingTestService()
+
+	usage := s.stampUsage(app_ai.TokenUsage{}, config.APIProviderConfig{Provider: "openai", Model: "qwen3:4b"}, config.CapabilityChatText)
+	if !usage.Unbilled {
+		t.Errorf("usage = %+v, want Unbilled=true for provider=openai", usage)
+	}
+
+	usage = s.stampUsage(app_ai.TokenUsage{}, config.APIProviderConfig{Provider: "google", Model: "gemini"}, config.CapabilityChatText)
+	if usage.Unbilled {
+		t.Errorf("usage = %+v, want Unbilled=false for google chat_text", usage)
+	}
+}
+
+func TestOverrideProviderCarriesReasoningEffort(t *testing.T) {
+	got := overrideProvider(&app_ai.TextProviderConfig{
+		Provider:        "openai",
+		APIKey:          "key",
+		Endpoint:        "https://ollama.example.com/v1/chat/completions",
+		Model:           "qwen3:4b",
+		ReasoningEffort: "none",
+	}, config.APIProviderConfig{Provider: "google"})
+
+	if got.ReasoningEffort != "none" {
+		t.Fatalf("ReasoningEffort = %q, want none", got.ReasoningEffort)
+	}
+}
+
+func TestResolveTextCallPlanCarriesReasoningEffort(t *testing.T) {
+	s := billingTestService()
+	s.cfg.AI.ChatTextPrimary.ReasoningEffort = "low"
+
+	plan := s.resolveTextCallPlan(app_ai.TextGenerationOptions{Tier: app_ai.TextTierPaid}, app_ai.AIOperationChat)
+	if plan.primary.provider.ReasoningEffort != "low" {
+		t.Fatalf("primary ReasoningEffort = %q, want low from CHAT_TEXT primary", plan.primary.provider.ReasoningEffort)
+	}
+
+	overridePlan := s.resolveTextCallPlan(app_ai.TextGenerationOptions{
+		Tier: app_ai.TextTierPaid,
+		Primary: &app_ai.TextProviderConfig{
+			Provider:        "openai",
+			Model:           "qwen3:4b",
+			ReasoningEffort: "none",
+		},
+	}, app_ai.AIOperationChat)
+	if overridePlan.primary.provider.ReasoningEffort != "none" {
+		t.Fatalf("override ReasoningEffort = %q, want none", overridePlan.primary.provider.ReasoningEffort)
 	}
 }
 

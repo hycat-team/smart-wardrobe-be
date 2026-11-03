@@ -38,6 +38,23 @@ func (m *mockDrillDownBrandReader) GetSampleLabFeedbacksDrillDown(ctx context.Co
 	return m.feedbacks, m.total, m.err
 }
 
+type mockDrillDownBrandContract struct {
+	brandContract.IBrandContract
+	item *brandDTO.BrandItemContractDTO
+	err  error
+}
+
+func (m *mockDrillDownBrandContract) GetBrandItemByID(ctx context.Context, brandItemID uuid.UUID) (*brandDTO.BrandItemContractDTO, error) {
+	return m.item, m.err
+}
+
+func (m *mockDrillDownBrandContract) GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*brandDTO.BrandItemContractDTO, error) {
+	if m.item == nil {
+		return nil, nil
+	}
+	return []*brandDTO.BrandItemContractDTO{m.item}, nil
+}
+
 func TestDrillDown_GetAIEvents(t *testing.T) {
 	now := time.Now()
 	aiReader := &mockDrillDownAIReader{
@@ -103,6 +120,7 @@ func TestDrillDown_GetAIEvents_NoData(t *testing.T) {
 
 func TestDrillDown_GetSampleLabFeedbacks(t *testing.T) {
 	itemID := uuid.New()
+	brandID := uuid.New()
 	brandReader := &mockDrillDownBrandReader{
 		feedbacks: []brandDTO.SampleFeedbackDrillDownDTO{
 			{
@@ -116,9 +134,12 @@ func TestDrillDown_GetSampleLabFeedbacks(t *testing.T) {
 		},
 		total: 1,
 	}
+	brandContractMock := &mockDrillDownBrandContract{
+		item: &brandDTO.BrandItemContractDTO{ID: itemID, BrandID: brandID},
+	}
 
-	uc := NewDrillDownUseCase(&mockDrillDownAIReader{}, brandReader, nil, nil)
-	res, err := uc.GetSampleLabFeedbacksDrillDown(context.Background(), &dto.DrillDownSampleFeedbackQueryReq{
+	uc := NewDrillDownUseCase(&mockDrillDownAIReader{}, brandReader, nil, brandContractMock)
+	res, err := uc.GetSampleLabFeedbacksDrillDown(context.Background(), brandID, &dto.DrillDownSampleFeedbackQueryReq{
 		ItemID: itemID.String(),
 	})
 	if err != nil {
@@ -132,5 +153,20 @@ func TestDrillDown_GetSampleLabFeedbacks(t *testing.T) {
 	}
 	if res.Items[0].Rating != 4.5 {
 		t.Errorf("expected Rating 4.5, got %v", res.Items[0].Rating)
+	}
+}
+
+func TestDrillDown_GetSampleLabFeedbacks_RejectsOtherBrand(t *testing.T) {
+	itemID := uuid.New()
+	brandReader := &mockDrillDownBrandReader{total: 1}
+	brandContractMock := &mockDrillDownBrandContract{
+		item: &brandDTO.BrandItemContractDTO{ID: itemID, BrandID: uuid.New()},
+	}
+
+	uc := NewDrillDownUseCase(&mockDrillDownAIReader{}, brandReader, nil, brandContractMock)
+	if _, err := uc.GetSampleLabFeedbacksDrillDown(context.Background(), uuid.New(), &dto.DrillDownSampleFeedbackQueryReq{
+		ItemID: itemID.String(),
+	}); err == nil {
+		t.Fatal("expected not found error for another brand's sample")
 	}
 }

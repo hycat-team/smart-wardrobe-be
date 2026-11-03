@@ -3,9 +3,11 @@ package brand
 import (
 	"context"
 	"strings"
+	"time"
 
 	identity_dto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
+	branderrors "smart-wardrobe-be/services/commerce/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
@@ -200,4 +202,55 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 	}
 
 	return mapper.MapBrandMembersWithUsers(members, userMap), nil
+}
+
+func (uc *BrandUseCase) UpdateBrandMemberStatus(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID, status brandmemberstatus.BrandMemberStatus) (*dto.BrandMemberRes, error) {
+	member, err := uc.memberRepo.GetByID(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+	if member == nil || member.BrandID != brandID {
+		return nil, branderrors.ErrBrandMemberNotFound()
+	}
+	if member.Role == brandmemberrole.Owner {
+		return nil, branderrors.ErrCannotModifyBrandOwner()
+	}
+
+	normalized := brandmemberstatus.BrandMemberStatus(strings.ToLower(strings.TrimSpace(string(status))))
+	if normalized != brandmemberstatus.Active && normalized != brandmemberstatus.Disabled {
+		return nil, branderrors.ErrInvalidBrandMemberStatus(status)
+	}
+
+	member.Status = normalized
+	member.UpdatedAt = time.Now().UTC()
+	if err := uc.memberRepo.Update(ctx, member); err != nil {
+		return nil, err
+	}
+	if err := uc.InvalidateUserMembershipCache(ctx, member.UserID); err != nil {
+		return nil, err
+	}
+
+	var user *identity_dto.UserBriefContractDTO
+	if uc.userBriefContract != nil {
+		user, _ = uc.userBriefContract.GetByID(ctx, member.UserID)
+	}
+	return mapper.MapBrandMemberWithUser(member, user), nil
+}
+
+func (uc *BrandUseCase) RemoveBrandMember(ctx context.Context, actorID uuid.UUID, brandID uuid.UUID, memberID uuid.UUID) error {
+	member, err := uc.memberRepo.GetByID(ctx, memberID)
+	if err != nil {
+		return err
+	}
+	if member == nil || member.BrandID != brandID {
+		return branderrors.ErrBrandMemberNotFound()
+	}
+	if member.Role == brandmemberrole.Owner {
+		return branderrors.ErrCannotRemoveBrandOwner()
+	}
+
+	if err := uc.memberRepo.Delete(ctx, memberID); err != nil {
+		return err
+	}
+	return uc.InvalidateUserMembershipCache(ctx, member.UserID)
 }

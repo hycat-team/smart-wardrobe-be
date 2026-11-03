@@ -151,6 +151,40 @@ func TestConfirmUnbilledSkipsPricingAndRecordsZero(t *testing.T) {
 	}
 }
 
+// provider=openai is always cost 0, even when the caller fails to pass the
+// Unbilled flag. The guard is on the provider, not on the flag, so a fallback
+// path that forgot to stamp cannot misprice an Ollama call.
+func TestConfirmOpenAICostsZeroEvenWhenUnbilledFlagIsFalse(t *testing.T) {
+	repo := &confirmCaptureRepo{}
+	pricing := &stubPricingUC{err: errors.New("pricing must not be consulted for provider=openai")}
+	uc := newConfirmUC(repo, pricing)
+
+	usage := uc_interfaces.AIUsage{
+		PromptTokens:   100,
+		OutputTokens:   40,
+		ThinkingTokens: 10,
+		FinishReason:   "STOP",
+		Provider:       "openai",
+		Model:          "qwen3:4b",
+		Unbilled:       false,
+	}
+	if err := uc.Confirm(context.Background(), uuid.New(), usage); err != nil {
+		t.Fatalf("Confirm: %v", err)
+	}
+	if repo.cost != 0 {
+		t.Errorf("openai actual cost = %d, want 0", repo.cost)
+	}
+	if repo.errCode != "" {
+		t.Errorf("openai error code = %q, want empty", repo.errCode)
+	}
+	if repo.provider != "openai" || repo.model != "qwen3:4b" {
+		t.Errorf("openai confirm got %q/%q, want openai/qwen3:4b", repo.provider, repo.model)
+	}
+	if pricing.gotProvider != "" || pricing.gotModel != "" {
+		t.Errorf("openai must not hit pricing lookup, got %q/%q", pricing.gotProvider, pricing.gotModel)
+	}
+}
+
 // (3) Non-empty provider/model without pricing row reconciles with a code.
 func TestConfirmMissingPricingReportsPricingConfigMissing(t *testing.T) {
 	repo := &confirmCaptureRepo{}

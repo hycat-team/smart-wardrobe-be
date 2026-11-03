@@ -5,13 +5,12 @@
 // It computes the minimal set of longest-prefix locations that route every
 // documented path to its owning service, marking `/stream` and `/sse` paths so
 // they get proxy_buffering off + long timeouts (FR-036), and marking the
-// long-running endpoints listed in longTimeoutPrefixes so they get their own
-// wider proxy_send_timeout/proxy_read_timeout instead of inheriting the
+// long-running endpoints listed in longTimeoutPrefixesByProfile so they get
+// their own wider proxy_send_timeout/proxy_read_timeout instead of inheriting the
 // server-level default, then emits the region between GENERATED markers in
 //
 //	deployments/nginx/templates/services/vps-3service.conf.template (VPS api.closy upstreams)
 //	deployments/nginx/templates/services-redirect/vps-3service.conf.template (VPS + api-v2 redirect grace)
-//	deployments/nginx/templates/aws/api-v2.conf.template (AWS box api-v2, same "vps" target set)
 //	deployments/nginx/local.conf (local compose)
 //
 // Run `make nginx-routes`; `make nginx-check` verifies coverage and CI fails on
@@ -40,8 +39,14 @@ const (
 	longTimeoutSeconds = 300
 )
 
-// longTimeoutPrefixes lists the API prefixes whose request budget outlives the
-// server-level proxy_*_timeout (60s) inherited from the `server` block.
+const (
+	timeoutProfileVPS   = "vps"
+	timeoutProfileLocal = "local"
+)
+
+// longTimeoutPrefixesByProfile lists the API prefixes whose request budget
+// outlives the server-level proxy_*_timeout (60s) inherited from the `server`
+// block, keyed by ingress profile.
 //
 // The admin batch premium grant is the case that forced this list (FR-076): the
 // use case enforces a 60s processing budget opened before any I/O, and the app
@@ -49,8 +54,19 @@ const (
 // at 60s therefore cuts a request the app is still legitimately working on and
 // the operator sees an infrastructure error for a grant that succeeded. The
 // proxy must outlast the app write deadline, not merely the app budget.
-var longTimeoutPrefixes = []string{
-	"/api/v1/admin/subscription-grants",
+//
+// The AI outfit route joins the list for local only: an Ollama-backed local
+// drill can outlive 60s (primary 90s plus fallback 30s), so the local ingress
+// must not cut a request the AI service is still working on. VPS deliberately
+// keeps its existing budget.
+var longTimeoutPrefixesByProfile = map[string][]string{
+	timeoutProfileVPS: {
+		"/api/v1/admin/subscription-grants",
+	},
+	timeoutProfileLocal: {
+		"/api/v1/admin/subscription-grants",
+		"/api/v1/ai/outfit-recommendations",
+	},
 }
 
 var swaggerFiles = map[string]string{
@@ -91,15 +107,15 @@ type location struct {
 }
 
 type markerFile struct {
-	path string // relative to root
-	mode string // vps | local
+	path           string // relative to root
+	mode           string // vps | local
+	timeoutProfile string // vps | local
 }
 
 var markerFiles = []markerFile{
-	{path: "deployments/nginx/templates/services/vps-3service.conf.template", mode: "vps"},
-	{path: "deployments/nginx/templates/services-redirect/vps-3service.conf.template", mode: "vps"},
-	{path: "deployments/nginx/templates/aws/api-v2.conf.template", mode: "vps"},
-	{path: "deployments/nginx/local.conf", mode: "local"},
+	{path: "deployments/nginx/templates/services/vps-3service.conf.template", mode: "vps", timeoutProfile: timeoutProfileVPS},
+	{path: "deployments/nginx/templates/services-redirect/vps-3service.conf.template", mode: "vps", timeoutProfile: timeoutProfileVPS},
+	{path: "deployments/nginx/local.conf", mode: "local", timeoutProfile: timeoutProfileLocal},
 }
 
 func main() {
@@ -116,8 +132,14 @@ func main() {
 	}
 
 	for _, mf := range markerFiles {
+		prefixes, ok := longTimeoutPrefixesByProfile[mf.timeoutProfile]
+		if !ok {
+			fail(fmt.Errorf("%s: unknown timeout profile %q", mf.path, mf.timeoutProfile))
+		}
+		fileLocs := append([]location(nil), locs...)
+		applyLongTimeout(fileLocs, prefixes)
 		path := filepath.Join(*root, mf.path)
-		block := renderRegion(locs, mf.mode)
+		block := renderRegion(fileLocs, mf.mode)
 		if err := replaceRegion(path, block); err != nil {
 			fail(err)
 		}
@@ -169,7 +191,7 @@ func computeLocations(services map[string][]string) ([]location, error) {
 		locs = append(locs, *l)
 	}
 	locs = minimize(locs)
-	applyLongTimeout(locs)
+	applyLongTimeout(locs, longTimeoutPrefixesByProfile[timeoutProfileVPS])
 	locs = mergeSSE(locs, computeSSELocations(services))
 	sort.Slice(locs, func(i, j int) bool {
 		if locs[i].owner != locs[j].owner {
@@ -229,15 +251,17 @@ func isSSEPath(p string) bool {
 	return strings.HasSuffix(p, "/stream") || strings.HasSuffix(p, "/sse")
 }
 
-// applyLongTimeout flags every location at or under a longTimeoutPrefix so it
+// applyLongTimeout flags every location at or under a long-timeout prefix so it
 // gets a proxy budget wider than the server-level 60s default.
 //
 // It runs after minimize, because that is when the surviving prefixes are
 // known: the shortest prefix that still covers a slow endpoint is the one that
-// needs the override.
-func applyLongTimeout(locs []location) {
+// needs the override. It resets the flag first because the same locations are
+// reused for every ingress file, each with its own timeout profile.
+func applyLongTimeout(locs []location, prefixes []string) {
 	for i := range locs {
-		for _, p := range longTimeoutPrefixes {
+		locs[i].long = false
+		for _, p := range prefixes {
 			if locs[i].prefix == p || strings.HasPrefix(locs[i].prefix, p+"/") {
 				locs[i].long = true
 				break

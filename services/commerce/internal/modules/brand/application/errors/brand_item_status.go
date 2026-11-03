@@ -33,5 +33,21 @@ func ErrBrandRetryInvalidImage() *apperror.Error {
 // ErrBrandRetryCategoryRequired rejects retry of a draft awaiting review when no
 // valid wearable category is supplied (feature 023, FR-041).
 func ErrBrandRetryCategoryRequired() *apperror.Error {
-	return apperror.NewBadRequest("Vui lòng chọn danh mục hợp lệ (có thể phối đồ) trước khi thử lại sản phẩm đang chờ duyệt.")
+	return apperror.NewBadRequest("Vui lòng chọn danh mục hợp lệ (có thể mặc được) trước khi thử lại sản phẩm đang chờ duyệt.")
+}
+
+// ErrBrandItemNotSample rejects converting an item that is not a digital sample.
+func ErrBrandItemNotSample() *apperror.Error {
+	return apperror.NewBadRequest("Chỉ có thể chuyển mẫu thử (sample) thành sản phẩm.")
+}
+
+// ErrBrandItemAlreadyProduct rejects converting an item that is already a product.
+func ErrBrandItemAlreadyProduct() *apperror.Error {
+	return apperror.NewConflict("Sản phẩm này đã là sản phẩm thương mại.")
+}
+
+// ErrBrandItemNotReadyForProduct rejects conversion before AI analysis has
+// produced a garment category.
+func ErrBrandItemNotReadyForProduct() *apperror.Error {
+	return apperror.NewBadRequest("Mẫu thử phải được AI phân tích xong và có danh mục trước khi chuyển thành sản phẩm.")
 }

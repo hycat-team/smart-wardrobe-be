@@ -62,10 +62,6 @@ func (w *SubscriptionRenewalWorker) executeRenewalJob(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	if err := w.subUseCase.ProcessUpcomingExpiryNotifications(ctx); err != nil {
-		w.log.Warn("Failed to process upcoming expiry notifications", zap.Error(err))
-	}
-
 	run := workerlog.New("subscription_renewal", triggerType)
 
 	// FR-045/SC-019: renewals are not idempotent — only the instance holding
@@ -82,6 +78,19 @@ func (w *SubscriptionRenewalWorker) executeRenewalJob(triggerType string) {
 		return
 	}
 	defer release()
+
+	// The reminder runs UNDER the same lock, and on the daily tick only.
+	//
+	// Both halves are deliberate. It used to run before the lock and on startup
+	// as well, so a two-instance deployment sent every customer two copies of the
+	// same warning, and three restarts in a day sent three more. A reminder is a
+	// side effect that leaves the system, exactly like a charge: one runner.
+	// Missing a restart-day reminder costs nothing; the next midnight covers it.
+	if triggerType == workerlog.TriggerCron {
+		if err := w.subUseCase.ProcessUpcomingExpiryNotifications(ctx); err != nil {
+			w.log.Warn("Failed to process upcoming expiry notifications", zap.Error(err))
+		}
+	}
 
 	if err := w.subUseCase.ProcessScheduledRenewals(ctx, run); err != nil {
 		run.LogFailure(w.log, err)

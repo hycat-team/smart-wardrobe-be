@@ -14,7 +14,7 @@ import (
 // @Tags Brand Item
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param itemId path string true "ID sản phẩm mẫu thử"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.DigitalSampleResponseRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks [get]
@@ -43,7 +43,7 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 // @Summary Lấy danh sách sản phẩm brand (public)
 // @Tags Brand
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số lượng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListBriefRes}
@@ -69,7 +69,7 @@ func (h *BrandPortalHandler) ListBrandProducts(c *gin.Context) error {
 // @Summary Lấy danh sách mẫu thử brand
 // @Tags Brand
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số lượng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListBriefRes}

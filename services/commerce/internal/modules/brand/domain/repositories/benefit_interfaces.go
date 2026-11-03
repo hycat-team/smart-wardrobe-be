@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
@@ -13,11 +14,13 @@ import (
 )
 
 type BrandBenefitFilter struct {
-	BrandID     uuid.UUID
-	UnlockType  *benefitunlocktype.BenefitUnlockType
-	BenefitType *benefittype.BenefitType
-	Page        int
-	Limit       int
+	BrandID        uuid.UUID
+	UnlockType     *benefitunlocktype.BenefitUnlockType
+	BenefitType    *benefittype.BenefitType
+	Status         *benefitstatus.BenefitStatus
+	RequiredTierID *uuid.UUID
+	Page           int
+	Limit          int
 }
 
 type BrandBenefitListResult struct {
@@ -30,7 +33,8 @@ type IBrandBenefitRepository interface {
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error)
 	GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error)
 	GetActiveByBrandIDAndTierID(ctx context.Context, brandID, tierID uuid.UUID) ([]*entities.BrandBenefit, error)
-	GetActiveByBrandIDPaginated(ctx context.Context, filter BrandBenefitFilter) (*BrandBenefitListResult, error)
+	GetByBrandIDPaginated(ctx context.Context, filter BrandBenefitFilter) (*BrandBenefitListResult, error)
+	CountActiveByTierIDs(ctx context.Context, brandID uuid.UUID, tierIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 }
 
 type IBenefitRedemptionRepository interface {

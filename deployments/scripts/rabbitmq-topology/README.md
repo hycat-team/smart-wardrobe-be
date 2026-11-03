@@ -14,12 +14,11 @@ Thư mục này là lớp phòng thủ cho đúng tình huống đó.
 
 ## Kiểm tra (check) — tự động
 
-CI chạy check trước **mọi** deploy, trên cả hai môi trường:
+CI chạy check trước **mọi** deploy trên VPS:
 
 | Workflow | Bước | Broker |
 |---|---|---|
 | `deploy-vps-services.yml` | `Check RabbitMQ queue topology` | container `rabbitmq` trong network `closy-prod_data` |
-| `deploy-aws.yml` | `Check RabbitMQ queue topology` | CloudAMQP (ngoài box, qua internet) |
 
 Check là **read-only** — không đụng queue nào. Exit 1 khi có drift ⇒ **workflow đỏ trước khi
 container nào được start**, thay vì phải đọc log crash-loop trên VPS.
@@ -66,15 +65,14 @@ Có thể override qua biến môi trường, hoặc sửa trong `common.sh`:
 export TOOL_IMAGE=ghcr.io/hycat/rabbitmq-topology@sha256:<digest>
 ```
 
-Digest nằm ở bước **Resolve image digest** của workflow `deploy-vps-services.yml` /
-`deploy-aws.yml`. Dùng `:latest` cũng được nếu tool gần đây không đổi, nhưng digest mới là
+Digest nằm ở bước **Resolve image digest** của workflow `deploy-vps-services.yml`.
+Dùng `:latest` cũng được nếu tool gần đây không đổi, nhưng digest mới là
 đúng thứ CI đã kiểm chứng.
 
 ### 1. Xem drift (read-only)
 
 ```bash
 bash deployments/scripts/rabbitmq-topology/01-check-drift.sh vps
-bash deployments/scripts/rabbitmq-topology/01-check-drift.sh aws
 ```
 
 Exit: `0` không lệch · `1` có drift · `2` lỗi setup/broker không tới được.
@@ -91,21 +89,6 @@ bash deployments/scripts/rabbitmq-topology/02-migrate-vps.sh --yes
 
 Script tự dừng `account commerce ai` (trên VPS mỗi container chạy **cả** http lẫn worker), rồi
 migrate, rồi verify lại.
-
-**AWS** (`/opt/closy-aws`, broker là CloudAMQP bên ngoài):
-
-```bash
-bash deployments/scripts/rabbitmq-topology/03-migrate-aws.sh
-bash deployments/scripts/rabbitmq-topology/03-migrate-aws.sh --yes
-```
-
-Khác biệt so với VPS:
-
-- **Không có** `--network`: tool tới CloudAMQP qua internet (`amqps`, management TLS — đọc từ
-  `.env.aws`).
-- Chỉ dừng `account-worker commerce-worker ai-worker`; container `-http` không consume queue.
-- Cần `RABBITMQ_VHOST` đúng. Sai vhost ⇒ CloudAMQP trả `403 no access to this vhost`, và script
-  báo lỗi setup chứ không báo "mọi queue đều MISSING".
 
 Một queue cụ thể:
 
@@ -145,17 +128,6 @@ container thoát). Giữ lại để audit; xoá sau khi đã xác nhận OK.
 
 **Đã đánh đổi biết:** replay đi qua DLX với chính message đã dead-letter trước đó, nên chuỗi
 header `x-death` bị nhân bản. Chấp nhận được vì migrate chỉ chạy khi queue rỗng hoặc gần rỗng.
-
----
-
-## Ngân sách connection trên CloudAMQP
-
-Gói CloudAMQP đang dùng là **shared plan**: trần connection thấp hơn nhiều so với ghi trong
-runbook trước đây (xem mục Limits trên dashboard). Migrate mở thêm một connection để drain;
-tool in số connection đang mở **trước khi** migrate để bạn thấy còn dư đà không.
-
-Nếu số connection đang sát trần, dừng worker trước (script đã làm) — giảm phần lớn các
-connection của app trước khi tool kết nối.
 
 ---
 

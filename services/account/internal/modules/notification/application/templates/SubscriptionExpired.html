@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>{{.ProductName}} Gói dịch vụ đã hết hạn</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #333333; text-align: center;">{{.ProductName}} Gói Dịch Vụ Đã Hết Hạn</h2>
+        <p>Chào bạn,</p>
+        <p>Gói dịch vụ của bạn đã hết hạn vào ngày <strong>{{.ExpiredAt}}</strong>.</p>
+        <div style="margin: 20px 0; padding: 15px; background-color: #f7f7f7; border-radius: 5px;">
+            <p style="font-size: 16px; color: #333; margin: 8px 0;">Gói đã kết thúc: <strong>{{.PlanName}}</strong></p>
+            <p style="font-size: 14px; color: #666; margin: 8px 0;">Ngày hết hạn: <strong>{{.ExpiredAt}}</strong></p>
+            {{if .NeedsTopup}}
+            <p style="font-size: 14px; color: #666; margin: 8px 0;">Số tiền cần để gia hạn: <strong>{{.RequiredAmount}}</strong></p>
+            <p style="font-size: 14px; color: #666; margin: 8px 0;">Số dư ví hiện tại: <strong>{{.Balance}}</strong></p>
+            {{end}}
+        </div>
+        {{if .NeedsTopup}}
+        <p style="color: #666;">Số dư ví không đủ để gia hạn tự động. Vui lòng nạp thêm tiền và bật tự động gia hạn nếu bạn muốn tiếp tục sử dụng gói này.</p>
+        {{else}}
+        <p style="color: #666;">Bạn đang tắt tự động gia hạn, nên gói đã không được gia hạn. Bạn có thể bật tự động gia hạn bất cứ lúc nào nếu muốn tiếp tục sử dụng gói này.</p>
+        {{end}}
+        <p style="color: #666;">Tài khoản của bạn hiện đã trở về <strong>{{.RestoredPlanName}}</strong>. Toàn bộ dữ liệu của bạn vẫn được giữ nguyên.</p>
+        <div style="margin-top: 24px; color: #555555; line-height: 1.5;">
+            <p style="margin: 0;">Xin cảm ơn,</p>
+            <p style="margin: 0; font-weight: bold; color: #222222;">{{.BrandName}}</p>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #999999; text-align: center;">Đây là email tự động, vui lòng không phản hồi email này.</p>
+    </div>
+</body>
+</html>

@@ -27,6 +27,17 @@ type Binding struct {
 	Concurrency int
 }
 
+// emailRetryDelayMillis is how long a failed delivery waits before the broker
+// hands it back to the main queue. Five minutes covers the usual causes (relay
+// restart, transient 4xx, a short network partition) without leaving the
+// customer without the email for long; combined with 4 attempts in the worker it
+// spans roughly twenty minutes before the message is dead-lettered.
+//
+// It is a constant, not configuration, on purpose: queue arguments cannot change
+// in place, so making it configurable would invite a deploy that tries to
+// redeclare the queue and dies with 406 PRECONDITION_FAILED.
+const emailRetryDelayMillis = 5 * 60 * 1000
+
 func queueArgs(queue string, isQuorum bool) amqp.Table {
 	args := amqp.Table{
 		"x-dead-letter-exchange":    ExchangeDLXName,
@@ -86,6 +97,26 @@ var Topology = []Binding{
 		Exchange:    ExchangeName,
 		Args:        queueArgs(eventconstants.QueueNotificationEmail, false),
 		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		// Delay queue for a transient SMTP failure. No consumer: the message waits
+		// out x-message-ttl and is then dead-lettered straight back to the main
+		// exchange, where notification_email_queue picks it up again.
+		//
+		// Classic, and bound only to its own routing key. The DLX arguments are what
+		// make it a delay rather than a parking lot, and the TTL is a plain constant
+		// because changing a queue argument later requires a drain/delete/redeclare
+		// cycle (see docs/operations/vps-runbook.md).
+		Queue:       eventconstants.QueueNotificationEmailRetry,
+		RoutingKeys: []string{RoutingKeyNotificationEmailRetry},
+		Exchange:    ExchangeName,
+		Args: amqp.Table{
+			"x-message-ttl":             int32(emailRetryDelayMillis),
+			"x-dead-letter-exchange":    ExchangeName,
+			"x-dead-letter-routing-key": eventconstants.TopicNotificationEmail,
+		},
+		Prefetch:    1,
 		Concurrency: 1,
 	},
 	{

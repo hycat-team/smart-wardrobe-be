@@ -39,7 +39,7 @@ const runbookPath = "deployments/scripts/rabbitmq-topology/README.md"
 func main() {
 	var (
 		mode     = flag.String("mode", "check", "check | migrate")
-		envFile  = flag.String("env-file", "", "path to env file holding the RABBITMQ_* settings (.env.production, .env.aws)")
+		envFile  = flag.String("env-file", "", "path to env file holding the RABBITMQ_* settings (e.g. .env.production)")
 		strict   = flag.Bool("strict", false, "treat MISSING queues as failures (they are ignored by default)")
 		confirm  = flag.Bool("yes", false, "required for migrate: acknowledge that queues will be deleted and recreated")
 		only     = flag.String("queue", "", "comma-separated queue names to act on (default: all)")
@@ -190,9 +190,8 @@ func bindingByQueue() map[string]messaging.Binding {
 	return out
 }
 
-// settingsFromEnv reads the RABBITMQ_* variables both .env.production (VPS,
-// self-hosted broker) and .env.aws (CloudAMQP) already define, so the same code
-// serves both environments.
+// settingsFromEnv reads the RABBITMQ_* variables .env.production (VPS,
+// self-hosted broker) already defines.
 func settingsFromEnv(skipTLSVerify bool) (Settings, error) {
 	s := Settings{
 		Host:          strings.TrimSpace(os.Getenv("RABBITMQ_HOST")),
@@ -204,10 +203,10 @@ func settingsFromEnv(skipTLSVerify bool) (Settings, error) {
 		SkipTLSVerify: skipTLSVerify,
 	}
 	if s.Host == "" {
-		return s, fmt.Errorf("RABBITMQ_HOST is empty — pass --env-file .env.production (VPS) or .env.aws (AWS)")
+		return s, fmt.Errorf("RABBITMQ_HOST is empty — pass --env-file .env.production (VPS)")
 	}
 	if s.MgmtUser == "" {
-		return s, fmt.Errorf("RABBITMQ_USER is empty — pass --env-file .env.production (VPS) or .env.aws (AWS)")
+		return s, fmt.Errorf("RABBITMQ_USER is empty — pass --env-file .env.production (VPS)")
 	}
 
 	var err error

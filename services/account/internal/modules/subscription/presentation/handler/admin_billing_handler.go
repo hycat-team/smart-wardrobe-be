@@ -126,7 +126,7 @@ type adminGetTransactionParams struct {
 
 // GetTransaction
 // @Summary Lấy chi tiết giao dịch thanh toán
-// @Description Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường camelCase như item trong danh sách, `status` là chuỗi.
+// @Description Trả về chi tiết một giao dịch thanh toán theo ID — cùng bộ trường camelCase như item trong danh sách, `status` là chuỗi. Riêng endpoint này còn điền `user` (người mua) và `targetPlan` (gói mục tiêu, null với giao dịch nạp ví); danh sách trả hai trường này là null để không gọi chéo module.
 // @Tags Admin Billing
 // @Produce json
 // @Param id path string true "ID giao dịch"
@@ -144,14 +144,16 @@ func (h *AdminBillingHandler) GetTransaction(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	item, err := h.adminBilling.GetTransaction(c.Request.Context(), id)
+	detail, err := h.adminBilling.GetTransactionDetail(c.Request.Context(), id)
 	if err != nil {
 		return err
 	}
-	// FR-007: the detail answers the SAME camelCase DTO as a list item. The use
-	// case keeps returning the entity (R5) and the shared mapper is the only
-	// place the two shapes could diverge.
-	shared_pres.Success(c, successAdminGetTransaction, mapper.DepositTransactionToRes(item))
+	// FR-007: the detail answers the SAME camelCase DTO as a list item, with the
+	// buyer and target-plan labels filled in. The use case keeps returning the
+	// entity (R5) and the shared mapper is the only place the two shapes could
+	// diverge.
+	shared_pres.Success(c, successAdminGetTransaction,
+		mapper.DepositTransactionDetailToRes(detail.Transaction, detail.User, detail.Plan))
 	return nil
 }
 

@@ -13,7 +13,7 @@ import (
 // @Summary Lấy chương trình loyalty hoạt động của brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyProgramRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/program [get]
 func (h *BrandLoyaltyHandler) GetLoyaltyProgramForStaff(c *gin.Context) error {
@@ -38,7 +38,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyProgramForStaff(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.UpsertLoyaltyProgramReq true "Thông tin cấu hình"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyProgramRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/program [put]
@@ -68,7 +68,7 @@ func (h *BrandLoyaltyHandler) UpsertLoyaltyProgram(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param body body dto.CreateLoyaltyTierReq true "Thông tin hạng thành viên"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.LoyaltyTierRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/tiers [post]
@@ -98,7 +98,7 @@ func (h *BrandLoyaltyHandler) CreateLoyaltyTier(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param tierId path string true "ID hạng thành viên"
 // @Param body body dto.UpdateLoyaltyTierReq true "Thông tin cập nhật hạng thành viên"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierRes}
@@ -132,7 +132,7 @@ func (h *BrandLoyaltyHandler) UpdateLoyaltyTier(c *gin.Context) error {
 // @Summary Lấy danh sách hạng loyalty của brand
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyTierRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/tiers [get]
 func (h *BrandLoyaltyHandler) GetLoyaltyTiersForStaff(c *gin.Context) error {
@@ -156,7 +156,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTiersForStaff(c *gin.Context) error {
 // @Summary Lấy chi tiết hạng loyalty kèm quyền lợi (Staff)
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param tierId path string true "ID hạng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierDetailRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId} [get]
@@ -185,7 +185,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForStaff(c *gin.Context) error
 // @Summary Lấy chi tiết hạng loyalty kèm quyền lợi (User)
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Param tierId path string true "ID hạng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierDetailRes}
 // @Router /api/v1/brands/{brandId}/loyalty/tiers/{tierId} [get]
@@ -210,7 +210,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForUser(c *gin.Context) error 
 // @Summary Lấy danh sách hạng loyalty kèm quyền lợi (User)
 // @Tags Brand Loyalty
 // @Produce json
-// @Param brandId path string true "ID brand"
+// @Param brandId path string true "ID hoặc slug brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyTierDetailRes}
 // @Router /api/v1/brands/{brandId}/loyalty/tiers [get]
 func (h *BrandLoyaltyHandler) GetLoyaltyTiersForUser(c *gin.Context) error {

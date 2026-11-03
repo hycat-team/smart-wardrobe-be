@@ -2,6 +2,7 @@ package brand
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
@@ -79,10 +80,10 @@ func (uc *BrandUseCase) getActiveBrandMemberships(ctx context.Context, userID uu
 	}
 	memberships := make(map[uuid.UUID]brandmemberrole.BrandMemberRole, len(members))
 	for _, m := range members {
-		if m == nil || m.Status != brandmemberstatus.Active {
+		if m == nil || !strings.EqualFold(string(m.Status), string(brandmemberstatus.Active)) {
 			continue
 		}
-		if m.Brand != nil && m.Brand.Status != brandstatus.Active {
+		if m.Brand != nil && !strings.EqualFold(string(m.Brand.Status), string(brandstatus.Active)) {
 			continue
 		}
 		memberships[m.BrandID] = m.Role
@@ -107,7 +108,7 @@ func (uc *BrandUseCase) GetItemFeedbackSummary(ctx context.Context, itemID uuid.
 		return nil, err
 	}
 	if len(responses) == 0 {
-		return nil, branderrors.ErrItemFeedbackNotFound()
+		return nil, nil
 	}
 
 	var totalRating float64

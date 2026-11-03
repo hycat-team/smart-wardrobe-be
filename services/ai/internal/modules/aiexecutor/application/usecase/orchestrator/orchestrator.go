@@ -48,14 +48,15 @@ func (uc *OrchestratorUseCase) AnalyzeImage(ctx context.Context, imageUrl string
 		_ = uc.costUC.MarkUnknown(ctx, decision.RequestID, err.Error())
 		return "", err
 	}
+	provider, model := usageProviderModel(plan, usage)
 	_ = uc.costUC.Confirm(ctx, decision.RequestID, uc_interfaces.AIUsage{
 		PromptTokens:   usage.PromptTokens,
 		OutputTokens:   usage.OutputTokens,
 		ThinkingTokens: usage.ThinkingTokens,
 		FinishReason:   usage.FinishReason,
-		Provider:       plan.Provider,
-		Model:          plan.Model,
-		Unbilled:       uc.cfg.AI.IsUnbilledCapability(config.CapabilityVision),
+		Provider:       provider,
+		Model:          model,
+		Unbilled:       uc.stampedUnbilled(usage, config.CapabilityVision),
 	})
 	return text, nil
 }
@@ -83,7 +84,7 @@ func (uc *OrchestratorUseCase) GenerateEmbeddings(ctx context.Context, chunks []
 	_ = uc.costUC.Confirm(ctx, decision.RequestID, uc_interfaces.AIUsage{
 		Provider: plan.Provider,
 		Model:    plan.Model,
-		Unbilled: uc.cfg.AI.IsUnbilledCapability(config.CapabilityEmbedding),
+		Unbilled: uc.unbilledByProvider(plan.Provider, config.CapabilityEmbedding),
 	})
 	return result, nil
 }
@@ -120,6 +121,7 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 		usage = u
 	})
 	uc.applyTextRoute(plan, &mappedOpt, decision.Route)
+	trialState := uc.attachTrialHooks(plan, &mappedOpt)
 
 	result, err := uc.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, mappedOpt)
 	if err != nil {
@@ -136,6 +138,11 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 		Provider:       provider,
 		Model:          model,
 		Unbilled:       usage.Unbilled,
+	}
+	if trialState != nil && trialState.degraded {
+		// The degraded branch runs on the free route, so a Gemini fallback that
+		// wins there must not be billed either.
+		confirmUsage.Unbilled = true
 	}
 	if err = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage); err != nil {
 		return "", err
@@ -175,6 +182,7 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 		usage = u
 	})
 	uc.applyTextRoute(plan, &mappedOpt, decision.Route)
+	trialState := uc.attachTrialHooks(plan, &mappedOpt)
 
 	result, err := uc.aiService.GenerateRecommendationText(ctx, systemPrompt, userPrompt, mappedOpt)
 	if err != nil {
@@ -191,6 +199,9 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 		Provider:       provider,
 		Model:          model,
 		Unbilled:       usage.Unbilled,
+	}
+	if trialState != nil && trialState.degraded {
+		confirmUsage.Unbilled = true
 	}
 	if err = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage); err != nil {
 		return "", err
@@ -252,6 +263,7 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		mu.Unlock()
 	})
 	uc.applyTextRoute(plan, &mappedOpt, decision.Route)
+	trialState := uc.attachTrialHooks(plan, &mappedOpt)
 
 	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, systemPrompt, userPrompt, mappedOpt)
 
@@ -271,6 +283,10 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 
 		mu.Lock()
 		provider, model := usageProviderModel(plan, usage)
+		unbilled := usage.Unbilled
+		if trialState != nil && trialState.degraded {
+			unbilled = true
+		}
 		confirmUsage := uc_interfaces.AIUsage{
 			PromptTokens:   usage.PromptTokens,
 			OutputTokens:   usage.OutputTokens,
@@ -278,7 +294,7 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 			FinishReason:   usage.FinishReason,
 			Provider:       provider,
 			Model:          model,
-			Unbilled:       usage.Unbilled,
+			Unbilled:       unbilled,
 		}
 		mu.Unlock()
 

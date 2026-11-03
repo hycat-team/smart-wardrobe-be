@@ -14,10 +14,16 @@ import (
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/services/ai/internal/modules/aiexecutor/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/apperror"
 	"smart-wardrobe-be/shared/domain/constants/aifallbackreason"
 
 	"github.com/google/uuid"
 )
+
+// providerOpenAI is the trial provider whose calls are never charged. The
+// classification is provider-based on purpose: the capability list stays
+// capability-only and cannot make a Gemini text fallback free.
+const providerOpenAI = "openai"
 
 type CostUseCase struct {
 	repo      repositories.IAICostRepository
@@ -56,6 +62,19 @@ func NewCostUseCase(
 func (uc *CostUseCase) Prepare(ctx context.Context, plan *uc_interfaces.ExecutionPlan) (*uc_interfaces.AICostDecision, error) {
 	now := time.Now()
 
+	// The Ollama trial provider is unbilled. Prepare returns the business route
+	// but writes nothing: the event writer for this path is AdmitUnbilledAttempt,
+	// called from the attempt hook immediately before the provider call.
+	if plan.Provider == providerOpenAI {
+		return &uc_interfaces.AICostDecision{
+			RequestID:       plan.RequestID,
+			Route:           plan.Route,
+			MaxInputTokens:  plan.MaxInputTokens,
+			MaxOutputTokens: plan.MaxOutputTokens,
+			Tracked:         true,
+		}, nil
+	}
+
 	if aioperation.IsAlwaysFree(plan.Operation) {
 		return uc.prepareFreeEvent(ctx, plan, 0, tier2MaxOutputTokens)
 	}
@@ -65,6 +84,174 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *uc_interfaces.Executio
 		return uc.prepareWithFallback(ctx, plan, now)
 	}
 	return uc.reserveAgainstPolicy(ctx, plan, now, grant, policy, op)
+}
+
+// AdmitUnbilledAttempt mirrors the existing admission decision for a provider
+// attempt that has no monetary cost. It never consults pricing and never
+// reserves: it only writes/updates the usage event and, on the paid route under
+// observe_only, consumes the existing daily attempt cap.
+//
+// When the cap is exhausted the request degrades to the free route instead of
+// returning a new 429; the caller still runs the same Ollama attempt. A repeated
+// call is idempotent because the repository upserts by request_id.
+func (uc *CostUseCase) AdmitUnbilledAttempt(ctx context.Context, admission uc_interfaces.UnbilledAttemptAdmission) (*uc_interfaces.AICostDecision, error) {
+	if admission.Plan == nil {
+		return nil, apperror.NewInternalError("Không đọc được kế hoạch gọi AI.")
+	}
+	plan := admission.Plan
+	now := time.Now()
+
+	provider := admission.Provider
+	if provider == "" {
+		provider = plan.Provider
+	}
+	model := admission.Model
+	if model == "" {
+		model = plan.Model
+	}
+
+	grant, policy, op := uc.resolveAttemptPolicy(ctx, plan, now)
+	cap := uc.resolvePaidAttemptCap(grant, policy, op)
+
+	event := unbilledAttemptEvent(plan, provider, model, plan.Route)
+	admitted, err := uc.repo.AdmitUnbilledAttempt(ctx, policy, cap, event, now)
+	if err != nil {
+		return nil, err
+	}
+	if admitted {
+		return &uc_interfaces.AICostDecision{
+			RequestID:       plan.RequestID,
+			Route:           plan.Route,
+			MaxInputTokens:  plan.MaxInputTokens,
+			MaxOutputTokens: plan.MaxOutputTokens,
+			Tracked:         true,
+		}, nil
+	}
+
+	// Cap exhausted: keep the pre-existing degrade behaviour. The event records
+	// the free route, no reservation is made, and the provider attempt is still
+	// allowed so the user gets an answer instead of a new 429.
+	freeEvent := unbilledAttemptEvent(plan, provider, model, airoute.Free)
+	if _, err := uc.repo.AdmitUnbilledAttempt(ctx, policy, nil, freeEvent, now); err != nil {
+		return nil, err
+	}
+	return &uc_interfaces.AICostDecision{
+		RequestID:       plan.RequestID,
+		Route:           airoute.Free,
+		MaxInputTokens:  plan.MaxInputTokens,
+		MaxOutputTokens: plan.MaxOutputTokens,
+		Tracked:         true,
+	}, nil
+}
+
+// PrepareBillableAttempt upgrades the trial request's existing event to the
+// billable Gemini fallback. Pricing is read and the reservation is written BEFORE
+// the fallback provider is called, preserving reservation-first while keeping a
+// single usage event per request.
+func (uc *CostUseCase) PrepareBillableAttempt(ctx context.Context, admission uc_interfaces.BillableAttemptAdmission) (*uc_interfaces.AICostDecision, error) {
+	if admission.Plan == nil {
+		return nil, apperror.NewInternalError("Không đọc được kế hoạch gọi AI.")
+	}
+	plan := admission.Plan
+	now := time.Now()
+
+	provider := admission.Provider
+	if provider == "" {
+		provider = plan.Provider
+	}
+	model := admission.Model
+	if model == "" {
+		model = plan.Model
+	}
+
+	grant, policy, _ := uc.resolveAttemptPolicy(ctx, plan, now)
+	if policy == nil {
+		policy = &aiexecutor_entities.AICostPolicy{}
+	}
+
+	pricing, err := uc.pricingUC.GetActivePricingConfig(ctx, provider, model)
+	if err != nil {
+		return nil, err
+	}
+
+	reserve := microCost(plan.EstimatedPromptTokens, int64(plan.MaxOutputTokens),
+		pricing.InputUSDPerMillion, pricing.OutputUSDPerMillion, pricing.USDToVND)
+
+	unknownHold := policy.UnknownHoldMinutes
+	if unknownHold <= 0 {
+		unknownHold = defaultUnknownHoldMinutes
+	}
+	unknownExpires := now.Add(time.Duration(unknownHold) * time.Minute)
+
+	event := &aiexecutor_entities.AIUsageEvent{
+		RequestID:                plan.RequestID,
+		UserID:                   userIDPointer(plan.UserID),
+		Operation:                plan.Operation,
+		LogicalRoute:             plan.Route,
+		Provider:                 &provider,
+		Model:                    &model,
+		PricingConfigID:          &pricing.ID,
+		InputUSDPerMillion:       &pricing.InputUSDPerMillion,
+		OutputUSDPerMillion:      &pricing.OutputUSDPerMillion,
+		USDToVND:                 &pricing.USDToVND,
+		ReservedCostMicroVND:     reserve,
+		EstimatedMaxCostMicroVND: reserve,
+		Status:                   aiusageeventstatus.Reserved,
+		UnknownExpiresAt:         &unknownExpires,
+	}
+
+	prepared, err := uc.repo.PrepareBillableAttempt(ctx, grant, policy, event, now)
+	if err != nil {
+		return nil, err
+	}
+	if !prepared {
+		return nil, apperror.NewInternalError("Không chuẩn bị được lượt gọi AI có tính phí.")
+	}
+
+	return &uc_interfaces.AICostDecision{
+		RequestID:       plan.RequestID,
+		Route:           plan.Route,
+		MaxInputTokens:  plan.MaxInputTokens,
+		MaxOutputTokens: plan.MaxOutputTokens,
+		Tracked:         true,
+	}, nil
+}
+
+// resolveAttemptPolicy resolves the policy pair with the same fallback rules as
+// Prepare. It returns nil values when neither a grant nor a tier-1/tier-2
+// resolution is available, which an unbilled attempt treats as "no attempt cap".
+func (uc *CostUseCase) resolveAttemptPolicy(ctx context.Context, plan *uc_interfaces.ExecutionPlan, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation) {
+	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, plan.UserID, plan.Operation, now)
+	if err == nil && grant != nil {
+		return grant, policy, op
+	}
+	if uc.fallbackResolver == nil {
+		return nil, nil, nil
+	}
+	resolution, resolveErr := uc.fallbackResolver.Resolve(ctx, plan.UserID, plan.Operation)
+	if resolveErr != nil || resolution.Tier2 {
+		return nil, nil, nil
+	}
+	return nil, resolution.Policy, resolution.Operation
+}
+
+func unbilledAttemptEvent(plan *uc_interfaces.ExecutionPlan, provider, model string, route airoute.AIRoute) *aiexecutor_entities.AIUsageEvent {
+	return &aiexecutor_entities.AIUsageEvent{
+		RequestID:    plan.RequestID,
+		UserID:       userIDPointer(plan.UserID),
+		Operation:    plan.Operation,
+		LogicalRoute: route,
+		Provider:     &provider,
+		Model:        &model,
+		Status:       aiusageeventstatus.Reserved,
+	}
+}
+
+func userIDPointer(userID uuid.UUID) *uuid.UUID {
+	if userID == uuid.Nil {
+		return nil
+	}
+	return &userID
 }
 
 // prepareWithFallback handles an account with no usable policy grant. It must
@@ -296,6 +483,12 @@ const (
 
 func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage uc_interfaces.AIUsage) error {
 	now := time.Now()
+	// (0a) The winning provider is the unbilled trial provider. Guarding on the
+	// provider itself (not only on usage.Unbilled) keeps the cost at zero even
+	// when a caller passes a wrong flag or a fallback path forgot to stamp it.
+	if usage.Provider == providerOpenAI {
+		return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, 0, usage.Provider, usage.Model, usage.FinishReason, "", now)
+	}
 	// (0) The request ran on an unbilled capability (FREE_TEXT_* or any other
 	// key listed in AI_UNBILLED_CAPABILITIES). The team is not charged for that
 	// key, so the ledger records zero cost and skips pricing entirely: a free

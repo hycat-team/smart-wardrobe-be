@@ -5,8 +5,7 @@ riêng — đọc README của nhóm đó trước khi chạy, không đọc chu
 
 | Thư mục | Môi trường | Ngôn ngữ | Dùng khi |
 |---|---|---|---|
-| [`aws-env/`](aws-env/README.md) | Local (Windows) | PowerShell | Dựng/gửi `.env.aws` lên AWS box từ VPS `.env.production` |
-| [`rabbitmq-topology/`](rabbitmq-topology/README.md) | VPS + AWS box | Bash | Kiểm tra & đồng bộ queue type (classic ↔ quorum) khi `topology.go` đổi |
+| [`rabbitmq-topology/`](rabbitmq-topology/README.md) | VPS | Bash | Kiểm tra & đồng bộ queue type (classic ↔ quorum) khi `topology.go` đổi |
 
 ## Quy ước
 

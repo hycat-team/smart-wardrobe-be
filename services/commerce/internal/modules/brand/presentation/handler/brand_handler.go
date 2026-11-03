@@ -2,12 +2,15 @@ package handler
 
 const (
 	msgBrandCreateRequestSuccess    = "Gửi yêu cầu tạo brand thành công"
+	msgBrandCancelRequestSuccess    = "Hủy yêu cầu đăng ký thương hiệu thành công"
 	msgBrandCreateAdminSuccess      = "Tạo brand thành công"
 	msgBrandUpdateStatusSuccess     = "Cập nhật trạng thái brand thành công"
 	msgBrandListSuccess             = "Lấy danh sách brand thành công"
 	msgBrandDetailSuccess           = "Lấy thông tin brand thành công"
 	msgBrandMemberCreateSuccess     = "Thêm thành viên brand thành công"
 	msgBrandMemberListSuccess       = "Lấy danh sách thành viên brand thành công"
+	msgBrandMemberUpdateSuccess     = "Cập nhật thành viên thương hiệu thành công"
+	msgBrandMemberRemoveSuccess     = "Xóa thành viên thương hiệu thành công"
 	msgBrandCustomerDetailSuccess   = "Lấy thông tin khách hàng brand thành công"
 	msgBrandCustomerListSuccess     = "Lấy danh sách khách hàng brand thành công"
 	msgBrandJoinLoyaltySuccess      = "Tham gia loyalty brand thành công"
@@ -17,6 +20,7 @@ const (
 	msgBrandItemGetSuccess          = "Lấy thông tin sản phẩm brand thành công"
 	msgBrandItemListSuccess         = "Lấy danh sách sản phẩm brand thành công"
 	msgBrandItemUpdateSuccess       = "Cập nhật sản phẩm brand thành công"
+	msgBrandItemConvertSuccess      = "Chuyển mẫu thử thành sản phẩm thành công"
 	msgBrandItemFeedbackSuccess     = "Lấy danh sách feedback sản phẩm thành công"
 	msgBrandFeedbackSubmitSuccess   = "Gửi feedback sản phẩm thành công"
 	msgBrandCreateClaimTokenSuccess = "Tạo mã claim liên kết tài khoản thành công"

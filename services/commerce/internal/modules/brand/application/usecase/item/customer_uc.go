@@ -22,6 +22,13 @@ import (
 )
 
 func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error) {
+	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
 	feedbacks, err := uc.feedbackRepo.GetByBrandItemID(ctx, itemID)
 	if err != nil {
 		return nil, err
@@ -104,8 +111,8 @@ func (uc *BrandItemUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 	if err != nil {
 		return nil, err
 	}
-	if brand == nil || brand.Status != brandstatus.Active {
-		return nil, branderrors.ErrBrandNotActive()
+	if brand == nil || !strings.EqualFold(string(brand.Status), string(brandstatus.Active)) {
+		return nil, branderrors.ErrBrandNotFound()
 	}
 
 	var vote *votetype.VoteType

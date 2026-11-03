@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 	"time"
@@ -22,8 +23,14 @@ import (
 
 type mockDynamicQueryBrandReader struct {
 	brandContract.IBrandDashboardReader
-	role    brandmemberrole.BrandMemberRole
-	roleErr error
+	role       brandmemberrole.BrandMemberRole
+	roleErr    error
+	resolved   uuid.UUID
+	resolveErr error
+}
+
+func (m *mockDynamicQueryBrandReader) ResolveBrandRef(ctx context.Context, ref string) (uuid.UUID, error) {
+	return m.resolved, m.resolveErr
 }
 
 func (m *mockDynamicQueryBrandReader) GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error) {
@@ -227,15 +234,58 @@ func TestDynamicQuery_LargeDateRange_AutoDowngrade(t *testing.T) {
 	}
 }
 
-func TestDynamicQuery_BrandRBAC_ForbiddenForNonMember(t *testing.T) {
+func TestDynamicQuery_BrandAcceptsSlugRef(t *testing.T) {
 	userID := uuid.New()
 	brandID := uuid.New()
+	brandRef := "mori-studio"
 	uc := NewDynamicQueryUseCase(&mockDynamicQueryRepo{}, &mockDynamicQueryBrandReader{
-		roleErr: apperror.NewForbidden("forbidden"),
+		role:     brandmemberrole.Owner,
+		resolved: brandID,
 	})
 	_, err := uc.ExecuteDynamicQuery(context.Background(), userID, roleslug.User, &dto.DynamicQueryReq{
 		TargetDashboard: targetdashboard.Brand,
-		BrandID:         &brandID,
+		BrandID:         &brandRef,
+		Metrics:         []metrickey.MetricKey{metrickey.TotalMembers},
+		Timeframe:       dto.DynamicQueryTimeframeDTO{FromDate: "2026-10-01", ToDate: "2026-10-28"},
+		Granularity:     granularity.Day,
+	})
+	if err != nil {
+		t.Fatalf("expected slug ref to resolve, got %v", err)
+	}
+}
+
+func TestDynamicQuery_BrandUnknownSlugReturnsNotFound(t *testing.T) {
+	userID := uuid.New()
+	brandRef := "missing-brand"
+	uc := NewDynamicQueryUseCase(&mockDynamicQueryRepo{}, &mockDynamicQueryBrandReader{
+		resolveErr: apperror.NewNotFound("missing"),
+	})
+	_, err := uc.ExecuteDynamicQuery(context.Background(), userID, roleslug.User, &dto.DynamicQueryReq{
+		TargetDashboard: targetdashboard.Brand,
+		BrandID:         &brandRef,
+		Metrics:         []metrickey.MetricKey{metrickey.TotalMembers},
+		Timeframe:       dto.DynamicQueryTimeframeDTO{FromDate: "2026-10-01", ToDate: "2026-10-28"},
+	})
+	if err == nil {
+		t.Fatal("expected not-found error for unknown brand slug")
+	}
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Status != 404 {
+		t.Fatalf("expected 404, got %v", err)
+	}
+}
+
+func TestDynamicQuery_BrandRBAC_ForbiddenForNonMember(t *testing.T) {
+	userID := uuid.New()
+	brandID := uuid.New()
+	brandRef := brandID.String()
+	uc := NewDynamicQueryUseCase(&mockDynamicQueryRepo{}, &mockDynamicQueryBrandReader{
+		roleErr:  apperror.NewForbidden("forbidden"),
+		resolved: brandID,
+	})
+	_, err := uc.ExecuteDynamicQuery(context.Background(), userID, roleslug.User, &dto.DynamicQueryReq{
+		TargetDashboard: targetdashboard.Brand,
+		BrandID:         &brandRef,
 		Metrics:         []metrickey.MetricKey{metrickey.TotalUsers},
 		Timeframe:       dto.DynamicQueryTimeframeDTO{FromDate: "2026-07-01", ToDate: "2026-07-23"},
 	})

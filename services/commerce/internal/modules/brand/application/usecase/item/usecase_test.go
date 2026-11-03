@@ -40,6 +40,9 @@ func (m *mockBrandRepo) GetAll(ctx context.Context) ([]*entities.Brand, error)  
 func (m *mockBrandRepo) Create(ctx context.Context, brand *entities.Brand) error { return nil }
 func (m *mockBrandRepo) Update(ctx context.Context, brand *entities.Brand) error { return nil }
 func (m *mockBrandRepo) Delete(ctx context.Context, id uuid.UUID) error          { return nil }
+func (m *mockBrandRepo) DeleteRequest(ctx context.Context, brandID uuid.UUID, statuses ...brandstatus.BrandStatus) (bool, error) {
+	return false, nil
+}
 func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
 	return nil, nil
 }
@@ -248,6 +251,30 @@ func (m *mockBrandItemRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID)
 		}
 	}
 	return res, nil
+}
+func (m *mockBrandItemRepo) GetByBrandIDFiltered(ctx context.Context, filter repositories.BrandItemFilter) ([]*entities.BrandItem, error) {
+	var res []*entities.BrandItem
+	for _, item := range m.items {
+		if item.BrandID != filter.BrandID {
+			continue
+		}
+		if filter.ItemType != nil && *filter.ItemType != "" && item.ItemType != *filter.ItemType {
+			continue
+		}
+		if filter.Status != nil && *filter.Status != "" && item.Status != *filter.Status {
+			continue
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+func (m *mockBrandItemRepo) GetByTaskID(ctx context.Context, taskID uuid.UUID) (*entities.BrandItem, error) {
+	for _, item := range m.items {
+		if item.TaskID != nil && *item.TaskID == taskID {
+			return item, nil
+		}
+	}
+	return nil, nil
 }
 func (m *mockBrandItemRepo) GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error) {
 	for _, item := range m.items {

@@ -25,7 +25,7 @@ type BrandBenefit struct {
 	RequiredTier   *LoyaltyTier                           `gorm:"foreignKey:RequiredTierID;constraint:OnDelete:SET NULL"`
 	FeatureCode    *benefitfeaturecode.BenefitFeatureCode `gorm:"type:varchar(100)"`
 	FeatureConfig  JSONDocument                           `gorm:"type:jsonb"`
-	Status         benefitstatus.BenefitStatus            `gorm:"type:varchar(50);not null;default:ACTIVE"`
+	Status         benefitstatus.BenefitStatus            `gorm:"type:varchar(50);not null;default:active"`
 }
 
 type BenefitRedemption struct {
@@ -38,7 +38,7 @@ type BenefitRedemption struct {
 	BrandCustomer   *BrandCustomer                                  `gorm:"foreignKey:BrandCustomerID;constraint:OnDelete:CASCADE"`
 	UserID          *uuid.UUID                                      `gorm:"type:uuid"`
 	PointsSpent     int                                             `gorm:"type:int;not null;default:0"`
-	Status          benefitredemptionstatus.BenefitRedemptionStatus `gorm:"type:varchar(50);not null;default:REDEEMED"`
+	Status          benefitredemptionstatus.BenefitRedemptionStatus `gorm:"type:varchar(50);not null;default:redeemed"`
 	RedeemedAt      time.Time                                       `gorm:"type:timestamp with time zone;not null;default:now()"`
 	UsedAt          *time.Time                                      `gorm:"type:timestamp with time zone"`
 	ExpiresAt       *time.Time                                      `gorm:"type:timestamp with time zone"`

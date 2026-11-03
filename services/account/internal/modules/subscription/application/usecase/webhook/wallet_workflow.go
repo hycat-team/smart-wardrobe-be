@@ -29,8 +29,8 @@ func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Contex
 			newBalance = walletEntity.Balance
 		}
 		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateTopupSuccess, map[string]any{
-			"Amount":     sharedmoney.ToFloat(tx.Amount),
-			"NewBalance": sharedmoney.ToFloat(newBalance),
+			"Amount":     sharedmoney.FormatVND(tx.Amount),
+			"NewBalance": sharedmoney.FormatVND(newBalance),
 		}, user.Email)
 	}
 

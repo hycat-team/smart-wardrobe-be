@@ -2,6 +2,7 @@ package brand
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,7 +30,10 @@ func (uc *BrandUseCase) CreateBrandByAdmin(ctx context.Context, adminID uuid.UUI
 }
 
 func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid.UUID, input dto.CreateBrandReq, status brandstatus.BrandStatus, approverID *uuid.UUID, approvedAt *time.Time) (*dto.BrandRes, error) {
-	slug := strings.TrimSpace(strings.ToLower(input.Slug))
+	slug, err := normalizedBrandSlugOrError(input.Slug)
+	if err != nil {
+		return nil, err
+	}
 	if existing, err := uc.brandRepo.GetBySlug(ctx, slug); err != nil {
 		return nil, err
 	} else if existing != nil {
@@ -60,6 +64,9 @@ func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid
 		member.BrandID = brand.ID
 		return uc.memberRepo.Create(txCtx, member)
 	}); err != nil {
+		if errors.Is(err, repositories.ErrBrandSlugConflict) {
+			return nil, branderrors.ErrBrandSlugExists()
+		}
 		return nil, err
 	}
 
@@ -67,7 +74,8 @@ func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid
 }
 
 func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandStatusReq) (*dto.BrandRes, error) {
-	if !isValidBrandStatus(input.Status) {
+	status := brandstatus.BrandStatus(strings.ToLower(strings.TrimSpace(string(input.Status))))
+	if !isValidBrandStatus(status) {
 		return nil, branderrors.ErrInvalidBrandStatus(input.Status)
 	}
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
@@ -78,8 +86,8 @@ func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID
 		return nil, branderrors.ErrBrandNotFound()
 	}
 
-	brand.Status = input.Status
-	if input.Status == brandstatus.Active {
+	brand.Status = status
+	if status == brandstatus.Active {
 		now := time.Now().UTC()
 		brand.ApprovedByUserID = &adminID
 		brand.ApprovedAt = &now
@@ -159,8 +167,8 @@ func (uc *BrandUseCase) GetActiveBrand(ctx context.Context, brandID uuid.UUID) (
 	if brand == nil {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	if brand.Status != brandstatus.Active {
-		return nil, branderrors.ErrBrandNotActive()
+	if brand == nil || !strings.EqualFold(string(brand.Status), string(brandstatus.Active)) {
+		return nil, branderrors.ErrBrandNotFound()
 	}
 	totalCustomer, err := uc.customerRepo.CountByBrandID(ctx, brandID)
 	if err != nil {
@@ -261,4 +269,47 @@ func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	return mapper.MapPortalBrand(member, int(totalCustomer)), nil
+}
+
+func (uc *BrandUseCase) CancelBrandRequest(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) error {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return err
+	}
+	if brand == nil {
+		return branderrors.ErrBrandNotFound()
+	}
+	if brand.CreatedByUserID != userID {
+		return branderrors.ErrBrandPortalForbidden()
+	}
+	if brand.Status != brandstatus.PendingReview && brand.Status != brandstatus.Rejected {
+		return branderrors.ErrBrandRequestNotCancellable()
+	}
+
+	members, err := uc.memberRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return err
+	}
+
+	deleted, err := uc.brandRepo.DeleteRequest(ctx, brandID, brandstatus.PendingReview, brandstatus.Rejected)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return branderrors.ErrBrandRequestNotCancellable()
+	}
+
+	affectedUserIDs := make(map[uuid.UUID]struct{}, len(members)+1)
+	affectedUserIDs[userID] = struct{}{}
+	for _, member := range members {
+		if member != nil {
+			affectedUserIDs[member.UserID] = struct{}{}
+		}
+	}
+	for affectedUserID := range affectedUserIDs {
+		if err := uc.InvalidateUserMembershipCache(ctx, affectedUserID); err != nil {
+			return err
+		}
+	}
+	return nil
 }

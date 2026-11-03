@@ -98,12 +98,16 @@ func (h *AnalyticsHandler) GetAIEventsDrillDown(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.DrillDownSampleFeedbackListRes} "Lấy chi tiết đánh giá mẫu thử thành công"
 // @Router /api/v1/brand/dashboard/drilldown/sample-lab-feedbacks [get]
 func (h *AnalyticsHandler) GetSampleLabFeedbacksDrillDown(c *gin.Context) error {
+	brandID, err := contextutils.GetBrandId(c)
+	if err != nil {
+		return err
+	}
 	var req dto.DrillDownSampleFeedbackQueryReq
 	if err := validation.BindQuery(c, &req); err != nil {
 		return err
 	}
 
-	res, err := h.drillDownUC.GetSampleLabFeedbacksDrillDown(c.Request.Context(), &req)
+	res, err := h.drillDownUC.GetSampleLabFeedbacksDrillDown(c.Request.Context(), brandID, &req)
 	if err != nil {
 		return err
 	}

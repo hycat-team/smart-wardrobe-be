@@ -89,7 +89,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		return false, err
 	}
 
-	if err := uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateOtp, map[string]any{
+	if err := uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateForgotPasswordOtp, map[string]any{
 		"OTPCode":       otpCode,
 		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
 	}, input.Email); err != nil {
@@ -227,7 +227,7 @@ func (uc *PasswordRecoveryUseCase) ResendForgotPasswordOtp(ctx context.Context, 
 		return false, err
 	}
 
-	err = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateOtp, map[string]any{
+	err = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateForgotPasswordOtp, map[string]any{
 		"OTPCode":       otpCode,
 		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
 	}, input.Email)

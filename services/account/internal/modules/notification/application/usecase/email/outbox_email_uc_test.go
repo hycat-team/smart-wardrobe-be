@@ -109,21 +109,24 @@ func newCampaignEmailUseCase(t *testing.T, email string) (*OutboxEmailUseCase, *
 	return uc.(*OutboxEmailUseCase), outbox
 }
 
-// emailBody renders the campaign template and returns the subject and body.
-func emailBody(t *testing.T, uc *OutboxEmailUseCase, outbox *recordingOutbox, params map[string]any, userID uuid.UUID) (string, string) {
+// emailBody renders one template and returns the subject and body.
+func emailBody(t *testing.T, uc *OutboxEmailUseCase, outbox *recordingOutbox, tmpl ntemplate.Template, params map[string]any, userID uuid.UUID) (string, string) {
 	t.Helper()
-	if err := uc.SendByUserID(t.Context(), nchannel.Email, ntemplate.CampaignGrant, params, userID); err != nil {
-		t.Fatalf("send campaign email: %v", err)
+	if err := uc.SendByUserID(t.Context(), nchannel.Email, tmpl, params, userID); err != nil {
+		t.Fatalf("send %s email: %v", tmpl, err)
 	}
-	if len(outbox.records) != 1 {
-		t.Fatalf("expected exactly 1 outbox record, got %d", len(outbox.records))
+	if len(outbox.records) == 0 {
+		t.Fatalf("expected an outbox record for %s, got none", tmpl)
 	}
+	// The LAST record: a test may render several templates into one outbox, and
+	// asserting a total here would make every such test depend on its sibling's
+	// order.
 	var payload struct {
 		To      string `json:"to"`
 		Subject string `json:"subject"`
 		Body    string `json:"body"`
 	}
-	if err := json.Unmarshal(outbox.records[0].Payload, &payload); err != nil {
+	if err := json.Unmarshal(outbox.records[len(outbox.records)-1].Payload, &payload); err != nil {
 		t.Fatalf("unmarshal outbox payload: %v", err)
 	}
 	return payload.Subject, payload.Body
@@ -136,7 +139,7 @@ func emailBody(t *testing.T, uc *OutboxEmailUseCase, outbox *recordingOutbox, pa
 // suggestion that anything was paid.
 func TestCampaignGrantEmailStatesPlanAndExpiryAndNoAutoRenew(t *testing.T) {
 	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
-	subject, body := emailBody(t, uc, outbox, map[string]any{
+	subject, body := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
 		"PlanName":  "Premium Tháng",
 		"ExpiresAt": "01/11/2026",
 	}, uuid.New())
@@ -169,7 +172,7 @@ func TestCampaignGrantEmailStatesPlanAndExpiryAndNoAutoRenew(t *testing.T) {
 // queue at the door.
 func TestCampaignGrantEmailDoesNotMentionCampaignQuota(t *testing.T) {
 	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
-	_, body := emailBody(t, uc, outbox, map[string]any{
+	_, body := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
 		"PlanName":  "Premium Tháng",
 		"ExpiresAt": "01/11/2026",
 	}, uuid.New())
@@ -218,8 +221,14 @@ func TestCampaignGrantEmailIsNotSentWithoutAnAddress(t *testing.T) {
 // for an administrator, and any later edit to the manual wording would silently
 // change what a campaign customer is told.
 func TestCampaignGrantEmailSubjectIsDistinctFromAdminGrant(t *testing.T) {
-	campaignSubject := resolveSubject(ntemplate.CampaignGrant)
-	adminSubject := resolveSubject(ntemplate.AdminGrant)
+	campaignSubject, err := resolveSubject(ntemplate.CampaignGrant)
+	if err != nil {
+		t.Fatalf("resolve campaign subject: %v", err)
+	}
+	adminSubject, err := resolveSubject(ntemplate.AdminGrant)
+	if err != nil {
+		t.Fatalf("resolve admin subject: %v", err)
+	}
 	if campaignSubject == adminSubject {
 		t.Fatalf("campaign and administrator grant emails must not share a subject (R12)")
 	}
@@ -238,7 +247,7 @@ func TestCampaignGrantEmailSubjectIsDistinctFromAdminGrant(t *testing.T) {
 // wording written for someone an operator acted on.
 func TestCampaignGrantEmailUsesItsOwnTemplate(t *testing.T) {
 	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
-	_, campaignBody := emailBody(t, uc, outbox, map[string]any{
+	_, campaignBody := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
 		"PlanName":  "Premium Tháng",
 		"ExpiresAt": "01/11/2026",
 	}, uuid.New())
@@ -257,5 +266,370 @@ func TestCampaignGrantEmailUsesItsOwnTemplate(t *testing.T) {
 	}
 	if campaignBody == adminPayload.Body {
 		t.Fatalf("campaign and administrator grant emails must render DIFFERENT templates (R12)")
+	}
+}
+
+// TestSubscriptionExpiredEmailNamesTheLostPlanAndNeverLeaksInternals pins the
+// reported production email.
+//
+// A customer whose Premium plan merely expired received "[Closy] Gia Hạn Gói Thất
+// Bại", "Gói dịch vụ: Free Plan", "Lý do: downgraded_auto_renew_disabled". Three
+// separate defects: nothing failed, the plan named was the one they were moved
+// TO, and an internal enum was rendered as customer copy.
+func TestSubscriptionExpiredEmailNamesTheLostPlanAndNeverLeaksInternals(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+	subject, body := emailBody(t, uc, outbox, ntemplate.SubscriptionExpired, map[string]any{
+		"PlanName":   "Premium Plan",
+		"ExpiredAt":  "01/11/2026",
+		"NeedsTopup": false,
+	}, uuid.New())
+
+	visible := visibleText(body)
+	if !strings.Contains(visible, "Premium Plan") {
+		t.Fatalf("the email must name the plan that ended, got:\n%s", visible)
+	}
+	if !strings.Contains(visible, "01/11/2026") {
+		t.Fatalf("the email must state the expiry date, got:\n%s", visible)
+	}
+	// The customer did not fail at anything: the term ended and auto-renew was
+	// off. "Thất bại" in the subject is what made a normal expiry read as an error.
+	if strings.Contains(strings.ToLower(subject), "thất bại") {
+		t.Fatalf("an expiring plan is not a failed renewal, subject = %q", subject)
+	}
+	if strings.Contains(strings.ToLower(visible), "thất bại") {
+		t.Fatalf("the body must not call a normal expiry a failure, got:\n%s", visible)
+	}
+	// Internal enum values are operator-facing. The template receives a boolean
+	// and picks Vietnamese copy; a raw code reaching a customer is the defect.
+	for _, forbidden := range []string{"downgraded_", "auto_renew_disabled", "insufficient_balance", "_disabled"} {
+		if strings.Contains(visible, forbidden) {
+			t.Fatalf("the email must not render the internal reason code %q, got:\n%s", forbidden, visible)
+		}
+	}
+	if strings.HasPrefix(subject, "[Closy] ") == false {
+		t.Fatalf("expected the subject to carry the [Closy] prefix, got %q", subject)
+	}
+}
+
+// TestSubscriptionExpiredEmailShowsReadableAmountsWhenTopupNeeded covers the
+// wallet-shortfall branch: the customer's next action is a top-up, so the amount
+// has to be readable. "1e+06" is not an amount a customer can act on.
+func TestSubscriptionExpiredEmailShowsReadableAmountsWhenTopupNeeded(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+	_, body := emailBody(t, uc, outbox, ntemplate.SubscriptionExpired, map[string]any{
+		"PlanName":       "Premium Plan",
+		"ExpiredAt":      "01/11/2026",
+		"NeedsTopup":     true,
+		"RequiredAmount": "1.000.000đ",
+		"Balance":        "5.000đ",
+	}, uuid.New())
+
+	visible := visibleText(body)
+	for _, want := range []string{"1.000.000đ", "5.000đ", "nạp thêm tiền"} {
+		if !strings.Contains(visible, want) {
+			t.Fatalf("expected %q in the shortfall email, got:\n%s", want, visible)
+		}
+	}
+	// The auto-renew-off sentence must not appear here: the switch is ON, the
+	// wallet is the obstacle.
+	if strings.Contains(visible, "Bạn đang tắt tự động gia hạn") {
+		t.Fatalf("the shortfall email must not blame the auto-renew switch, got:\n%s", visible)
+	}
+}
+
+// TestForgotPasswordEmailIsNotTheRegistrationEmail pins a defect that was
+// invisible from the outside: ForgotPasswordOtp.html was embedded but never
+// registered, so every password-reset mail rendered the registration copy and
+// told the customer "Bạn đang thực hiện thao tác đăng ký tài khoản".
+func TestForgotPasswordEmailIsNotTheRegistrationEmail(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+	params := map[string]any{"OTPCode": "123456", "ExpiryMinutes": 5}
+
+	resetSubject, resetBody := emailBody(t, uc, outbox, ntemplate.ForgotPasswordOtp, params, uuid.New())
+	visible := visibleText(resetBody)
+	if !strings.Contains(strings.ToLower(visible), "đặt lại mật khẩu") {
+		t.Fatalf("the reset email must say it is a password reset, got:\n%s", visible)
+	}
+	if strings.Contains(strings.ToLower(visible), "đăng ký tài khoản") {
+		t.Fatalf("the reset email must not talk about registration, got:\n%s", visible)
+	}
+	if !strings.Contains(visible, "123456") {
+		t.Fatalf("the reset email must carry the code, got:\n%s", visible)
+	}
+
+	// The registration mail and the reset mail are separate templates with
+	// separate subjects; sharing either is how the wrong wording travels.
+	regSubject, regBody := emailBody(t, uc, outbox, ntemplate.Otp, params, uuid.New())
+	if resetSubject == regSubject {
+		t.Fatalf("password reset and registration must not share a subject, both %q", resetSubject)
+	}
+	if visibleText(regBody) == visible {
+		t.Fatalf("password reset and registration must not render the same body")
+	}
+	if !strings.Contains(strings.ToLower(visibleText(regBody)), "đăng ký tài khoản") {
+		t.Fatalf("the registration email must still talk about registration, got:\n%s", visibleText(regBody))
+	}
+}
+
+// TestPurchaseEmailsSayThePlanDoesNotAutoRenew closes the loop that produced the
+// customer's complaint.
+//
+// No purchase turns auto-renew on - only the explicit PUT
+// /subscriptions/me/auto-renew does - so a customer who bought a plan had no way
+// to know it would simply stop. The expiry email then arrived as a surprise.
+// CampaignGrant already carried this warning (FR-045); every other path that
+// hands out a finite plan must say it too.
+func TestPurchaseEmailsSayThePlanDoesNotAutoRenew(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+
+	cases := []struct {
+		name   string
+		tmpl   ntemplate.Template
+		params map[string]any
+	}{
+		{
+			name: "payment success",
+			tmpl: ntemplate.PaymentSuccess,
+			params: map[string]any{
+				"PlanName": "Premium Plan", "Amount": "5.000đ", "ExpiresAt": "01/11/2026",
+			},
+		},
+		{
+			name: "wallet purchase",
+			tmpl: ntemplate.WalletPurchaseSuccess,
+			params: map[string]any{
+				"PlanName": "Premium Plan", "Amount": "5.000đ",
+				"NewBalance": "95.000đ", "ExpiresAt": "01/11/2026",
+			},
+		},
+		{
+			name: "admin grant",
+			tmpl: ntemplate.AdminGrant,
+			params: map[string]any{
+				"PlanName": "Premium Plan", "ExpiresAt": "01/11/2026",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, body := emailBody(t, uc, outbox, tc.tmpl, tc.params, uuid.New())
+			visible := visibleText(body)
+			if !strings.Contains(visible, "không tự động gia hạn") {
+				t.Fatalf("%s must say the plan does not auto-renew, got:\n%s", tc.name, visible)
+			}
+			// The administrator path must not imply a payment (024 FR-083).
+			if tc.tmpl == ntemplate.AdminGrant {
+				for _, forbidden := range []string{"thanh toán thành công", "đã thanh toán", "hóa đơn"} {
+					if strings.Contains(strings.ToLower(visible), forbidden) {
+						t.Fatalf("an administrative grant must not imply payment, found %q in:\n%s", forbidden, visible)
+					}
+				}
+				if strings.Contains(strings.ToLower(visible), "nâng cấp") {
+					t.Fatalf("a grant may replace a higher plan, so the heading must not promise an upgrade, got:\n%s", visible)
+				}
+			}
+		})
+	}
+}
+
+// TestSubscriptionExpiringEmailTellsTheCustomerWhatWillHappen is the gap that
+// made the expiry a surprise: the pre-expiry job skipped every account with
+// auto-renew switched off, so those customers received no warning at all.
+func TestSubscriptionExpiringEmailTellsTheCustomerWhatWillHappen(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+	subject, body := emailBody(t, uc, outbox, ntemplate.SubscriptionExpiring, map[string]any{
+		"PlanName":         "Premium Plan",
+		"ExpiresAt":        "01/11/2026",
+		"DaysRemaining":    3,
+		"RestoredPlanName": "Free Plan",
+	}, uuid.New())
+
+	visible := visibleText(body)
+	for _, want := range []string{"Premium Plan", "01/11/2026", "Free Plan", "tắt tự động gia hạn"} {
+		if !strings.Contains(visible, want) {
+			t.Fatalf("expected %q in the pre-expiry email, got:\n%s", want, visible)
+		}
+	}
+	if strings.Contains(strings.ToLower(subject), "thất bại") {
+		t.Fatalf("a pre-expiry reminder is not a failure, subject = %q", subject)
+	}
+}
+
+// TestExpiringEmailsNameThePlanTheAccountReturnsTo is the copy defect behind
+// "trở về gói Free": a lifetime plan can sit underneath the finite one, so the
+// account falls back to it, not to Free. The email must say so.
+func TestExpiringEmailsNameThePlanTheAccountReturnsTo(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+
+	for _, tc := range []struct {
+		name string
+		tmpl ntemplate.Template
+	}{
+		{"expired", ntemplate.SubscriptionExpired},
+		{"expiring", ntemplate.SubscriptionExpiring},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, body := emailBody(t, uc, outbox, tc.tmpl, map[string]any{
+				"PlanName":         "Premium Plan",
+				"ExpiredAt":        "01/11/2026",
+				"ExpiresAt":        "01/11/2026",
+				"DaysRemaining":    3,
+				"NeedsTopup":       false,
+				"RestoredPlanName": "Lifetime Plan",
+			}, uuid.New())
+			visible := visibleText(body)
+			if !strings.Contains(visible, "Lifetime Plan") {
+				t.Fatalf("%s must name the plan the account returns to, got:\n%s", tc.name, visible)
+			}
+			if strings.Contains(visible, "gói Free") {
+				t.Fatalf("%s must not hardcode the Free plan, got:\n%s", tc.name, visible)
+			}
+		})
+	}
+}
+
+// TestCampaignGrantEmailNamesTheLifetimeFallback covers the same claim on the
+// campaign path, whose note is forward-looking rather than about an expiry that
+// already happened.
+func TestCampaignGrantEmailNamesTheLifetimeFallback(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+
+	_, withFallback := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
+		"PlanName": "Premium Plan", "DurationText": "30 ngày",
+		"GrantedOn": "01/10/2026", "ExpiresAt": "01/11/2026",
+		"HasLifetimeFallback": true,
+	}, uuid.New())
+	if !strings.Contains(visibleText(withFallback), "gói trọn đời") {
+		t.Fatalf("a lifetime account must be told it returns to its lifetime plan, got:\n%s", visibleText(withFallback))
+	}
+
+	_, withoutFallback := emailBody(t, uc, outbox, ntemplate.CampaignGrant, map[string]any{
+		"PlanName": "Premium Plan", "DurationText": "30 ngày",
+		"GrantedOn": "01/10/2026", "ExpiresAt": "01/11/2026",
+		"HasLifetimeFallback": false,
+	}, uuid.New())
+	if !strings.Contains(visibleText(withoutFallback), "gói miễn phí") {
+		t.Fatalf("an account without a fallback returns to the free plan, got:\n%s", visibleText(withoutFallback))
+	}
+}
+
+// TestEveryTemplateHasASubject walks the template set rather than a list of
+// names, so adding a template without a subject fails here instead of reaching a
+// customer as "[Closy] Thông báo".
+func TestEveryTemplateHasASubject(t *testing.T) {
+	seen := map[ntemplate.Template]bool{}
+	for _, tmpl := range ntemplate.All() {
+		if seen[tmpl] {
+			t.Errorf("template %q appears twice in All()", tmpl)
+		}
+		seen[tmpl] = true
+
+		subject, err := resolveSubject(tmpl)
+		if err != nil {
+			t.Fatalf("template %q has no subject: %v", tmpl, err)
+		}
+		if !strings.HasPrefix(subject, "[Closy] ") {
+			t.Errorf("subject for %q must carry the product prefix, got %q", tmpl, subject)
+		}
+		if strings.TrimSpace(strings.TrimPrefix(subject, "[Closy] ")) == "" {
+			t.Errorf("subject for %q is empty after the prefix", tmpl)
+		}
+	}
+	if got, want := len(seen), 11; got != want {
+		t.Fatalf("expected %d templates in All(), got %d — update All() when adding one", want, got)
+	}
+}
+
+// TestUnknownTemplateHasNoSubject proves the lookup fails loudly instead of
+// falling back to a generic subject.
+func TestUnknownTemplateHasNoSubject(t *testing.T) {
+	if _, err := resolveSubject(ntemplate.Template("does_not_exist")); err == nil {
+		t.Fatalf("expected an error for an unknown template")
+	}
+}
+
+// TestEveryTemplateRendersItsCallSiteParameters is the guard that would have
+// caught the two production defects at the seam rather than in a customer's
+// inbox: a template whose placeholders do not match the parameters its call site
+// actually sends renders "<no value>" (or silently drops a line) instead of
+// failing. The table below mirrors the params each use case passes - one row per
+// send path - so a rename on either side breaks here.
+func TestEveryTemplateRendersItsCallSiteParameters(t *testing.T) {
+	uc, outbox := newCampaignEmailUseCase(t, "khach@example.com")
+
+	// Mirrors the call sites: identity (register/reset), webhook top-up, webhook
+	// payment, wallet purchase, renewal, expiry, pre-expiry, admin grant,
+	// campaign grant.
+	cases := []struct {
+		name   string
+		tmpl   ntemplate.Template
+		params map[string]any
+	}{
+		{"registration otp", ntemplate.Otp, map[string]any{
+			"OTPCode": "123456", "ExpiryMinutes": 5,
+		}},
+		{"forgot password otp", ntemplate.ForgotPasswordOtp, map[string]any{
+			"OTPCode": "123456", "ExpiryMinutes": 5,
+		}},
+		{"topup success", ntemplate.TopupSuccess, map[string]any{
+			"Amount": "1.000.000đ", "NewBalance": "1.500.000đ",
+		}},
+		{"payment success", ntemplate.PaymentSuccess, map[string]any{
+			"PlanName": "Premium Plan", "Amount": "5.000đ", "ExpiresAt": "01/11/2026",
+		}},
+		{"wallet purchase success", ntemplate.WalletPurchaseSuccess, map[string]any{
+			"PlanName": "Premium Plan", "Amount": "5.000đ",
+			"NewBalance": "95.000đ", "ExpiresAt": "01/11/2026",
+		}},
+		{"renewal success", ntemplate.RenewalSuccess, map[string]any{
+			"PlanName": "Premium Plan", "Amount": "5.000đ", "NewExpiresAt": "01/12/2026",
+		}},
+		{"subscription expired without topup", ntemplate.SubscriptionExpired, map[string]any{
+			"PlanName": "Premium Plan", "ExpiredAt": "01/11/2026", "NeedsTopup": false,
+			"RestoredPlanName": "Free Plan",
+		}},
+		{"subscription expired with topup", ntemplate.SubscriptionExpired, map[string]any{
+			"PlanName": "Premium Plan", "ExpiredAt": "01/11/2026", "NeedsTopup": true,
+			"RequiredAmount": "1.000.000đ", "Balance": "5.000đ",
+			"RestoredPlanName": "Free Plan",
+		}},
+		{"subscription expiring", ntemplate.SubscriptionExpiring, map[string]any{
+			"PlanName": "Premium Plan", "ExpiresAt": "01/11/2026", "DaysRemaining": 3,
+			"RestoredPlanName": "Free Plan",
+		}},
+		{"wallet warning", ntemplate.WalletWarning, map[string]any{
+			"PlanName": "Premium Plan", "ExpiresAt": "01/11/2026", "DaysRemaining": 3,
+			"Balance": "5.000đ", "RequiredAmount": "1.000.000đ",
+		}},
+		{"admin grant", ntemplate.AdminGrant, map[string]any{
+			"PlanName": "Premium Plan", "ExpiresAt": "01/11/2026",
+		}},
+		{"campaign grant", ntemplate.CampaignGrant, map[string]any{
+			"PlanName": "Premium Plan", "DurationText": "30 ngày",
+			"GrantedOn": "01/10/2026", "ExpiresAt": "01/11/2026",
+			"HasLifetimeFallback": false,
+		}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, body := emailBody(t, uc, outbox, tc.tmpl, tc.params, uuid.New())
+			if strings.Contains(body, "<no value>") {
+				t.Fatalf("%s renders an unfilled placeholder; its params and its template disagree:\n%s", tc.name, body)
+			}
+			// Every parameter the call site sends must be the one the template
+			// reads, so a readable value has to survive into the body.
+			for key, value := range tc.params {
+				text, ok := value.(string)
+				if !ok || text == "" {
+					continue
+				}
+				if !strings.Contains(visibleText(body), text) {
+					t.Fatalf("%s does not render param %q (%q); the template may be reading a different key:\n%s",
+						tc.name, key, text, visibleText(body))
+				}
+			}
+		})
 	}
 }

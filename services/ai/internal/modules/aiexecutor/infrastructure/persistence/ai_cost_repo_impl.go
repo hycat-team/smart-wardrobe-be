@@ -98,58 +98,11 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entiti
 	userID := userIDFor(grant, event)
 
 	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
-		idx, start, end := periodFor(grant, policy.PeriodDays, now)
-
-		// Two insert strategies, one per case, and the reason is the shape of
-		// the dedup key. The existing UNIQUE (grant_id, period_index) cannot
-		// dedupe anything when grant_id is NULL, because SQL treats NULL as
-		// distinct from NULL - every call would open a fresh ledger and the
-		// anti-overspend control of constitution VI would evaporate. The
-		// partial unique index ux_ledgers_user_period_fallback exists for
-		// exactly those rows, so ON CONFLICT has to name the same predicate.
-		//
-		// Either way the row is read back under FOR UPDATE afterwards: the
-		// lock is the anti-overspend guarantee, the insert is only how the row
-		// comes to exist. Verified on PostgreSQL 17.10 (research.md R8).
-		ledgerRow := &aiexecutor_entities.AIUsagePeriodLedger{
-			GrantID:     nullableGrantID(grant),
-			UserID:      userID,
-			PeriodIndex: idx,
-			PeriodStart: start,
-			PeriodEnd:   end,
+		ledgerRow, err := lockOrCreateLedger(tx, grant, policy, userID, now)
+		if err != nil {
+			return err
 		}
-		if grant == nil {
-			if err := tx.Clauses(clause.OnConflict{
-				Columns: []clause.Column{{Name: "user_id"}, {Name: "period_index"}},
-				// TargetWhere, not Where: GORM's OnConflict.Where is the WHERE
-				// of a DO UPDATE SET clause, and using it here emits
-				// "ON CONFLICT (...) DO NOTHING" with no predicate â€” a syntax
-				// error. TargetWhere is the one that renders the partial-index
-				// inference clause, so it has to match
-				// ux_ledgers_user_period_fallback exactly.
-				TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Eq{Column: clause.Column{Name: "grant_id"}, Value: nil}}},
-				DoNothing:   true,
-			}).Create(ledgerRow).Error; err != nil {
-				return err
-			}
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Where("user_id = ? AND period_index = ? AND grant_id IS NULL", userID, idx).
-				First(&ledger).Error; err != nil {
-				return err
-			}
-		} else {
-			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "grant_id"}, {Name: "period_index"}},
-				DoNothing: true,
-			}).Create(ledgerRow).Error; err != nil {
-				return err
-			}
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Where("grant_id = ? AND period_index = ?", grant.ID, idx).
-				First(&ledger).Error; err != nil {
-				return err
-			}
-		}
+		ledger = *ledgerRow
 
 		if event.LogicalRoute != airoute.Paid {
 			admitted = true
@@ -203,6 +156,218 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entiti
 		err = aierrors.ErrObserveOnlyMissingAttemptCap
 	}
 	return &ledger, admitted, err
+}
+
+// lockOrCreateLedger inserts the period ledger row when it does not exist yet
+// and always re-reads it under FOR UPDATE. The lock is the anti-overspend
+// guarantee; the insert is only how the row comes to exist.
+//
+// Two insert strategies, one per case, and the reason is the shape of the dedup
+// key. The existing UNIQUE (grant_id, period_index) cannot dedupe anything when
+// grant_id is NULL, because SQL treats NULL as distinct from NULL - every call
+// would open a fresh ledger and the anti-overspend control of constitution VI
+// would evaporate. The partial unique index ux_ledgers_user_period_fallback
+// exists for exactly those rows, so ON CONFLICT has to name the same predicate.
+// Verified on PostgreSQL 17.10 (research.md R8).
+func lockOrCreateLedger(tx *gorm.DB, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, userID uuid.UUID, now time.Time) (*aiexecutor_entities.AIUsagePeriodLedger, error) {
+	periodDays := 0
+	if policy != nil {
+		periodDays = policy.PeriodDays
+	}
+	idx, start, end := periodFor(grant, periodDays, now)
+
+	var ledger aiexecutor_entities.AIUsagePeriodLedger
+	ledgerRow := &aiexecutor_entities.AIUsagePeriodLedger{
+		GrantID:     nullableGrantID(grant),
+		UserID:      userID,
+		PeriodIndex: idx,
+		PeriodStart: start,
+		PeriodEnd:   end,
+	}
+	if grant == nil {
+		if err := tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "user_id"}, {Name: "period_index"}},
+			// TargetWhere, not Where: GORM's OnConflict.Where is the WHERE of a
+			// DO UPDATE SET clause, and using it here emits
+			// "ON CONFLICT (...) DO NOTHING" with no predicate - a syntax
+			// error. TargetWhere is the one that renders the partial-index
+			// inference clause, so it has to match
+			// ux_ledgers_user_period_fallback exactly.
+			TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Eq{Column: clause.Column{Name: "grant_id"}, Value: nil}}},
+			DoNothing:   true,
+		}).Create(ledgerRow).Error; err != nil {
+			return nil, err
+		}
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("user_id = ? AND period_index = ? AND grant_id IS NULL", userID, idx).
+			First(&ledger).Error; err != nil {
+			return nil, err
+		}
+		return &ledger, nil
+	}
+
+	if err := tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "grant_id"}, {Name: "period_index"}},
+		DoNothing: true,
+	}).Create(ledgerRow).Error; err != nil {
+		return nil, err
+	}
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("grant_id = ? AND period_index = ?", grant.ID, idx).
+		First(&ledger).Error; err != nil {
+		return nil, err
+	}
+	return &ledger, nil
+}
+
+// AdmitUnbilledAttempt is the non-monetary admission path. It creates or
+// updates the usage event for an unbilled provider attempt and never touches
+// pricing, the ledger or a reservation.
+//
+// The event is the upsert key (request_id is UNIQUE), so a repeated
+// BeforeAttempt updates the same row instead of opening a second one; the daily
+// attempt cap is only evaluated when no row exists yet, which is what keeps a
+// retry from consuming the cap twice.
+func (r *AICostRepository) AdmitUnbilledAttempt(ctx context.Context, policy *aiexecutor_entities.AICostPolicy, maxPaidAttemptsPerDay *int, event *aiexecutor_entities.AIUsageEvent, now time.Time) (bool, error) {
+	admitted := true
+
+	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing aiexecutor_entities.AIUsageEvent
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("request_id = ?", event.RequestID).
+			First(&existing).Error
+		if err == nil {
+			if existing.Status == aiusageeventstatus.Confirmed ||
+				existing.Status == aiusageeventstatus.Released ||
+				existing.Status == aiusageeventstatus.ExpiredUnverified {
+				// A finished event must not be rewritten by a late retry.
+				return nil
+			}
+			// Idempotent re-admission: keep the route the first call decided
+			// (a degraded free route must not be upgraded back to paid) and do
+			// not re-evaluate the cap.
+			event.LogicalRoute = existing.LogicalRoute
+			updates := map[string]any{
+				"provider":                     event.Provider,
+				"model":                        event.Model,
+				"reserved_cost_micro_vnd":      0,
+				"actual_cost_micro_vnd":        0,
+				"estimated_max_cost_micro_vnd": 0,
+				"updated_at":                   now,
+			}
+			return tx.Model(&existing).Updates(updates).Error
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		if event.LogicalRoute == airoute.Paid && policy != nil && policy.EnforcementMode == aienforcementmode.ObserveOnly {
+			// In observe_only the daily attempt cap is the only bound on a paid
+			// route. A nil cap is a configuration fault, so the safe direction
+			// is to refuse and let the caller degrade to the free route.
+			if maxPaidAttemptsPerDay == nil {
+				admitted = false
+				return nil
+			}
+			userID := uuid.Nil
+			if event.UserID != nil {
+				userID = *event.UserID
+			}
+			var attempts int64
+			day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+			if err := tx.Model(&aiexecutor_entities.AIUsageEvent{}).
+				Where("user_id=? AND operation=? AND created_at>=? AND logical_route=?", userID, event.Operation, day, airoute.Paid).
+				Count(&attempts).Error; err != nil {
+				return err
+			}
+			admitted = attempts < int64(*maxPaidAttemptsPerDay)
+		}
+		if !admitted {
+			return nil
+		}
+
+		event.ReservedCostMicroVND = 0
+		event.ActualCostMicroVND = 0
+		event.EstimatedMaxCostMicroVND = 0
+		event.Status = aiusageeventstatus.Reserved
+		return tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "request_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"provider", "model", "reserved_cost_micro_vnd", "actual_cost_micro_vnd",
+				"estimated_max_cost_micro_vnd", "updated_at",
+			}),
+		}).Create(event).Error
+	})
+
+	return admitted, err
+}
+
+// PrepareBillableAttempt upgrades the EXISTING trial event to a billable Gemini
+// fallback. It locks the row by request_id first, so the reservation and the
+// provider switch are atomic and a concurrent confirm cannot observe a
+// half-upgraded event.
+//
+// No second event is created (request_id is UNIQUE) and the reservation delta is
+// applied to the ledger, which makes a repeated call idempotent.
+func (r *AICostRepository) PrepareBillableAttempt(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, event *aiexecutor_entities.AIUsageEvent, now time.Time) (bool, error) {
+	prepared := false
+
+	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing aiexecutor_entities.AIUsageEvent
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("request_id = ?", event.RequestID).
+			First(&existing).Error; err != nil {
+			return err
+		}
+		if existing.Status == aiusageeventstatus.Confirmed ||
+			existing.Status == aiusageeventstatus.Released ||
+			existing.Status == aiusageeventstatus.ExpiredUnverified {
+			return nil
+		}
+
+		userID := userIDFor(grant, event)
+		ledger, err := lockOrCreateLedger(tx, grant, policy, userID, now)
+		if err != nil {
+			return err
+		}
+
+		previousReserved := existing.ReservedCostMicroVND
+		updates := map[string]any{
+			"ledger_id":                    ledger.ID,
+			"provider":                     event.Provider,
+			"model":                        event.Model,
+			"pricing_config_id":            event.PricingConfigID,
+			"input_usd_per_million":        event.InputUSDPerMillion,
+			"output_usd_per_million":       event.OutputUSDPerMillion,
+			"usd_to_vnd":                   event.USDToVND,
+			"reserved_cost_micro_vnd":      event.ReservedCostMicroVND,
+			"estimated_max_cost_micro_vnd": event.ReservedCostMicroVND,
+			"status":                       aiusageeventstatus.Reserved,
+			"unknown_expires_at":           event.UnknownExpiresAt,
+			"updated_at":                   now,
+		}
+		if err := tx.Model(&existing).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		delta := event.ReservedCostMicroVND - previousReserved
+		if delta != 0 {
+			expr := gorm.Expr("reserved_cost_micro_vnd + ?", delta)
+			if delta < 0 {
+				expr = gorm.Expr("GREATEST(reserved_cost_micro_vnd - ?, 0)", -delta)
+			}
+			if err := tx.Model(&aiexecutor_entities.AIUsagePeriodLedger{}).
+				Where("id = ?", ledger.ID).
+				UpdateColumn("reserved_cost_micro_vnd", expr).Error; err != nil {
+				return err
+			}
+		}
+
+		prepared = true
+		return nil
+	})
+
+	return prepared, err
 }
 
 func (r *AICostRepository) MarkInFlight(ctx context.Context, id uuid.UUID, at time.Time) error {

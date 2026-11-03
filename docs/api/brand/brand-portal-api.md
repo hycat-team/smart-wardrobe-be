@@ -1,5 +1,7 @@
 # Brand Portal API Specs
 
+> **Tham chiếu brand (`{brandId}`):** mọi endpoint nhận `brandId` trong path/query đều chấp nhận **UUID hoặc slug** của brand (ví dụ `GET /api/v1/brands/mori-studio`). URL công khai dùng slug (`/brands/{slug}`); UUID vẫn hợp lệ để tương thích ngược. Response của brand (`GET /brands`, `GET /brands/{brandId}`, `GET /brand-portal/me/brands`) luôn trả kèm `slug`.
+
 Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (Brand Portal), bao gồm đăng ký xét duyệt, quản lý hồ sơ/thành viên, khách hàng offline, và các endpoint công khai của thương hiệu.
 
 ## Feature 023 — thay đổi hành vi (trước → sau)
@@ -451,3 +453,34 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 - Sau khi khách đã có access token, frontend gọi `POST /api/v1/brands/claim` với `claimToken`.
 - Backend luôn liên kết hồ sơ offline vào current authenticated user lấy từ JWT, không nhận `userId` từ request body.
 - Claim token có thể bị thu hồi bởi staff qua API revoke; API list/status claim token không trả raw token.
+
+---
+
+## Bổ sung (brand slug + sample conversion)
+
+- `POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/convert-to-product`: chuyển một `sample` đã phân tích xong thành `product` tại chỗ (giữ feedback/vote). Xem chi tiết ở [brand-item-api.md](brand-item-api.md).
+- `GET /api/v1/brand-portal/brands/{brandId}/items?itemType=product|sample&status=...`: lọc theo loại/trạng thái, sắp xếp `created_at DESC`.
+- `POST /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-token`: response có thêm `id` để client thu hồi token khi đóng dialog hoặc hết hạn.
+- Status của brand/member/brand item được chuẩn hóa lowercase; migration `20261028120000_normalize_brand_status_case.sql` chuyển dữ liệu cũ (UPPERCASE) về lowercase.
+
+---
+
+## Quản lý thành viên thương hiệu (owner-only)
+
+- `GET /api/v1/brand-portal/brands/{brandId}/members` trả kèm thông tin user:
+    - `userFullName`, `userEmail` (field phẳng) và object `user` đầy đủ.
+- `PATCH /api/v1/brand-portal/brands/{brandId}/members/{memberId}` — body `{ "status": "active" | "disabled" }`.
+    - Chỉ owner; **không thể đổi trạng thái owner** (dùng luồng chuyển quyền sở hữu ở Admin).
+    - Trả `dto.BrandMemberRes`.
+- `DELETE /api/v1/brand-portal/brands/{brandId}/members/{memberId}` — chỉ owner; **không thể xóa owner**.
+- Staff vẫn xem/thêm thành viên theo matrix, nhưng không có quyền sửa/xóa.
+
+---
+
+## Hủy yêu cầu đăng ký thương hiệu (owner)
+
+- **Endpoint:** `DELETE /api/v1/brand-portal/brands/{brandId}/request`
+- **Actor:** người tạo yêu cầu (owner). Brand phải đang `pending_review` hoặc `rejected`.
+- **Hành vi:** xóa vĩnh viễn brand + membership (FK cascade), giải phóng slug để đăng ký lại; invalidate membership cache.
+- **Errors:** `403` không phải người tạo; `409` brand đã active/suspended hoặc vừa được duyệt; `404` không tìm thấy.
+- **Admin:** trạng thái `rejected` đã được hỗ trợ qua `PATCH /api/v1/admin/brands/{brandId}/status`.

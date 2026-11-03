@@ -12,6 +12,7 @@ import (
 )
 
 type IBrandDashboardReader interface {
+	ResolveBrandRef(ctx context.Context, ref string) (uuid.UUID, error)
 	GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error)
 	GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error)
 	GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error)
@@ -39,6 +40,10 @@ type BrandDashboardReader struct {
 
 func NewBrandDashboardReader(brandUC uc_interfaces.IBrandUseCase, analyticsUC uc_interfaces.IBrandDashboardAnalyticsUseCase) IBrandDashboardReader {
 	return &BrandDashboardReader{brandUC: brandUC, analyticsUC: analyticsUC}
+}
+
+func (r *BrandDashboardReader) ResolveBrandRef(ctx context.Context, ref string) (uuid.UUID, error) {
+	return r.brandUC.ResolveBrandRef(ctx, ref)
 }
 
 func (r *BrandDashboardReader) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {

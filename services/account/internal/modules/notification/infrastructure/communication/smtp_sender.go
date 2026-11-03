@@ -1,11 +1,14 @@
 package communication
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"mime"
 	"net/smtp"
+	"time"
 
 	"smart-wardrobe-be/services/account/internal/modules/notification/application/interface/usecase"
 	"smart-wardrobe-be/shared/config"
@@ -25,7 +28,42 @@ func NewSmtpSender(cfg *config.Config) *SmtpSender {
 	}
 }
 
-func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) error {
+// buildMessage assembles the RFC 5322 message body: headers, then a
+// multipart/alternative body with a text/plain part first and the HTML part
+// second (the order matters — a client picks the LAST part it can render).
+//
+// The subject is RFC 2047 encoded. Vietnamese subjects are non-ASCII, and a raw
+// 8-bit Subject header is both invalid and a spam signal.
+func (s *SmtpSender) buildMessage(to, subject, htmlBody string) []byte {
+	boundary := fmt.Sprintf("=_closy_%d", time.Now().UnixNano())
+
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "From: %s <%s>\r\n", s.cfg.Email.SenderName, s.cfg.Email.SenderEmail)
+	fmt.Fprintf(&b, "To: %s\r\n", to)
+	fmt.Fprintf(&b, "Subject: %s\r\n", mime.BEncoding.Encode("UTF-8", subject))
+	if s.cfg.Email.ReplyTo != "" {
+		fmt.Fprintf(&b, "Reply-To: %s\r\n", s.cfg.Email.ReplyTo)
+	}
+	b.WriteString("MIME-Version: 1.0\r\n")
+	fmt.Fprintf(&b, "Content-Type: multipart/alternative; boundary=%q\r\n\r\n", boundary)
+
+	fmt.Fprintf(&b, "--%s\r\n", boundary)
+	b.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
+	b.WriteString("Content-Transfer-Encoding: 8bit\r\n\r\n")
+	b.WriteString(plainTextFromHTML(htmlBody))
+	b.WriteString("\r\n\r\n")
+
+	fmt.Fprintf(&b, "--%s\r\n", boundary)
+	b.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
+	b.WriteString("Content-Transfer-Encoding: 8bit\r\n\r\n")
+	b.WriteString(htmlBody)
+	b.WriteString("\r\n\r\n")
+
+	fmt.Fprintf(&b, "--%s--\r\n", boundary)
+	return b.Bytes()
+}
+
+func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) (err error) {
 	// 025 T113: while `email.enabled` is false nothing is transmitted, so the
 	// function returns before a socket is opened. It returns nil, not an error:
 	// the message was handled on purpose, so reporting a failure would make the
@@ -35,6 +73,11 @@ func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) err
 	if !s.cfg.Email.Enabled {
 		return nil
 	}
+
+	// One classification point for every failure below. The worker decides
+	// retry-vs-DLQ from this, and a transport error that reaches it unclassified
+	// would be retried blindly.
+	defer func() { err = classifyDeliveryError(err) }()
 
 	from := s.cfg.Email.SenderEmail
 	// SMTP username: not the sender address — fall back to the sender email for Gmail-style servers.
@@ -49,15 +92,7 @@ func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) err
 	addr := fmt.Sprintf("%s:%d", smtpHost, smtpPort)
 	auth := smtp.PlainAuth("", user, password, smtpHost)
 
-	headerSubject := fmt.Sprintf("Subject: %s\r\n", subject)
-	headerTo := fmt.Sprintf("To: %s\r\n", to)
-	headerFrom := fmt.Sprintf("From: %s <%s>\r\n", s.cfg.Email.SenderName, from)
-	headerReplyTo := ""
-	if s.cfg.Email.ReplyTo != "" {
-		headerReplyTo = fmt.Sprintf("Reply-To: %s\r\n", s.cfg.Email.ReplyTo)
-	}
-	headerMime := "MIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n"
-	msg := []byte(headerFrom + headerReplyTo + headerTo + headerSubject + headerMime + htmlBody)
+	msg := s.buildMessage(to, subject, htmlBody)
 
 	if smtpPort == 465 {
 		tlsConfig := &tls.Config{

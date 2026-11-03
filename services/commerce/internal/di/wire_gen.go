@@ -184,7 +184,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserDashboardUseCase := usecase.NewUserDashboardUseCase(iDashboardRepository, iWardrobeDashboardReader, iBrandDashboardReader, iFashionDashboardReader)
 	userDashboardHandler := handler2.NewUserDashboardHandler(iUserDashboardUseCase)
 	brandRoleMiddleware := middleware2.NewBrandRoleMiddleware(iBrandUseCase)
-	router6 := router2.NewRouter(analyticsHandler, adminDashboardHandler, brandDashboardHandler, userDashboardHandler, brandRoleMiddleware, authMiddleware)
+	brandRefMiddleware := middleware2.NewBrandRefMiddleware(iBrandUseCase)
+	router6 := router2.NewRouter(analyticsHandler, adminDashboardHandler, brandDashboardHandler, userDashboardHandler, brandRoleMiddleware, brandRefMiddleware, authMiddleware)
 	iBrandItemUseCase := item2.NewBrandItemUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iBrandItemRepository, iDigitalSampleResponseRepository, iUserBriefContract, iFashionContract, rabbitMQClient, iMediaService, iBrandBenefitUseCase, iUnitOfWork)
 	brandPortalHandler := handler3.NewBrandPortalHandler(iBrandUseCase, iBrandItemUseCase, sseManager)
 	iLoyaltyProgramRepository := persistence2.NewLoyaltyProgramRepository(gormDB)
@@ -200,7 +201,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandAdminUseCase := admin.NewBrandAdminUseCase(iBrandRepository, iBrandMemberRepository, iBrandMembershipCache, iUserBriefContract, iUnitOfWork)
 	iAuditLogContract := commerceContracts.AuditLog
 	adminBrandHandler := handler3.NewAdminBrandHandler(l, iBrandAdminUseCase, iAuditLogContract)
-	router7 := router3.NewRouter(brandHandler, adminBrandHandler, brandRoleMiddleware, authMiddleware)
+	router7 := router3.NewRouter(brandHandler, adminBrandHandler, brandRoleMiddleware, brandRefMiddleware, authMiddleware)
 	iaiOrchestrator := commerceContracts.AIOrchestrator
 	iUserQuotaContract := commerceContracts.UserQuota
 	iUserStyleProfileRepository := persistence3.NewUserStyleProfileRepository(gormDB)

@@ -1,60 +1,54 @@
-# Tài liệu tham chiếu chung (dùng cho cả 2 runbook)
+# Tài liệu tham chiếu chung (VPS)
 
-File này KHÔNG phải runbook thực thi — không có thứ tự bước. Hai runbook
-(`vps-runbook.md`, `aws-runbook.md`) trỏ vào đây khi cần tra cứu. Đọc 1 lần cho biết,
-không cần đọc xuôi.
+File này KHÔNG phải runbook thực thi — không có thứ tự bước. `vps-runbook.md` trỏ vào đây
+khi cần tra cứu. Đọc 1 lần cho biết, không cần đọc xuôi.
+
+Trục AWS box (GĐ2) đã nghỉ hẳn — runbook + tooling nằm ở `../archive/aws-box/`
+(ADR 017). Tài liệu này chỉ còn mô tả trục VPS.
 
 Placeholder dùng chung toàn bộ tài liệu vận hành (thay trước khi chạy lệnh):
 `hycat-team/smart-wardrobe-be` (điền sẵn) · `<VPS_HOST>` · `<VPS_USER>` ·
-`<VPS_SSH_PORT>` · `<BOX_IP>` (IP box AWS).
+`<VPS_SSH_PORT>`.
 
-## 1. Ma trận 2 trục + luật isolation
+## 1. Một trục: VPS + infra local
 
-VPS và box ngoài là **2 trục độc lập** — bật/tắt một bên không đụng bên còn lại.
-DNS là điểm phối hợp duy nhất.
+Backend chỉ chạy trên VPS, dùng toàn bộ infra local trong compose. Không còn môi trường
+thứ hai dùng managed infra; mọi hostname managed (Supabase/Redis Cloud/CloudAMQP) đã rời
+khỏi kiến trúc runtime.
 
-| Hạng mục | VPS (`services/`) | Box ngoài AWS Lightsail (GĐ2, EC2-backed) |
-|---|---|---|
-| Compute | Docker Compose 3 service (`APP_MODE=all`) | 6 container (`http`×3 + `worker`×3) |
-| Postgres | container `postgres` local (`pgvector/pg17`) | Supabase pooler 6543 / direct 5432 |
-| Redis | container `redis` local (no TLS) | Redis Cloud (TLS chỉ ở gói trả phí; free 30MB không TLS) |
-| RabbitMQ | container `rabbitmq` local | CloudAMQP (amqps 5671) |
-| Elasticsearch | container ngoài compose, tắt tay được (app fallback DB) | không chạy (`ENABLED=false`) |
-| Email/Media/AI | Brevo / Cloudinary / keys hiện tại | copy y nguyên, share quota |
-| Nginx upstream | tên service compose | tên service compose (`*-http` trên box) |
-| `SERVER_ENV` | `vps` | `vps` (không còn profile `managed`) |
+| Hạng mục | VPS (`services/`) |
+|---|---|
+| Compute | Docker Compose 3 service (`APP_MODE=all`) |
+| Postgres | container `postgres` local (`pgvector/pg17`) |
+| Redis | container `redis` local (no TLS) |
+| RabbitMQ | container `rabbitmq` local |
+| Elasticsearch | container ngoài compose, tắt tay được (app fallback DB) |
+| Email/Media/AI | Brevo / Cloudinary / keys hiện tại |
+| Nginx upstream | tên service compose |
+| `SERVER_ENV` | `vps` (không còn profile `managed`) |
 
-**Luật isolation (cứng):** VPS chỉ dùng infra local trong docker
-(`postgres`/`redis`/`rabbitmq`); box ngoài chỉ dùng managed. Cấm VPS trỏ
-DB/Redis/RabbitMQ ra hostname managed ở runtime — hai môi trường không bao giờ
-dùng chung infra (ngoại lệ duy nhất: đồng bộ dump/restore offline).
+**Luật isolation:** VPS chỉ dùng infra local trong docker (`postgres`/`redis`/`rabbitmq`).
+Cấm trỏ DB/Redis/RabbitMQ ra hostname managed ở runtime — ngoại lệ duy nhất là đồng bộ
+dump/restore offline khi cần di chuyển dữ liệu.
 
-**Trục VPS (`NGINX_MODE` trên VPS, chỉ quyết chuyện VPS):**
+**Trục VPS (`NGINX_MODE`):**
 
 | Mode | `api.closy.hycat.online` | Monolith | Dùng khi |
 |---|---|---|---|
-| `services` | 3 service compose local | **dừng** | ổn định (bất kể box ngoài) |
-| `services-redirect` | 3 service + `api-v2`→301 về api.closy | dừng | grace 14–30 ngày sau khi tắt box, xong quay về `services` + xóa DNS |
+| `services` | 3 service compose local | **dừng** | ổn định |
+| `services-redirect` | 3 service + `api-v2`→301 về api.closy | dừng | grace 14–30 ngày sau khi bỏ box, xong quay về `services` + xóa DNS |
 | `rollback` | monolith (`backend`) | thủ công | ADR 012 (workflow đã lưu trữ) |
-
-**Trục box ngoài:** tắt (chưa có DNS) · bật (`api-v2` → box AWS) · cắt (về VPS
-`services-redirect` → xóa DNS). Song song 2 trục thì mỗi bên ghi DB riêng
-(divergence có chủ đích) — reunify duy nhất bằng dump/restore tay trong cửa sổ
-bảo trì; song song càng lâu, divergence càng lớn.
 
 ## 2. Biến môi trường
 
-Nguồn giá trị mẫu: `.env.example` (local), `.env.production.example` (VPS),
-`.env.aws.example` (box ngoài). Default không-secret nằm ở `configs/config.yaml` /
-`configs/config.production.yaml`; `.env` chỉ ghi đè thứ khác theo môi trường.
-Nhiều biến để trống là **có chủ đích**. Box ngoài KHÔNG dùng file env local —
-biến tiêm từ GitHub secrets trong `deploy-aws.yml`.
+Nguồn giá trị mẫu: `.env.example` (local), `.env.production.example` (VPS). Default
+không-secret nằm ở `configs/config.yaml` / `configs/config.production.yaml`; `.env` chỉ
+ghi đè thứ khác theo môi trường. Nhiều biến để trống là **có chủ đích**.
 
 | Profile | File env | `CONFIG_FILE` | `SERVER_ENV` | Ghi chú |
 |---|---|---|---|---|
 | Local dev | `.env` | `configs/config.yaml` | `local` | `make docker-dev-up` / `make run` |
 | VPS (services) | `.env.production` | `configs/config.production.yaml` | `vps` | 3 service compose + Nginx |
-| Box ngoài | (không) | `configs/config.production.yaml` | `vps` | env qua GitHub secrets |
 
 Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 
@@ -67,7 +61,7 @@ Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 
 | Biến | Ghi chú |
 |---|---|
-| `APP_MODE` | `all` (VPS) / `http`+`worker` per container (box ngoài) |
+| `APP_MODE` | `all` (VPS) |
 | `FRONT_END_ORIGIN` | CORS; danh sách origin, phẩy phân tách |
 | `COOKIE_DOMAIN` | Domain attribute cho cookie phiên; rỗng = host-only (local); production đặt `closy.hycat.online` để FE (`closy.hycat.online`) và API (`api.closy.hycat.online`) dùng chung cookie |
 | `SWAGGER_ACCESS_CODE` | Enforce khi `SERVER_ENV` không phải local/dev (tức `vps`/`production`/managed) — cùng điều kiện bật gin release mode + chặn CORS wildcard |
@@ -78,23 +72,23 @@ Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 
 | Biến | Ghi chú |
 |---|---|
-| `DB_HOST`, `DB_PORT` | VPS: `postgres`/`5432`; box: pooler host + `6543` |
+| `DB_HOST`, `DB_PORT` | `postgres`/`5432` |
 | `DB_USER`, `DB_PASSWORD`, `DB_NAME` | secret |
-| `DB_SSLMODE` | VPS `disable`; box (Supabase) `require` |
-| `DB_LISTENER_HOST` / `DB_LISTENER_PORT` / `DB_LISTENER_SSLMODE` | host **direct** cho migrate/`LISTEN`/advisory lock (5432; box `require`) |
+| `DB_SSLMODE` | `disable` (postgres local trong compose) |
+| `DB_LISTENER_HOST` / `DB_LISTENER_PORT` / `DB_LISTENER_SSLMODE` | host cho migrate/`LISTEN`/advisory lock (`postgres`, `5432`, `disable`) |
 | `DATABASE_MIGRATE_ON_START` | `true` (theo `config*.yaml`) |
 | `DATABASE_MIGRATION_TABLE` | rỗng = `goose_db_version`; per-service: `_commerce`/`_ai` (compose/workflow set) |
 | `DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER` | `true` (trong configs) |
 | `DB_DRILL_SCHEMA` | rỗng; chỉ dùng khi drill |
-| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | secret (box: endpoint/port riêng, KHÔNG phải 6379) |
-| `REDIS_TLS_ENABLED` | VPS `false`; box: `false` cho free 30MB, `true` cho gói có TLS |
-| `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` | secret (box: `5671` amqps; `VHOST` = vhost riêng trên CloudAMQP, VPS/local để trống = `/`) |
-| `RABBITMQ_TLS_ENABLED`, `RABBITMQ_MANAGEMENT_TLS_ENABLED` | VPS `false`; box `true` |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | secret (`redis`/`6379`) |
+| `REDIS_TLS_ENABLED` | `false` |
+| `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` | secret (`rabbitmq`/`5672`; `VHOST` để trống = `/`) |
+| `RABBITMQ_TLS_ENABLED`, `RABBITMQ_MANAGEMENT_TLS_ENABLED` | `false` |
 | `OUTBOX_LISTENER_ENABLED` | `true`; tắt → fallback poll |
 | `ELASTICSEARCH_ENABLED` | `false` mọi nơi; fallback DB (chi tiết §5) |
 
-Migration/`LISTEN`/advisory lock là **session-scoped**: chạy trên **direct 5432**,
-KHÔNG qua transaction pooler 6543. Kiểm tra thủ công:
+Migration/`LISTEN`/advisory lock là **session-scoped**: chạy trên kết nối **direct tới
+`postgres`**, KHÔNG qua pooler. Kiểm tra thủ công:
 ```bash
 goose -dir services/<svc>/database/migrations \
   postgres "host=$DB_LISTENER_HOST user=$DB_USER password=$DB_PASSWORD \
@@ -107,14 +101,14 @@ goose -dir services/<svc>/database/migrations \
 |---|---|
 | `JWT_SECRET` / `JWT_ALGORITHM` | secret; `HS256` |
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | PEM; rỗng = HS256 tạm thời |
-| `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_WEB_CLIENT_SECRET`, `GOOGLE_CLIENT_IDS`, `GOOGLE_REDIRECT_URI`, `GOOGLE_STATE_TTL_MINUTES` | Google OAuth. `WEB_CLIENT_ID`/`WEB_CLIENT_SECRET` là client **Web application**, dùng cho *duy nhất* luồng redirect web — dùng nhầm client Android/iOS sẽ khiến Google trả `redirect_uri_mismatch`. `CLIENT_IDS` chỉ là danh sách phẩy phân tách client iOS/Android được chấp nhận làm audience của ID token; client web đã được thêm tự động nên không khai báo lại, và thứ tự trong danh sách không mang ý nghĩa. `REDIRECT_URI` là callback backend; box ngoài copy y nguyên từ VPS |
-| `INGRESS_ACCOUNT/COMMERCE/AI_URL` | VPS: `http://account:8080`...; box: hardcode `*-http` trong compose |
+| `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_WEB_CLIENT_SECRET`, `GOOGLE_CLIENT_IDS`, `GOOGLE_REDIRECT_URI`, `GOOGLE_STATE_TTL_MINUTES` | Google OAuth. `WEB_CLIENT_ID`/`WEB_CLIENT_SECRET` là client **Web application**, dùng cho *duy nhất* luồng redirect web — dùng nhầm client Android/iOS sẽ khiến Google trả `redirect_uri_mismatch`. `CLIENT_IDS` chỉ là danh sách phẩy phân tách client iOS/Android được chấp nhận làm audience của ID token; client web đã được thêm tự động nên không khai báo lại, và thứ tự trong danh sách không mang ý nghĩa. `REDIRECT_URI` là callback backend |
+| `INGRESS_ACCOUNT/COMMERCE/AI_URL` | `http://account:8080`... (tên service compose) |
 | `INGRESS_TOKEN_AUDIENCE` | để trống (không còn Cloud Run) |
-| `EMAIL_SENDER_EMAIL`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `EMAIL_REPLY_TO` | Brevo SMTP; box copy y nguyên từ VPS |
-| `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` | **kênh riêng mỗi trục** (VPS và box KHÔNG share — mỗi kênh có webhook URL riêng) |
+| `EMAIL_SENDER_EMAIL`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `EMAIL_REPLY_TO` | Brevo SMTP |
+| `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` | kênh payOS của VPS (webhook trỏ `api.closy.hycat.online`) |
 | `PAYOS_ENDPOINT` | `https://api-merchant.payos.vn` |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_API_URL` | box copy y nguyên từ VPS |
-| `VISION_*`, `EMBEDDING_*`, `CHAT_TEXT_*`, `RECOMMENDATION_TEXT_*`, `FREE_TEXT_*` | provider/model/endpoint/key; box copy y nguyên từ VPS |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_API_URL` | secret |
+| `VISION_*`, `EMBEDDING_*`, `CHAT_TEXT_*`, `RECOMMENDATION_TEXT_*`, `FREE_TEXT_*` | provider/model/endpoint/key |
 | `AI_UNBILLED_CAPABILITIES` | danh sách capability dùng key miễn phí (comma-separated, ví dụ `free_text,embedding`); thiếu biến = tất cả billed |
 
 ### 2.4 Nginx / compose (không thuộc app)
@@ -123,7 +117,7 @@ goose -dir services/<svc>/database/migrations \
 |---|---|
 | `COMPOSE_PROJECT_NAME`, `BACKEND_IMAGE`, `BACKEND_HEALTH_PATH` | compose VPS (`BACKEND_IMAGE` legacy, compose hiện tại không đọc) |
 | `API_DOMAIN` | `api.closy.hycat.online` |
-| `API_V2_DOMAIN` | `api-v2.closy.hycat.online` (box ngoài / redirect grace) |
+| `API_V2_DOMAIN` | `api-v2.closy.hycat.online` (chỉ dùng cho redirect grace) |
 | `NGINX_MODE` | `services` / `services-redirect` / `rollback` (thủ công, ADR 012) |
 | `NGINX_CLIENT_MAX_BODY_SIZE` | `20m` |
 | `NGROK_AUTHTOKEN`, `NGROK_DOMAIN`, `NGROK_TARGET` | chỉ local tunnel |
@@ -131,29 +125,20 @@ goose -dir services/<svc>/database/migrations \
 ### 2.5 GitHub secrets (chỉ host-access; app config nằm trong file env)
 
 Workflow CHỈ đọc secret truy cập host + GHCR:
-`AWS_HOST`, `AWS_USER`, `AWS_SSH_PORT`, `AWS_SSH_KEY`, `AWS_KNOWN_HOSTS` (box AWS);
-`VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS` (VPS);
-`GHCR_USERNAME`, `GHCR_READ_TOKEN` (PAT `read:packages`, dùng chung).
+`VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`;
+`GHCR_USERNAME`, `GHCR_READ_TOKEN` (PAT `read:packages`).
 
 Toàn bộ `DB_*`, `REDIS_*`, `RABBITMQ_*`, `JWT_*`, `CLOUDINARY_*`, `EMAIL_*`,
 `PAYOS_*`, `SWAGGER_ACCESS_CODE`, AI provider keys **KHÔNG phải** GitHub secret —
-chúng nằm trong `.env.production` (VPS) và `.env.aws` (box), đưa lên host bằng
-`scp`/editor, không qua GitHub. (Giai đoạn Cloud Run cũ từng set chúng làm secret;
-nay không workflow nào đọc nữa.)
-
-Không workflow nào tiêm env app cho box. `docker-compose.aws.yml` hardcode mỗi
-container: `CONFIG_FILE`, `APP_MODE=http|worker`, `DATABASE_MIGRATION_TABLE`,
-`INGRESS_*_URL`, `SERVER_PORT=8080`, `TZ`. Còn lại lấy từ `.env.aws`: `SERVER_ENV=vps`,
-`API_V2_DOMAIN`, `DB_*`/`REDIS_*`/`RABBITMQ_*` (kèm cờ TLS theo gói), `JWT_*`,
-`EMAIL_*`, `PAYOS_*`, `CLOUDINARY_*`, AI keys, `ELASTICSEARCH_ENABLED=false`,
-`FRONT_END_ORIGIN`, `SWAGGER_ACCESS_CODE`, `GOOGLE_*`.
+chúng nằm trong `.env.production` trên VPS, đưa lên host bằng `scp`/editor, không qua
+GitHub. (Giai đoạn Cloud Run cũ từng set chúng làm secret; nay không workflow nào đọc nữa.)
 
 Verify đã đủ:
 ```bash
 gh secret list   -R "hycat-team/smart-wardrobe-be"
 gh variable list -R "hycat-team/smart-wardrobe-be"
 gh api repos/hycat-team/smart-wardrobe-be/environments --jq '.environments[].name'
-# kỳ vọng: vps-production, aws-production
+# kỳ vọng: vps-production
 ```
 
 ### 2.6 Biến đã bỏ / không nên set
@@ -170,23 +155,22 @@ gh api repos/hycat-team/smart-wardrobe-be/environments --jq '.environments[].nam
 `hycat.online` giữ DNS ở **Vercel**; **không** NS-delegate, **không** đổi nameserver,
 **không** Cloudflare DNS.
 - `api.closy.hycat.online` (A/CNAME) → VPS: giữ nguyên, không đổi.
-- `api-v2.closy.hycat.online`: chỉ tạo khi bật box ngoài — Type `A` (hoặc `CNAME`),
-  Name `api-v2`, Value IP box, TTL thấp (`60`) trong giai đoạn chuyển; chỉ thêm
-  **sau khi** cert + server block `api-v2` sẵn sàng. Grace khi cắt: về VPS +
-  redirect 301 rồi xóa sau 14–30 ngày.
+- `api-v2.closy.hycat.online`: chỉ còn ý nghĩa trong giai đoạn grace redirect trên VPS
+  (`NGINX_MODE=services-redirect`). Không còn box nào để trỏ tới; hết grace thì xoá
+  record này và trả mode về `services`.
 
 Verify DNS:
 ```bash
-dig +short api-v2.closy.hycat.online
 dig +short api.closy.hycat.online       # không đổi
-curl -sSI https://api-v2.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
+dig +short api-v2.closy.hycat.online    # rỗng sau khi xoá record grace
+curl -sSI https://api.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
 ```
 
 | Workflow | Trigger | Nội dung |
 |---|---|---|
 | `ci.yml` | PR/push `main` | fmt/tidy/generate-check, vet, test(-race), build matrix, buf lint + proto drift, parity swagger, image-build matrix |
 | `deploy-vps-services.yml` | dispatch hoặc push tag `vps-*` + approval | 3 chặng: build matrix → GHCR (pin digest, alias tên tag) → `compose up -d <svc>` → recreate nginx 1 lần → `smoke-all` curl `/api/v1/<svc>/health` đủ 3 service + grep tên service |
-| `deploy-aws.yml` | dispatch hoặc push tag `aws-*` + approval | 3 chặng tương tự (6 container http×3 + worker×3); `smoke-all` qua IP box, chưa cần DNS |
+| `deploy-aws.yml` | đã lưu trữ (ADR 017) | Workflow trục box AWS — chuyển vào `docs/archive/aws-box/`; không còn trong Actions |
 | `deploy-production.yml` | đã lưu trữ (ADR 012) | Rollback monolith khẩn cấp — chuyển vào `docs/archive/`; chỉ còn đường thủ công |
 
 Quy ước image: tag immutable `<svc>:<git-sha>` (+ alias tên release tag);
@@ -200,32 +184,28 @@ Không có Cloud Monitoring trong kiến trúc. Monitoring dựa trên: log JSON
 (`docker compose logs`), health endpoint per-service, billing alarm.
 
 ```bash
-# VPS
 cd /opt/closy
 docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml logs -f --tail=100 account
-# Box ngoài
-cd /opt/closy-aws
-docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml logs -f --tail=100 commerce-worker
 ```
 Trace `request_id` (Nginx `main_tid` ↔ app log) để nối request qua 2 lớp.
 
 | Signal | Cách đo | Ngưỡng gợi ý |
 |---|---|---|
-| Health | `GET /api/v1/<svc>/health` từng service qua cron/Uptime Kuma (cả `api.closy` + `api-v2`) | alert khi down 2 lần liên tiếp |
+| Health | `GET /api/v1/<svc>/health` từng service qua cron/Uptime Kuma | alert khi down 2 lần liên tiếp |
 | Latency | log `duration_ms` / access log Nginx | p95 > 500ms trong 5m |
 | Error-rate | đếm 5xx trong log / access log | > 1% trong 5m |
 | Worker liveness | `docker compose ps` + outbox backlog trong log | worker down / backlog > 10000 |
 | AI grant + fallback | `GET /api/v1/ai/health` → `grant_rejected_by_reason`, `cost_fallback_by_reason` | xem §4.1 |
 | Panic trong gRPC handler | log `recovered from panic while serving a gRPC call` | bất kỳ lần nào — xem §4.1 |
-| Bill AWS | billing alarm \$20/40/60 + Lightsail transfer metrics | vượt ngưỡng (overage SG \$0.12/GB) |
+| Bill VPS | billing alarm của nhà cung cấp VPS | vượt ngưỡng |
 
 Khi alert: health down → `ps` + log → redeploy service đó (`-f services=<svc>`);
 error-rate cao → xem log → rollback về digest trước nếu do deploy mới; worker
 down/backlog tăng → kiểm tra singleton + advisory lock rồi restart; p95 vượt →
-kiểm tra pooler/AMQP/Redis conn; bill vượt → kiểm tra transfer, consider tắt box.
+kiểm tra pooler/AMQP/Redis conn; bill vượt → kiểm tra transfer và tài nguyên thừa.
 
-Verify: log JSON đọc được qua compose; health check ngoài hoạt động cả 2 hostname;
-billing alarm AWS hoạt động.
+Verify: log JSON đọc được qua compose; health check ngoài hoạt động trên `api.closy`;
+billing alarm của VPS hoạt động.
 
 ### 4.1. Cảnh báo AI: grant bị từ chối, fallback, và panic
 
@@ -310,7 +290,7 @@ production, và phải làm gì trước khi chạy lại.
 Chi tiết đầy đủ về từng mã lý do: `specs/024-admin-premium-grant/quickstart.md` §
 "Cấu hình cảnh báo".
 
-## 5. Elasticsearch (tắt mặc định, cả 2 trục)
+## 5. Elasticsearch (tắt mặc định)
 
 Search không được funded nên tắt (`ELASTICSEARCH_ENABLED=false`) mọi môi trường.
 Không set `ELASTICSEARCH_*` trong secrets hay `.env.production`. Hành vi khi tắt:
@@ -322,9 +302,8 @@ thể tắt container ES bất cứ lúc nào (app đã fallback DB). Verify: se
 
 ## 6. Xoay vòng credential (tóm tắt)
 
-Thứ tự: **rotate managed trước, VPS sau**; mỗi bước redeploy service tương ứng rồi
-mới thu hồi (tránh downtime). JWT: sinh secret mới → set secret → dispatch cả 2
-workflow (+ cập nhật `.env.production` nếu còn VPS). SSH box: xoá keypair trên
-console + `gh secret remove AWS_SSH_KEY/AWS_KNOWN_HOSTS`. Managed (Supabase/AMQP/Redis):
-rotate trong dashboard → cập nhật secrets → redeploy. Cloudinary/Brevo: rotate key →
-cập nhật → redeploy. `SWAGGER_ACCESS_CODE`: rotate nếu từng lộ.
+Thứ tự: rotate secret → redeploy service tương ứng rồi mới thu hồi (tránh downtime).
+JWT: sinh secret mới → set trong `.env.production` → dispatch `deploy-vps-services.yml`.
+SSH VPS: xoá keypair cũ + `gh secret set VPS_SSH_KEY`. Managed bên thứ ba
+(Cloudinary/Brevo/payOS): rotate trong dashboard → cập nhật `.env.production` → redeploy.
+`SWAGGER_ACCESS_CODE`: rotate nếu từng lộ.

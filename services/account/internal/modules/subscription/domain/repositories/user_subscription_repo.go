@@ -26,7 +26,12 @@ type IUserSubscriptionRepository interface {
 	GetActiveExpiredSubscriptions(ctx context.Context, now time.Time) ([]*entities.UserSubscription, error)
 	GetActiveExpiredSubscriptionsBatch(ctx context.Context, now time.Time, lastUserID uuid.UUID, lastExpiresAt time.Time, limit int) ([]*entities.UserSubscription, error)
 	GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, error)
-	GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error)
+	// GetSubscriptionsExpiringWithinBatch pages through finite plans ending in
+	// [from, to]. Cursor-paged for the same reason the expiry scan is: the
+	// reminder used to load every row in the window and then look up one wallet
+	// per row, which is a whole night's worth of queries on a large window.
+	// Order is (expires_at, user_id), matching the cursor predicate.
+	GetSubscriptionsExpiringWithinBatch(ctx context.Context, from, to time.Time, lastExpiresAt time.Time, lastUserID uuid.UUID, limit int) ([]*entities.UserSubscription, error)
 	// 024 T147: `BulkCreate` is GONE. FR-014 needs a history row for every account
 	// in a bulk provision, which `ProvisionDefault` plus `PlanChangePublisher` do per
 	// account inside one transaction. The plain bulk INSERT this replaced skipped

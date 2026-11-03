@@ -6,14 +6,15 @@ trên xuống, không bỏ bước. Mọi bảng biến/secret/DNS/monitor tra �
 
 **Khi nào dùng**: VPS đang chạy monolith (`api.closy.hycat.online`), có Docker +
 `/opt/closy`; domain `hycat.online` DNS ở **Vercel**.
-**Không dùng khi**: dựng box ngoài AWS (đọc `aws-runbook.md`).
+**Không dùng khi**: cần tra biến/secret/DNS/monitor — đọc `shared-reference.md`.
+(Trục box AWS đã lưu trữ theo ADR 017, không còn runbook riêng.)
 
 Placeholder (thay trong mọi lệnh): `hycat-team/smart-wardrobe-be` (điền sẵn) ·
 `<VPS_HOST>` · `<VPS_USER>` · `<VPS_SSH_PORT>`.
 
 ## Bước 0 — GitHub: environment + secrets VPS (làm 1 lần)
 
-1. Tạo 2 environment `vps-production` (+ `aws-production` để dành GĐ2) ở
+1. Tạo environment `vps-production` ở
    `github.com/hycat-team/smart-wardrobe-be/settings/environments` (nên bật Required reviewers).
 2. Tạo GHCR read token cho VPS: GitHub Settings → Personal access token
    (classic) → note `closy-vps-ghcr-read`, scope **`read:packages`** → copy token.
@@ -171,7 +172,7 @@ Cách khuyến nghị để quay về bản trước của 1 service: pin lại 
 - [ ] `api.closy` 200 qua đủ 3 service (`/api/v1/<svc>/health` đúng tên; route + SSE + auth + upload).
 - [ ] Backend dừng; guard isolation pass; 0 request qua Cloudflare; ghi mốc + checksum.
 - Đổi `NGINX_MODE` trong `.env.production` rồi recreate nginx (luôn kèm cả 2 env-file).
-  `services` (ổn định) · `services-redirect` (grace sau khi tắt box ngoài, xong quay về
+  `services` (ổn định) · `services-redirect` (grace sau khi bỏ box, xong quay về
   `services`) · `rollback` (thủ công, ADR 012 — không còn workflow tự động).
 - DNS `api.closy` giữ nguyên, không đổi. Log/health/monitor: `shared-reference.md` §4.
 
