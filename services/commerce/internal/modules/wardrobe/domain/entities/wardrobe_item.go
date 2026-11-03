@@ -18,5 +18,9 @@ type WardrobeItem struct {
 	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"`
 	ItemType      itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"`
 	LastUsedAt    *time.Time                        `gorm:"type:timestamp with time zone"`
-	TaskID        *uuid.UUID                        `gorm:"column:task_id;type:uuid"`
+	// LastRecommendedAt is the last time this item was returned by a
+	// recommendation (feature 033). It feeds the recency rotation only; it is
+	// updated best-effort and is never backfilled.
+	LastRecommendedAt *time.Time `gorm:"column:last_recommended_at;type:timestamp with time zone"`
+	TaskID            *uuid.UUID `gorm:"column:task_id;type:uuid"`
 }

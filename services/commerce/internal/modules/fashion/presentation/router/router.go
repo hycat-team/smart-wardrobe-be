@@ -11,20 +11,23 @@ import (
 )
 
 type Router struct {
-	aiHandler       *fashion_handler.WardrobeAIHandler
-	categoryHandler *fashion_handler.CategoryHandler
-	auth            identity_contract.IAuthMiddleware
+	aiHandler           *fashion_handler.WardrobeAIHandler
+	categoryHandler     *fashion_handler.CategoryHandler
+	styleProfileHandler *fashion_handler.StyleProfileHandler
+	auth                identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	aiHandler *fashion_handler.WardrobeAIHandler,
 	categoryHandler *fashion_handler.CategoryHandler,
+	styleProfileHandler *fashion_handler.StyleProfileHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		aiHandler:       aiHandler,
-		categoryHandler: categoryHandler,
-		auth:            auth,
+		aiHandler:           aiHandler,
+		categoryHandler:     categoryHandler,
+		styleProfileHandler: styleProfileHandler,
+		auth:                auth,
 	}
 }
 
@@ -40,6 +43,11 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	aiApi := privateApi.Group("/ai")
 	{
 		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.aiHandler.RecommendOutfit))
+		// 033 US6: feedback on a previously returned recommendation.
+		aiApi.POST("/outfit-recommendations/feedback", shared_pres.WrapHandler(r.aiHandler.SubmitRecommendationFeedback))
+		// 033 US7: gap suggestions for a set of items the user already owns.
+		// Never runs the LLM and never consumes the daily outfit quota.
+		aiApi.POST("/outfit-completions", shared_pres.WrapHandler(r.aiHandler.CompleteOutfit))
 		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.CreateChatSession))
 		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.GetChatSessions))
 		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.aiHandler.GetChatMessages))
@@ -47,6 +55,15 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		aiApi.DELETE("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.DeleteChatSession))
 		aiApi.PATCH("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.UpdateChatSession))
 		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.aiHandler.StreamChatMessage))
+	}
+
+	styleProfileApi := privateApi.Group("/me/style-profile")
+	{
+		styleProfileApi.GET("", shared_pres.WrapHandler(r.styleProfileHandler.GetStyleProfile))
+		// 033 US5: cold-start suggestions derived from the active wardrobe.
+		styleProfileApi.GET("/suggestions", shared_pres.WrapHandler(r.styleProfileHandler.GetStyleSuggestions))
+		styleProfileApi.PUT("", shared_pres.WrapHandler(r.styleProfileHandler.UpdateStyleProfile))
+		styleProfileApi.DELETE("", shared_pres.WrapHandler(r.styleProfileHandler.DeleteStyleProfile))
 	}
 
 	admin := group.Group("/admin")

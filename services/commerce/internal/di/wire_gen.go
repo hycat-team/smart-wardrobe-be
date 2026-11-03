@@ -28,7 +28,7 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/follow"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/interaction"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/post"
-	"smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/profile"
+	profile2 "smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/profile"
 	search3 "smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/search"
 	"smart-wardrobe-be/services/commerce/internal/modules/community/application/usecase/statsync"
 	persistence5 "smart-wardrobe-be/services/commerce/internal/modules/community/infrastructure/persistence"
@@ -44,7 +44,12 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/category"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/fashion_item"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/completion"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/feedback"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/learning"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/personalization/profile"
 	worker3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/worker"
+	caching3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/caching"
 	persistence3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/infrastructure/persistence"
 	contract3 "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/contract"
 	handler4 "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/handler"
@@ -199,13 +204,22 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	router7 := router3.NewRouter(brandHandler, adminBrandHandler, brandRoleMiddleware, brandRefMiddleware, authMiddleware)
 	iaiOrchestrator := commerceContracts.AIOrchestrator
 	iUserQuotaContract := commerceContracts.UserQuota
-	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUnitOfWork)
+	iUserStyleProfileRepository := persistence3.NewUserStyleProfileRepository(gormDB)
+	iPersonalizationCatalogCache := caching3.NewRedisPersonalizationCatalogCache(iCacheService)
+	iRecommendationSnapshotCache := caching3.NewRedisRecommendationSnapshotCache(iCacheService)
+	outfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUserStyleProfileRepository, iPersonalizationCatalogCache, iRecommendationSnapshotCache, iUnitOfWork)
+	iOutfitCompletionUseCase := completion.NewOutfitCompletionUseCase(l, iWardrobeContract, iFashionItemRepository, outfitRecommendationUseCase)
+	iStyleSignalRepository := persistence3.NewStyleSignalRepository(gormDB)
+	iStyleLearningUseCase := learning.NewStyleLearningUseCase(cfg, l, iStyleSignalRepository, iUserStyleProfileRepository, iFashionItemRepository, iUnitOfWork)
+	iRecommendationFeedbackUseCase := feedback.NewRecommendationFeedbackUseCase(l, iRecommendationSnapshotCache, iStyleLearningUseCase)
 	iConversationalContextRepository := persistence3.NewConversationalContextRepository(gormDB)
 	iMessageRepository := persistence3.NewMessageRepository(gormDB)
 	iWardrobeChatUseCase := chat2.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iWardrobeContract, iUnitOfWork)
-	wardrobeAIHandler := handler4.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
+	wardrobeAIHandler := handler4.NewWardrobeAIHandler(outfitRecommendationUseCase, iOutfitCompletionUseCase, iRecommendationFeedbackUseCase, iWardrobeChatUseCase)
 	categoryHandler := handler4.NewCategoryHandler(iCategoryUseCase)
-	router8 := router4.NewRouter(wardrobeAIHandler, categoryHandler, authMiddleware)
+	iStyleProfileUseCase := profile.NewStyleProfileUseCase(cfg, l, iaiOrchestrator, iUserStyleProfileRepository, iUserSubscriptionContract, iWardrobeContract, iFashionItemRepository)
+	styleProfileHandler := handler4.NewStyleProfileHandler(iStyleProfileUseCase)
+	router8 := router4.NewRouter(wardrobeAIHandler, categoryHandler, styleProfileHandler, authMiddleware)
 	iPostRepository := persistence5.NewPostRepository(gormDB)
 	iPostMediaRepository := persistence5.NewPostMediaRepository(gormDB)
 	iPostLikeRepository := persistence5.NewPostLikeRepository(gormDB)
@@ -220,7 +234,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserFollowStatsRepository := persistence5.NewUserFollowStatsRepository(gormDB)
 	iFollowUseCase := follow.NewFollowUseCase(cfg, iUnitOfWork, iFollowRepository, iUserFollowStatsRepository, iUserBriefContract, iRateLimiter)
 	followHandler := handler5.NewFollowHandler(iFollowUseCase)
-	iProfileUseCase := profile.NewProfileUseCase(cfg, iFollowRepository, iUserFollowStatsRepository, iPostRepository, iUserBriefContract)
+	iProfileUseCase := profile2.NewProfileUseCase(cfg, iFollowRepository, iUserFollowStatsRepository, iPostRepository, iUserBriefContract)
 	profileHandler := handler5.NewProfileHandler(iProfileUseCase, iPostUseCase)
 	iSearchUseCase := search3.NewSearchUseCase(cfg, iPostUseCase, iUserBriefContract, iUserFollowStatsRepository)
 	searchHandler := handler5.NewSearchHandler(iSearchUseCase)
@@ -244,6 +258,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	failedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
 	processingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
 	fashionAnalyzeWorker := worker4.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
+	styleLearningWorker := worker4.NewStyleLearningWorker(rabbitMQClient, iStyleLearningUseCase, l)
 	iDashboardAggregatorUseCase := usecase.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
 	dashboardAggregatorWorker := worker5.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
 	redisRealtimePublisher := messaging.NewRedisRealtimePublisher(client, l)
@@ -278,6 +293,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		FailedItemsCleanup:               failedItemsCleanupWorker,
 		ProcessingRecovery:               processingRecoveryWorker,
 		FashionAnalyze:                   fashionAnalyzeWorker,
+		StyleLearning:                    styleLearningWorker,
 		DashboardAggregator:              dashboardAggregatorWorker,
 		WardrobeFashionEvent:             wardrobeFashionEventWorker,
 		BrandFashionEvent:                brandFashionEventWorker,

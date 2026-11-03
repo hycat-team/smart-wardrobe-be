@@ -34,6 +34,21 @@ func RunLocalHSLMatching(
 	input dto.RecommendOutfitReq,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) *dto.RecommendedOutfitRes {
+	return RunLocalHSLMatchingWithPersonalization(candidates, input, fashionItemMap, types.PersonalizationContext{})
+}
+
+// RunLocalHSLMatchingWithPersonalization applies the same soft personal style
+// preference to the fallback path (033 US1/T033), so an AI failure still
+// reflects the user's declared and learned styles: within each role the
+// personal-style items come first, then learned-style items, then neutral ones,
+// and avoided styles last. Ordering only re-ranks existing candidates; nothing
+// is filtered out, so the fallback can still build a complete outfit.
+func RunLocalHSLMatchingWithPersonalization(
+	candidates []types.CandidateForPrompt,
+	input dto.RecommendOutfitReq,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+	pc types.PersonalizationContext,
+) *dto.RecommendedOutfitRes {
 	var tops, bottoms, shoes, outerwears, dresses, headwear, accessories []*wardrobeDto.WardrobeItemContractDTO
 
 	for _, candidate := range candidates {
@@ -58,6 +73,16 @@ func RunLocalHSLMatching(
 		default:
 			accessories = append(accessories, item)
 		}
+	}
+
+	if pc.HasStyleSignals() {
+		tops = orderByPersonalStyle(tops, pc, fashionItemMap)
+		bottoms = orderByPersonalStyle(bottoms, pc, fashionItemMap)
+		shoes = orderByPersonalStyle(shoes, pc, fashionItemMap)
+		outerwears = orderByPersonalStyle(outerwears, pc, fashionItemMap)
+		dresses = orderByPersonalStyle(dresses, pc, fashionItemMap)
+		headwear = orderByPersonalStyle(headwear, pc, fashionItemMap)
+		accessories = orderByPersonalStyle(accessories, pc, fashionItemMap)
 	}
 
 	includeOuterwear := shouldIncludeOuterwear(input)
@@ -169,4 +194,44 @@ func RunLocalHSLMatching(
 		Items:       items,
 		IsFallback:  true,
 	}
+}
+
+// orderByPersonalStyle stable-partitions one role list into personal match,
+// learned match, neutral and avoided-style buckets, preserving the existing
+// order inside each bucket. Avoided entries are checked first so a style that is
+// both declared and excluded ends up at the bottom rather than being promoted.
+func orderByPersonalStyle(
+	items []*wardrobeDto.WardrobeItemContractDTO,
+	pc types.PersonalizationContext,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) []*wardrobeDto.WardrobeItemContractDTO {
+	if len(items) < 2 {
+		return items
+	}
+
+	personal := make([]*wardrobeDto.WardrobeItemContractDTO, 0, len(items))
+	learned := make([]*wardrobeDto.WardrobeItemContractDTO, 0, len(items))
+	neutral := make([]*wardrobeDto.WardrobeItemContractDTO, 0, len(items))
+	avoided := make([]*wardrobeDto.WardrobeItemContractDTO, 0, len(items))
+
+	for _, item := range items {
+		fashion := fashionForItemFromMap(item, fashionItemMap)
+		switch {
+		case itemMatchesAnyStyleLabel(fashion, pc.ExcludedStyles):
+			avoided = append(avoided, item)
+		case itemMatchesAnyStyleLabel(fashion, pc.ExplicitStyles):
+			personal = append(personal, item)
+		case itemMatchesAnyStyleLabel(fashion, pc.LearnedStyles):
+			learned = append(learned, item)
+		default:
+			neutral = append(neutral, item)
+		}
+	}
+
+	ordered := make([]*wardrobeDto.WardrobeItemContractDTO, 0, len(items))
+	ordered = append(ordered, personal...)
+	ordered = append(ordered, learned...)
+	ordered = append(ordered, neutral...)
+	ordered = append(ordered, avoided...)
+	return ordered
 }

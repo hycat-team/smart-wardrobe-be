@@ -181,6 +181,9 @@ func BuildPlanBenefitSnapshot(plan *entities.SubscriptionPlan) entities.JSONDocu
 		"maxOutfits":         plan.MaxOutfits,
 		"aiOutfitDailyQuota": plan.AiOutfitDailyQuota,
 		"aiChatDailyQuota":   plan.AiChatDailyQuota,
+		// 033 D2: personalization is a gate-1 (customer-visible) benefit, so it
+		// belongs in the snapshot captured at grant time.
+		"personalizationEnabled": plan.PersonalizationEnabled,
 	})
 	if err != nil {
 		// A snapshot that cannot be marshalled would have to be reported; an

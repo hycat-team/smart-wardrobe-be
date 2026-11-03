@@ -86,15 +86,16 @@ func MapToWardrobeItemContractDTO(item *entities.WardrobeItem) *dto.WardrobeItem
 		return nil
 	}
 	return &dto.WardrobeItemContractDTO{
-		ID:            item.ID,
-		UserID:        item.UserID,
-		Price:         item.Price,
-		Status:        item.Status,
-		FashionItemID: item.FashionItemID,
-		CreatedAt:     item.CreatedAt,
-		LastUsedAt:    item.LastUsedAt,
-		IsDeleted:     item.IsDeleted,
-		TaskID:        item.TaskID,
+		ID:                item.ID,
+		UserID:            item.UserID,
+		Price:             item.Price,
+		Status:            item.Status,
+		FashionItemID:     item.FashionItemID,
+		CreatedAt:         item.CreatedAt,
+		LastUsedAt:        item.LastUsedAt,
+		LastRecommendedAt: item.LastRecommendedAt,
+		IsDeleted:         item.IsDeleted,
+		TaskID:            item.TaskID,
 	}
 }
 

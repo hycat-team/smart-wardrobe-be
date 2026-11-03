@@ -99,6 +99,7 @@ server {
     location ^~ /api/v1/admin/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/ai/chat { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/ai/chat/sessions { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
+    location ^~ /api/v1/ai/outfit-completions { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/ai/outfit-recommendations { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/brand { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/brand-portal/brands { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
@@ -109,6 +110,7 @@ server {
     location ^~ /api/v1/me/brand-loyalties { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/dashboard { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/style-profile { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/outfits { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/posts { proxy_pass $commerce_upstream; }

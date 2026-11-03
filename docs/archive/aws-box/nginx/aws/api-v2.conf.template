@@ -108,6 +108,7 @@ server {
     location ^~ /api/v1/me/brand-loyalties { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/dashboard { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/style-profile { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/outfits { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/posts { proxy_pass $commerce_upstream; }

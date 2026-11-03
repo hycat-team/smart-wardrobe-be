@@ -314,6 +314,46 @@ không còn dữ liệu seed.
 
 ---
 
+## p95 của endpoint gợi ý phối đồ (033 SC-010) — **FAIL trên AI path, PASS trên fallback**
+
+### Số đo 2026-10-27
+
+Môi trường: `verify_033` (init + migrate 3 service), account 8081, ai 8082, commerce 8080, 5 active
+item (ao/quan clone), plan `premium-monthly` (`personalization_enabled=true`), catalog footwear chưa
+sở hữu. Embedding provider hoạt động.
+
+| Path | n | p50 | p95 | p99 | max | Kết luận |
+|---|---|---|---|---|---|---|
+| HSL fallback (`provider_error`) | 50 | 563.4 ms | **673.3 ms** | 766.8 ms | 766.8 ms | **PASS** |
+| AI `gemini-2.5-flash-lite` | 50 | 4903.7 ms | **21686.1 ms** | 24526.1 ms | 24526.1 ms | **FAIL** |
+| AI `gemini-3.5-flash-lite` | 50 | 18604.7 ms | **50044.0 ms** | 60576.9 ms | 60576.9 ms | **FAIL** |
+
+**Kết luận SC-010**: **FAIL trên AI path** (p95 21.7 s với `gemini-2.5`, 50.0 s với `gemini-3.5`);
+fallback HSL PASS (0.67 s). Nguyên nhân là latency provider/model, không phải pipeline 033
+(embedding + retrieval + ranking ~0.5 s). Hai hướng xử lý cần quyết định:
+
+- đặt timeout recommendation text ~4 s để fallback HSL trong budget (sẽ mất AI path khi provider chậm);
+- hoặc dùng provider/model nhanh hơn, rồi đo lại ở production.
+
+**Quyết định 2026-10-27**: giữ timeout 30 s, chấp nhận SC-010 fail trên AI path; fallback PASS;
+đo lại ở production khi provider/model tốt hơn.
+
+`gemini-3.5-flash-lite` chậm hơn `gemini-2.5-flash-lite` trong môi trường này. Row pricing
+`gemini-3.5-flash-lite` đã được thêm vào seed AI baseline; DB đã migrate trước đó cần data patch
+(xem `specs/033-personalized-styling/deferred.md` D-11/D-12).
+
+### Lệnh tái lập
+
+```bash
+# verify_033: database/init/*.sql + make migrate-up svc=account|commerce|ai (DB_NAME=verify_033)
+# start bin/account.exe (8081), bin/ai.exe (8082), bin/commerce.exe (8080) với APP_MODE=all
+# seed user premium + 5 active item (catalog-init ao/quan)
+psql "$DATABASE_URL" -c "UPDATE subscription.user_daily_quotas SET outfit_recommend_count=0, last_reset_date=now() WHERE user_id='<id>';"
+# 50 request, reset sau 25; đo Stopwatch; p95 = sorted[ceil(0.95*n)-1]
+```
+
+---
+
 ## Lưu ý vận hành
 
 - **`x-queue-type` không đổi được trên queue đã tồn tại.** Queue đang là classic mà

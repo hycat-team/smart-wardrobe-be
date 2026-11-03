@@ -20,10 +20,13 @@ type SaveOutfitReq struct {
 
 type SaveOutfitItemReq struct {
 	FashionItemID uuid.UUID `json:"fashionItemId" binding:"required" label:"mã sản phẩm thời trang"`
-	PositionX     float64   `json:"positionX" label:"vị trí X"`
-	PositionY     float64   `json:"positionY" label:"vị trí Y"`
-	Scale         float64   `json:"scale" binding:"required,min=0.1" label:"tỷ lệ hiển thị"`
-	LayerOrder    int16     `json:"layerOrder" binding:"required" label:"thứ tự lớp"`
+	// ItemContext is optional (feature 033). When omitted the item is resolved
+	// automatically: user wardrobe -> eligible brand item -> system catalog.
+	ItemContext *string `json:"itemContext" binding:"omitempty,oneof=user_wardrobe brand_item system_catalog" label:"nguồn trang phục"`
+	PositionX   float64 `json:"positionX" label:"vị trí X"`
+	PositionY   float64 `json:"positionY" label:"vị trí Y"`
+	Scale       float64 `json:"scale" binding:"required,min=0.1" label:"tỷ lệ hiển thị"`
+	LayerOrder  int16   `json:"layerOrder" binding:"required" label:"thứ tự lớp"`
 }
 
 type OutfitRes struct {

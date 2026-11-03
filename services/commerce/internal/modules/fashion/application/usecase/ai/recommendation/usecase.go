@@ -5,7 +5,7 @@ import (
 	aiexecutor_contract "smart-wardrobe-be/services/ai/contract/aiexecutor"
 	brand_contract "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
-	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/usecase"
+	uc_caching "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/caching"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/contract"
@@ -24,11 +24,19 @@ type OutfitRecommendationUseCase struct {
 	userSubContract  contract.IUserSubscriptionContract
 	userQuotaCtr     contract.IUserQuotaContract
 	brandContract    brand_contract.IBrandContract
+	profileRepo      repositories.IUserStyleProfileRepository
+	catalogCache     uc_caching.IPersonalizationCatalogCache
+	snapshotCache    uc_caching.IRecommendationSnapshotCache
 	uow              shared_repos.IUnitOfWork
 	nlpParser        *parser.LocalNLPParser
 }
 
 // NewOutfitRecommendationUseCase khởi tạo một thực thể mới của [OutfitRecommendationUseCase] với các cấu hình và repository phụ thuộc cần thiết.
+//
+// It returns the concrete type so Wire can expose the same instance through both
+// use case interfaces it implements: IOutfitRecommendationUseCase (the HTTP
+// handler) and IOutfitSuggestionBuilder (the outfit-completion use case, which
+// reuses the suggestion builder of US2 unchanged — 033 T077).
 func NewOutfitRecommendationUseCase(
 	cfg *config.Config,
 	l logger.Interface,
@@ -38,8 +46,11 @@ func NewOutfitRecommendationUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,
+	profileRepo repositories.IUserStyleProfileRepository,
+	catalogCache uc_caching.IPersonalizationCatalogCache,
+	snapshotCache uc_caching.IRecommendationSnapshotCache,
 	uow shared_repos.IUnitOfWork,
-) uc_interfaces.IOutfitRecommendationUseCase {
+) *OutfitRecommendationUseCase {
 	_ = dto.ParsedIntent{} // import check
 	return &OutfitRecommendationUseCase{
 		cfg:              cfg,
@@ -50,6 +61,9 @@ func NewOutfitRecommendationUseCase(
 		userSubContract:  userSubContract,
 		userQuotaCtr:     userQuotaCtr,
 		brandContract:    brandContract,
+		profileRepo:      profileRepo,
+		catalogCache:     catalogCache,
+		snapshotCache:    snapshotCache,
 		uow:              uow,
 		nlpParser:        parser.NewLocalNLPParser(),
 	}

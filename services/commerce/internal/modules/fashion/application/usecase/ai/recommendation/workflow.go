@@ -2,6 +2,7 @@ package recommendation
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -37,17 +38,28 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 	userID uuid.UUID,
 	input dto.RecommendOutfitReq,
 ) (*dto.RecommendedOutfitRes, error) {
-	activeItems, quotaDTO, err := uc.validateAndGetActiveItems(ctx, userID)
+	// The id is generated once per request so the response can be fed back to
+	// the feedback endpoint (033 contracts §2.1, US6).
+	recommendationID := uuid.New()
+
+	activeItems, quotaDTO, maxWardrobeItems, err := uc.validateAndGetActiveItems(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	candidates, fashionItemMap, err := uc.filterCandidates(ctx, userID, activeItems, input)
+	filterResult, err := uc.filterCandidates(ctx, userID, activeItems, maxWardrobeItems, input)
 	if err != nil {
 		return nil, err
 	}
 
-	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input, fashionItemMap)
+	finalRes, err := uc.generateOutfitRecommendation(
+		ctx,
+		userID,
+		filterResult.Candidates,
+		input,
+		filterResult.FashionItemMap,
+		filterResult.Personalization,
+	)
 	if err != nil {
 		failureKind, providerHint, promptLen, responsePreview := synthesis.ClassifyFallbackTrace(err)
 		uc.logger.Warn("Outfit recommendation AI fallback triggered",
@@ -55,11 +67,42 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 			zap.String("provider_hint", providerHint),
 			zap.Error(err),
 			zap.String("user_id", userID.String()),
-			zap.Int("candidate_count", len(candidates)),
+			zap.String("recommendation_id", recommendationID.String()),
+			zap.Bool("personalized", filterResult.Personalization.Active),
+			zap.Int("candidate_count", len(filterResult.Candidates)),
 			zap.Int("prompt_len", promptLen),
 			zap.String("response_preview", responsePreview),
 		)
-		finalRes = ranking.RunLocalHSLMatching(candidates, input, fashionItemMap)
+		finalRes = ranking.RunLocalHSLMatchingWithPersonalization(
+			filterResult.Candidates,
+			input,
+			filterResult.FashionItemMap,
+			filterResult.Personalization,
+		)
+	}
+
+	if finalRes != nil {
+		finalRes.RecommendationID = recommendationID
+		// 033 US2/T041: catalog gap-fill suggestions are additive. They are
+		// attached after the outfit is final, never merge into Items and never
+		// touch the quota below.
+		finalRes.Suggestions = uc.buildCatalogSuggestions(ctx, userID, finalRes, filterResult)
+		// 033 US3/T056: rotation observability + best-effort last_recommended_at.
+		// Both are fail-soft by contract: they log and continue, never blocking
+		// the response (FR-054, FR-068).
+		uc.recordRotationObservability(
+			ctx,
+			userID,
+			recommendationID,
+			finalRes,
+			filterResult,
+			uc.rotationSettings(),
+			time.Now(),
+		)
+		// 033 US6/T071: the final outfit (AI or HSL) is now fixed, so store the
+		// snapshot the feedback endpoint authenticates against. Best-effort: a
+		// cache error is logged and never fails the recommendation (plan D8).
+		uc.recordRecommendationSnapshot(ctx, userID, recommendationID, finalRes, filterResult, time.Now())
 	}
 
 	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {

@@ -4235,6 +4235,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "personalizationEnabled": {
+                    "description": "PersonalizationEnabled defaults to false when omitted (033 contract §4.2).",
+                    "type": "boolean"
+                },
                 "planKind": {
                     "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
                 },
@@ -4509,6 +4513,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "personalizationEnabled": {
+                    "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old clients ignore it.",
+                    "type": "boolean"
+                },
                 "planKind": {
                     "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
                 },
@@ -4549,6 +4557,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "personalizationEnabled": {
+                    "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old clients ignore it.",
+                    "type": "boolean"
                 },
                 "planKind": {
                     "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
@@ -4610,6 +4622,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "personalizationEnabled": {
+                    "description": "PersonalizationEnabled nil means \"keep the current value\" (033 D2).",
+                    "type": "boolean"
                 },
                 "price": {
                     "type": "number"
@@ -4680,6 +4696,10 @@ const docTemplate = `{
                 },
                 "maxWardrobeItems": {
                     "type": "integer"
+                },
+                "personalizationEnabled": {
+                    "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old clients ignore it.",
+                    "type": "boolean"
                 },
                 "planId": {
                     "type": "string"

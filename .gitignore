@@ -750,6 +750,8 @@ backups/
 *.drawio.bkp
 .zcode/
 
+# Local Spec Kit feature pointer: per-developer state, not shared
+.specify/feature.json
 # Archived AWS box - Terraform for the Ollama trial EC2 (ADR 017; local state,
 # never commit state/vars)
 .terraform/

@@ -15,6 +15,7 @@ Người dùng tham khảo các gói dịch vụ Premium hiện có và theo dõ
 *   **Mô tả:** Trả về danh sách các gói cước đang được cấu hình hoạt động trên hệ thống. Loại gói cước `planKind` tham chiếu tại [constants.md:PlanKind](constants.md#3-phan-loai-goi-cuoc-plankind).
 *   **Response:**
     *   `200 OK`: Trả về danh sách các gói cước.
+    *   **Mới 033:** mỗi gói có thêm `personalizationEnabled` (bool) — quyền lợi cá nhân hoá gu phong cách.
 
 ### 2. Xem tổng quan tình trạng gói cước của cá nhân
 *   **Endpoint:** `GET /api/v1/subscriptions/me`
@@ -23,6 +24,28 @@ Người dùng tham khảo các gói dịch vụ Premium hiện có và theo dõ
 *   **Mô tả:** Trả về thông tin chi tiết gói cước người dùng đang sử dụng, thời hạn hết hạn gói, trạng thái tự động gia hạn (auto-renew) và các thông số giới hạn quota kèm theo.
 *   **Response:**
     *   `200 OK`: Trả về thông tin tổng quan gói cước.
+    *   **Mới 033:** thêm `personalizationEnabled` (bool). Ví dụ:
+
+        ```json
+        {
+          "planId": "uuid",
+          "planName": "Premium Plan",
+          "planSlug": "premium-monthly",
+          "expiresAt": "2026-11-26T00:00:00Z",
+          "isAutoRenewEnabled": true,
+          "maxWardrobeItems": 300,
+          "maxOutfits": 300,
+          "aiOutfitDailyQuota": 30,
+          "aiChatDailyQuota": 10,
+          "personalizationEnabled": true
+        }
+        ```
+        Giá trị đọc từ **plan row hiện tại** qua overview cache (TTL 60 giây), không đọc lại snapshot quyền
+        lợi cũ. Admin bật/tắt có thể mất tối đa 60 giây mới thấy thay đổi; cache cũ thiếu field được đọc là
+        `false`.
+
+> **Trước → sau (033):** response `GET /subscriptions/me` và danh sách gói trước đây không có
+> `personalizationEnabled`; nay có thêm field additive, client cũ bỏ qua được. Không đổi tên/kiểu field cũ.
 
 ### 3. Lấy thông tin hạn mức gọi AI hàng ngày
 *   **Endpoint:** `GET /api/v1/subscriptions/me/daily-quota`

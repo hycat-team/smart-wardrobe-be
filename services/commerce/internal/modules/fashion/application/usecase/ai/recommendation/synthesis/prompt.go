@@ -128,16 +128,23 @@ func buildPromptExample(inventory candidateRoleInventory, strategy string) strin
 //
 //	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
 func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
-	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap)
+	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap, types.PersonalizationContext{})
 	return prompt
 }
 
-func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) (string, error) {
+// BuildRecommendationPromptWithPersonalization renders the prompt with the
+// user's saved profile appended to the context payload (033 US1/T032).
+func BuildRecommendationPromptWithPersonalization(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO, pc types.PersonalizationContext) string {
+	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap, pc)
+	return prompt
+}
+
+func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO, pc types.PersonalizationContext) (string, error) {
 	if limits.CandidateLimit > 0 && len(candidates) > limits.CandidateLimit {
 		candidates = candidates[:limits.CandidateLimit]
 	}
 	for len(candidates) > 0 {
-		prompt := buildRecommendationPrompt(candidates, input, limits, fashionItemMap)
+		prompt := buildRecommendationPrompt(candidates, input, limits, fashionItemMap, pc)
 		if limits.PromptMaxCharacters <= 0 || len([]rune(prompt)) <= limits.PromptMaxCharacters {
 			return prompt, nil
 		}
@@ -146,7 +153,7 @@ func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, 
 	return "", fmt.Errorf("recommendation prompt exceeds configured character limit")
 }
 
-func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
+func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO, pc types.PersonalizationContext) string {
 	inventory := inventoryCandidateRoles(candidates, fashionItemMap)
 	strategy := inventory.coreStrategy()
 	roleAliases, _ := json.Marshal(inventory.aliases)
@@ -162,6 +169,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
 	builder.WriteString("Rules: aliases (A1, A2, ...) are internal IDs and MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation (no \"(A1)\", no bare \"A1\"); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
 	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
+	builder.WriteString("Recency rotation rule: candidates tagged with recency-cooldown were worn or recommended very recently. When two candidates for the same role are otherwise of equivalent quality, prefer the one WITHOUT the recency-cooldown tag so the user's wardrobe keeps rotating; if every candidate for a role carries the tag, still choose the best one instead of omitting the role.\n")
 	builder.WriteString("Outfit rules:\n")
 	builder.WriteString("- CORE roles define a complete outfit: exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
 	builder.WriteString("- Follow CORE_STRATEGY exactly: \"separates\" means exactly one top and one bottom and NO fullbody; \"fullbody\" means exactly one fullbody and NO top or bottom.\n")
@@ -194,6 +202,17 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 	if input.ColorTone != nil {
 		contextPayload["color_tone"] = *input.ColorTone
+	}
+	// Personal profile context is only emitted when the user actually has
+	// preferences to apply; keys are omitted entirely otherwise (T032).
+	if len(pc.ExplicitStyles) > 0 {
+		contextPayload["personal_style"] = strings.Join(pc.ExplicitStyles, ", ")
+	}
+	if len(pc.LearnedStyles) > 0 {
+		contextPayload["learned_style"] = strings.Join(pc.LearnedStyles, ", ")
+	}
+	if len(pc.ExcludedStyles) > 0 {
+		contextPayload["avoid_styles"] = strings.Join(pc.ExcludedStyles, ", ")
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)

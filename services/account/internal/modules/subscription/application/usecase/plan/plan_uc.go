@@ -92,19 +92,27 @@ func (uc *SubscriptionPlanUseCase) CreatePlan(ctx context.Context, req *dto.Crea
 		isActive = *req.IsActive
 	}
 
+	// 033 D2: a plan created after the migration starts without the
+	// entitlement until an administrator enables it explicitly.
+	personalizationEnabled := false
+	if req.PersonalizationEnabled != nil {
+		personalizationEnabled = *req.PersonalizationEnabled
+	}
+
 	plan := &entities.SubscriptionPlan{
-		Slug:               req.Slug,
-		Name:               req.Name,
-		Price:              decimal.NewFromFloat(req.Price),
-		MaxWardrobeItems:   req.MaxWardrobeItems,
-		MaxOutfits:         req.MaxOutfits,
-		AiOutfitDailyQuota: req.AiOutfitDailyQuota,
-		AiChatDailyQuota:   req.AiChatDailyQuota,
-		DurationDays:       req.DurationDays,
-		PlanKind:           req.PlanKind,
-		TierRank:           req.TierRank,
-		IsActive:           isActive,
-		PricingVersion:     1,
+		Slug:                   req.Slug,
+		Name:                   req.Name,
+		Price:                  decimal.NewFromFloat(req.Price),
+		MaxWardrobeItems:       req.MaxWardrobeItems,
+		MaxOutfits:             req.MaxOutfits,
+		AiOutfitDailyQuota:     req.AiOutfitDailyQuota,
+		AiChatDailyQuota:       req.AiChatDailyQuota,
+		DurationDays:           req.DurationDays,
+		PlanKind:               req.PlanKind,
+		TierRank:               req.TierRank,
+		IsActive:               isActive,
+		PersonalizationEnabled: personalizationEnabled,
+		PricingVersion:         1,
 	}
 
 	if err := uc.planRepo.Create(ctx, plan); err != nil {
@@ -150,6 +158,9 @@ func (uc *SubscriptionPlanUseCase) UpdatePlan(ctx context.Context, id uuid.UUID,
 	}
 	if req.IsActive != nil {
 		plan.IsActive = *req.IsActive
+	}
+	if req.PersonalizationEnabled != nil {
+		plan.PersonalizationEnabled = *req.PersonalizationEnabled
 	}
 
 	if err := uc.planRepo.Update(ctx, plan); err != nil {

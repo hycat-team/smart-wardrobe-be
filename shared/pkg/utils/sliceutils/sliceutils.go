@@ -1,6 +1,7 @@
 package sliceutils
 
 import (
+	"math"
 	"slices"
 	"strings"
 
@@ -17,6 +18,33 @@ func AdjustVectorLength(vec []float32, targetLength int) []float32 {
 	}
 	res := make([]float32, targetLength)
 	copy(res, vec)
+	return res
+}
+
+// NormalizeVector returns the L2-normalised (unit length) copy of a vector.
+// This is the single home of vector normalisation; embedding helpers must call
+// it rather than define a second copy.
+//
+// An empty vector is returned unchanged. An all-zero vector is returned as a
+// copy so the caller can mutate the result safely.
+func NormalizeVector(vec []float32) []float32 {
+	if len(vec) == 0 {
+		return vec
+	}
+
+	var sumSquares float64
+	for _, val := range vec {
+		sumSquares += float64(val) * float64(val)
+	}
+	if sumSquares == 0 {
+		return append([]float32(nil), vec...)
+	}
+
+	norm := math.Sqrt(sumSquares)
+	res := make([]float32, len(vec))
+	for i, val := range vec {
+		res[i] = float32(float64(val) / norm)
+	}
 	return res
 }
 

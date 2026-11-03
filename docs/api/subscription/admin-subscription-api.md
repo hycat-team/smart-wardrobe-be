@@ -48,11 +48,14 @@ Tài liệu thiết kế các API quản trị viên liên quan đến quản l�
       "dailyAiQuota": 50,
       "aiEnforcementMode": "strict",
       "wardrobeLimit": 500,
+      "personalizationEnabled": true,
       "description": "Gói Premium trả phí hàng năm"
     }
     ```
+    -   `personalizationEnabled` (**mới 033**, optional bool): quyền cá nhân hoá gu phong cách. **Bỏ trống ⇒
+        `false`** (mặc định tắt); gói giá 0 cũng mặc định tắt cho tới khi admin bật.
 *   **Response:**
-    *   `201 Created`: Trả về thông tin gói cước vừa tạo.
+    *   `201 Created`: Trả về thông tin gói cước vừa tạo, kèm `personalizationEnabled`.
 
 ### 4. Cập nhật thông tin gói cước
 *   **Endpoint:** `PUT /api/v1/admin/subscriptions/plans/{id}`
@@ -68,9 +71,12 @@ Tài liệu thiết kế các API quản trị viên liên quan đến quản l�
       "price": 899000,
       "dailyAiQuota": 60,
       "wardrobeLimit": 600,
+      "personalizationEnabled": true,
       "description": "Gói Premium trả phí hàng năm - cập nhật"
     }
     ```
+    -   `personalizationEnabled` (**mới 033**, optional): `null`/bỏ trống = **giữ nguyên** giá trị hiện tại;
+        gửi `false` để thu hồi quyền lợi.
 *   **Response:**
     *   `200 OK`: Trả về thông tin gói cước sau cập nhật.
 
@@ -119,3 +125,17 @@ Tài liệu thiết kế các API quản trị viên liên quan đến quản l�
     ```
 *   **Response:**
     *   `200 OK`: Trả về thông tin đăng ký gói vừa cấp.
+
+---
+
+## Ghi chú 033 — `personalizationEnabled`
+
+-   **Trước → sau:** trước 033, plan DTO (public + admin) **không** có `personalizationEnabled`; nay field
+    additive xuất hiện ở cả `GET /subscriptions/plans`, `GET /subscriptions/me` và các API admin plan.
+-   **Nguồn sự thật:** cột `subscription.subscription_plans.personalization_enabled`. Migration
+    `20261027092637_add_plan_personalization.sql` bật `true` một lần cho plan `is_active = true AND price > 0`;
+    gói giá 0 và gói tạo sau triển khai mặc định **tắt**.
+-   **Hiệu lực:** overview subscription được cache 60 giây, nên bật/tắt quyền lợi có thể mất tối đa 60 giây
+    để Commerce thấy. Không xoá dữ liệu gu; tắt quyền lợi chỉ dừng áp dụng.
+-   **Tắt khẩn cấp toàn hệ thống:** dùng kill switch `personalization.enabled = false` trong config (không
+    phải API này).

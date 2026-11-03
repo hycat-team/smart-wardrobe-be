@@ -114,6 +114,15 @@ var outerwearColdLikeTerms = []string{"lạnh", "lanh", "mát", "mat", "cold", "
 // outerwearLayeringIntentTerms là các từ khóa thể hiện người dùng muốn phối đồ theo lớp.
 var outerwearLayeringIntentTerms = []string{"layer", "khoác", "khoac"}
 
+// ShouldIncludeOuterwear is the exported entry point of
+// [shouldIncludeOuterwear], used by the outfit-completion endpoint to decide
+// whether the request context asks for an outerwear layer (033 US7). Keeping a
+// single decision keeps the fallback outfit and the completion suggestion in
+// agreement about when a jacket is expected.
+func ShouldIncludeOuterwear(input dto.RecommendOutfitReq) bool {
+	return shouldIncludeOuterwear(input)
+}
+
 // shouldIncludeOuterwear quyết định outfit có nên thêm lớp ngoài (outerwear) hay không.
 //
 // Quy tắc:
