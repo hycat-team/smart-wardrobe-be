@@ -521,6 +521,15 @@ type Email struct {
 type Subscription struct {
 	MaxRetryAttempts         int `mapstructure:"max_retry_attempts"`
 	WalletBalanceWarningDays int `mapstructure:"wallet_balance_warning_days"`
+
+	// ExpiryReminderDisabled is the kill switch for the pre-expiry reminder
+	// emails (subscription_expiring and wallet_warning). It is named "disabled"
+	// rather than "enabled" on purpose: a missing key decodes to the zero value,
+	// so a default-true switch would silently stop the reminders for every
+	// config file that never mentioned it. Auto-renewal, the post-expiry email
+	// and every other transaction email are unaffected - only the "your plan
+	// ends in N days" warnings go quiet.
+	ExpiryReminderDisabled bool `mapstructure:"expiry_reminder_disabled"`
 }
 
 type RateLimit struct {

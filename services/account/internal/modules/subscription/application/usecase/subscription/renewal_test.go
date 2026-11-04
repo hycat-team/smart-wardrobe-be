@@ -503,6 +503,50 @@ func TestProcessUpcomingExpiryNotificationsSkipsWhenNothingExpires(t *testing.T)
 	}
 }
 
+// TestProcessUpcomingExpiryNotificationsHonoursKillSwitch pins the operator
+// switch: with reminders disabled nothing is sent for either audience - the
+// auto-renew-OFF customer and the underfunded auto-renew customer - and the
+// nightly scan does not even reach the database, so a disabled run costs
+// nothing at the billable read.
+func TestProcessUpcomingExpiryNotificationsHonoursKillSwitch(t *testing.T) {
+	h := newRenewalHarness(t, true, 1000)
+	h.uc.cfg = &config.Config{
+		Database: config.Database{TimeZone: "Asia/Ho_Chi_Minh"},
+		Subscription: config.Subscription{
+			WalletBalanceWarningDays: 3,
+			ExpiryReminderDisabled:   true,
+		},
+	}
+
+	expires := h.now.Add(24 * time.Hour)
+	h.subRepo.expiring = []*entities.UserSubscription{
+		{
+			UserID:             uuid.New(),
+			SubscriptionPlan:   h.plan,
+			CurrentPlanKind:    plankind.Finite,
+			ExpiresAt:          &expires,
+			IsAutoRenewEnabled: false,
+		},
+		{
+			UserID:             h.walletRepo.wallet.UserID,
+			SubscriptionPlan:   h.plan,
+			CurrentPlanKind:    plankind.Finite,
+			ExpiresAt:          &expires,
+			IsAutoRenewEnabled: true,
+		},
+	}
+
+	if err := h.uc.ProcessUpcomingExpiryNotifications(context.Background()); err != nil {
+		t.Fatalf("a disabled reminder must not report an error: %v", err)
+	}
+	if len(h.notif.sent) != 0 {
+		t.Fatalf("expected no reminder while the kill switch is on, got %v", h.notif.sent)
+	}
+	if h.subRepo.expiryCalls != 0 {
+		t.Fatalf("expected no expiry scan while disabled, got %d page(s)", h.subRepo.expiryCalls)
+	}
+}
+
 // TestUpcomingExpiryRemindersFireOnlyOnMilestones is the fix for the daily
 // grind: the job runs every night, so before this the same customer received the
 // same reminder every morning for the whole window (seven emails on a seven-day

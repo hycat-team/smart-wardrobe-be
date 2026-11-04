@@ -146,6 +146,14 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context, run
 // renewal switch was off with no warning at all: the first they heard about the
 // end of their plan was the expiry email itself, after the downgrade.
 func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Context) error {
+	// Kill switch: silence every reminder, including the final one on the last
+	// day. Returning nil (not an error) keeps the nightly run green - an
+	// operator turning the reminders off is not a failure of the renewal scan
+	// that follows.
+	if uc.cfg.Subscription.ExpiryReminderDisabled {
+		return nil
+	}
+
 	warningDays := uc.cfg.Subscription.WalletBalanceWarningDays
 	if warningDays <= 0 {
 		warningDays = 3

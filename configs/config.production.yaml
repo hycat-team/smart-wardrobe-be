@@ -230,6 +230,10 @@ wardrobe:
 subscription:
     max_retry_attempts: 3
     wallet_balance_warning_days: 3
+    # Kill switch for the pre-expiry reminder emails (subscription_expiring /
+    # wallet_warning). true silences every reminder, including the final one on
+    # the last day; auto-renewal and the post-expiry email are unaffected.
+    expiry_reminder_disabled: false
 admin:
     audit_retention_months: 12
 

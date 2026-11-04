@@ -66,8 +66,20 @@ thành 7 email trùng nội dung.
 - `renewal_success` idempotent theo `subscription_renewal_attempts`.
 - `subscription_expired` chỉ một lần: sau hạ cấp, row không còn khớp query.
 - Webhook idempotent theo inbox + trạng thái `deposit_transactions`.
-- `subscription_expiring` / `wallet_warning` lặp **mỗi ngày** trong cửa sổ N ngày,
+- `subscription_expiring` / `wallet_warning` chỉ bắn ở 2 mốc (N ngày và 1 ngày),
   và chỉ chạy ở cron 00:00 **dưới advisory lock** — nhiều instance không nhân đôi.
+
+## Kill switch nhắc trước hạn
+
+`subscription.expiry_reminder_disabled` (env `SUBSCRIPTION_EXPIRY_REMINDER_DISABLED`)
+tắt **toàn bộ** mail nhắc trước hạn, gồm cả mốc cuối 1 ngày: `ProcessUpcomingExpiryNotifications`
+return `nil` ngay đầu hàm, không quét DB, cron vẫn xanh. Không ảnh hưởng auto-renew,
+`renewal_success`, `subscription_expired` hay bất kỳ email giao dịch nào khác.
+Đặt tên `disabled` (không phải `enabled`) để key vắng mặt = vẫn gửi, tránh việc
+một file cấu hình thiếu key âm thầm tắt nhắc.
+
+Lưu ý: email **đã** nằm trong `shared.outbox_records` trước lúc bật cờ vẫn được gửi,
+vì nội dung render + enqueue tại thời điểm nghiệp vụ.
 
 ## Retry khi SMTP lỗi
 

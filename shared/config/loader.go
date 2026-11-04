@@ -253,6 +253,16 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Subscription.WalletBalanceWarningDays = days
 		}
 	}
+	// SUBSCRIPTION_EXPIRY_REMINDER_DISABLED stops the pre-expiry reminder emails
+	// without a rebuild: the reminders are on unless an operator says otherwise,
+	// and silencing them (support load, a noisy campaign) should not wait for the
+	// next release. An empty or unparseable value leaves the config file in
+	// charge, so a typo cannot silently turn the reminders off.
+	if v := strings.TrimSpace(os.Getenv("SUBSCRIPTION_EXPIRY_REMINDER_DISABLED")); v != "" {
+		if disabled, err := strconv.ParseBool(v); err == nil {
+			cfg.Subscription.ExpiryReminderDisabled = disabled
+		}
+	}
 	if v := strings.TrimSpace(os.Getenv("DATABASE_DRILL_SCHEMA")); v != "" {
 		cfg.Database.DrillSchema = v
 	}
