@@ -10,10 +10,11 @@ Tài liệu thiết kế các API quản trị viên liên quan đến quản l�
 *   **Endpoint:** `GET /api/v1/admin/subscriptions`
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách bản ghi đăng ký gói hội viên `user_subscriptions`.
-*   **Mô tả:** Lấy danh sách đăng ký gói hội viên của người dùng, hỗ trợ lọc theo `planCode` và `status`.
+*   **Mô tả:** Lấy danh sách đăng ký gói hội viên của người dùng, hỗ trợ lọc theo `planCode`, `status` và `userId`.
 *   **Query Parameters:**
     *   `planCode` (string, optional): Mã slug gói.
     *   `status` (string, optional): Trạng thái (`active`, `expired`).
+    *   `userId` (string, optional): Mã người dùng (UUID). Dùng để lấy bản ghi gói gốc của một tài khoản (ngày bắt đầu, hạn thực, tự động gia hạn) trong màn hình quản lý người dùng. UUID sai định dạng trả `400`.
     *   `page` (integer, optional): Trang.
     *   `limit` (integer, optional): Số bản ghi/trang.
 *   **Response:**

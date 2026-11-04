@@ -238,15 +238,20 @@ type adminListSubscriptionsQuery struct {
 	shared_dto.PaginationQuery
 	PlanCode *string `form:"planCode"`
 	Status   *string `form:"status"`
+	// UserID narrows the list to a single account, so the admin console can show
+	// the raw subscription row (start date, real expiry, auto-renew) next to the
+	// effective plan without scanning pages.
+	UserID *string `form:"userId"`
 }
 
 // ListSubscriptions
 // @Summary Danh sách đăng ký gói của người dùng
-// @Description Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode, status).
+// @Description Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode, status, userId).
 // @Tags Admin Subscription
 // @Produce json
 // @Param planCode query string false "Mã slug gói"
 // @Param status query string false "Trạng thái (active, expired)"
+// @Param userId query string false "Mã người dùng"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số bản ghi/trang"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.AdminUserSubscriptionItemDTO]}
@@ -262,7 +267,18 @@ func (h *AdminSubscriptionHandler) ListSubscriptions(c *gin.Context) error {
 			statusEnum = &st
 		}
 	}
-	items, total, err := h.subscriptionUC.AdminList(c.Request.Context(), req.PlanCode, statusEnum, req.Page, req.Limit)
+	var userID *uuid.UUID
+	if req.UserID != nil {
+		trimmed := strings.TrimSpace(*req.UserID)
+		if trimmed != "" {
+			parsed, err := uuid.Parse(trimmed)
+			if err != nil {
+				return apperror.NewBadRequest("Mã người dùng không hợp lệ.")
+			}
+			userID = &parsed
+		}
+	}
+	items, total, err := h.subscriptionUC.AdminList(c.Request.Context(), req.PlanCode, userID, statusEnum, req.Page, req.Limit)
 	if err != nil {
 		return err
 	}

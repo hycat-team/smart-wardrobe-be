@@ -181,12 +181,6 @@ definitions:
       userLastName:
         type: string
     type: object
-  smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes:
-    properties:
-      subscription: {}
-      user:
-        $ref: '#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes'
-    type: object
   smart-wardrobe-be_services_account_dto_identity.AdminUserListRes:
     properties:
       items:
@@ -585,10 +579,17 @@ definitions:
         type: integer
       expiresAt:
         type: string
+      isAutoRenewEnabled:
+        type: boolean
       maxOutfits:
         type: integer
       maxWardrobeItems:
         type: integer
+      personalizationEnabled:
+        description: |-
+          PersonalizationEnabled is the plan entitlement for personalized styling
+          (033 D2). Additive field: old consumers read the zero value (false).
+        type: boolean
       planId:
         type: string
       planName:
@@ -2135,7 +2136,7 @@ paths:
   /api/v1/admin/subscriptions:
     get:
       description: Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode,
-        status).
+        status, userId).
       parameters:
       - description: Mã slug gói
         in: query
@@ -2144,6 +2145,10 @@ paths:
       - description: Trạng thái (active, expired)
         in: query
         name: status
+        type: string
+      - description: Mã người dùng
+        in: query
+        name: userId
         type: string
       - description: Trang
         in: query
@@ -2520,6 +2525,13 @@ paths:
       - in: query
         name: roleSlug
         type: string
+      - description: |-
+          UserID filters by exact account id. It takes precedence over Query so an
+          administrator can paste a UUID from another admin screen without also
+          matching a name fragment.
+        in: query
+        name: userId
+        type: string
       produces:
       - application/json
       responses:
@@ -2588,7 +2600,10 @@ paths:
       tags:
       - Admin User
     get:
-      description: Lấy thông tin chi tiết tài khoản người dùng và trạng thái gói cước.
+      description: Lấy thông tin chi tiết tài khoản người dùng. Gói cước hiệu lực
+        nằm trong `subscription` của chính user (cùng shape với danh sách người dùng);
+        `aiOutfitDailyQuota`/`aiChatDailyQuota` là hạn mức/ngày của gói, không phải
+        số lượt còn lại.
       parameters:
       - description: ID người dùng
         in: path
@@ -2605,7 +2620,7 @@ paths:
             - $ref: '#/definitions/presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes'
+                  $ref: '#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes'
               type: object
       summary: Chi tiết tài khoản người dùng
       tags:

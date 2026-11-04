@@ -206,6 +206,12 @@ func ErrUserProfileNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy thông tin người dùng.")
 }
 
+// ErrInvalidUserIDFilter rejects a malformed `userId` filter on the admin user
+// list instead of silently returning every account.
+func ErrInvalidUserIDFilter() *apperror.Error {
+	return apperror.NewBadRequest("Mã người dùng không hợp lệ.")
+}
+
 func ErrEmailNotRegistered() *apperror.Error {
 	return apperror.NewNotFound("Email này chưa được đăng kí trong hệ thống.")
 }

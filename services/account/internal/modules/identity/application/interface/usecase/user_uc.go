@@ -30,7 +30,7 @@ type IUserUseCase interface {
 	// silently drop most of the population.
 	GetActiveUserIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error)
-	GetUserDetail(ctx context.Context, userID uuid.UUID) (*dto.AdminUserDetailRes, error)
+	GetUserDetail(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error)
 	CreateUserByAdmin(ctx context.Context, adminUserID uuid.UUID, req dto.CreateAdminUserReq) (*dto.UserRes, error)
 	UpdateUserRole(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, req dto.UpdateUserRoleReq) (*dto.UserRes, error)
 	DeactivateUser(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID) (*dto.UserRes, error)

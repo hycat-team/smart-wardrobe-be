@@ -11,8 +11,14 @@ Tài liệu này mô tả API Admin User thuộc module Identity - quản lý ng
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách dữ liệu người dùng (`users`).
 *   **Mô tả:** Lấy danh sách users hỗ trợ phân trang, tìm kiếm và lọc theo quyền hạn/trạng thái (role/status) theo đặc tả use case backend. Role/status tham chiếu [constants.md](constants.md).
+*   **Query Parameters:**
+    *   `q` (string, optional): Tìm tương đối theo username, email, họ, tên.
+    *   `userId` (string, optional): Mã người dùng (UUID) — lọc chính xác, dùng index khoá chính. Khi có `userId` thì `q` bị bỏ qua. UUID sai định dạng trả `400`.
+    *   `roleSlug` (string, optional): Vai trò (`user`, `admin`).
+    *   `isActive` (boolean, optional): `true` = đang hoạt động, `false` = bị khoá.
+    *   `page`, `limit` (integer, optional): Phân trang.
 *   **Response:**
-    *   `200 OK`: Trả về danh sách user theo định dạng DTO admin.
+    *   `200 OK`: Trả về danh sách user theo định dạng DTO admin. Mỗi phần tử mang `subscription` (gói hiệu lực: `planName`, `planSlug`, `expiresAt`, hạn mức, quota AI) để màn hình quản trị hiển thị gói ngay trong bảng.
 
 ### 2. Tạo tài khoản người dùng
 *   **Endpoint:** `POST /api/v1/admin/users`
@@ -26,9 +32,10 @@ Tài liệu này mô tả API Admin User thuộc module Identity - quản lý ng
 *   **Endpoint:** `GET /api/v1/admin/users/{id}`
 *   **Tác nhân (Actor):** Quản trị viên (Admin).
 *   **Đối tượng ảnh hưởng:** Đọc thông tin chi tiết người dùng.
-*   **Mô tả:** Lấy thông tin chi tiết tài khoản người dùng và trạng thái gói cước.
+*   **Mô tả:** Lấy thông tin chi tiết tài khoản người dùng. Gói cước hiệu lực nằm trong `subscription` của chính user — cùng shape với từng phần tử của danh sách người dùng (`GET /admin/users`), nên chỉ có một nguồn dữ liệu gói.
+    *   `subscription.aiOutfitDailyQuota` / `subscription.aiChatDailyQuota` là **hạn mức/ngày của gói** (số gốc), không phải số lượt còn lại hôm nay. Số lượt còn lại (nếu cần) đọc ở API quota của chính người dùng: `GET /api/v1/subscriptions/me/daily-quota` (`outfitRecommendCount`, `aiUsageCount`, `lastResetDate`).
 *   **Response:**
-    *   `200 OK`: Trả về thông tin chi tiết user.
+    *   `200 OK`: Trả về `UserRes` (kèm `subscription`).
 
 ### 4. Cập nhật trạng thái người dùng
 *   **Endpoint:** `PATCH /api/v1/admin/users/:id/status`

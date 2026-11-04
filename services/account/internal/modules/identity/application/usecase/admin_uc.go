@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/services/account/dto/identity"
@@ -87,10 +88,31 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 }
 
 func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQueryReq) (*dto.AdminUserListRes, error) {
+	var userID *uuid.UUID
+	if query.UserID != nil {
+		trimmed := strings.TrimSpace(*query.UserID)
+		if trimmed != "" {
+			parsed, err := uuid.Parse(trimmed)
+			if err != nil {
+				return nil, identityerrors.ErrInvalidUserIDFilter()
+			}
+			userID = &parsed
+		}
+	}
+
+	// An exact id filter wins over free-text search: the administrator pasted a
+	// UUID from another screen, so matching a name fragment as well can only
+	// hide the account they asked for.
+	textQuery := query.Query
+	if userID != nil {
+		textQuery = nil
+	}
+
 	filter := repositories.UserFilter{
 		RoleSlug: query.RoleSlug,
 		IsActive: query.IsActive,
-		Query:    query.Query,
+		Query:    textQuery,
+		UserID:   userID,
 		Page:     query.Page,
 		Limit:    query.Limit,
 	}
@@ -141,8 +163,10 @@ func (uc *UserUseCase) GetActiveUserIDs(ctx context.Context) ([]uuid.UUID, error
 	return uc.userRepo.ListAllActiveUserIDs(ctx)
 }
 
-// GetUserDetail retrieves full user information and subscription overview for admin
-func (uc *UserUseCase) GetUserDetail(ctx context.Context, userID uuid.UUID) (*dto.AdminUserDetailRes, error) {
+// GetUserDetail retrieves full user information and the effective subscription
+// for admin. The answer is a plain UserRes: `subscription` lives inside it, the
+// same projection the user list returns, so there is exactly one source.
+func (uc *UserUseCase) GetUserDetail(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -156,11 +180,7 @@ func (uc *UserUseCase) GetUserDetail(ctx context.Context, userID uuid.UUID) (*dt
 		sub = nil
 	}
 
-	userRes := mapper.MapToUserRes(user, sub)
-	return &dto.AdminUserDetailRes{
-		User:         userRes,
-		Subscription: sub,
-	}, nil
+	return mapper.MapToUserRes(user, sub), nil
 }
 
 // CreateUserByAdmin allows an admin to create a new user account (defaults to user role)

@@ -306,6 +306,12 @@ func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositori
 		)
 	}
 
+	// Exact-id lookup uses the primary key index; this is the path the admin
+	// console takes when it recognises a pasted UUID.
+	if filter.UserID != nil {
+		db = db.Where("users.id = ?", *filter.UserID)
+	}
+
 	var totalCount int64
 	if err := db.Count(&totalCount).Error; err != nil {
 		return nil, err

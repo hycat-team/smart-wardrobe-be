@@ -430,15 +430,6 @@
       },
       "type": "object"
     },
-    "smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes": {
-      "properties": {
-        "subscription": {},
-        "user": {
-          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes"
-        }
-      },
-      "type": "object"
-    },
     "smart-wardrobe-be_services_account_dto_identity.AdminUserListRes": {
       "properties": {
         "items": {
@@ -1039,11 +1030,18 @@
         "expiresAt": {
           "type": "string"
         },
+        "isAutoRenewEnabled": {
+          "type": "boolean"
+        },
         "maxOutfits": {
           "type": "integer"
         },
         "maxWardrobeItems": {
           "type": "integer"
+        },
+        "personalizationEnabled": {
+          "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old consumers read the zero value (false).",
+          "type": "boolean"
         },
         "planId": {
           "type": "string"

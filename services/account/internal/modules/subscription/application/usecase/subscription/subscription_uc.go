@@ -358,10 +358,11 @@ func (uc *SubscriptionUseCase) provisionMissingSubscriptions(
 	return created, nil
 }
 
-// AdminList lists user subscriptions with optional filtering by planCode and status.
-func (uc *SubscriptionUseCase) AdminList(ctx context.Context, planCode *string, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error) {
+// AdminList lists user subscriptions with optional filtering by planCode, userID and status.
+func (uc *SubscriptionUseCase) AdminList(ctx context.Context, planCode *string, userID *uuid.UUID, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error) {
 	filter := repositories.AdminUserSubscriptionFilter{
 		PlanCode: planCode,
+		UserID:   userID,
 		Status:   status,
 	}
 	subs, total, err := uc.userSubRepo.ListAdmin(ctx, filter, page, limit)

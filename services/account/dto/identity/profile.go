@@ -45,18 +45,24 @@ type UserBriefRes struct {
 	AvatarUrl *string               `json:"avatarUrl,omitempty"`
 }
 
-// UserSubscriptionRes is a projection of
-// subscription_dto.UserSubscriptionContractDTO embedded in UserRes (drops
-// IsAutoRenewEnabled, ExpiresAt omitempty) — keep JSON fields in sync with the source.
+// UserSubscriptionRes is the single admin-facing projection of a user's
+// effective plan. It is embedded in UserRes so the list and the detail
+// endpoint answer with ONE shape; the detail endpoint used to duplicate this
+// data in an envelope field, which is why the two could drift apart.
+// Keep JSON fields in sync with subscription_dto.UserSubscriptionContractDTO.
 type UserSubscriptionRes struct {
 	PlanID             uuid.UUID  `json:"planId"`
 	PlanName           string     `json:"planName"`
 	PlanSlug           string     `json:"planSlug"`
 	ExpiresAt          *time.Time `json:"expiresAt,omitempty"`
+	IsAutoRenewEnabled bool       `json:"isAutoRenewEnabled"`
 	MaxWardrobeItems   int        `json:"maxWardrobeItems"`
 	MaxOutfits         int        `json:"maxOutfits"`
 	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
+	// PersonalizationEnabled is the plan entitlement for personalized styling
+	// (033 D2). Additive field: old consumers read the zero value (false).
+	PersonalizationEnabled bool `json:"personalizationEnabled"`
 }
 
 type UserBodyProfileRes struct {

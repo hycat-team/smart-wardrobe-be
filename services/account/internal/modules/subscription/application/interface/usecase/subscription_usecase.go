@@ -30,7 +30,7 @@ type ISubscriptionUseCase interface {
 	ProcessUpcomingExpiryNotifications(ctx context.Context) error
 	SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error)
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanBriefRes, error)
-	AdminList(ctx context.Context, planCode *string, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error)
+	AdminList(ctx context.Context, planCode *string, userID *uuid.UUID, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error)
 	AdminCancel(ctx context.Context, userID uuid.UUID) error
 	// 024 T083/T086 (FR-060): one grant method, and it takes a LIST. A single
 	// account is a list of one.

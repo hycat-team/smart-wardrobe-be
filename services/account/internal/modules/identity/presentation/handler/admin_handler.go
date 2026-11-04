@@ -41,11 +41,11 @@ func NewAdminHandler(
 
 // GetUserDetail lấy chi tiết tài khoản người dùng
 // @Summary Chi tiết tài khoản người dùng
-// @Description Lấy thông tin chi tiết tài khoản người dùng và trạng thái gói cước.
+// @Description Lấy thông tin chi tiết tài khoản người dùng. Gói cước hiệu lực nằm trong `subscription` của chính user (cùng shape với danh sách người dùng); `aiOutfitDailyQuota`/`aiChatDailyQuota` là hạn mức/ngày của gói, không phải số lượt còn lại.
 // @Tags Admin User
 // @Produce json
 // @Param id path string true "ID người dùng"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminUserDetailRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes}
 // @Router /api/v1/admin/users/{id} [get]
 func (h *AdminHandler) GetUserDetail(c *gin.Context) error {
 	targetUserID, err := validation.GetUUIDParam(c, "id")

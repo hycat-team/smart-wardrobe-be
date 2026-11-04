@@ -15,6 +15,10 @@ type GetUsersQueryReq struct {
 	RoleSlug *string `form:"roleSlug"`
 	IsActive *bool   `form:"isActive"`
 	Query    *string `form:"q"`
+	// UserID filters by exact account id. It takes precedence over Query so an
+	// administrator can paste a UUID from another admin screen without also
+	// matching a name fragment.
+	UserID *string `form:"userId"`
 }
 
 type AdminUserListRes = shared_dto.PaginationResult[*UserRes]
@@ -34,10 +38,11 @@ type UpdateUserRoleReq struct {
 	RoleSlug roleslug.RoleSlug `json:"roleSlug" binding:"required" label:"vai trò"`
 }
 
-type AdminUserDetailRes struct {
-	User         *UserRes `json:"user"`
-	Subscription any      `json:"subscription,omitempty"`
-}
+// AdminUserDetailRes is gone on purpose: the detail endpoint now answers with
+// UserRes, whose embedded Subscription is the same projection the list uses.
+// The old envelope repeated the subscription as a second, differently-shaped
+// field (`any`), so the two copies could disagree and every reader had to pick
+// one. See docs/api/identity/admin-user-api.md.
 
 type UserSessionItemDTO struct {
 	ID           uuid.UUID  `json:"id"`

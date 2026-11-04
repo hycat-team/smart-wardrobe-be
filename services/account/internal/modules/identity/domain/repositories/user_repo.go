@@ -14,6 +14,7 @@ type UserFilter struct {
 	RoleSlug *string
 	IsActive *bool
 	Query    *string
+	UserID   *uuid.UUID
 	Page     int
 	Limit    int
 }

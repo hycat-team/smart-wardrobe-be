@@ -880,7 +880,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/subscriptions": {
             "get": {
-                "description": "Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode, status).",
+                "description": "Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode, status, userId).",
                 "produces": [
                     "application/json"
                 ],
@@ -899,6 +899,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Trạng thái (active, expired)",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mã người dùng",
+                        "name": "userId",
                         "in": "query"
                     },
                     {
@@ -1493,6 +1499,12 @@ const docTemplate = `{
                         "type": "string",
                         "name": "roleSlug",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "UserID filters by exact account id. It takes precedence over Query so an\nadministrator can paste a UUID from another admin screen without also\nmatching a name fragment.",
+                        "name": "userId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1563,7 +1575,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/users/{id}": {
             "get": {
-                "description": "Lấy thông tin chi tiết tài khoản người dùng và trạng thái gói cước.",
+                "description": "Lấy thông tin chi tiết tài khoản người dùng. Gói cước hiệu lực nằm trong ` + "`" + `subscription` + "`" + ` của chính user (cùng shape với danh sách người dùng); ` + "`" + `aiOutfitDailyQuota` + "`" + `/` + "`" + `aiChatDailyQuota` + "`" + ` là hạn mức/ngày của gói, không phải số lượt còn lại.",
                 "produces": [
                     "application/json"
                 ],
@@ -1592,7 +1604,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes"
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes"
                                         }
                                     }
                                 }
@@ -3172,15 +3184,6 @@ const docTemplate = `{
                 }
             }
         },
-        "smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes": {
-            "type": "object",
-            "properties": {
-                "subscription": {},
-                "user": {
-                    "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes"
-                }
-            }
-        },
         "smart-wardrobe-be_services_account_dto_identity.AdminUserListRes": {
             "type": "object",
             "properties": {
@@ -3782,11 +3785,18 @@ const docTemplate = `{
                 "expiresAt": {
                     "type": "string"
                 },
+                "isAutoRenewEnabled": {
+                    "type": "boolean"
+                },
                 "maxOutfits": {
                     "type": "integer"
                 },
                 "maxWardrobeItems": {
                     "type": "integer"
+                },
+                "personalizationEnabled": {
+                    "description": "PersonalizationEnabled is the plan entitlement for personalized styling\n(033 D2). Additive field: old consumers read the zero value (false).",
+                    "type": "boolean"
                 },
                 "planId": {
                     "type": "string"

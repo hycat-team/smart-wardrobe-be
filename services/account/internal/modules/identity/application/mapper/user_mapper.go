@@ -112,14 +112,16 @@ func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionCon
 
 	if sub != nil {
 		res.Subscription = dto.UserSubscriptionRes{
-			PlanID:             sub.PlanID,
-			PlanName:           sub.PlanName,
-			PlanSlug:           sub.PlanSlug,
-			ExpiresAt:          sub.ExpiresAt,
-			MaxWardrobeItems:   sub.MaxWardrobeItems,
-			MaxOutfits:         sub.MaxOutfits,
-			AiOutfitDailyQuota: sub.AiOutfitDailyQuota,
-			AiChatDailyQuota:   sub.AiChatDailyQuota,
+			PlanID:                 sub.PlanID,
+			PlanName:               sub.PlanName,
+			PlanSlug:               sub.PlanSlug,
+			ExpiresAt:              sub.ExpiresAt,
+			IsAutoRenewEnabled:     sub.IsAutoRenewEnabled,
+			MaxWardrobeItems:       sub.MaxWardrobeItems,
+			MaxOutfits:             sub.MaxOutfits,
+			AiOutfitDailyQuota:     sub.AiOutfitDailyQuota,
+			AiChatDailyQuota:       sub.AiChatDailyQuota,
+			PersonalizationEnabled: sub.PersonalizationEnabled,
 		}
 	}
 
