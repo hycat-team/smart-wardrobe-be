@@ -77,6 +77,53 @@ var Topology = []Binding{
 		Prefetch:    20,
 		Concurrency: 3,
 	},
+	// Delayed retries for a temporary analyze failure. No consumer: the message
+	// waits out x-message-ttl and is then dead-lettered straight back to
+	// fashion_analyze_queue, so the backoff survives a worker restart.
+	//
+	// Why the delay is needed at all: the vision provider downloads a Cloudinary
+	// derived image, and Cloudinary answers 423 Locked until that derived version
+	// is generated (measured 10-24s after upload). Failing instantly and retrying
+	// instantly burns every attempt before the image exists.
+	//
+	// Classic (the default) because these queues only hold a TTL; the retry that
+	// returns to the main queue inherits its quorum + x-delivery-limit contract.
+	{
+		Queue:       eventconstants.QueueFashionAnalyzeRetry1,
+		RoutingKeys: []string{RoutingKeyFashionAnalyzeRetry1},
+		Exchange:    ExchangeName,
+		Args: amqp.Table{
+			"x-message-ttl":             int32(eventconstants.FashionAnalyzeRetryDelay1Millis),
+			"x-dead-letter-exchange":    ExchangeName,
+			"x-dead-letter-routing-key": eventconstants.TopicFashionAnalyze,
+		},
+		Prefetch:    1,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueFashionAnalyzeRetry2,
+		RoutingKeys: []string{RoutingKeyFashionAnalyzeRetry2},
+		Exchange:    ExchangeName,
+		Args: amqp.Table{
+			"x-message-ttl":             int32(eventconstants.FashionAnalyzeRetryDelay2Millis),
+			"x-dead-letter-exchange":    ExchangeName,
+			"x-dead-letter-routing-key": eventconstants.TopicFashionAnalyze,
+		},
+		Prefetch:    1,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueFashionAnalyzeRetry3,
+		RoutingKeys: []string{RoutingKeyFashionAnalyzeRetry3},
+		Exchange:    ExchangeName,
+		Args: amqp.Table{
+			"x-message-ttl":             int32(eventconstants.FashionAnalyzeRetryDelay3Millis),
+			"x-dead-letter-exchange":    ExchangeName,
+			"x-dead-letter-routing-key": eventconstants.TopicFashionAnalyze,
+		},
+		Prefetch:    1,
+		Concurrency: 1,
+	},
 	{
 		Queue:       eventconstants.QueueSubscriptionPlanChanged,
 		RoutingKeys: []string{RoutingKeySubscriptionPlanChanged},

@@ -9,9 +9,24 @@ const (
 	TopicSubscriptionPlanChanged = "subscription.plan.changed"
 
 	// Fashion Events
-	TopicFashionInit                = "fashion.event.init"
-	TopicFashionAnalyze             = "fashion.event.analyze"
-	TopicFashionAnalyzed            = "fashion.event.analyzed"
+	TopicFashionInit     = "fashion.event.init"
+	TopicFashionAnalyze  = "fashion.event.analyze"
+	TopicFashionAnalyzed = "fashion.event.analyzed"
+
+	// Fashion analyze retry topics. A temporary provider failure (a derived
+	// Cloudinary image that is still being generated, a timeout, a 5xx) waits
+	// out a broker-side delay before returning to fashion.event.analyze.
+	//
+	// These keys are siblings of TopicFashionAnalyze, never a suffix of it: the
+	// main queue binds the exact key, and a name like
+	// "fashion.event.analyze.retry" would read as the same event with a
+	// different delivery path. Each key owns one delay queue (topology.go), so
+	// changing a delay means a NEW queue name rather than a redeclare that
+	// fails with 406 PRECONDITION_FAILED.
+	TopicFashionAnalyzeRetry1 = "fashion.retry.analyze.1"
+	TopicFashionAnalyzeRetry2 = "fashion.retry.analyze.2"
+	TopicFashionAnalyzeRetry3 = "fashion.retry.analyze.3"
+
 	TopicFashionFailed              = "fashion.event.failed"
 	TopicFashionItemCreated         = "fashion.item.created"
 	TopicFashionAnalyzedWardrobe    = "fashion.event.analyzed.wardrobe"

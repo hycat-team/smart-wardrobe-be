@@ -157,6 +157,79 @@ func TestStyleLearningQueueDeliveryContract(t *testing.T) {
 	}
 }
 
+// The analyze retry delay queues are the fix for the 423 Locked race: Cloudinary
+// reports a background-removal derivative as locked until it exists (10-24s in
+// production), and the old code retried three times within five seconds. The
+// broker must therefore hold the job for the TTL and then dead-letter it back to
+// the MAIN analyze queue — a retry that lands anywhere else is lost.
+func TestFashionAnalyzeRetryQueuesDelayAndReturnToMainQueue(t *testing.T) {
+	tiers := []struct {
+		name  string
+		queue string
+		key   string
+		ttl   int32
+	}{
+		{"first", eventconstants.QueueFashionAnalyzeRetry1, eventconstants.TopicFashionAnalyzeRetry1, int32(eventconstants.FashionAnalyzeRetryDelay1Millis)},
+		{"second", eventconstants.QueueFashionAnalyzeRetry2, eventconstants.TopicFashionAnalyzeRetry2, int32(eventconstants.FashionAnalyzeRetryDelay2Millis)},
+		{"third", eventconstants.QueueFashionAnalyzeRetry3, eventconstants.TopicFashionAnalyzeRetry3, int32(eventconstants.FashionAnalyzeRetryDelay3Millis)},
+	}
+
+	for _, tier := range tiers {
+		owners := bindingsRoutingTo(Topology, tier.key)
+		if len(owners) != 1 {
+			t.Fatalf("%s retry key %q is bound by %d queues (%s), want exactly 1",
+				tier.name, tier.key, len(owners), queueNames(owners))
+		}
+		binding := owners[0]
+		if binding.Queue != tier.queue {
+			t.Errorf("%s retry key %q bound to queue %q, want %q",
+				tier.name, tier.key, binding.Queue, tier.queue)
+		}
+		if got := binding.Args["x-message-ttl"]; got != tier.ttl {
+			t.Errorf("%s retry queue x-message-ttl = %v, want %v", tier.name, got, tier.ttl)
+		}
+		if got := binding.Args["x-dead-letter-exchange"]; got != ExchangeName {
+			t.Errorf("%s retry queue x-dead-letter-exchange = %v, want %s (the main exchange)",
+				tier.name, got, ExchangeName)
+		}
+		if got := binding.Args["x-dead-letter-routing-key"]; got != eventconstants.TopicFashionAnalyze {
+			t.Errorf("%s retry queue x-dead-letter-routing-key = %v, want %s",
+				tier.name, got, eventconstants.TopicFashionAnalyze)
+		}
+		// Classic on purpose: the queue only holds a TTL, and a quorum queue here
+		// would also dead-letter on x-delivery-limit rather than on time.
+		if got, ok := binding.Args["x-queue-type"]; ok {
+			t.Errorf("%s retry queue x-queue-type = %v, want classic (no argument)", tier.name, got)
+		}
+		// The retry must not be consumable: it has no consumer, and binding it to
+		// the main key would deliver the copy immediately.
+		for _, key := range binding.RoutingKeys {
+			if key == eventconstants.TopicFashionAnalyze {
+				t.Errorf("%s retry queue is also bound to %s, which defeats the delay",
+					tier.name, eventconstants.TopicFashionAnalyze)
+			}
+		}
+	}
+
+	// The retry ladder must actually grow: a shorter later delay would retry a
+	// stuck provider faster than the first attempt.
+	if !(eventconstants.FashionAnalyzeRetryDelay1Millis < eventconstants.FashionAnalyzeRetryDelay2Millis &&
+		eventconstants.FashionAnalyzeRetryDelay2Millis < eventconstants.FashionAnalyzeRetryDelay3Millis) {
+		t.Errorf("retry delays must increase: %d, %d, %d",
+			eventconstants.FashionAnalyzeRetryDelay1Millis,
+			eventconstants.FashionAnalyzeRetryDelay2Millis,
+			eventconstants.FashionAnalyzeRetryDelay3Millis)
+	}
+
+	// Exactly one consumer queue owns the analyze topic, otherwise every retry
+	// would be analyzed twice.
+	owners := bindingsRoutingTo(Topology, eventconstants.TopicFashionAnalyze)
+	if len(owners) != 1 || owners[0].Queue != eventconstants.QueueFashionAnalyze {
+		t.Fatalf("%s is bound by %d queues (%s), want only %s",
+			eventconstants.TopicFashionAnalyze, len(owners), queueNames(owners), eventconstants.QueueFashionAnalyze)
+	}
+}
+
 // bindingsRoutingTo returns every binding that routes to key.
 func bindingsRoutingTo(bindings []Binding, key string) []Binding {
 	var matches []Binding

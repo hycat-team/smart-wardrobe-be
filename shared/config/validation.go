@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
 )
 
 // drillSchemaPattern confines drills to clearly-marked temporary schemas so a
@@ -61,8 +63,8 @@ func validateConfig(cfg *Config) error {
 	if cfg.Startup.RetryAttempt1Seconds <= 0 || cfg.Startup.RetryAttempt2Seconds <= 0 || cfg.Startup.RetryAttempt3Seconds <= 0 {
 		return fmt.Errorf("startup retry durations must be greater than 0")
 	}
-	if cfg.Wardrobe.RetryDelay1Seconds <= 0 || cfg.Wardrobe.RetryDelay2Seconds <= 0 || cfg.Wardrobe.RetryDelay3Seconds <= 0 {
-		return fmt.Errorf("wardrobe retry delays must be greater than 0")
+	if err := validateWardrobeRetryDelays(cfg); err != nil {
+		return err
 	}
 	if cfg.Wardrobe.StaleMinutes <= 0 || cfg.Wardrobe.MaxRetryCount <= 0 || strings.TrimSpace(cfg.Wardrobe.RecoveryScanCron) == "" {
 		return fmt.Errorf("wardrobe processing recovery configuration is invalid")
@@ -436,6 +438,34 @@ func validateDrillSchema(schema string) error {
 	}
 	if !drillSchemaPattern.MatchString(schema) {
 		return fmt.Errorf("drill schema %q is invalid (want drill_<a-z0-9_>, max 54 chars)", schema)
+	}
+	return nil
+}
+
+// validateWardrobeRetryDelays pins the configured analyze backoff to the
+// broker-side queue TTLs in topology.go.
+//
+// The delay is a queue argument, and RabbitMQ cannot change one in place. If
+// the config said 120s while the queue TTL says 60s, the operator would have
+// every reason to believe the retry waits two minutes and no way to notice it
+// does not — so the only safe values are the ones the broker actually holds.
+// Changing a delay is a queue migration (new queue name, drain, delete), not a
+// config edit.
+func validateWardrobeRetryDelays(cfg *Config) error {
+	delays := []struct {
+		key  string
+		got  int
+		want int
+	}{
+		{"wardrobe.retry_delay_1_seconds", cfg.Wardrobe.RetryDelay1Seconds, eventconstants.FashionAnalyzeRetryDelay1Millis / 1000},
+		{"wardrobe.retry_delay_2_seconds", cfg.Wardrobe.RetryDelay2Seconds, eventconstants.FashionAnalyzeRetryDelay2Millis / 1000},
+		{"wardrobe.retry_delay_3_seconds", cfg.Wardrobe.RetryDelay3Seconds, eventconstants.FashionAnalyzeRetryDelay3Millis / 1000},
+	}
+	for _, d := range delays {
+		if d.got != d.want {
+			return fmt.Errorf("%s = %d, want %d: the analyze retry delay is a broker queue TTL, "+
+				"so changing it requires a queue migration instead of a config edit", d.key, d.got, d.want)
+		}
 	}
 	return nil
 }

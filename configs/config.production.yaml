@@ -220,6 +220,10 @@ community:
     follow_rate_limit_per_hour: 200
     like_rate_limit_per_hour: 600
 wardrobe:
+    # Analyze retry delays are broker-side queue TTLs, not runtime knobs. These
+    # values are pinned to the topology constants by validateWardrobeRetryDelays;
+    # changing one requires a queue migration (new queue name, drain, delete),
+    # because RabbitMQ cannot change x-message-ttl in place (406).
     retry_delay_1_seconds: 60
     retry_delay_2_seconds: 300
     retry_delay_3_seconds: 900

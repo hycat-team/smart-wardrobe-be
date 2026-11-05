@@ -221,6 +221,7 @@ community:
     follow_rate_limit_per_hour: 200
     like_rate_limit_per_hour: 600
 wardrobe:
+    # Pinned to the analyze retry queue TTLs in topology.go (see validateWardrobeRetryDelays).
     retry_delay_1_seconds: 60
     retry_delay_2_seconds: 300
     retry_delay_3_seconds: 900

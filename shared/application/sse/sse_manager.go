@@ -7,10 +7,22 @@ import (
 	"smart-wardrobe-be/shared/config"
 )
 
+// Event is one SSE frame together with the id assigned by the manager.
+//
+// The id exists so a client can tell a replayed event from a new one. Every
+// reconnect replays the whole buffer (feature 023, FR-006), and without an id the
+// browser cannot distinguish "this failed analysis happened again" from "here is
+// the same event you already saw" - which is exactly how the wardrobe badge
+// ended up flickering.
+type Event struct {
+	ID   uint64
+	Data []byte
+}
+
 // ISSEManager defines the interface for the Server-Sent Events manager.
 type ISSEManager interface {
-	Subscribe(taskId string) chan []byte
-	Unsubscribe(taskId string, ch chan []byte)
+	Subscribe(taskId string) chan Event
+	Unsubscribe(taskId string, ch chan Event)
 	Publish(taskId string, data []byte)
 }
 
@@ -20,7 +32,7 @@ const subscriberBufferSize = 10
 // taskBuffer keeps the most recent events of one analysis session so a client
 // that reconnects can replay them (feature 023, FR-006).
 type taskBuffer struct {
-	events  [][]byte
+	events  []Event
 	expires time.Time
 }
 
@@ -28,11 +40,16 @@ type taskBuffer struct {
 // plus a per-session replay buffer.
 type SSEManager struct {
 	mu       sync.RWMutex
-	channels map[string][]chan []byte // taskId -> subscriber channels
-	buffers  map[string]*taskBuffer   // taskId -> replay buffer
+	channels map[string][]chan Event // taskId -> subscriber channels
+	buffers  map[string]*taskBuffer  // taskId -> replay buffer
 	maxSize  int
 	ttl      time.Duration
 	now      func() time.Time
+	// nextID is monotonically increasing for the process lifetime and seeded
+	// from the wall clock, so ids also keep increasing across restarts. A client
+	// that remembers the last id it applied can therefore ignore a replay even
+	// when the replay follows a deploy.
+	nextID uint64
 }
 
 // NewSSEManager creates a manager with the configured replay buffer size and
@@ -49,21 +66,24 @@ func NewSSEManager(cfg *config.Config) *SSEManager {
 		}
 	}
 	return &SSEManager{
-		channels: make(map[string][]chan []byte),
+		channels: make(map[string][]chan Event),
 		buffers:  make(map[string]*taskBuffer),
 		maxSize:  maxSize,
 		ttl:      time.Duration(ttlSeconds) * time.Second,
 		now:      time.Now,
+		// Microseconds stay below JavaScript's Number.MAX_SAFE_INTEGER (~9e15),
+		// so the browser can compare ids as plain numbers.
+		nextID: uint64(time.Now().UnixMicro()),
 	}
 }
 
 // Subscribe registers a new subscriber channel for a taskId and immediately
 // replays the buffered events (FIFO) so late reconnects do not miss updates.
-func (m *SSEManager) Subscribe(taskId string) chan []byte {
+func (m *SSEManager) Subscribe(taskId string) chan Event {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	ch := make(chan []byte, m.subscriberCap())
+	ch := make(chan Event, m.subscriberCap())
 	if buf := m.activeBufferLocked(taskId); buf != nil {
 		for _, ev := range buf.events {
 			select {
@@ -79,7 +99,7 @@ func (m *SSEManager) Subscribe(taskId string) chan []byte {
 
 // Unsubscribe closes and removes a subscriber channel for a taskId. The replay
 // buffer is intentionally kept so a later reconnect can still replay.
-func (m *SSEManager) Unsubscribe(taskId string, ch chan []byte) {
+func (m *SSEManager) Unsubscribe(taskId string, ch chan Event) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -108,12 +128,15 @@ func (m *SSEManager) Publish(taskId string, data []byte) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	m.nextID++
+	evt := Event{ID: m.nextID, Data: data}
+
 	buf := m.activeBufferLocked(taskId)
 	if buf == nil {
 		buf = &taskBuffer{}
 		m.buffers[taskId] = buf
 	}
-	buf.events = append(buf.events, data)
+	buf.events = append(buf.events, evt)
 	if m.maxSize > 0 && len(buf.events) > m.maxSize {
 		buf.events = buf.events[len(buf.events)-m.maxSize:]
 	}
@@ -125,7 +148,7 @@ func (m *SSEManager) Publish(taskId string, data []byte) {
 	}
 	for _, ch := range channels {
 		select {
-		case ch <- data:
+		case ch <- evt:
 		default:
 			// Avoid blocking if the receiver is slow or disconnected.
 		}

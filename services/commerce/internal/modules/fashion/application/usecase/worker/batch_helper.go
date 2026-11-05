@@ -1,6 +1,27 @@
 package worker
 
-import "strings"
+import (
+	"strings"
+
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
+)
+
+// analyzeRetryTopic maps a retry attempt to its delay queue. The delays are
+// broker-side constants (see messaging/topology.go): attempt 1 waits one
+// minute, attempt 2 five minutes, and every later attempt fifteen. A retry count
+// above three reuses the last tier, which is the right degradation when
+// max_retry_count is raised — a longer wait is always safe, a shorter one is
+// what broke production.
+func analyzeRetryTopic(retryCount int) string {
+	switch {
+	case retryCount <= 1:
+		return eventconstants.TopicFashionAnalyzeRetry1
+	case retryCount == 2:
+		return eventconstants.TopicFashionAnalyzeRetry2
+	default:
+		return eventconstants.TopicFashionAnalyzeRetry3
+	}
+}
 
 func isTransientError(err error) bool {
 	if err == nil {

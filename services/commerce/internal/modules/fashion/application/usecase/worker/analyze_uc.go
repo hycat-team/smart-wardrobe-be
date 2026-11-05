@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
@@ -133,34 +132,45 @@ func (uc *FashionWorkerUseCase) publishProcessingEvent(ctx context.Context, job 
 	}
 }
 
-// CleanupFailedItems removes failed items older than the retention window and publishes delete events.
+// handleJobFailure schedules a retry or finalizes the item.
+//
+// A transient failure is republished onto a broker-side delay queue instead of
+// being retried inline. Two things depend on that:
+//
+//   - Cloudinary answers 423 Locked while the background-removal derivative is
+//     still being generated, and that took 10-24s on production. Retrying in the
+//     same second burned all three attempts before the image existed, so a
+//     perfectly valid photo ended up "analysis_temporary_error".
+//   - The delay lives in the queue, not in a timer here, so it survives a
+//     worker restart and cannot be lost mid-backoff.
+//
+// The previous code computed exactly this delay and only wrote it to the log.
 func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.FashionAnalyzeJobDTO, err error, run *workerlog.Run) {
-	topic := eventconstants.TopicFashionAnalyze
-
 	if isTransientError(err) && job.RetryCount < uc.cfg.Wardrobe.MaxRetryCount {
 		job.RetryCount++
-
-		baseDelay := time.Duration(uc.cfg.Wardrobe.RetryDelay1Seconds) * time.Second
-		switch job.RetryCount {
-		case 2:
-			baseDelay = time.Duration(uc.cfg.Wardrobe.RetryDelay2Seconds) * time.Second
-		case 3:
-			baseDelay = time.Duration(uc.cfg.Wardrobe.RetryDelay3Seconds) * time.Second
-		}
-
-		jitter := time.Duration(1+rand.Intn(10)) * time.Second
-		delay := baseDelay + jitter
+		retryTopic := analyzeRetryTopic(job.RetryCount)
 
 		run.ChildWarn(uc.logger, "Item analyze failed and scheduled retry",
 			zap.String("itemId", job.ItemID.String()),
 			zap.Int("retryCount", job.RetryCount),
-			zap.Duration("retryDelay", delay),
+			zap.String("retryTopic", retryTopic),
 			zap.Error(err),
 		)
 		run.AddRetry(1)
 
+		// Best-effort: the counter is observability for stale-processing recovery,
+		// never a precondition for scheduling the retry.
+		if job.FashionItemID != nil {
+			if incErr := uc.fashionItemRepo.IncrementProcessingRetryCount(ctx, *job.FashionItemID); incErr != nil {
+				run.ChildWarn(uc.logger, "Failed to increment processing retry count",
+					zap.String("fashionItemId", job.FashionItemID.String()),
+					zap.Error(incErr),
+				)
+			}
+		}
+
 		if republishErr := uc.uow.Execute(context.Background(), func(txCtx context.Context) error {
-			return uc.eventPublisher.Publish(txCtx, topic, job)
+			return uc.eventPublisher.Publish(txCtx, retryTopic, job)
 		}); republishErr != nil {
 			run.ChildError(uc.logger, "Failed to republish analyze item retry job",
 				zap.String("itemId", job.ItemID.String()),

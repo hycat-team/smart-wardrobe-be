@@ -16,6 +16,12 @@ const (
 	// DefaultAIChatChunkDeadline applies to AI chat streams: LLM providers can
 	// stall longer between tokens than local broadcasters (spec 019 FR-003).
 	DefaultAIChatChunkDeadline = 180 * time.Second
+
+	// SSEHeartbeatInterval is how often a quiet analysis stream emits a ping.
+	// It must stay well below the shortest proxy/read timeout in front of the
+	// API so a long analysis is not mistaken for an idle connection, and it gives
+	// the server a periodic write that fails when the client is gone.
+	SSEHeartbeatInterval = 15 * time.Second
 )
 
 // Deadlines are package-level so streaming handlers can extend without each

@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"io"
+	"time"
+
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
 	usecase_interfaces "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/interface/usecase"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
@@ -252,6 +255,12 @@ func (h *WardrobeItemHandler) SubscribeTaskSSE(c *gin.Context) error {
 	ch := h.sseManager.Subscribe(taskId)
 	defer h.sseManager.Unsubscribe(taskId, ch)
 
+	// A quiet stream must not look like a dead one: the ping keeps proxies from
+	// dropping the connection and lets a write to a departed client fail fast
+	// instead of leaving a ghost subscriber behind for the whole write deadline.
+	heartbeat := time.NewTicker(shared_pres.SSEHeartbeatInterval)
+	defer heartbeat.Stop()
+
 	c.Stream(func(w io.Writer) bool {
 		// Keep long analysis streams alive past the server-wide WriteTimeout
 		// (spec 019 FR-003).
@@ -259,11 +268,19 @@ func (h *WardrobeItemHandler) SubscribeTaskSSE(c *gin.Context) error {
 		select {
 		case <-c.Request.Context().Done():
 			return false
-		case data, ok := <-ch:
+		case <-heartbeat.C:
+			c.SSEvent("ping", "1")
+			return true
+		case evt, ok := <-ch:
 			if !ok {
 				return false
 			}
-			c.SSEvent("message", string(data))
+			// The id lets a reconnecting client discard frames it already applied
+			// (see sse.Event).
+			if _, err := fmt.Fprintf(w, "id: %d\n", evt.ID); err != nil {
+				return false
+			}
+			c.SSEvent("message", string(evt.Data))
 			return true
 		}
 	})

@@ -13,6 +13,9 @@ const (
 	RoutingKeyElasticsearchSyncWildcard  = "wardrobe.event.#"
 	RoutingKeyFashionInit                = eventconstants.TopicFashionInit
 	RoutingKeyFashionAnalyze             = eventconstants.TopicFashionAnalyze
+	RoutingKeyFashionAnalyzeRetry1       = eventconstants.TopicFashionAnalyzeRetry1
+	RoutingKeyFashionAnalyzeRetry2       = eventconstants.TopicFashionAnalyzeRetry2
+	RoutingKeyFashionAnalyzeRetry3       = eventconstants.TopicFashionAnalyzeRetry3
 	RoutingKeyFashionAnalyzed            = eventconstants.TopicFashionAnalyzed
 	RoutingKeyFashionFailed              = eventconstants.TopicFashionFailed
 	RoutingKeyFashionItemCreated         = eventconstants.TopicFashionItemCreated

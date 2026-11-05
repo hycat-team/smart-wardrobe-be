@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"io"
+	"time"
+
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/services/commerce/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/shared/pkg/utils/contextutils"
@@ -69,6 +72,11 @@ func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
 	ch := h.sseManager.Subscribe(taskId)
 	defer h.sseManager.Unsubscribe(taskId, ch)
 
+	// Same heartbeat contract as the wardrobe SSE handler: a quiet stream stays
+	// visibly alive and a departed client is detected on the next write.
+	heartbeat := time.NewTicker(shared_pres.SSEHeartbeatInterval)
+	defer heartbeat.Stop()
+
 	c.Stream(func(w io.Writer) bool {
 		// Keep long analysis streams alive past the server-wide WriteTimeout
 		// (spec 019 FR-003).
@@ -76,11 +84,17 @@ func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
 		select {
 		case <-c.Request.Context().Done():
 			return false
-		case data, ok := <-ch:
+		case <-heartbeat.C:
+			c.SSEvent("ping", "1")
+			return true
+		case evt, ok := <-ch:
 			if !ok {
 				return false
 			}
-			c.SSEvent("message", string(data))
+			if _, err := fmt.Fprintf(w, "id: %d\n", evt.ID); err != nil {
+				return false
+			}
+			c.SSEvent("message", string(evt.Data))
 			return true
 		}
 	})
