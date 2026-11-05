@@ -77,6 +77,22 @@ Before calling the Gemini API, `AIService` calls `Prepare(userID, operation, pro
     - If the count is less than `MaxPaidAttemptsPerDay` (default is 5), allow calling the paid model (so the user can trial it).
     - If greater than or equal to 5 (Paid Attempt Guard), reject and route to the free Gemma model.
 
+#### Token ceilings are observed, not enforced (phase 1)
+
+`normal_max_input_tokens` / `reduced_max_input_tokens` have existed per operation since 024, but until now no code compared them with the prompt estimate: a prompt larger than its declared ceiling was still sent. The ceilings are read from the grant snapshot, and the snapshots currently in production still carry values that a legitimate outfit prompt already exceeds (tier-2 input ceiling is 3.000 while production prompts reach 3.869), so enforcing them now would degrade paying users onto the free route.
+
+Phase 1 therefore records instead of blocking:
+
+- `observeTokenCeilings` compares `EstimatedPromptTokens` with the resolved `MaxInputTokens`, and the requested output budget with `MaxOutputTokens`, once per text call.
+- `observeOutputUsage` compares the tokens the provider actually produced with `MaxOutputTokens` after `Confirm`.
+- `observeVisionUsage` warns when a Gemini vision call reports no prompt tokens — the OpenAI-compatible vision response never reports usage, so only Gemini silence means the meter regressed.
+
+Breaches are logged as `AI prompt exceeds its resolved token ceiling` and throttled on powers of two (1, 2, 4, 8, ...) so an incident cannot flood the log; the in-memory counter still advances on every breach and only the log line is throttled. The request keeps its route, its options and its output budget — observation cannot change what a customer receives.
+
+Phase 2 (not implemented) will pick the enforcement behaviour once the counters have run in production: either clamp the output budget, or degrade the call to the free route, plus a migration that refreshes `policy_snapshot` for active grants. Until then the compact-threshold reduction described above is not active either: `compact_threshold_bps` is not read by the runtime.
+
+Note that `EstimatedPromptTokens` is a local estimate (`runes / 4 × 1.25`) whenever the prompt stays under the provider-counting threshold, so it runs ~18% above the provider's real count (14.376 characters estimate 4.492 tokens against 3.812 measured). Any future ceiling must leave that headroom.
+
 #### Step 2: MarkInFlight
 
 When preparing to send the payload, the state is updated to `IN_FLIGHT`.

@@ -49,6 +49,7 @@ func (uc *OrchestratorUseCase) AnalyzeImage(ctx context.Context, imageUrl string
 		return "", err
 	}
 	provider, model := usageProviderModel(plan, usage)
+	uc.observeVisionUsage(plan.Operation, provider, usage.PromptTokens, uuid.Nil)
 	_ = uc.costUC.Confirm(ctx, decision.RequestID, uc_interfaces.AIUsage{
 		PromptTokens:   usage.PromptTokens,
 		OutputTokens:   usage.OutputTokens,
@@ -107,6 +108,8 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 		return "", err
 	}
 
+	uc.observeTokenCeilings(plan, est.EstimatedPromptTokens, options.MaxOutputTokens, options.UserID)
+
 	if decision.Route == airoute.Local {
 		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
 		return "", ErrLocalFallbackRoute
@@ -147,6 +150,7 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 	if err = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage); err != nil {
 		return "", err
 	}
+	uc.observeOutputUsage(plan, usage.OutputTokens, options.UserID)
 	return result, nil
 }
 
@@ -167,6 +171,8 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 	if err != nil {
 		return "", err
 	}
+
+	uc.observeTokenCeilings(plan, est.EstimatedPromptTokens, options.MaxOutputTokens, options.UserID)
 
 	if decision.Route == airoute.Local {
 		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
@@ -206,6 +212,7 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 	if err = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage); err != nil {
 		return "", err
 	}
+	uc.observeOutputUsage(plan, usage.OutputTokens, options.UserID)
 	return result, nil
 }
 
@@ -238,6 +245,8 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		close(errChan)
 		return textChan, errChan
 	}
+
+	uc.observeTokenCeilings(plan, est.EstimatedPromptTokens, options.MaxOutputTokens, options.UserID)
 
 	if decision.Route == airoute.Local {
 		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
@@ -299,6 +308,7 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		mu.Unlock()
 
 		_ = uc.costUC.Confirm(ctx, decision.RequestID, confirmUsage)
+		uc.observeOutputUsage(plan, confirmUsage.OutputTokens, options.UserID)
 	}()
 
 	return textChan, errChan
