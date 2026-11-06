@@ -48,6 +48,11 @@ func (uc *AdminStatsUseCase) GetAdminSubscriptionStats(ctx context.Context, from
 // from the validity intervals instead of the overwritten current-plan
 // projection (031 FR-007).
 //
+// Each account contributes exactly ONCE: when it changed plan inside the
+// window, the LATEST interval that overlaps the window decides its bucket
+// (data-model §5). The consumer sums the buckets into `totalUsers`, so counting
+// intervals instead of accounts made that total exceed the real headcount.
+//
 // Completeness is decided BEFORE the query (plan D4/data-model §6):
 //   - no bounds: the live snapshot, always complete;
 //   - a period ending at/before the cutover: unavailable, no query is run

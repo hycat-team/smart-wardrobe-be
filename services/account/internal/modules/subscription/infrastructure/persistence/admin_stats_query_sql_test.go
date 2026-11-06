@@ -240,8 +240,8 @@ func TestAdminStatsScopesRunOnSQLite(t *testing.T) {
 
 // 031 T012: the distribution no longer reads the current-plan projection at
 // all. It must query the validity intervals with the half-open range
-// expression, count DISTINCT users per plan (FR-010), and keep the four bound
-// shapes from D4/data-model §5.
+// expression, bucket each account ONCE under its latest overlapping interval
+// (FR-010), and keep the four bound shapes from D4/data-model §5.
 func TestDistributionUsesValidityIntervals(t *testing.T) {
 	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
@@ -253,8 +253,14 @@ func TestDistributionUsesValidityIntervals(t *testing.T) {
 	if !strings.Contains(stmt, "tstzrange(valid_from, valid_to, '[)') && tstzrange(") {
 		t.Fatalf("the bounded distribution must use the half-open interval overlap predicate, got: %s", stmt)
 	}
-	if !strings.Contains(stmt, "COUNT(DISTINCT user_id)") {
-		t.Fatalf("a user who left and returned to the same plan must count once (FR-010), got: %s", stmt)
+	if !strings.Contains(stmt, "DISTINCT ON (user_id)") {
+		t.Fatalf("each account must collapse to one interval (its latest in the period), got: %s", stmt)
+	}
+	if !strings.Contains(stmt, "COUNT(*)") {
+		t.Fatalf("the outer count must count accounts, not intervals, got: %s", stmt)
+	}
+	if strings.Contains(stmt, "COUNT(DISTINCT user_id)") {
+		t.Fatalf("COUNT(DISTINCT user_id) is distinct only within a bucket, so a mid-period switcher would be counted twice, got: %s", stmt)
 	}
 	if strings.Contains(stmt, "current_plan_code") || strings.Contains(stmt, "user_subscriptions") {
 		t.Fatalf("the distribution must no longer read the overwritten current-plan projection, got: %s", stmt)
@@ -272,8 +278,8 @@ func TestDistributionSnapshotUsesTheIntervalContainingNow(t *testing.T) {
 	if !strings.Contains(stmt, "tstzrange(valid_from, valid_to, '[)') @> now()") {
 		t.Fatalf("the no-period distribution must select the interval containing now(), got: %s", stmt)
 	}
-	if !strings.Contains(stmt, "COUNT(DISTINCT user_id)") {
-		t.Fatalf("the snapshot must still count DISTINCT users per plan, got: %s", stmt)
+	if !strings.Contains(stmt, "DISTINCT ON (user_id)") {
+		t.Fatalf("the snapshot must still bucket each account once, got: %s", stmt)
 	}
 }
 

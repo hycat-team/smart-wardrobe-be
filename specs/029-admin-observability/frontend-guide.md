@@ -623,7 +623,7 @@ Request: `?fromDate=2026-10-01&toDate=2026-10-15` (không gửi = hiện trạng
 
 <!-- đối chiếu live 2026-10-16 -->
 
-- **Cập nhật 031:** nguồn dữ liệu đã chuyển từ gói hiện tại sang **khoảng hiệu lực gói**; người đổi/hạ gói sau kỳ vẫn được tính đúng gói đã dùng trong kỳ, người đổi gói giữa kỳ xuất hiện ở cả hai nhóm.
+- **Cập nhật 031:** nguồn dữ liệu đã chuyển từ gói hiện tại sang **khoảng hiệu lực gói**; người đổi/hạ gói sau kỳ vẫn được tính đúng gói đã dùng trong kỳ. *Sửa đổi 2026-11-06:* người đổi gói giữa kỳ được tính **một lần** theo gói mới nhất trong kỳ (trước đó tính ở cả hai nhóm), nên tổng là số người dùng phân biệt.
 - Có kỳ: đếm user có khoảng hiệu lực giao với kỳ; gói FREE/lifetime (`valid_to` NULL) hiện diện trong mọi kỳ mà khoảng còn hiệu lực.
 - **Mốc lịch sử:** lịch sử chỉ đầy đủ từ `dataAvailableFrom` (ngày VN `YYYY-MM-DD`). Kỳ kết thúc trước/đúng mốc trả `dataCompleteness = "unavailable"`; kỳ cắt ngang mốc trả `"partial"` và chỉ tính phần sau mốc; kỳ sau mốc trả `"complete"`. `totalUsers` là **tổng các nhóm**, không phải số người duy nhất.
 - Xem chi tiết cách render và ví dụ before→after tại [`specs/031-user-plan-periods/frontend-guide.md`](../031-user-plan-periods/frontend-guide.md).

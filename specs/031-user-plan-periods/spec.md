@@ -162,7 +162,9 @@ kiểm tra rằng nếu thao tác nghiệp vụ thất bại thì lịch sử kh
 - **FR-006**: Việc ghi lịch sử MUST idempotent: thực hiện lại cùng một thay đổi (retry, sự kiện trùng)
   MUST NOT tạo khoảng trùng hoặc sửa khoảng đã có.
 - **FR-007**: Báo cáo phân bố MUST đếm người dùng theo gói dựa trên các khoảng giao với kỳ yêu cầu, và
-  MUST tính cả người dùng đã đổi/hạ gói sau kỳ.
+  MUST tính cả người dùng đã đổi/hạ gói sau kỳ. **Sửa đổi 2026-11-06:** mỗi người dùng MUST được tính
+  đúng **một lần**, theo gói của khoảng hiệu lực **mới nhất** giao với kỳ (trước đây người đổi gói giữa
+  kỳ bị tính ở cả hai nhóm, làm tổng vượt số tài khoản thực tế).
 - **FR-008**: Báo cáo MUST xử lý nhất quán kỳ một phía: thiếu ngày kết thúc nghĩa là kéo đến hiện tại
   và MUST NOT tính khoảng bắt đầu trong tương lai; thiếu ngày bắt đầu nghĩa là tính từ đầu lịch sử có
   dữ liệu. Khi **không truyền cả hai**, báo cáo MUST trả về ảnh chụp trạng thái tại thời điểm gọi (gói
@@ -170,10 +172,13 @@ kiểm tra rằng nếu thao tác nghiệp vụ thất bại thì lịch sử kh
 - **FR-009**: Báo cáo MUST bao gồm người dùng có gói đã hết hạn trong kỳ nhưng chưa được hạ gói, tính
   đến đúng thời điểm hết hạn.
 - **FR-010**: Mỗi người dùng MUST được đếm tối đa một lần cho mỗi gói trong một kỳ, kể cả khi họ dùng
-  cùng gói ở nhiều khoảng rời nhau.
-- **FR-011**: Tổng số người dùng MUST là tổng của các nhóm trả về (một người đổi gói trong kỳ được
-  tính ở nhiều nhóm), và tỷ lệ phần trăm MUST được tính trên tổng đó để luôn cộng đúng 100% khi có ít
-  nhất một người dùng. Tài liệu MUST nêu rõ tổng này không phải số người duy nhất.
+  cùng gói ở nhiều khoảng rời nhau. **Sửa đổi 2026-11-06:** đồng thời mỗi người dùng MUST chỉ xuất hiện
+  ở **một nhóm duy nhất** trong toàn báo cáo (xem FR-007/FR-011).
+- **FR-011**: Tổng số người dùng MUST là **số người dùng phân biệt** trong kỳ và MUST bằng tổng của các
+  nhóm trả về, vì mỗi người chỉ thuộc một nhóm; tỷ lệ phần trăm MUST được tính trên tổng đó để luôn cộng
+  đúng 100% khi có ít nhất một người dùng. **Sửa đổi 2026-11-06:** trước đây quy định tổng là tổng cộng
+  dồn các nhóm và một người đổi gói giữa kỳ bị tính ở nhiều nhóm, khiến tổng có thể vượt số tài khoản
+  thật; quy định đó bị bãi bỏ.
 - **FR-012**: Báo cáo MUST kèm mốc thời gian "lịch sử đầy đủ bắt đầu từ" và MUST nêu rõ mức độ đầy đủ
   của kỳ: kỳ nằm hoàn toàn trước mốc MUST được báo là "không đủ dữ liệu" (danh sách rỗng và tổng bằng
   0, nhưng client MUST NOT hiển thị như một biểu đồ 0% thật); kỳ cắt ngang mốc MUST chỉ tính cho phần

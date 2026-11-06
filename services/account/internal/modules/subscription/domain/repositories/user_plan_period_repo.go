@@ -30,10 +30,12 @@ type SubscriptionDistributionResult struct {
 // (constitution V). The interface stays in the domain layer; GORM lives in
 // infrastructure.
 type IUserPlanPeriodRepository interface {
-	// GetDistribution counts DISTINCT users per plan for intervals overlapping
-	// [from, to). A zero bound means unbounded. Both bounds zero means "the
-	// snapshot at now()". A `to`-only period additionally excludes intervals
-	// whose valid_from is in the future (FR-008/FR-012).
+	// GetDistribution buckets each account once, under the plan of its LATEST
+	// interval overlapping [from, to): a user who switched plan inside the
+	// period is counted in the newer bucket only, so the buckets add up to a
+	// distinct headcount. A zero bound means unbounded. Both bounds zero means
+	// "the snapshot at now()". A `to`-only period additionally excludes
+	// intervals whose valid_from is in the future (FR-008/FR-012).
 	GetDistribution(ctx context.Context, from, to time.Time) ([]SubscriptionDistributionDTO, error)
 
 	// LockUser serializes the recorders of one user until the caller's

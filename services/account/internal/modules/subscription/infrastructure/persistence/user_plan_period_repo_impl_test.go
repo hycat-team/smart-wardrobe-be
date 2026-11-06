@@ -303,10 +303,11 @@ func TestIntegrationUserPlanPeriodsPreflightAborts(t *testing.T) {
 	}
 }
 
-// TestIntegrationUserPlanPeriodsDistributionCountsDistinct covers the report
-// query: COUNT(DISTINCT user_id) for a user who left and returned to the same
-// plan, the four bound shapes, and the snapshot semantics.
-func TestIntegrationUserPlanPeriodsDistributionCountsDistinct(t *testing.T) {
+// TestIntegrationUserPlanPeriodsDistributionCountsOncePerUser covers the report
+// query: each account collapses to its latest overlapping interval (a user who
+// left and returned to the same plan still counts once), the four bound shapes,
+// and the snapshot semantics.
+func TestIntegrationUserPlanPeriodsDistributionCountsOncePerUser(t *testing.T) {
 	_, db, closeScratch, closeBase := openPlan031ScratchDB(t)
 	defer closeBase()
 	defer closeScratch()

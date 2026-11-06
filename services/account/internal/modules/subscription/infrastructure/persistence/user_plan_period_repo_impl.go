@@ -34,8 +34,19 @@ func NewUserPlanPeriodRepository(dbConn *gorm.DB) repositories.IUserPlanPeriodRe
 	}
 }
 
-// GetDistribution counts DISTINCT users per plan for the requested period
-// (031 data-model §5, D4/FR-008).
+// GetDistribution buckets each account ONCE, under the plan of its LATEST
+// interval that overlaps the requested period (031 data-model §5, D4/FR-008).
+//
+// WHY "LATEST PER USER", NOT "DISTINCT PER PLAN". The report used to run
+// `COUNT(DISTINCT user_id) GROUP BY plan_code`, which is distinct only WITHIN a
+// bucket: an account that switched plan inside the period landed in two of
+// them, and the consumer sums the buckets, so the reported total could exceed
+// the number of accounts that exist. One row per user keeps the buckets
+// additive and keeps `totalUsers` equal to a real headcount.
+//
+// Tie-break is (valid_from DESC, created_at DESC, id DESC) — the same choice
+// `GetCurrentByUserIDWithLock` makes — so two intervals sharing a start resolve
+// deterministically.
 //
 // The bounds select one of four shapes:
 //   - both zero: snapshot at now() (`@> now()`), the historical "current state"
@@ -64,8 +75,17 @@ func (r *UserPlanPeriodRepository) GetDistribution(ctx context.Context, from, to
 	}
 
 	var rows []repositories.SubscriptionDistributionDTO
-	err := query.
-		Select("plan_code, COUNT(DISTINCT user_id) AS user_count").
+
+	// DISTINCT ON (user_id) collapses every interval of one account inside the
+	// window to the latest one; the outer COUNT(*) then counts accounts, not
+	// intervals, so the buckets still add up to a real headcount.
+	latestPerUser := query.
+		Select("DISTINCT ON (user_id) user_id, plan_code, valid_from, created_at, id").
+		Order("user_id, valid_from DESC, created_at DESC, id DESC")
+
+	err := r.GetDB(ctx).
+		Table("(?) AS latest_plan_per_user", latestPerUser).
+		Select("plan_code, COUNT(*) AS user_count").
 		Group("plan_code").
 		Order("user_count DESC").
 		Scan(&rows).Error

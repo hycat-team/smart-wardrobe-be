@@ -301,6 +301,10 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context, fro
 // clipped a partial period to the cutover and decided the completeness; this
 // use case only formats the cutover instant as a VN calendar date and keeps
 // the percentage/totalUsers formulas on the bucket sum (FR-011).
+//
+// The sum is a DISTINCT headcount because Account buckets each account under
+// the plan of its LATEST interval in the period: an account that switched plan
+// mid-period appears once, not once per plan.
 func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context, from, to time.Time) (*dto.SubscriptionDistributionRes, error) {
 	result, err := uc.subscriptionReader.GetSubscriptionDistribution(ctx, from, to)
 	if err != nil {

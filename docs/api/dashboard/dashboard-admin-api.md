@@ -130,7 +130,7 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/distribution`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
-- **Mô tả:** Thống kê số người dùng và tỷ lệ phần trăm theo từng gói subscription (`free`, `premium-monthly`, v.v.) cho một kỳ, dựa trên **các khoảng hiệu lực gói** (`subscription.user_plan_periods`) thay vì trạng thái gói hiện tại. Nhờ đó người đã đổi/hạ gói **sau** kỳ vẫn được tính đúng gói họ đã dùng trong kỳ; người đổi gói **giữa** kỳ xuất hiện ở cả hai gói.
+- **Mô tả:** Thống kê số người dùng và tỷ lệ phần trăm theo từng gói subscription (`free`, `premium-monthly`, v.v.) cho một kỳ, dựa trên **các khoảng hiệu lực gói** (`subscription.user_plan_periods`) thay vì trạng thái gói hiện tại. Nhờ đó người đã đổi/hạ gói **sau** kỳ vẫn được tính đúng gói họ đã dùng trong kỳ; người đổi gói **giữa** kỳ được tính **một lần**, theo gói của khoảng hiệu lực **mới nhất** giao với kỳ.
 - **Query Parameters (029; nguồn dữ liệu đổi từ 031):**
     - `fromDate` (string, optional) — Ngày bắt đầu kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
     - `toDate` (string, optional) — Ngày kết thúc kỳ, định dạng `YYYY-MM-DD`, ngày lịch VN.
@@ -140,17 +140,17 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Nguồn dữ liệu:** Bảng `subscription.user_plan_periods`, một dòng cho mỗi khoảng liên tục giữ một gói (snapshot `plan_code`, `valid_from`, `valid_to`; `valid_to IS NULL` = gói vô hạn). Query dùng nửa khoảng `[valid_from, valid_to)`:
     - không kỳ: `tstzrange(valid_from, valid_to, '[)') @> now()`;
     - có kỳ: `tstzrange(valid_from, valid_to, '[)') && tstzrange($from, $to, '[)')`, với `$from`/`$to` là `NULL` cho đầu vắng mặt; riêng kỳ chỉ có `from` thêm `valid_from <= now()`;
-    - `COUNT(DISTINCT user_id)` theo `plan_code`, nên một người rời gói rồi quay lại cùng gói trong kỳ chỉ được tính **một lần** cho gói đó (FR-010).
+    - `DISTINCT ON (user_id)` giữ lại **một** khoảng cho mỗi người (khoảng có `valid_from` lớn nhất trong các khoảng giao với kỳ; hoà nhau thì `created_at DESC, id DESC`), rồi `COUNT(*)` theo `plan_code`. Vì mỗi người chỉ vào đúng một nhóm, `totalUsers` là **số người dùng phân biệt** và các nhóm cộng lại bằng tổng đó. (Trước 2026-11-06 dùng `COUNT(DISTINCT user_id)` theo từng nhóm — distinct chỉ trong nội bộ một nhóm, nên người đổi gói giữa kỳ bị đếm hai lần và `totalUsers` có thể vượt số tài khoản thật.)
 - **Thay đổi 031 (trước → sau):**
 
 | Khía cạnh | Trước (029) | Sau (031) |
 | --- | --- | --- |
 | Nguồn dữ liệu | `user_subscriptions` — trạng thái gói hiện tại (bị ghi đè mỗi lần đổi gói) | `user_plan_periods` — các khoảng hiệu lực, giữ nguyên lịch sử |
 | Người hạ/đổi gói sau kỳ | Bị loại khỏi mọi nhóm | Vẫn tính theo gói đã dùng trong kỳ |
-| Người đổi gói giữa kỳ | Quy toàn bộ kỳ về gói mới | Xuất hiện ở **cả hai** nhóm |
+| Người đổi gói giữa kỳ | Quy toàn bộ kỳ về gói mới | Tính **một lần**, theo gói của khoảng mới nhất trong kỳ (2026-11-06: trước đó tính ở cả hai nhóm) |
 | Kỳ chỉ có `fromDate` | Chỉ có điều kiện `expires_at`, không chặn tương lai | Giao `[from, ∞)` **và** `valid_from <= now()` |
 | Kỳ chỉ có `toDate` | Chỉ có `started_at < to`, không có điều kiện hết hạn | Giao `(-∞, to)` |
-| `totalUsers` | Tổng số dòng hiện tại | **Tổng của các nhóm** — người đổi gói giữa kỳ được tính hai lần; không phải số người duy nhất |
+| `totalUsers` | Tổng số dòng hiện tại | **Số người dùng phân biệt** trong kỳ; bằng tổng các nhóm vì mỗi người chỉ vào một nhóm |
 | `percentage` | `userCount / totalUsers` | Không đổi công thức; vì `totalUsers` là tổng nhóm nên các nhóm luôn cộng đúng 100% khi có ít nhất một người |
 | Trường bổ sung | Không có | `dataAvailableFrom`, `dataCompleteness` (tuỳ chọn, không phá client cũ) |
 
@@ -159,8 +159,8 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 | Distribution      | `distribution`      | []SubscriptionDistributionDTO | Danh sách phân bổ theo plan_code                                        |
 | ├ PlanCode        | `planCode`          | string                        | Mã gói subscription (`free`, `premium-monthly`, ...)                    |
 | ├ UserCount       | `userCount`         | int                           | Số người dùng thuộc gói này trong kỳ                                    |
-| └ Percentage      | `percentage`        | float64                       | Tỷ lệ phần trăm trên **tổng các nhóm**                                  |
-| TotalUsers        | `totalUsers`        | int                           | Tổng của các nhóm (không phải số người duy nhất)                        |
+| └ Percentage      | `percentage`        | float64                       | Tỷ lệ phần trăm trên tổng số người dùng phân biệt trong kỳ              |
+| TotalUsers        | `totalUsers`        | int                           | Số người dùng phân biệt trong kỳ (bằng tổng các nhóm)                   |
 | DataAvailableFrom | `dataAvailableFrom` | string? (`YYYY-MM-DD`, VN)    | Mốc bắt đầu lịch sử đầy đủ; **vắng** khi không xác định được mốc        |
 | DataCompleteness  | `dataCompleteness`  | string?                       | `complete` \| `partial` \| `unavailable`; **vắng** khi nguồn cũ không gửi |
 

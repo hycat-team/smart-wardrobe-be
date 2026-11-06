@@ -175,7 +175,7 @@ go test -race -count=1 ./internal/modules/dashboard/...
 | Đồng thời trên fallback variant (chỉ partial unique) | `TestIntegrationPlanPeriodRecorderFallbackConcurrentChanges` | PASS |
 | Idempotency khi retry cùng `event_key`; recorder lỗi rollback cả event và interval | `TestIntegrationPlanPeriodRecorderPublishIsIdempotent`, `TestPlanPeriodRecorderPublisherRetryAddsOneInterval`, `TestIntegrationPlanPeriodRecorderFailureRollsBackBothRows` | PASS |
 | Lịch sử 4 bước của một user: thứ tự, nối tiếp, lapse có khoảng hở, free/lifetime `valid_to IS NULL` | `TestIntegrationUserPlanPeriodsHistoryByUser` | PASS (3/3 subtest) |
-| Báo cáo phân bố: hạ gói sau kỳ vẫn ở gói cũ, đổi gói giữa kỳ ở cả hai bucket, kỳ cắt cutover, kỳ một phía, snapshot | `TestIntegrationUserPlanPeriodDistributionLifecycles` | PASS |
+| Báo cáo phân bố: hạ gói sau kỳ vẫn ở gói cũ, đổi gói giữa kỳ chỉ tính gói mới nhất (sửa đổi 2026-11-06), kỳ cắt cutover, kỳ một phía, snapshot | `TestIntegrationUserPlanPeriodDistributionLifecycles` | PASS |
 | Tương thích client cũ: JSON cũ vẫn đọc `distribution`/`totalUsers`, client cũ bỏ qua field mới, `dataAvailableFrom` đúng `YYYY-MM-DD`, proto bỏ qua field lạ | `TestSubscriptionDistributionResDecodesTheLegacyJSONShape`, `TestLegacyDistributionClientDecodesTheNewPayload`, `TestDataAvailableFromIsAVNCalendarDate`, `TestDistributionListIgnoresUnknownProtoFields` | PASS |
 
 ### 6.3 Hiệu năng (SC-004)

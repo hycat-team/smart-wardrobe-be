@@ -158,15 +158,21 @@ type SubscriptionDistributionResult struct {
 ```
 
 `SubscriptionDistributionDTO` keeps `PlanCode` and `UserCount`; percentages and `TotalUsers` remain in
-the Commerce use case, computed from the buckets (`FR-011`, clarified: sum of buckets, so a mid-period
-switcher appears in two buckets and `totalUsers` is not a distinct-user count).
+the Commerce use case, computed from the buckets (`FR-011`). **Amended 2026-11-06:** each account
+contributes exactly one bucket (the plan of its latest interval overlapping the period), so `TotalUsers`
+is a distinct headcount and also equals the bucket sum. The earlier "sum of buckets, a mid-period
+switcher appears in two buckets" rule was removed.
 
 Query (period supplied; a zero bound means infinity):
 
 ```sql
-SELECT plan_code, COUNT(DISTINCT user_id) AS user_count
-FROM subscription.user_plan_periods
-WHERE tstzrange(valid_from, valid_to, '[)') && tstzrange($from, $to, '[)')
+SELECT plan_code, COUNT(*) AS user_count
+FROM (
+    SELECT DISTINCT ON (user_id) user_id, plan_code, valid_from, created_at, id
+    FROM subscription.user_plan_periods
+    WHERE tstzrange(valid_from, valid_to, '[)') && tstzrange($from, $to, '[)')
+    ORDER BY user_id, valid_from DESC, created_at DESC, id DESC
+) AS latest_plan_per_user
 GROUP BY plan_code
 ORDER BY user_count DESC;
 ```

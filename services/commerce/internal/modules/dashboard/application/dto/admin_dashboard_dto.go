@@ -69,8 +69,11 @@ type SubscriptionDistributionDTO struct {
 //
 // DataAvailableFrom is a calendar date in VN time (YYYY-MM-DD), not a
 // timestamp; DataCompleteness is complete | partial | unavailable.
-// TotalUsers is the SUM OF BUCKETS, not a distinct-user count: a mid-period
-// switcher appears in two buckets (031 clarification 2026-10-20).
+// TotalUsers is the sum of the buckets, and each account lands in exactly ONE
+// bucket (the plan of its latest interval overlapping the period), so the sum
+// is a distinct headcount. Amended 2026-11-06: an earlier clarification counted
+// a mid-period switcher in two buckets, which made the total exceed the number
+// of accounts that exist.
 type SubscriptionDistributionRes struct {
 	Distribution      []SubscriptionDistributionDTO `json:"distribution"`
 	TotalUsers        int                           `json:"totalUsers"`

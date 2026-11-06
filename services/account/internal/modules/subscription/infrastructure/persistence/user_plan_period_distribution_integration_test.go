@@ -75,8 +75,8 @@ func TestIntegrationUserPlanPeriodDistributionLifecycles(t *testing.T) {
 	insertPeriod(downgradedUser, premiumPlanID, "premium-monthly", "Premium Monthly", 1, 1, downgradePremiumStart, &downgradeAt, "T011:downgraded:premium")
 	insertPeriod(downgradedUser, freePlanID, "free", "Free", 0, 0, downgradeAt, nil, "T011:downgraded:free")
 
-	// Mid-period switch: the same user must appear in BOTH buckets (FR-007
-	// acceptance scenario 2).
+	// Mid-period switch: the account contributes ONCE, under the plan of its
+	// latest interval overlapping the period (plan A has been superseded).
 	switchAt := periodFrom.AddDate(0, 0, 15)
 	switchAEnd := switchAt
 	switchBEnd := periodTo.AddDate(0, 0, 5)
@@ -117,18 +117,18 @@ func TestIntegrationUserPlanPeriodDistributionLifecycles(t *testing.T) {
 
 	fullCounts := plan031DistributionCounts(full)
 	assertPlan031Bucket(t, fullCounts, "premium-monthly", 1, "the downgraded user must stay in premium for the reported period")
-	assertPlan031Bucket(t, fullCounts, "switch-a", 1, "the user held plan A during the first half")
-	assertPlan031Bucket(t, fullCounts, "switch-b", 1, "the user held plan B during the second half")
+	assertPlan031Bucket(t, fullCounts, "switch-a", 0, "the mid-period switcher is counted once — under the newer plan")
+	assertPlan031Bucket(t, fullCounts, "switch-b", 1, "the user's latest interval inside the period decides the bucket")
 	assertPlan031Bucket(t, fullCounts, "free", 1, "only the free account overlaps this period; the downgraded free row starts after it")
 	assertPlan031Bucket(t, fullCounts, "lifetime", 1, "the lifetime interval is open-ended and overlaps the period")
 	assertPlan031Bucket(t, fullCounts, "legacy-monthly", 1, "the legacy row is inside this complete period (the cutover is earlier)")
 	assertPlan031Bucket(t, fullCounts, "new-monthly", 1, "the replacement plan is also inside this complete period")
 
-	// totalUsers is the sum of buckets, not a distinct-user count: the
-	// switcher contributes twice and the legacy/replacement pair adds two
-	// more rows for two users.
-	if sum := plan031DistributionSum(full); sum != 7 {
-		t.Fatalf("bucket sum = %d, want 7 (premium + switch A + switch B + free + lifetime + legacy + new)", sum)
+	// totalUsers is the sum of buckets, and each account contributes exactly
+	// one bucket, so the sum is a distinct headcount: 6 accounts overlap the
+	// window (the future-dated one does not).
+	if sum := plan031DistributionSum(full); sum != 6 {
+		t.Fatalf("bucket sum = %d, want 6 (premium + switch B + free + lifetime + legacy + new)", sum)
 	}
 
 	// --- From-only period: no future interval ----------------------------
@@ -137,12 +137,12 @@ func TestIntegrationUserPlanPeriodDistributionLifecycles(t *testing.T) {
 		t.Fatalf("from-only distribution: %v", err)
 	}
 	fromOnlyCounts := plan031DistributionCounts(fromOnly)
-	assertPlan031Bucket(t, fromOnlyCounts, "premium-monthly", 1, "the future-dated premium interval must be excluded by valid_from <= now()")
+	assertPlan031Bucket(t, fromOnlyCounts, "premium-monthly", 0, "the future-dated premium interval must be excluded by valid_from <= now(), and the downgraded user's latest interval is free")
 	// The window now reaches up to now, so the downgraded user's open free
-	// interval (which starts after the reported period) is inside it too.
+	// interval (which starts after the reported period) is the one that counts.
 	assertPlan031Bucket(t, fromOnlyCounts, "free", 2, "the downgraded user is on free from the downgrade instant up to now")
-	if sum := plan031DistributionSum(fromOnly); sum != 8 {
-		t.Fatalf("from-only bucket sum = %d, want 8; the future open interval must not add a bucket", sum)
+	if sum := plan031DistributionSum(fromOnly); sum != 6 {
+		t.Fatalf("from-only bucket sum = %d, want 6; the future open interval must not add a bucket", sum)
 	}
 
 	// --- To-only period: the repository receives (-infinity, to) ---------
@@ -154,8 +154,8 @@ func TestIntegrationUserPlanPeriodDistributionLifecycles(t *testing.T) {
 		t.Fatalf("to-only completeness = %q, want partial: a zero start means 'from the beginning of history', which predates the cutover",
 			toOnly.DataCompleteness)
 	}
-	if sum := plan031DistributionSum(toOnly); sum != 7 {
-		t.Fatalf("to-only bucket sum = %d, want 7", sum)
+	if sum := plan031DistributionSum(toOnly); sum != 6 {
+		t.Fatalf("to-only bucket sum = %d, want 6", sum)
 	}
 
 	// --- No period: live snapshot ----------------------------------------
@@ -170,6 +170,9 @@ func TestIntegrationUserPlanPeriodDistributionLifecycles(t *testing.T) {
 	assertPlan031Bucket(t, snapshotCounts, "free", 2, "the downgraded user and the free account both hold free now")
 	assertPlan031Bucket(t, snapshotCounts, "lifetime", 1, "the lifetime interval contains now()")
 	assertPlan031Bucket(t, snapshotCounts, "premium-monthly", 0, "the future-dated premium interval does not contain now()")
+	if sum := plan031DistributionSum(snapshot); sum != 3 {
+		t.Fatalf("snapshot bucket sum = %d, want 3", sum)
+	}
 
 	// --- Period straddling the cutover: partial + clipped -----------------
 	setPlan031Cutover(t, db, partialCutover)
@@ -188,8 +191,8 @@ func TestIntegrationUserPlanPeriodDistributionLifecycles(t *testing.T) {
 	assertPlan031Bucket(t, partialCounts, "legacy-monthly", 0, "an interval ending exactly at the cutover has no overlap with the clipped window")
 	assertPlan031Bucket(t, partialCounts, "new-monthly", 1, "the interval that starts at the cutover is inside the clipped window")
 	assertPlan031Bucket(t, partialCounts, "premium-monthly", 1, "the downgraded premium interval still overlaps the part after the cutover")
-	if sum := plan031DistributionSum(partial); sum != 6 {
-		t.Fatalf("partial bucket sum = %d, want 6: the clipped window drops only the legacy row", sum)
+	if sum := plan031DistributionSum(partial); sum != 5 {
+		t.Fatalf("partial bucket sum = %d, want 5: the clipped window drops the legacy row, and the switcher counts once", sum)
 	}
 }
 
