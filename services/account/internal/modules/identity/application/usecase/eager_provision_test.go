@@ -312,7 +312,7 @@ func newEagerUserUseCaseWithPublisher(repo *eagerIdentityRepo, spy *eagerProvisi
 	// object in the use case that a read could reach.
 	return usecase.NewUserUseCase(
 		repo, nil, eagerPasswordHasher{}, nil, nil, spy,
-		spy, uow,
+		spy, nil, uow,
 		nil, &config.Config{}, publisher, nil,
 	)
 }

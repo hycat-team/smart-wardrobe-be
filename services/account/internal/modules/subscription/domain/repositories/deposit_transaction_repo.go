@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 
@@ -24,11 +25,12 @@ type ClaimedDepositTransaction struct {
 // EndOfDayInVN(toDate), and the query compares `created_at >= FromDate AND
 // created_at < ToDate`. A nil side leaves that side of the range open.
 type AdminDepositTransactionFilter struct {
-	Status    *depositstatus.DepositStatus
-	FromDate  *time.Time
-	ToDate    *time.Time
-	OrderCode *int64
-	UserID    *uuid.UUID
+	Status          *depositstatus.DepositStatus
+	TransactionType *deposittransactiontype.DepositTransactionType
+	FromDate        *time.Time
+	ToDate          *time.Time
+	OrderCode       *int64
+	UserID          *uuid.UUID
 }
 
 type IDepositTransactionRepository interface {

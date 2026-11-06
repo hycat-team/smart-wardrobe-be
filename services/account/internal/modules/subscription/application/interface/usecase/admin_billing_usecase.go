@@ -6,6 +6,7 @@ import (
 
 	identity_dto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 
 	"github.com/google/uuid"
@@ -13,11 +14,12 @@ import (
 
 // AdminBillingFilter filters deposit transactions for the admin list endpoint.
 type AdminBillingFilter struct {
-	Status    *depositstatus.DepositStatus
-	FromDate  *time.Time
-	ToDate    *time.Time
-	OrderCode *int64
-	UserID    *uuid.UUID
+	Status          *depositstatus.DepositStatus
+	TransactionType *deposittransactiontype.DepositTransactionType
+	FromDate        *time.Time
+	ToDate          *time.Time
+	OrderCode       *int64
+	UserID          *uuid.UUID
 }
 
 // AdminTransactionDetail is one transaction together with the two labels the

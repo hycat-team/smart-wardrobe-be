@@ -31,6 +31,11 @@ type ISubscriptionUseCase interface {
 	SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error)
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanBriefRes, error)
 	AdminList(ctx context.Context, planCode *string, userID *uuid.UUID, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error)
+	// ListUserIDsWithEffectivePlan returns every account whose EFFECTIVE plan
+	// (the one the admin user table prints) is planID right now. The identity
+	// module uses it to filter the paginated account list without joining this
+	// module's tables (constitution §II).
+	ListUserIDsWithEffectivePlan(ctx context.Context, planID uuid.UUID) ([]uuid.UUID, error)
 	AdminCancel(ctx context.Context, userID uuid.UUID) error
 	// 024 T083/T086 (FR-060): one grant method, and it takes a LIST. A single
 	// account is a list of one.

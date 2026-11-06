@@ -47,11 +47,12 @@ func NewAdminBillingUseCase(
 
 func (uc *AdminBillingUseCase) ListTransactions(ctx context.Context, filter usecase.AdminBillingFilter, page, limit int) ([]*entities.DepositTransaction, int64, error) {
 	return uc.depositRepo.ListAdmin(ctx, repositories.AdminDepositTransactionFilter{
-		Status:    filter.Status,
-		FromDate:  filter.FromDate,
-		ToDate:    filter.ToDate,
-		OrderCode: filter.OrderCode,
-		UserID:    filter.UserID,
+		Status:          filter.Status,
+		TransactionType: filter.TransactionType,
+		FromDate:        filter.FromDate,
+		ToDate:          filter.ToDate,
+		OrderCode:       filter.OrderCode,
+		UserID:          filter.UserID,
 	}, page, limit)
 }
 

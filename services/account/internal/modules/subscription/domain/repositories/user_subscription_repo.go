@@ -45,4 +45,18 @@ type IUserSubscriptionRepository interface {
 	// IUserPlanPeriodRepository.GetDistribution; keeping a second, wrong
 	// counting path here would only invite someone to call it again.
 	ListAdmin(ctx context.Context, filter AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error)
+	// ListUserIDsWithEffectivePlan answers "which accounts are on plan X right
+	// now" for the admin user list filter.
+	//
+	// It mirrors the effective-plan rule of `GetUserSubscriptionOverviews`: a
+	// finite plan that has already expired counts as its fallback plan, or as
+	// `defaultPlanID` when no fallback was set. The rule lives in two places on
+	// purpose — the mapper resolves it in Go for each row it renders, this
+	// query resolves it in SQL so the identity module can paginate — and the
+	// consistency test in `user_subscription_repo_effective_plan_test.go`
+	// pins the two together.
+	//
+	// The result is the WHOLE id set, not a page: callers paginate the
+	// identity table themselves and cannot page a filter.
+	ListUserIDsWithEffectivePlan(ctx context.Context, planID, defaultPlanID uuid.UUID) ([]uuid.UUID, error)
 }

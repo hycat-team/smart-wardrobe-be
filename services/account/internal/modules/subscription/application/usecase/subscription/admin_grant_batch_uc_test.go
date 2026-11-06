@@ -244,6 +244,10 @@ func (f *fakeGrantSubRepo) ProvisionDefault(ctx context.Context, sub *entities.U
 	f.subs[sub.UserID] = sub
 	return nil
 }
+func (f *fakeGrantSubRepo) ListUserIDsWithEffectivePlan(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
 func (f *fakeGrantSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
 	return nil, 0, nil
 }

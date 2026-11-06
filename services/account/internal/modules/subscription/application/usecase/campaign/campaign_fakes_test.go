@@ -373,6 +373,10 @@ func (f *fakeSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Context, f
 	return nil, nil
 }
 
+func (f *fakeSubRepo) ListUserIDsWithEffectivePlan(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
 func (f *fakeSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
 	return nil, 0, nil
 }

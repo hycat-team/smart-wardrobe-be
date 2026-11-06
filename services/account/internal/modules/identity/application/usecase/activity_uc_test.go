@@ -59,7 +59,7 @@ func (s *stubActivityRepo) ListAdmin(
 }
 
 func newActivityUseCase(repo *stubActivityRepo) usecase_interfaces.IUserUseCase {
-	return usecase.NewUserUseCase(nil, repo, nil, nil, nil, nil, nil, nil, nil, &config.Config{}, nil, nil)
+	return usecase.NewUserUseCase(nil, repo, nil, nil, nil, nil, nil, nil, nil, nil, &config.Config{}, nil, nil)
 }
 
 func requireActivityBadRequest(t *testing.T, err error) *apperror.Error {

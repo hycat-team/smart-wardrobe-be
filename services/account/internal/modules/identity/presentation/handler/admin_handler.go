@@ -304,7 +304,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 
 // GetUsers lấy danh sách người dùng cho Admin
 // @Summary Lấy danh sách người dùng
-// @Description Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền.
+// @Description Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền/gói hội viên hiệu lực (planId lấy từ /admin/subscriptions/plans).
 // @Tags Admin User
 // @Accept json
 // @Produce json

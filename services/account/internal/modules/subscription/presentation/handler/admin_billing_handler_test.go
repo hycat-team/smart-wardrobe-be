@@ -474,6 +474,65 @@ func TestAdminBillingListAcceptsFailedLegacyAndOpenBounds(t *testing.T) {
 	})
 }
 
+// TestAdminBillingListFiltersByTransactionType pins the third filter input: the
+// two values the column holds reach the use case as typed constants, and
+// anything else is dropped exactly like an unknown `status`, so a stale client
+// keeps getting a page instead of an error or an empty answer.
+func TestAdminBillingListFiltersByTransactionType(t *testing.T) {
+	t.Run("direct_purchase reaches the filter", func(t *testing.T) {
+		stub := &stubAdminBillingUC{}
+		engine := newAdminBillingEngine(t, stub)
+
+		rec := request(t, engine, http.MethodGet, adminBillingPath+"?transactionType=direct_purchase")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+		if stub.lastFilter.TransactionType == nil {
+			t.Fatal("transactionType must reach the use case")
+		}
+		if *stub.lastFilter.TransactionType != deposittransactiontype.DirectPurchase {
+			t.Errorf("transactionType = %q, want %q",
+				*stub.lastFilter.TransactionType, deposittransactiontype.DirectPurchase)
+		}
+	})
+
+	t.Run("wallet_topup reaches the filter", func(t *testing.T) {
+		stub := &stubAdminBillingUC{}
+		engine := newAdminBillingEngine(t, stub)
+
+		if rec := request(t, engine, http.MethodGet, adminBillingPath+"?transactionType=wallet_topup"); rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+		if stub.lastFilter.TransactionType == nil || *stub.lastFilter.TransactionType != deposittransactiontype.WalletTopup {
+			t.Errorf("transactionType = %#v, want wallet_topup", stub.lastFilter.TransactionType)
+		}
+	})
+
+	t.Run("an unknown value is dropped, not an error", func(t *testing.T) {
+		stub := &stubAdminBillingUC{}
+		engine := newAdminBillingEngine(t, stub)
+
+		if rec := request(t, engine, http.MethodGet, adminBillingPath+"?transactionType=refund_credit"); rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+		if stub.lastFilter.TransactionType != nil {
+			t.Errorf("an out-of-contract value must not reach the filter, got %q", *stub.lastFilter.TransactionType)
+		}
+	})
+
+	t.Run("absent means no type filter", func(t *testing.T) {
+		stub := &stubAdminBillingUC{}
+		engine := newAdminBillingEngine(t, stub)
+
+		if rec := request(t, engine, http.MethodGet, adminBillingPath); rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+		if stub.lastFilter.TransactionType != nil {
+			t.Errorf("no transactionType must stay nil, got %q", *stub.lastFilter.TransactionType)
+		}
+	})
+}
+
 func containsString(haystack []string, needle string) bool {
 	for _, item := range haystack {
 		if item == needle {

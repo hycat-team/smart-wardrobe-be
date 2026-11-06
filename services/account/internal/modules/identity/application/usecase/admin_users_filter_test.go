@@ -55,7 +55,7 @@ func (noSubscriptionsContract) GetUserSubscriptionOverviews(_ context.Context, _
 // quietly widening what the list endpoint depends on.
 func newAdminListUseCase(repo repositories.IUserRepository) uc_interfaces.IUserUseCase {
 	return usecase.NewUserUseCase(
-		repo, nil, nil, nil, nil, noSubscriptionsContract{}, nil, nil, nil,
+		repo, nil, nil, nil, nil, noSubscriptionsContract{}, nil, nil, nil, nil,
 		&config.Config{}, nil, nil,
 	)
 }
@@ -127,5 +127,131 @@ func TestGetUsersForAdminKeepsFreeTextSearchWithoutUserID(t *testing.T) {
 	}
 	if repo.filter.Query == nil || *repo.filter.Query != query {
 		t.Errorf("want the free-text query preserved, got %v", repo.filter.Query)
+	}
+}
+
+// ---- the membership-plan filter ----
+//
+// Identity owns the account table only, so `planId` is resolved by the
+// subscription contract into a set of user ids and then applied as an IN
+// filter. Three behaviours matter and are pinned here:
+//  1. the resolved ids reach the repository (and the request is NOT dropped);
+//  2. a malformed uuid is a 400 that never reaches the repository;
+//  3. a contract failure is a failure — answering with the unfiltered list
+//     would read as "every account is on this plan".
+
+type planFilterContract struct {
+	subscription_contract.IUserSubscriptionPlanFilter
+	ids      []uuid.UUID
+	err      error
+	calls    int
+	lastPlan uuid.UUID
+}
+
+func (c *planFilterContract) ListUserIDsWithEffectivePlan(_ context.Context, planID uuid.UUID) ([]uuid.UUID, error) {
+	c.calls++
+	c.lastPlan = planID
+	return c.ids, c.err
+}
+
+func (planFilterContract) GetUserSubscriptionOverviews(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]*subscriptiondto.UserSubscriptionContractDTO, error) {
+	return map[uuid.UUID]*subscriptiondto.UserSubscriptionContractDTO{}, nil
+}
+
+func newAdminListUseCaseWithContract(repo repositories.IUserRepository, planFilter subscription_contract.IUserSubscriptionPlanFilter) uc_interfaces.IUserUseCase {
+	return usecase.NewUserUseCase(
+		repo, nil, nil, nil, nil, noSubscriptionsContract{}, nil, planFilter, nil, nil,
+		&config.Config{}, nil, nil,
+	)
+}
+
+func TestGetUsersForAdminAppliesTheResolvedPlanFilter(t *testing.T) {
+	repo := &capturingAdminUserRepo{}
+	planID := uuid.New()
+	matched := []uuid.UUID{uuid.New(), uuid.New()}
+	contract := &planFilterContract{ids: matched}
+	raw := planID.String()
+
+	if _, err := newAdminListUseCaseWithContract(repo, contract).GetUsersForAdmin(
+		context.Background(), dto.GetUsersQueryReq{PlanID: &raw},
+	); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if contract.calls != 1 || contract.lastPlan != planID {
+		t.Fatalf("the contract must resolve plan %s once, got %d calls for %s",
+			planID, contract.calls, contract.lastPlan)
+	}
+	if len(repo.filter.UserIDs) != len(matched) {
+		t.Fatalf("want %d resolved ids on the filter, got %v", len(matched), repo.filter.UserIDs)
+	}
+	for idx, id := range matched {
+		if repo.filter.UserIDs[idx] != id {
+			t.Errorf("resolved id[%d] = %s, want %s", idx, repo.filter.UserIDs[idx], id)
+		}
+	}
+}
+
+// A plan nobody is on is an EMPTY SET, not "no filter": nil means the caller
+// did not filter at all, and conflating the two shows every account.
+func TestGetUsersForAdminKeepsAnEmptyPlanResultAsAnEmptySet(t *testing.T) {
+	repo := &capturingAdminUserRepo{}
+	contract := &planFilterContract{ids: nil}
+	raw := uuid.New().String()
+
+	if _, err := newAdminListUseCaseWithContract(repo, contract).GetUsersForAdmin(
+		context.Background(), dto.GetUsersQueryReq{PlanID: &raw},
+	); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if repo.filter.UserIDs == nil {
+		t.Fatal("an empty contract result must stay a non-nil empty set")
+	}
+	if len(repo.filter.UserIDs) != 0 {
+		t.Errorf("want no resolved ids, got %v", repo.filter.UserIDs)
+	}
+}
+
+func TestGetUsersForAdminRejectsAMalformedPlanID(t *testing.T) {
+	repo := &capturingAdminUserRepo{}
+	contract := &planFilterContract{}
+	raw := "not-a-uuid"
+
+	_, err := newAdminListUseCaseWithContract(repo, contract).GetUsersForAdmin(
+		context.Background(), dto.GetUsersQueryReq{PlanID: &raw},
+	)
+	if err == nil {
+		t.Fatal("a malformed plan id must be rejected")
+	}
+
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("want a 400 apperror, got %T: %v", err, err)
+	}
+	if !errors.Is(err, identityerrors.ErrInvalidPlanIDFilter()) {
+		t.Errorf("want the identity module's own factory, got %v", err)
+	}
+	if repo.called {
+		t.Error("a malformed plan id must not reach the repository")
+	}
+	if contract.calls != 0 {
+		t.Error("a malformed plan id must not reach the subscription contract")
+	}
+}
+
+func TestGetUsersForAdminPropagatesAPlanLookupFailure(t *testing.T) {
+	repo := &capturingAdminUserRepo{}
+	contract := &planFilterContract{err: errors.New("subscription down")}
+	raw := uuid.New().String()
+
+	_, err := newAdminListUseCaseWithContract(repo, contract).GetUsersForAdmin(
+		context.Background(), dto.GetUsersQueryReq{PlanID: &raw},
+	)
+	if err == nil {
+		t.Fatal("a failing plan lookup must not degrade into an unfiltered list")
+	}
+	if repo.called {
+		t.Error("the repository must not run when the plan filter could not be resolved")
 	}
 }

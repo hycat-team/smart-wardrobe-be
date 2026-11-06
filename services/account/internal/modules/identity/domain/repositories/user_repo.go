@@ -15,8 +15,14 @@ type UserFilter struct {
 	IsActive *bool
 	Query    *string
 	UserID   *uuid.UUID
-	Page     int
-	Limit    int
+	// UserIDs is the resolved account set of a cross-module filter (the
+	// membership-plan filter), which identity can only obtain through the
+	// subscription contract. nil means "no such filter"; an EMPTY non-nil
+	// slice means "the filter matched nobody" and must answer with zero rows
+	// instead of falling back to an unfiltered list.
+	UserIDs []uuid.UUID
+	Page    int
+	Limit   int
 }
 
 type UserListResult struct {

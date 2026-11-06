@@ -378,6 +378,25 @@ func (uc *SubscriptionUseCase) AdminList(ctx context.Context, planCode *string, 
 	return mapper.BuildAdminUserSubscriptionItemDTOList(subs, planByID), total, nil
 }
 
+// ListUserIDsWithEffectivePlan resolves the default plan (the fallback the
+// mapper uses when an expired plan carries no fallback) and delegates the
+// actual matching to the repository, which owns the effective-plan SQL.
+//
+// A missing default plan is an ERROR, not an empty answer: the default plan is
+// how every expired-without-fallback account is classified, so guessing would
+// silently hide those accounts from both the filtered list and every other
+// count that depends on the same rule.
+func (uc *SubscriptionUseCase) ListUserIDsWithEffectivePlan(ctx context.Context, planID uuid.UUID) ([]uuid.UUID, error) {
+	defaultPlan, err := uc.planRepo.GetDefaultPlan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if defaultPlan == nil {
+		return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound()
+	}
+	return uc.userSubRepo.ListUserIDsWithEffectivePlan(ctx, planID, defaultPlan.ID)
+}
+
 // AdminCancel downgrades a user's subscription back to the default free plan.
 //
 // 024 T048: this path used to mutate the subscription and stop there. Because

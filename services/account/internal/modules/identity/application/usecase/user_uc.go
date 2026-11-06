@@ -27,11 +27,14 @@ type UserUseCase struct {
 	// provisioning contract. Neither is a new repository - it is the existing
 	// subscription provisioning body, reached through the module contract.
 	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract
-	uow                  shared_repos.IUnitOfWork
-	mediaService         media.IMediaService
-	cfg                  *config.Config
-	eventPublisher       shared_event.IEventPublisher
-	logger               logger.Interface
+	// planFilter answers "which accounts are on this plan right now" for the
+	// admin list filter. Intra-service only (see its interface comment).
+	planFilter     subscription_contract.IUserSubscriptionPlanFilter
+	uow            shared_repos.IUnitOfWork
+	mediaService   media.IMediaService
+	cfg            *config.Config
+	eventPublisher shared_event.IEventPublisher
+	logger         logger.Interface
 }
 
 func NewUserUseCase(
@@ -42,6 +45,7 @@ func NewUserUseCase(
 	tokenBlacklistService security.ITokenBlacklistService,
 	subscriptionContract subscription_contract.IUserSubscriptionContract,
 	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract,
+	planFilter subscription_contract.IUserSubscriptionPlanFilter,
 	uow shared_repos.IUnitOfWork,
 	mediaService media.IMediaService,
 	cfg *config.Config,
@@ -56,6 +60,7 @@ func NewUserUseCase(
 		tokenBlacklistService: tokenBlacklistService,
 		subscriptionContract:  subscriptionContract,
 		provisioningContract:  provisioningContract,
+		planFilter:            planFilter,
 		uow:                   uow,
 		mediaService:          mediaService,
 		cfg:                   cfg,

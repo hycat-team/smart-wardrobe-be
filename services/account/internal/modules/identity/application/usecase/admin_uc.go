@@ -108,11 +108,40 @@ func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQ
 		textQuery = nil
 	}
 
+	// Membership-plan filter. Identity owns the account table only, so the set
+	// of matching accounts comes from the subscription contract; the two
+	// filters intersect naturally when both are present.
+	//
+	// A contract failure is returned, never swallowed: answering with the
+	// unfiltered list would look like "every account is on this plan".
+	var planUserIDs []uuid.UUID
+	if query.PlanID != nil {
+		trimmed := strings.TrimSpace(*query.PlanID)
+		if trimmed != "" {
+			planID, err := uuid.Parse(trimmed)
+			if err != nil {
+				return nil, identityerrors.ErrInvalidPlanIDFilter()
+			}
+			if uc.planFilter == nil {
+				return nil, identityerrors.ErrPlanFilterUnavailable()
+			}
+			ids, err := uc.planFilter.ListUserIDsWithEffectivePlan(ctx, planID)
+			if err != nil {
+				return nil, err
+			}
+			if ids == nil {
+				ids = []uuid.UUID{}
+			}
+			planUserIDs = ids
+		}
+	}
+
 	filter := repositories.UserFilter{
 		RoleSlug: query.RoleSlug,
 		IsActive: query.IsActive,
 		Query:    textQuery,
 		UserID:   userID,
+		UserIDs:  planUserIDs,
 		Page:     query.Page,
 		Limit:    query.Limit,
 	}

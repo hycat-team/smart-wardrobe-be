@@ -186,3 +186,48 @@ func (r *UserSubscriptionRepository) ListAdmin(ctx context.Context, filter repos
 
 	return subs, total, nil
 }
+
+// ListUserIDsWithEffectivePlan mirrors the effective-plan rule of
+// `SubscriptionUseCase.GetUserSubscriptionOverviews`:
+//
+//	plan := current                       // subscription_plan_id
+//	if kind == 1 && expires_at != nil && !expires_at.After(now) {
+//	    plan = fallback_plan_id ?? default   // expired finite plan
+//	}
+//
+// Kept as one SQL predicate so the identity module can filter AND paginate in
+// one query. `user_subscription_repo_effective_plan_test.go` seeds active,
+// expired-with-fallback, expired-without-fallback and lifetime rows and asserts
+// this query returns exactly the accounts the Go rule would label with planID.
+func (r *UserSubscriptionRepository) ListUserIDsWithEffectivePlan(ctx context.Context, planID, defaultPlanID uuid.UUID) ([]uuid.UUID, error) {
+	// One deliberate SQL statement rather than a nested gorm builder: the
+	// fallback rule is three levels deep and a query built in Go reads nothing
+	// like the Go rule it has to match.
+	const query = `
+		SELECT user_id
+		  FROM user_subscriptions
+		 WHERE (
+		        NOT (current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?)
+		        AND subscription_plan_id = ?
+		       )
+		    OR (
+		        current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?
+		        AND (
+		             (fallback_plan_id IS NOT NULL AND fallback_plan_id = ?)
+		             OR (fallback_plan_id IS NULL AND ? = ?)
+		            )
+		       )`
+
+	now := time.Now()
+	ids := make([]uuid.UUID, 0)
+	err := r.GetDB(ctx).
+		Raw(query,
+			int16(plankind.Finite), now, planID,
+			int16(plankind.Finite), now, planID, planID, defaultPlanID,
+		).
+		Scan(&ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}

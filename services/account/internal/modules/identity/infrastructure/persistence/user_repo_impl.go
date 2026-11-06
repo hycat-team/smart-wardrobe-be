@@ -312,6 +312,17 @@ func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositori
 		db = db.Where("users.id = ?", *filter.UserID)
 	}
 
+	// Resolved cross-module filter (membership plan). Empty non-nil is a real
+	// answer — nobody is on that plan — so short-circuit instead of issuing an
+	// `IN ()` and, worse, instead of dropping the filter and returning
+	// everybody.
+	if filter.UserIDs != nil {
+		if len(filter.UserIDs) == 0 {
+			return &repositories.UserListResult{Users: []*entities.User{}, TotalCount: 0}, nil
+		}
+		db = db.Where("users.id IN ?", filter.UserIDs)
+	}
+
 	var totalCount int64
 	if err := db.Count(&totalCount).Error; err != nil {
 		return nil, err

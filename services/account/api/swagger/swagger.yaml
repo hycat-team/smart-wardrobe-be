@@ -2308,13 +2308,17 @@ paths:
       consumes:
       - application/json
       description: Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái,
-        khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.
+        loại giao dịch, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.
       parameters:
       - description: Trạng thái giao dịch (pending, success, failed_legacy, creating,
           reconciliation_required, reconciling, creation_failed, cancelled, expired,
           investigation_required, refunded)
         in: query
         name: status
+        type: string
+      - description: Loại giao dịch (direct_purchase, wallet_topup)
+        in: query
+        name: transactionType
         type: string
       - description: Ngày bắt đầu (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)
         in: query
@@ -2508,7 +2512,7 @@ paths:
       consumes:
       - application/json
       description: Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và
-        lọc theo trạng thái/phân quyền.
+        lọc theo trạng thái/phân quyền/gói hội viên hiệu lực (planId lấy từ /admin/subscriptions/plans).
       parameters:
       - in: query
         name: isActive
@@ -2519,6 +2523,18 @@ paths:
       - in: query
         name: page
         type: integer
+      - description: |-
+          PlanID filters by the account's EFFECTIVE membership plan (the plan the
+          admin table prints), not the raw `current_plan_code` column: an expired
+          finite plan already shows its fallback plan in the UI, so filtering the
+          raw column would list accounts under a plan the operator cannot see.
+
+          The id comes from GET /admin/subscriptions/plans. Identity cannot join
+          the subscription tables (constitution §II), so the contract resolves the
+          matching user ids first.
+        in: query
+        name: planId
+        type: string
       - in: query
         name: q
         type: string

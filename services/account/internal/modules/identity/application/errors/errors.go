@@ -212,6 +212,21 @@ func ErrInvalidUserIDFilter() *apperror.Error {
 	return apperror.NewBadRequest("Mã người dùng không hợp lệ.")
 }
 
+// ErrInvalidPlanIDFilter rejects a malformed `planId` filter on the admin user
+// list. Same reason as ErrInvalidUserIDFilter: a filter the server cannot
+// understand must not degrade into an unfiltered list.
+func ErrInvalidPlanIDFilter() *apperror.Error {
+	return apperror.NewBadRequest("Mã gói hội viên không hợp lệ.")
+}
+
+// ErrPlanFilterUnavailable is a wiring failure, not a client error: the plan
+// filter asked for the subscription contract and got none. It is reported as a
+// server error on purpose — answering with the unfiltered list would look like
+// "every account is on this plan".
+func ErrPlanFilterUnavailable() *apperror.Error {
+	return apperror.NewInternalError("Bộ lọc gói hội viên chưa được cấu hình.")
+}
+
 func ErrEmailNotRegistered() *apperror.Error {
 	return apperror.NewNotFound("Email này chưa được đăng kí trong hệ thống.")
 }

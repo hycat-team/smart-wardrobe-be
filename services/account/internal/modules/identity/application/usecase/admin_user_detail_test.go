@@ -51,7 +51,7 @@ func (c detailSubscriptionContract) GetUserSubscriptionOverview(_ context.Contex
 
 func newDetailUseCase(repo repositories.IUserRepository, contract subscription_contract.IUserSubscriptionContract) uc_interfaces.IUserUseCase {
 	return usecase.NewUserUseCase(
-		repo, nil, nil, nil, nil, contract, nil, nil, nil,
+		repo, nil, nil, nil, nil, contract, nil, nil, nil, nil,
 		&config.Config{}, nil, nil,
 	)
 }

@@ -50,18 +50,20 @@ func NewAdminBillingHandler(
 
 type adminListTransactionsReq struct {
 	shared_dto.PaginationQuery
-	Status   string `form:"status"`
-	FromDate string `form:"fromDate"`
-	ToDate   string `form:"toDate"`
+	Status          string `form:"status"`
+	TransactionType string `form:"transactionType"`
+	FromDate        string `form:"fromDate"`
+	ToDate          string `form:"toDate"`
 }
 
 // ListTransactions
 // @Summary Lấy danh sách giao dịch thanh toán
-// @Description Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.
+// @Description Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, loại giao dịch, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.
 // @Tags Admin Billing
 // @Accept json
 // @Produce json
 // @Param status query string false "Trạng thái giao dịch (pending, success, failed_legacy, creating, reconciliation_required, reconciling, creation_failed, cancelled, expired, investigation_required, refunded)"
+// @Param transactionType query string false "Loại giao dịch (direct_purchase, wallet_topup)"
 // @Param fromDate query string false "Ngày bắt đầu (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)"
 // @Param toDate query string false "Ngày kết thúc (YYYY-MM-DD, ngày lịch VN, bao gồm trọn ngày)"
 // @Param page query int false "Trang"
@@ -80,6 +82,14 @@ func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 	if req.Status != "" {
 		if st, ok := mapper.ParseDepositStatus(req.Status); ok {
 			filter.Status = &st
+		}
+	}
+	// Same contract as `status`: only the two names the column can hold are
+	// filter inputs. An unknown value is dropped rather than answered with an
+	// empty page, which keeps older clients from breaking on a typo.
+	if req.TransactionType != "" {
+		if tt, ok := mapper.ParseDepositTransactionType(req.TransactionType); ok {
+			filter.TransactionType = &tt
 		}
 	}
 	// VN calendar days, half-open [from, to) (data-model §3): the helper parses

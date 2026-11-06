@@ -1129,7 +1129,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/subscriptions/transactions": {
             "get": {
-                "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.",
+                "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, loại giao dịch, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1145,6 +1145,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Trạng thái giao dịch (pending, success, failed_legacy, creating, reconciliation_required, reconciling, creation_failed, cancelled, expired, investigation_required, refunded)",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại giao dịch (direct_purchase, wallet_topup)",
+                        "name": "transactionType",
                         "in": "query"
                     },
                     {
@@ -1463,7 +1469,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/users": {
             "get": {
-                "description": "Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền.",
+                "description": "Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền/gói hội viên hiệu lực (planId lấy từ /admin/subscriptions/plans).",
                 "consumes": [
                     "application/json"
                 ],
@@ -1488,6 +1494,12 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "PlanID filters by the account's EFFECTIVE membership plan (the plan the\nadmin table prints), not the raw ` + "`" + `current_plan_code` + "`" + ` column: an expired\nfinite plan already shows its fallback plan in the UI, so filtering the\nraw column would list accounts under a plan the operator cannot see.\n\nThe id comes from GET /admin/subscriptions/plans. Identity cannot join\nthe subscription tables (constitution §II), so the contract resolves the\nmatching user ids first.",
+                        "name": "planId",
                         "in": "query"
                     },
                     {

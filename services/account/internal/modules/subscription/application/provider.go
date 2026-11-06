@@ -26,6 +26,9 @@ var ProviderSet = wire.NewSet(
 	// after inserting a user row. Separate from the cross-service contract above,
 	// which is served over gRPC and cannot join the caller's transaction.
 	contract.NewUserSubscriptionProvisioningContract,
+	// Admin account list: the intra-service plan filter. Also separate from the
+	// cross-service contract for the same reason as provisioning above.
+	contract.NewUserSubscriptionPlanFilter,
 
 	// 024 T045: the single publish point for subscription.plan.changed. Every
 	// path that changes a plan depends on it, so "forgot to publish" becomes a

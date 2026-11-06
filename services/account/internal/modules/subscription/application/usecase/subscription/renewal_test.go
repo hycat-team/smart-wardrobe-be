@@ -100,6 +100,10 @@ func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithinBatch(ctx context.Con
 func (f *fakeRenewalSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
 }
+func (f *fakeRenewalSubRepo) ListUserIDsWithEffectivePlan(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
 func (f *fakeRenewalSubRepo) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
 	return nil, 0, nil
 }

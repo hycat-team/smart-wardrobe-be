@@ -19,6 +19,15 @@ type GetUsersQueryReq struct {
 	// administrator can paste a UUID from another admin screen without also
 	// matching a name fragment.
 	UserID *string `form:"userId"`
+	// PlanID filters by the account's EFFECTIVE membership plan (the plan the
+	// admin table prints), not the raw `current_plan_code` column: an expired
+	// finite plan already shows its fallback plan in the UI, so filtering the
+	// raw column would list accounts under a plan the operator cannot see.
+	//
+	// The id comes from GET /admin/subscriptions/plans. Identity cannot join
+	// the subscription tables (constitution §II), so the contract resolves the
+	// matching user ids first.
+	PlanID *string `form:"planId"`
 }
 
 type AdminUserListRes = shared_dto.PaginationResult[*UserRes]
