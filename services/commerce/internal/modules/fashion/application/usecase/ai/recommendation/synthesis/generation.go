@@ -21,8 +21,8 @@ import (
 // GenerateOutfitRecommendation điều phối toàn bộ quá trình tạo gợi ý trang phục bằng AI.
 //
 // Hành vi:
-// 1. Dựng Prompt người dùng bằng [BuildRecommendationPrompt] từ danh sách ứng viên và thông tin đầu vào.
-// 2. Gửi Prompt hệ thống (Stylist cao cấp, trả về JSON, ngôn ngữ tiếng Việt) và Prompt người dùng tới [aiService.GenerateRecommendationText].
+// 1. Dựng prompt người dùng (chỉ dữ liệu: CORE_STRATEGY, ROLE_ALIASES, JSON mẫu, CONTEXT, CANDIDATES) bằng [BuildRecommendationPromptWithLimits].
+// 2. Gửi [recommendationSystemPrompt] (toàn bộ luật stylist + cấu trúc outfit + ngôn ngữ tiếng Việt) và prompt người dùng tới [aiService.GenerateRecommendationText].
 // 3. Nếu dịch vụ AI gặp lỗi hoặc trả về rỗng, tạo lỗi trace dự phòng qua [NewFallbackTraceError].
 // 4. Phân tích cú pháp JSON phản hồi từ AI qua [ParseOutfitRecommendationJSON].
 // 5. So khớp, đối chiếu danh sách gợi ý của AI với các ứng viên thực tế trong tủ đồ qua [MapLLMResponseToGroups].
@@ -52,7 +52,7 @@ func GenerateOutfitRecommendation(
 	}
 	responseText, err := aiService.GenerateRecommendationText(
 		ctx,
-		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. Follow the user prompt's CORE_STRATEGY and ROLE_ALIASES exactly: use only aliases listed for the role you are filling, and do not invent a top or bottom when the strategy is fullbody. A valid outfit MUST contain either a single fullbody item (dress) OR a combination of at least 1 top and 1 bottom item, plus footwear. Beyond those core roles, headwear (\"headwear\") and accessory (\"accessory\") are independent roles that stack on top of the core outfit: they are NOT mutually exclusive, so never choose one over the other. Whenever the candidate pool contains a hat candidate, output a headwear entry; whenever it contains an accessory candidate, output an accessory entry. Decide each role independently, and only skip a role when the pool truly has no candidate for it. Outerwear (\"outerwear\") is an optional layer: include it when the weather is cold/cool/rainy, the season is autumn/winter, or the context asks for a layered outfit, and never include heavy outerwear when the weather is hot or sunny. The fields title and explanation must be written in natural Vietnamese with proper diacritics. Internal candidate aliases (A1, A2, ...) MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation. Candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand sample items — prefer including at least one of them in the outfit (as primary or alternative) when they fit the style, occasion, and color harmony. Personal style rule: when CONTEXT contains personal_style, prefer items whose style matches the user's declared personal style whenever the candidate quality is comparable; learned_style is a softer signal than the declared style; never surface an item whose style is listed in avoid_styles as a style match.",
+		recommendationSystemPrompt,
 		userPrompt,
 		aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)

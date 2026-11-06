@@ -278,8 +278,11 @@ func TestBuildRecommendationPromptForbidsAliasesInNarrative(t *testing.T) {
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 	prompt := BuildRecommendationPrompt([]types.CandidateForPrompt{{Item: item}}, dto.RecommendOutfitReq{}, fashionItemMap)
-	if !strings.Contains(prompt, "NEVER write aliases in title or explanation") {
-		t.Fatalf("expected prompt to forbid aliases in narrative, got: %s", prompt)
+	if !strings.Contains(recommendationSystemPrompt, "NEVER write an alias in title or explanation") {
+		t.Fatalf("expected the system prompt to forbid aliases in narrative, got: %s", recommendationSystemPrompt)
+	}
+	if strings.Contains(prompt, "alias") {
+		t.Fatalf("the alias rule must not leak into the user prompt, got: %s", prompt)
 	}
 }
 

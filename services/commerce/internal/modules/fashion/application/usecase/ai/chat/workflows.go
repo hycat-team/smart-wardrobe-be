@@ -2,6 +2,8 @@ package chat
 
 import (
 	"context"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -254,6 +256,18 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	limit := min(len(wardrobeItemRes), subOverview.MaxWardrobeItems)
 	activeWardrobeItems := wardrobeItemRes[:limit]
 
+	// The chat prompt must be identical between turns for the same wardrobe:
+	// iterating fashionItemMap used to pick 20 random items per call. Sort by the
+	// wardrobe row's creation time (newest first) with the id as a tie-break so
+	// equal timestamps cannot shuffle the prompt either.
+	activeWardrobeItems = slices.Clone(activeWardrobeItems)
+	sort.SliceStable(activeWardrobeItems, func(i, j int) bool {
+		if !activeWardrobeItems[i].CreatedAt.Equal(activeWardrobeItems[j].CreatedAt) {
+			return activeWardrobeItems[i].CreatedAt.After(activeWardrobeItems[j].CreatedAt)
+		}
+		return activeWardrobeItems[i].ID.String() < activeWardrobeItems[j].ID.String()
+	})
+
 	var eligibleBrandItems []*brand_dto.BrandItemContractDTO
 	if uc.brandContract != nil {
 		if items, _, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{}); err == nil {
@@ -309,7 +323,23 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 			}
 		}
 	}
-	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, eligibleBrandItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters, fashionItemMap)}, nil
+	// Build the prompt order from the wardrobe rows (already sorted newest
+	// first) rather than from the map, so the injected item list is stable and
+	// deterministic across calls.
+	orderedFashionItems := make([]*dto.FashionItemContractDTO, 0, len(activeWardrobeItems))
+	seenFashionIDs := make(map[uuid.UUID]bool, len(activeWardrobeItems))
+	for _, item := range activeWardrobeItems {
+		if item.FashionItemID == nil || seenFashionIDs[*item.FashionItemID] {
+			continue
+		}
+		fashion := fashionItemMap[*item.FashionItemID]
+		if fashion == nil {
+			continue
+		}
+		seenFashionIDs[*item.FashionItemID] = true
+		orderedFashionItems = append(orderedFashionItems, fashion)
+	}
+	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, eligibleBrandItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters, orderedFashionItems, fashionItemMap)}, nil
 }
 
 func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {

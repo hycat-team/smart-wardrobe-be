@@ -24,14 +24,24 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemContractDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemContractDTO) string {
+// maxPromptWardrobeItems caps how many wardrobe and brand items are injected
+// into the chat system prompt.
+const maxPromptWardrobeItems = 20
+
+// buildChatSystemPromptWithLimits builds the chat system prompt.
+//
+// orderedFashionItems decides both the order and which 20 items are injected:
+// the prompt must be byte-identical between turns for the same wardrobe, or
+// answers drift and provider prompt caching never hits. fashionItemMap is only
+// used to look up the fashion record behind a brand item.
+func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemContractDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, orderedFashionItems []*fashion_dto.FashionItemContractDTO, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemContractDTO) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
 	builder.WriteString("Your reply MUST contain a helpful natural-language answer for the user. Never reply with only a control token such as '[ACTION:REDIRECT_OUTFIT]'.\n")
 
 	builder.WriteString("CONSTRAINTS & RULES:\n")
-	if len(brandItems) > 0 || len(fashionItemMap) > 0 {
+	if len(brandItems) > 0 || len(orderedFashionItems) > 0 {
 		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, answer directly using the available wardrobe items or brand items.\n")
 		builder.WriteString("- Whenever mentioning a wardrobe item, write its category name followed by its color inside Markdown bold, for example: **Áo sơ mi Trắng**. Do not output brackets or placeholder text.\n")
 		builder.WriteString("- Whenever mentioning a brand item, write its category name followed by its color and brand name inside Markdown bold, for example: **Áo sơ mi Trắng của Brand X**. Do not output brackets or placeholder text.\n")
@@ -47,13 +57,16 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 		builder.WriteString("\n")
 	}
 
-	if len(fashionItemMap) > 0 {
+	if len(orderedFashionItems) > 0 {
 		builder.WriteString("Available wardrobe items:\n")
 
 		count := 0
-		for _, fashion := range fashionItemMap {
-			if count >= 20 {
+		for _, fashion := range orderedFashionItems {
+			if count >= maxPromptWardrobeItems {
 				break
+			}
+			if fashion == nil {
+				continue
 			}
 
 			hasCategory := fashion.Category != nil &&
@@ -87,7 +100,7 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 	if len(brandItems) > 0 {
 		builder.WriteString("Available brand items:\n")
 
-		limit := min(len(brandItems), 20)
+		limit := min(len(brandItems), maxPromptWardrobeItems)
 		for i := range limit {
 			item := brandItems[i]
 			fashion := fashionItemMap[item.FashionItemID]

@@ -128,6 +128,19 @@ recommendation_minimum_candidate_pool + len(optional roles) < recommendation_pro
 
 With the current values (`20 + 3 = 23` vs a limit of `24`) there is only one slot of headroom. Raising `recommendation_minimum_candidate_pool` to `22` or above without also raising `recommendation_prompt_candidate_limit` will silently reintroduce missing hats and accessories.
 
+#### Prompt Ownership and Size
+
+Every outfit rule lives in exactly one place: `recommendationSystemPrompt` in `synthesis/prompt.go`, sent as the provider's system instruction. The user prompt carries **data only** — `CORE_STRATEGY`, `ROLE_ALIASES`, the JSON shape example, `CONTEXT` and `CANDIDATES`. Before this split the rule block existed twice (once as the system prompt and once at the top of the user prompt), so a behaviour change had to be made in two places and the copies had started to diverge.
+
+Measured on production data (`aiexecutor.ai_usage_events`): the outfit call consumed 2.947 input tokens on average and 3.869 at the maximum; the rule block was ~1.340 of those tokens in the duplicated layout and ~615 after the merge. The chat call stays well under its ceiling (637 average, 1.309 maximum input tokens).
+
+Two invariants keep this from regressing:
+
+- `TestRecommendationSystemPromptKeepsEveryConstraint` asserts each behavioural clause by name, so a rewrite cannot silently drop headwear/accessory independence, the outerwear rule or the alias rule.
+- `TestRecommendationSystemPromptStaysCompact` caps the system prompt at 3.000 characters.
+
+The chat prompt is data-driven as well and MUST be deterministic: `buildChatSystemPromptWithLimits` receives wardrobe items as an ordered slice (newest wardrobe row first, id as tie-break) and takes the first 20. Iterating the `fashionItemMap` map directly used to inject 20 random items per turn, which made answers drift and defeated provider prompt caching.
+
 #### Early Guard & Error Reporting
 If a user's active wardrobe or query filters result in a candidate pool lacking the minimum body items (i.e. no `dam` AND no `ao` available, even after automatic candidate pool recovery), the system halts early in Stage 1/2 and returns `ErrInsufficientOutfitComponents` (HTTP 400 Bad Request) without deducting daily AI quota or invoking LLM generation.
 

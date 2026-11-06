@@ -110,23 +110,40 @@ func buildPromptExample(inventory candidateRoleInventory, strategy string) strin
 	return string(raw)
 }
 
-// BuildRecommendationPrompt định dạng vai trò của stylist, các ràng buộc của prompt, ngữ cảnh yêu cầu và danh sách các ứng viên món đồ thành một prompt người dùng hoàn chỉnh gửi cho LLM.
+// recommendationSystemPrompt holds every instruction the outfit model must obey.
+//
+// All rules live here and nowhere else: the user prompt carries data only
+// (CORE_STRATEGY, ROLE_ALIASES, the JSON example, CONTEXT, CANDIDATES). Before
+// this, the rule block existed twice — once here and once in the user prompt —
+// so a single behaviour change had to be made in two places and the two copies
+// had already started to diverge. A stable system prefix also keeps provider
+// prompt caching useful across calls.
+//
+// Every constraint below is load-bearing; see docs/system-design/ai-pipeline.md
+// for why headwear/accessory independence and the outerwear rule exist. Do not
+// drop a clause without checking that document and the synthesis tests.
+const recommendationSystemPrompt = "Role: senior fashion stylist and wardrobe editor. Recommend exactly one outfit from the provided wardrobe candidates and return exactly one valid minified JSON object.\n" +
+	"Decision priorities: occasion fit, weather fit, season fit, silhouette balance, color harmony, style consistency, practical wearability.\n" +
+	"Output: exactly one JSON object with keys title, explanation, items. title and explanation MUST be natural Vietnamese with full diacritics. No markdown, no prose outside the JSON.\n" +
+	"Outfit structure: follow CORE_STRATEGY exactly — \"separates\" = exactly one top plus one bottom and NO fullbody; \"fullbody\" = exactly one fullbody and NO top or bottom. The outfit also needs exactly one footwear entry, and each role appears at most once. primary_id MUST come from ROLE_ALIASES for that same role only. If the pool has no suitable top candidate, fall back to a fullbody outfit instead of omitting the top.\n" +
+	"Layering: headwear, accessory and outerwear stack on the core outfit and are NOT mutually exclusive with each other; decide each one independently. A hat candidate MUST produce a headwear entry and an accessory candidate MUST produce an accessory entry; omitting an available one makes the outfit incomplete. Include outerwear only for cold/cool/rainy weather, autumn/winter, or a layered request; it may layer over a fullbody dress or over a top+bottom pair; never include heavy outerwear in hot or sunny weather.\n" +
+	"Alternative rule: every alternative_ids entry must be a viable, high-quality substitute for that role's primary_id and must preserve the outfit's color harmony, style target, weather compatibility and aesthetic.\n" +
+	"Honesty: stay faithful to the actual item attributes; never describe a graphic or visually loud item as minimalist, formal or understated unless the item data clearly supports it. With an imperfect pool, choose the most suitable available combination and explain it truthfully instead of overselling it.\n" +
+	"Recency: candidates tagged recency-cooldown were worn or recommended very recently. When two same-role candidates are otherwise equivalent, prefer the untagged one so the wardrobe keeps rotating; if every candidate for a role carries the tag, still choose the best one instead of omitting the role.\n" +
+	"Internal aliases (A1, A2, ...) MUST appear ONLY in primary_id and alternative_ids; NEVER write an alias in title or explanation (no \"(A1)\", no bare \"A1\").\n" +
+	"Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items; prefer including at least one of them as primary or alternative when it fits the style, occasion and color harmony.\n" +
+	"Personal style rule: when CONTEXT contains personal_style, prefer items matching it whenever candidate quality is comparable (learned_style is a weaker signal); never present an item whose style is listed in avoid_styles as a style match."
+
+// BuildRecommendationPromptWithLimits dựng prompt người dùng cho LLM gợi ý trang phục.
 //
 // Hành vi:
-// 1. Ghi thông tin vai trò stylist, nhiệm vụ, mức độ ưu tiên quyết định (phù hợp thời tiết, màu sắc, v.v.).
-// 2. Định nghĩa các quy tắc đầu ra: ngôn ngữ tiếng Việt tự nhiên, cấu trúc JSON trả về với các khóa title, explanation, items.
-// 3. Đóng gói ngữ cảnh yêu cầu của người dùng (dịp, phong cách, thời tiết, v.v.) dưới dạng JSON gắn sau nhãn "CONTEXT=".
-// 4. Duyệt qua từng ứng viên và tạo thông tin chi tiết (bao gồm cả các tag đặc trưng thời trang được tính toán từ các bước trước), đóng gói thành các dòng JSON thô dưới nhãn "CANDIDATES=".
-// 5. Trả về toàn bộ chuỗi prompt đã dựng.
-//
-// Đầu vào mẫu:
-//
-//	candidates: []types.CandidateForPrompt{...}
-//	input: dto.RecommendOutfitReq{Occasion: pointer to "đi chơi"}
+// 1. Cắt danh sách ứng viên theo CandidateLimit và lặp lại việc dựng prompt, giảm dần từ cuối danh sách, cho tới khi độ dài ≤ PromptMaxCharacters.
+// 2. Với mỗi lần dựng: đóng gói ngữ cảnh yêu cầu (dịp, phong cách, thời tiết, sở thích cá nhân) sau nhãn "CONTEXT=", chọn chiến lược outfit (separates/fullbody), liệt kê alias theo role và từng ứng viên dưới nhãn "CANDIDATES=".
+// 3. Toàn bộ LUẬT nằm ở [recommendationSystemPrompt]; hàm này chỉ sinh DỮ LIỆU.
 //
 // Đầu ra mẫu:
 //
-//	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
+//	"CORE_STRATEGY=separates\nROLE_ALIASES={\"top\":[\"A1\"]}\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"A1\",...}\n"
 func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
 	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap, types.PersonalizationContext{})
 	return prompt
@@ -159,31 +176,6 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	roleAliases, _ := json.Marshal(inventory.aliases)
 
 	var builder strings.Builder
-	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
-	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
-	builder.WriteString("Decision priorities: occasion fit, weather fit, season fit, silhouette balance, color harmony, style consistency, and practical wearability.\n")
-	builder.WriteString("Editorial rule: stay honest to the actual items. Do not describe a graphic or visually loud item as fully minimalist, formal, or understated unless the item data clearly supports that claim.\n")
-	builder.WriteString("Constraint rule: if the candidate pool is imperfect, choose the most suitable combination available and explain it truthfully rather than overselling it.\n")
-	builder.WriteString("Alternative rule: items in alternative_ids must be viable, high-quality fashion substitutes for the primary_id that maintain the overall color harmony, style target, weather compatibility, and aesthetic of the recommended outfit.\n")
-	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
-	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
-	builder.WriteString("Rules: aliases (A1, A2, ...) are internal IDs and MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation (no \"(A1)\", no bare \"A1\"); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
-	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
-	builder.WriteString("Recency rotation rule: candidates tagged with recency-cooldown were worn or recommended very recently. When two candidates for the same role are otherwise of equivalent quality, prefer the one WITHOUT the recency-cooldown tag so the user's wardrobe keeps rotating; if every candidate for a role carries the tag, still choose the best one instead of omitting the role.\n")
-	builder.WriteString("Outfit rules:\n")
-	builder.WriteString("- CORE roles define a complete outfit: exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
-	builder.WriteString("- Follow CORE_STRATEGY exactly: \"separates\" means exactly one top and one bottom and NO fullbody; \"fullbody\" means exactly one fullbody and NO top or bottom.\n")
-	builder.WriteString("- primary_id MUST be chosen from ROLE_ALIASES for the same role. Never use an alias from another role.\n")
-	builder.WriteString("- Each role must appear at most once. Do NOT output two items with the same role.\n")
-	builder.WriteString("- If the recommended outfit contains a fullbody item (\"fullbody\"), it MUST NOT include any top (\"top\") or bottom (\"bottom\").\n")
-	builder.WriteString("- Outerwear (e.g., jackets, coats) can be layered over either a fullbody dress (\"fullbody\") OR a top-and-bottom combination (\"top\" + \"bottom\").\n")
-	builder.WriteString("- If no suitable top candidate exists for a top-and-bottom outfit, fall back to a fullbody outfit instead of omitting the top.\n")
-	builder.WriteString("Layering roles rule: headwear (\"headwear\") and accessory (\"accessory\") are independent roles that stack on top of the core outfit.\n")
-	builder.WriteString("- These two roles are NOT mutually exclusive. Never choose one role over the other: if the pool has both a hat candidate and an accessory candidate, you MUST include BOTH roles in the same outfit.\n")
-	builder.WriteString("- When a pool has a hat candidate, output a headwear entry. When it has an accessory candidate, output an accessory entry. Each of the two must be decided independently.\n")
-	builder.WriteString("- Omitting an available hat or accessory makes the outfit incomplete. Only skip a role when the pool truly has no candidate for it.\n")
-	builder.WriteString("Outerwear rule: outerwear (\"outerwear\") is an optional layer. Include it when the weather is cold/cool/rainy, when the season is autumn/winter, or when the context explicitly asks for a layered outfit. NEVER include heavy outerwear when the weather is hot or sunny.\n")
-
 	contextPayload := map[string]string{}
 	if input.Occasion != nil {
 		contextPayload["occasion"] = *input.Occasion
