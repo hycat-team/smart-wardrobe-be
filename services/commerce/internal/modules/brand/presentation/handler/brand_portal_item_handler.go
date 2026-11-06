@@ -74,7 +74,7 @@ func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
 
 	// Same heartbeat contract as the wardrobe SSE handler: a quiet stream stays
 	// visibly alive and a departed client is detected on the next write.
-	heartbeat := time.NewTicker(shared_pres.SSEHeartbeatInterval)
+	heartbeat := time.NewTicker(shared_pres.SSEHeartbeat())
 	defer heartbeat.Stop()
 
 	c.Stream(func(w io.Writer) bool {

@@ -70,3 +70,33 @@ func TestSSEStreamSurvivesWriteTimeoutWithDeadlineExtension(t *testing.T) {
 		t.Fatalf("expected all %d chunks to survive the write timeout, got %d", sseChunks, got)
 	}
 }
+
+// heartbeat_seconds must actually drive the ping ticker: a config carried from
+// before the wiring existed (zero) has to keep the previous 15s behaviour.
+func TestConfigureSSEHeartbeatFallsBackToDefault(t *testing.T) {
+	t.Cleanup(shared_pres.ResetSSEDeadlines)
+
+	shared_pres.ConfigureSSEHeartbeat(0)
+	if got := shared_pres.SSEHeartbeat(); got != shared_pres.DefaultSSEHeartbeatInterval {
+		t.Fatalf("heartbeat = %v, want the default %v", got, shared_pres.DefaultSSEHeartbeatInterval)
+	}
+
+	shared_pres.ConfigureSSEHeartbeat(-3 * time.Second)
+	if got := shared_pres.SSEHeartbeat(); got != shared_pres.DefaultSSEHeartbeatInterval {
+		t.Fatalf("heartbeat = %v, want the default %v", got, shared_pres.DefaultSSEHeartbeatInterval)
+	}
+}
+
+func TestConfigureSSEHeartbeatAppliesConfiguredValue(t *testing.T) {
+	t.Cleanup(shared_pres.ResetSSEDeadlines)
+
+	shared_pres.ConfigureSSEHeartbeat(5 * time.Second)
+	if got := shared_pres.SSEHeartbeat(); got != 5*time.Second {
+		t.Fatalf("heartbeat = %v, want 5s", got)
+	}
+
+	shared_pres.ResetSSEDeadlines()
+	if got := shared_pres.SSEHeartbeat(); got != shared_pres.DefaultSSEHeartbeatInterval {
+		t.Fatalf("reset heartbeat = %v, want the default", got)
+	}
+}

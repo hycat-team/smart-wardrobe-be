@@ -403,8 +403,10 @@ type Server struct {
 type SSE struct {
 	ChunkDeadlineSeconds       int `mapstructure:"chunk_deadline_seconds"`
 	AIChatChunkDeadlineSeconds int `mapstructure:"ai_chat_chunk_deadline_seconds"`
-	// HeartbeatSeconds is the SSE comment heartbeat keeping Nginx → Cloud Run
-	// streams alive (FR-036). MUST be identical in every environment (shared configs/).
+	// HeartbeatSeconds is how often a quiet SSE stream emits its ping frame, so
+	// a proxy idle timeout cannot close a long analysis (FR-036). It seeds the
+	// presentation package through ConfigureSSEHeartbeat; zero or negative falls
+	// back to 15s. MUST be identical in every environment (shared configs/).
 	HeartbeatSeconds int `mapstructure:"heartbeat_seconds"`
 	// ReplayBufferSize caps how many recent events are kept per analysis session
 	// for SSE replay on reconnect (FR-006, feature 023).

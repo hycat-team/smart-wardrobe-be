@@ -17,11 +17,12 @@ const (
 	// stall longer between tokens than local broadcasters (spec 019 FR-003).
 	DefaultAIChatChunkDeadline = 180 * time.Second
 
-	// SSEHeartbeatInterval is how often a quiet analysis stream emits a ping.
-	// It must stay well below the shortest proxy/read timeout in front of the
-	// API so a long analysis is not mistaken for an idle connection, and it gives
-	// the server a periodic write that fails when the client is gone.
-	SSEHeartbeatInterval = 15 * time.Second
+	// DefaultSSEHeartbeatInterval is how often a quiet analysis stream emits a
+	// ping when config carries no heartbeat_seconds. It must stay well below the
+	// shortest proxy/read timeout in front of the API so a long analysis is not
+	// mistaken for an idle connection, and it gives the server a periodic write
+	// that fails when the client is gone.
+	DefaultSSEHeartbeatInterval = 15 * time.Second
 )
 
 // Deadlines are package-level so streaming handlers can extend without each
@@ -29,6 +30,7 @@ const (
 var (
 	sseChunkDeadline    atomic.Value // time.Duration
 	aiChatChunkDeadline atomic.Value // time.Duration
+	sseHeartbeat        atomic.Value // time.Duration
 )
 
 func init() {
@@ -52,6 +54,25 @@ func ConfigureSSEDeadlines(chunk, aiChat time.Duration) {
 func ResetSSEDeadlines() {
 	sseChunkDeadline.Store(DefaultSSEChunkDeadline)
 	aiChatChunkDeadline.Store(DefaultAIChatChunkDeadline)
+	sseHeartbeat.Store(DefaultSSEHeartbeatInterval)
+}
+
+// ConfigureSSEHeartbeat seeds the ping interval of quiet SSE streams from
+// config. A zero or negative value falls back to
+// DefaultSSEHeartbeatInterval, so a config written before heartbeat_seconds
+// existed keeps the previous behaviour.
+func ConfigureSSEHeartbeat(interval time.Duration) {
+	if interval <= 0 {
+		interval = DefaultSSEHeartbeatInterval
+	}
+	sseHeartbeat.Store(interval)
+}
+
+// SSEHeartbeat returns the interval a streaming handler should use for its
+// ping ticker. Handlers call it per request so a value seeded in
+// routes.NewEngine applies to every new stream.
+func SSEHeartbeat() time.Duration {
+	return sseHeartbeat.Load().(time.Duration)
 }
 
 func currentChunkDeadline() time.Duration {

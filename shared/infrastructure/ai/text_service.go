@@ -60,7 +60,10 @@ func (s *AIService) generateText(
 		if index == len(attempts)-1 || !s.textFallbackEligible(err) {
 			break
 		}
-		s.logger.Warn("Primary text provider failed, attempting fallback", zap.Error(err))
+		s.logger.Warn("Primary text provider failed, attempting fallback",
+			zap.Error(err),
+			zap.NamedError("cause", rootCause(err)),
+		)
 	}
 
 	s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, lastErr)
@@ -105,7 +108,10 @@ func (s *AIService) GenerateChatTextStream(
 			if produced || index == len(attempts)-1 || !s.textFallbackEligible(err) {
 				break
 			}
-			s.logger.Warn("Chat primary stream failed before producing content, attempting fallback", zap.Error(err))
+			s.logger.Warn("Chat primary stream failed before producing content, attempting fallback",
+				zap.Error(err),
+				zap.NamedError("cause", rootCause(err)),
+			)
 		}
 
 		s.finalizeProviderError(context.WithoutCancel(ctx), options.RequestID, lastErr)
@@ -121,7 +127,11 @@ func (s *AIService) GenerateChatTextStream(
 }
 
 func (s *AIService) finalizeProviderError(ctx context.Context, id uuid.UUID, err error) {
-	s.logger.Error("AI provider stream error", zap.String("request_id", id.String()), zap.Error(err))
+	s.logger.Error("AI provider stream error",
+		zap.String("request_id", id.String()),
+		zap.Error(err),
+		zap.NamedError("cause", rootCause(err)),
+	)
 	text := strings.ToLower(err.Error())
 	definite := strings.Contains(text, "http 400") || strings.Contains(text, "http 401") || strings.Contains(text, "http 403") || strings.Contains(text, "http 404") || strings.Contains(text, "http 429") || strings.Contains(text, "chưa hỗ trợ") || strings.Contains(text, "not configured")
 	if definite {

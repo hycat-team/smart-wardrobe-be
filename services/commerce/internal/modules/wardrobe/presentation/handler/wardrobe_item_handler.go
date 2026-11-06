@@ -258,7 +258,7 @@ func (h *WardrobeItemHandler) SubscribeTaskSSE(c *gin.Context) error {
 	// A quiet stream must not look like a dead one: the ping keeps proxies from
 	// dropping the connection and lets a write to a departed client fail fast
 	// instead of leaving a ghost subscriber behind for the whole write deadline.
-	heartbeat := time.NewTicker(shared_pres.SSEHeartbeatInterval)
+	heartbeat := time.NewTicker(shared_pres.SSEHeartbeat())
 	defer heartbeat.Stop()
 
 	c.Stream(func(w io.Writer) bool {

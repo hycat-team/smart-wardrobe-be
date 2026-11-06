@@ -73,6 +73,7 @@ func NewEngine(
 		time.Duration(cfg.Server.SSE.ChunkDeadlineSeconds)*time.Second,
 		time.Duration(cfg.Server.SSE.AIChatChunkDeadlineSeconds)*time.Second,
 	)
+	shared_pres.ConfigureSSEHeartbeat(time.Duration(cfg.Server.SSE.HeartbeatSeconds) * time.Second)
 	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Skip: func(c *gin.Context) bool {
 			p := c.Request.URL.Path
