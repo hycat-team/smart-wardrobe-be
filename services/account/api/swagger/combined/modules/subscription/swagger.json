@@ -7781,12 +7781,18 @@
         "consumes": [
           "application/json"
         ],
-        "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.",
+        "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, loại giao dịch, khoảng ngày lịch VN). Trạng thái trả về là chuỗi 11 giá trị.",
         "parameters": [
           {
             "description": "Trạng thái giao dịch (pending, success, failed_legacy, creating, reconciliation_required, reconciling, creation_failed, cancelled, expired, investigation_required, refunded)",
             "in": "query",
             "name": "status",
+            "type": "string"
+          },
+          {
+            "description": "Loại giao dịch (direct_purchase, wallet_topup)",
+            "in": "query",
+            "name": "transactionType",
             "type": "string"
           },
           {
